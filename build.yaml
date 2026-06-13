@@ -1,0 +1,7 @@
+builders:
+  nav:
+    import: "package:canon_generator/builder.dart"
+    builder_factories: ["navBuilder"]
+    build_extensions: {".dart": [".nav.dart"]}
+    auto_apply: dependents
+    build_to: source
