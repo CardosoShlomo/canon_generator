@@ -453,7 +453,9 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
         // .placement — flat to this group's leaves.
         final placementMarker = '${stem}Placement';
         markersToEmit.add(placementMarker);
-        for (final n in group) leafMarkers[n]!.add(placementMarker);
+        for (final n in group) {
+          leafMarkers[n]!.add(placementMarker);
+        }
         final pg = StringBuffer();
         pg.writeln('  $placementMarker get at {');
         pg.writeln('    final c = $spec.graph.currentChain;');
