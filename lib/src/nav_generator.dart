@@ -77,6 +77,16 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     // Preserved scope roots — the only screens reset() can target.
     final kept = [for (final root in tree) if (root.keep) root.screen];
 
+    // Canonical tree encoding — must match NavSpec.structureSignature exactly.
+    // A mismatch at runtime means the tree was edited without regenerating.
+    String sig(PlacementNode n) {
+      final kids = [for (final c in n.children) sig(c)]..sort();
+      final flags = '${n.keep ? 'K' : ''}${n.again != null ? 'A' : ''}';
+      return '${n.screen}$flags(${kids.join(',')})';
+    }
+
+    final treeSignature = ([for (final r in tree) sig(r)]..sort()).join(';');
+
     bool isSingle(String screen) => placements[screen]!.length <= 1;
     String unionName(String s) => '${_cap(s)}Nav';
     String placementName(PlacementNode n) =>
@@ -86,7 +96,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
 
     // Guaranteed pop targets: the canonical ancestors — always in the live
     // chain when you're at this placement, so popTo them can't fail. (Cycle
-    // members reachable through .again are deferred — see the TODO on navClass.)
+    // members reachable through a back-edge are deferred — see the TODO on navClass.)
     Map<String, String> ancestorsOf(PlacementNode n) =>
         {for (final a in n.ancestors) a.screen: placementName(a)};
 
@@ -273,7 +283,21 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln('  static NavStack<Screen<Object?>> get stack => NavStack([');
     b.writeln('    for (final e in $spec.graph.stack) NavEntry(of(e.screen), e.id),');
     b.writeln('  ]);');
-    b.writeln('  static NavDelegate<$spec> get delegate => $spec.graph.delegate;');
+    b.writeln("  static const _treeSignature = '$treeSignature';");
+    b.writeln('  /// True when this generated code still matches the live tree.');
+    b.writeln('  /// Assert it in a test to fail CI on a stale (un-regenerated) tree:');
+    b.writeln("  /// `test('nav codegen fresh', () => expect(Screen.isCodegenFresh, true));`");
+    b.writeln('  static bool get isCodegenFresh =>');
+    b.writeln('      $spec.graph.structureSignature == _treeSignature;');
+    b.writeln('  static final bool _fresh = () {');
+    b.writeln('    assert(isCodegenFresh,');
+    b.writeln("        'canon: the navigation tree changed but generated code is stale — run build_runner.');");
+    b.writeln('    return true;');
+    b.writeln('  }();');
+    b.writeln('  static NavDelegate<$spec> get delegate {');
+    b.writeln('    assert(_fresh);');
+    b.writeln('    return $spec.graph.delegate;');
+    b.writeln('  }');
     b.writeln('  static N go<N extends AnyNav>(Hop<N> hop) {');
     b.writeln('    $spec.graph.go(hop.spec, hop.id);');
     b.writeln('    return hop.nav;');

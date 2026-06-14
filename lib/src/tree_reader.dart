@@ -4,7 +4,7 @@ import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
 
 /// One placement of a screen in the grammar tree, with its path from the root
-/// (used for placement-type naming) and its resolved `.again` target.
+/// (used for placement-type naming) and its resolved back-edge target.
 class PlacementNode {
   PlacementNode(this.screen, this.path, this.parent);
 
@@ -16,7 +16,7 @@ class PlacementNode {
   /// True when declared with `.keep` — a preserved scope root.
   bool keep = false;
 
-  /// Set when this node IS an `.again` back-edge: the ancestor placement the
+  /// Set when this node IS a `.cycled`/`.stacked` back-edge: the ancestor placement the
   /// edge folds back to.
   PlacementNode? again;
 
@@ -32,9 +32,9 @@ class PlacementNode {
 
 /// Reads the grammar tree from the spec enum's static `graph` field,
 /// syntactically. The tree literal is runtime-built, so the builder walks its
-/// AST: enum-row invocations declare placements, `.again` declares a back-edge
-/// to the nearest same-screen ancestor, and static expression-bodied helper
-/// calls inline their body.
+/// AST: enum-row invocations declare placements, `.cycled`/`.stacked` declare a
+/// back-edge to the nearest same-screen ancestor, and static expression-bodied
+/// helper calls inline their body.
 Future<List<PlacementNode>> readTree(
   EnumElement element,
   BuildStep buildStep,
@@ -99,12 +99,12 @@ Future<List<PlacementNode>> readTree(
             [for (final a in ancestors) a.screen, name], ancestors.lastOrNull);
       case PrefixedIdentifier(
             :final prefix,
-            identifier: SimpleIdentifier(name: 'again')
+            identifier: SimpleIdentifier(name: 'cycled' || 'stacked')
           )
           when rows.contains(prefix.name):
         final target = ancestors.lastWhere((a) => a.screen == prefix.name,
             orElse: () => throw InvalidGenerationSourceError(
-                '"${prefix.name}.again" has no same-screen ancestor',
+                '"${prefix.name}.${expr.identifier.name}" has no same-screen ancestor',
                 element: element));
         return PlacementNode(prefix.name,
             [for (final a in ancestors) a.screen, prefix.name], ancestors.lastOrNull)
@@ -128,8 +128,8 @@ Future<List<PlacementNode>> readTree(
         return place(helpers[name]!, ancestors);
       default:
         throw InvalidGenerationSourceError(
-            'cannot read tree expression "$expr" — use enum rows, .again, or '
-            'expression-bodied static helpers',
+            'cannot read tree expression "$expr" — use enum rows, .cycled/.stacked, '
+            'or expression-bodied static helpers',
             element: element);
     }
   }
