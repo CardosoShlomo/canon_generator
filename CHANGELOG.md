@@ -1,3 +1,7 @@
+## 0.4.0
+
+- Emit chainable self-pop: cycle-member `popToXx` (including the screen itself) is now on union navs too, so `popToProfile().popToProfile()` keeps a handle that still exposes the cycle pops. Emit `_endsWith` only when a `.under` actually uses it. Require canon ^0.4.0.
+
 ## 0.3.0
 
 - Emit the cycle navigation surface: the `On`/`OnId`/`OnCyclic`/`OnIdCyclic`/`OnDepth` one-shot token machine with `.depth(n)`, a `depth` getter on cyclic nav handles, and throwing cycle-member `popToX` verbs. Require canon ^0.3.0.

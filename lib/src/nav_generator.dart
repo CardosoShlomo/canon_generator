@@ -249,8 +249,6 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     }
 
     final hasMulti = rows.any((r) => !isSingle(r.name));
-    final hasVerbs = rows.any((r) => placements[r.name]!
-        .any((n) => n.children.isNotEmpty || ancestorsOf(n).isNotEmpty));
     // Pop targets for the dynamic global maybePopTo — only screens something
     // can stand on top of (a childless screen is never a legal pop target).
     final popable = [
@@ -268,16 +266,9 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       b.writeln('  return true;');
       b.writeln('}');
     }
-    if (hasVerbs) {
-      b.writeln('bool _endsWith(List<$spec> chain, List<$spec> suffix) {');
-      b.writeln('  if (chain.length < suffix.length) return false;');
-      b.writeln('  final off = chain.length - suffix.length;');
-      b.writeln('  for (var i = 0; i < suffix.length; i++) {');
-      b.writeln('    if (chain[off + i] != suffix[i]) return false;');
-      b.writeln('  }');
-      b.writeln('  return true;');
-      b.writeln('}');
-    }
+    // `_endsWith` is only used by `.under` narrowing; emit it at the end iff a
+    // `.under` actually referenced it (avoids an unused_element warning).
+    var usesEndsWith = false;
     b.writeln('final class Screen<I> {');
     b.writeln('  const Screen._(this.spec);');
     b.writeln('  final $spec spec;');
@@ -554,6 +545,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
                 .sublist(sub.first.path.length - (suffixLen + 1))
                 .map((s) => '$spec.$s')
                 .join(', ');
+            usesEndsWith = true;
             pgUnder.writeln('    if (_endsWith(c, const [$subSuffix])) return const $subType._();');
           }
           pgUnder.writeln("    throw StateError('unresolved ${r.name} under: \$c');");
@@ -564,8 +556,15 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
         if (cyclic.contains(r.name)) {
           extra = '$extra\n  int get depth => $spec.graph.countOf($spec.${r.name});';
         }
+        final sp = sharedPops(group);
         navClass(navName, sharedVerbs(group, suffix),
-            pops: sharedPops(group),
+            // Cycle members (incl. self) so chains like popToProfile().popToProfile()
+            // keep returning a handle that still exposes the cycle pops.
+            pops: {
+              ...sp,
+              for (final m in cycleMembers(r.name))
+                if (!sp.containsKey(m)) m: unionName(m),
+            },
             edges: sharedEdges(group),
             extra: extra,
             path: suffix,
@@ -586,8 +585,10 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
           goVerbs(n.children, childType, n.path),
           pops: {
             ...anc,
+            // Cycle members (incl. the screen itself — self-pop to the previous
+            // occurrence, since resolvePop skips the current top). Throwing.
             for (final m in cycleMembers(n.screen))
-              if (m != n.screen && !anc.containsKey(m)) m: unionName(m),
+              if (!anc.containsKey(m)) m: unionName(m),
           },
           edges: {for (final c in n.children) c.screen: childType(c)},
           parentScreen: n.parent?.screen,
@@ -620,6 +621,17 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln('    return true;');
     b.writeln('  }());');
     b.writeln('}');
+
+    if (usesEndsWith) {
+      b.writeln('bool _endsWith(List<$spec> chain, List<$spec> suffix) {');
+      b.writeln('  if (chain.length < suffix.length) return false;');
+      b.writeln('  final off = chain.length - suffix.length;');
+      b.writeln('  for (var i = 0; i < suffix.length; i++) {');
+      b.writeln('    if (chain[off + i] != suffix[i]) return false;');
+      b.writeln('  }');
+      b.writeln('  return true;');
+      b.writeln('}');
+    }
 
     return b.toString();
   }
