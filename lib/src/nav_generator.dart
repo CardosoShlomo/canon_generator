@@ -113,9 +113,9 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     String childType(PlacementNode c) =>
         c.again != null ? placementName(c.again!) : placementName(c);
 
-    // Guaranteed pop targets: the canonical ancestors — always in the live
-    // chain when you're at this placement, so popTo them can't fail. (Cycle
-    // members reachable through a back-edge are deferred — see the TODO on navClass.)
+    // Canonical ancestors — always in the live chain at this placement, so popTo
+    // them can't fail. Cycle members are merged into the pops map separately (at
+    // the navClass call sites) as throwing pops; see cycleMembers.
     Map<String, String> ancestorsOf(PlacementNode n) =>
         {for (final a in n.ancestors) a.screen: placementName(a)};
 
@@ -160,13 +160,13 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     final b = StringBuffer();
 
     // Emits a nav class. A nav always extends AnyNav; the empty sealed
-    // switch-markers it's a case of are listed via implements. Pops are
-    // guaranteed-or-omit: only ancestor popToX (always in the chain → can't
-    // fail). Unprovable pops go through the global Screen.maybePopTo.
-    // TODO(cycles): cycle-member targeted pops aren't offered as typed verbs,
-    // and bare pop() on a cycle-participating placement can reveal a cycle
-    // member (its typed parent return is unsound there). Decide the cycle pop
-    // rules — until then, cycle pops route through global Screen.maybePopTo.
+    // switch-markers it's a case of are listed via implements. Pops: ancestor
+    // popToX never fails (always in the chain); cycle-member popToX (incl. self,
+    // the previous occurrence) throws when not currently below — guard with the
+    // depth check. Unprovable pops still go through the global Screen.maybePopTo.
+    // TODO(cycles): bare pop() returns the CANONICAL parent's nav, which in a
+    // cycle may differ from the runtime predecessor — runtime-safe (edge-gated)
+    // but type-imprecise; a union-of-predecessors return would close it.
     void navClass(String className, List<String> verbs,
         {Map<String, String> pops = const {},
         Map<String, String> edges = const {},
@@ -441,13 +441,22 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       if (isSingle(r.name)) {
         // One class, exact edges (union == placement).
         final n = nodes.isEmpty ? null : nodes.first;
+        final anc = n == null ? const <String, String>{} : ancestorsOf(n);
         navClass(
           unionName(r.name),
           n == null ? const [] : goVerbs(n.children, childType, n.path),
-          pops: n == null ? const {} : ancestorsOf(n),
+          pops: {
+            ...anc,
+            // Cycle members (incl. self) as throwing pops; see leaf loop below.
+            for (final m in cycleMembers(r.name))
+              if (!anc.containsKey(m)) m: unionName(m),
+          },
           edges: n == null ? const {} : {for (final c in n.children) c.screen: childType(c)},
           parentScreen: n?.parent?.screen,
           path: n?.path,
+          extra: cyclic.contains(r.name)
+              ? '  int get depth => $spec.graph.countOf($spec.${r.name});'
+              : null,
         );
         continue;
       }

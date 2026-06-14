@@ -1,3 +1,7 @@
+## 0.4.1
+
+- Fix: single-placement cyclic screens now get the full cycle surface (depth getter, self-pop, cycle-member `popToX`) — the single-placement fast path previously bypassed it; only multi-placement screens were covered. Add generator golden tests.
+
 ## 0.4.0
 
 - Emit chainable self-pop: cycle-member `popToXx` (including the screen itself) is now on union navs too, so `popToProfile().popToProfile()` keeps a handle that still exposes the cycle pops. Emit `_endsWith` only when a `.under` actually uses it. Require canon ^0.4.0.
