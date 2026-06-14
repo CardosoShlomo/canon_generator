@@ -1,3 +1,7 @@
+## 0.4.2
+
+- Cycle bare `pop()` now returns a predecessor-**union** nav whose `.at` narrows to the actual parent (exhaustive `switch (x.pop().at)`), instead of the canonical parent's type which could mislead in a cycle. Reuses a screen's own union when the predecessors are just its placements; chains one more level (`.pop().pop()`) when the grandparents resolve unambiguously.
+
 ## 0.4.1
 
 - Fix: single-placement cyclic screens now get the full cycle surface (depth getter, self-pop, cycle-member `popToX`) — the single-placement fast path previously bypassed it; only multi-placement screens were covered. Add generator golden tests.

@@ -91,4 +91,15 @@ void main() {
   test('non-cyclic screens get no depth surface', () => _expectGenerated(
         isNot(contains('countOf(_Screens.home)')), // home never recurs
       ));
+
+  test('cycle bare-pop returns a predecessor union with .at', () =>
+      _expectGenerated(allOf(
+        contains('sealed class AboutHomePopPlacement {}'),
+        contains('final class AboutHomePopNav extends AnyNav'),
+        contains('AboutHomePopPlacement get at'),
+        contains('AboutHomePopNav pop()'), // item pops into the union
+        // predecessors implement the marker -> exhaustive switch(x.pop().at)
+        contains('class HomeNav extends AnyNav implements AboutHomePopPlacement'),
+        contains('class AboutNav extends AnyNav implements AboutHomePopPlacement'),
+      )));
 }

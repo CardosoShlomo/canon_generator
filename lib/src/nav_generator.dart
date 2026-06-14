@@ -96,6 +96,25 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     Set<String> cycleMembers(String screen) =>
         {for (final c in cycles) if (c.contains(screen)) ...c};
 
+    // Predecessor placements a screen can sit directly on top of: its canonical
+    // parent plus any node a back-edge to it lives under. >1 means a cycle can
+    // reveal different parents on pop, so bare pop() resolves the actual one.
+    final backPreds = <String, List<PlacementNode>>{};
+    for (final ae in againEdges) {
+      final p = ae.parent;
+      if (p != null) (backPreds[ae.screen] ??= []).add(p);
+    }
+    List<PlacementNode> predecessorsOf(PlacementNode n) {
+      final out = <PlacementNode>[];
+      final seen = <String>{};
+      for (final p in [if (n.parent != null) n.parent!, ...?backPreds[n.screen]]) {
+        if (seen.add(p.path.join('/'))) out.add(p);
+      }
+      // Longest path first so a shorter suffix can't shadow a deeper match.
+      out.sort((a, b) => b.path.length.compareTo(a.path.length));
+      return out;
+    }
+
     // Canonical tree encoding — must match NavSpec.structureSignature exactly.
     // A mismatch at runtime means the tree was edited without regenerating.
     String sig(PlacementNode n) {
@@ -112,6 +131,38 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
         isSingle(n.screen) ? unionName(n.screen) : '${n.path.map(_cap).join()}Nav';
     String childType(PlacementNode c) =>
         c.again != null ? placementName(c.again!) : placementName(c);
+
+    // Pop-union registry: a placement with >1 possible predecessor pops into a
+    // union nav whose `.at` narrows to the actual parent (exhaustive switch). A
+    // screen's own union is reused when the predecessors are just its placements.
+    final unions = <String, ({String nav, String marker, List<PlacementNode> members})>{};
+    final popReturnOf = <String, String>{}; // cyclic placement nav -> pop() return type
+    final crossImpl = <String, Set<String>>{}; // nav -> pop-placement markers it implements
+    String stemOf(PlacementNode m) {
+      final pn = placementName(m);
+      return pn.substring(0, pn.length - 3);
+    }
+    String? unionFor(List<PlacementNode> ms) {
+      if (ms.isEmpty) return null;
+      if (ms.length == 1) return placementName(ms.single);
+      if (ms.map((m) => m.screen).toSet().length == 1) return unionName(ms.first.screen);
+      final base = (ms.map(stemOf).toList()..sort()).join();
+      return unions
+          .putIfAbsent(base, () {
+            final marker = '${base}PopPlacement';
+            for (final m in ms) {
+              (crossImpl[placementName(m)] ??= {}).add(marker);
+            }
+            return (nav: '${base}PopNav', marker: marker, members: ms);
+          })
+          .nav;
+    }
+    for (final r in rows) {
+      for (final n in placements[r.name]!) {
+        final preds = predecessorsOf(n);
+        if (preds.length > 1) popReturnOf[placementName(n)] = unionFor(preds)!;
+      }
+    }
 
     // Canonical ancestors — always in the live chain at this placement, so popTo
     // them can't fail. Cycle members are merged into the pops map separately (at
@@ -164,9 +215,10 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     // popToX never fails (always in the chain); cycle-member popToX (incl. self,
     // the previous occurrence) throws when not currently below — guard with the
     // depth check. Unprovable pops still go through the global Screen.maybePopTo.
-    // TODO(cycles): bare pop() returns the CANONICAL parent's nav, which in a
-    // cycle may differ from the runtime predecessor — runtime-safe (edge-gated)
-    // but type-imprecise; a union-of-predecessors return would close it.
+    // bare pop(): with one predecessor it returns that parent's nav. In a cycle
+    // (multiple possible predecessors) it returns AnyNav, resolving the ACTUAL
+    // one from the post-pop chain — pattern-match it (case HomeNav / case ChatNav)
+    // instead of trusting a single canonical-parent type.
     void navClass(String className, List<String> verbs,
         {Map<String, String> pops = const {},
         Map<String, String> edges = const {},
@@ -174,7 +226,8 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
         List<String> markers = const [],
         String? extra,
         List<String>? path}) {
-      final impl = markers.isEmpty ? '' : ' implements ${markers.join(', ')}';
+      final allMarkers = [...markers, ...?crossImpl[className]];
+      final impl = allMarkers.isEmpty ? '' : ' implements ${allMarkers.join(', ')}';
       final stem = className.substring(0, className.length - 3);
       final popName = '${stem}Pop';
       final hopName = '${stem}Hop';
@@ -193,7 +246,14 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
         b.writeln('    return hop.nav;');
         b.writeln('  }');
       }
-      if (parentScreen != null) {
+      final popUnion = popReturnOf[className];
+      if (popUnion != null) {
+        // Cycle: pop() returns the predecessor-union nav; narrow via its `.at`.
+        b.writeln('  $popUnion pop() {');
+        b.writeln('    $spec.graph.pop();');
+        b.writeln('    return const $popUnion._();');
+        b.writeln('  }');
+      } else if (parentScreen != null) {
         final ret = unionName(parentScreen);
         b.writeln('  $ret pop() {');
         b.writeln('    $spec.graph.pop();');
@@ -413,6 +473,39 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln('abstract base class AnyNav {');
     b.writeln('  const AnyNav._();');
     b.writeln('}');
+
+    // Cycle pop-union navs: bare pop() into a cycle returns one of these; its
+    // `.at` resolves the actual predecessor (a sealed marker the predecessor navs
+    // implement → exhaustive switch). It also pops one more level when the
+    // grandparents resolve unambiguously, so `.pop().pop()` chains.
+    for (final u in unions.values) {
+      b.writeln('sealed class ${u.marker} {}');
+      b.writeln('final class ${u.nav} extends AnyNav {');
+      b.writeln('  const ${u.nav}._() : super._();');
+      final parents = [for (final m in u.members) if (m.parent != null) m.parent!];
+      if (parents.length == u.members.length) {
+        String? gp;
+        if (parents.length == 1) {
+          gp = placementName(parents.single);
+        } else if (parents.map((p) => p.screen).toSet().length == 1) {
+          gp = unionName(parents.first.screen);
+        }
+        if (gp != null) {
+          b.writeln('  $gp pop() { $spec.graph.pop(); return const $gp._(); }');
+        }
+      }
+      usesEndsWith = true;
+      b.writeln('  ${u.marker} get at {');
+      b.writeln('    final c = $spec.graph.currentChain;');
+      final sorted = [...u.members]..sort((a, b) => b.path.length.compareTo(a.path.length));
+      for (final m in sorted) {
+        final lits = m.path.map((s) => '$spec.$s').join(', ');
+        b.writeln('    if (_endsWith(c, const [$lits])) return const ${placementName(m)}._();');
+      }
+      b.writeln("    throw StateError('unresolved ${u.nav}: \$c');");
+      b.writeln('  }');
+      b.writeln('}');
+    }
 
     // The dynamic-pop token: bool-returning maybePopTo doesn't chain, so no
     // per-constant type is needed — an enum is the leanest form with no loss.
