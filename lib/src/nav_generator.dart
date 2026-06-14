@@ -111,23 +111,18 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       return ps.first.ancestors.every((a) => idOf[a.screen] == null);
     }
 
-    // Debug guard that the handle hasn't gone stale: the live chain must still
-    // end with this nav's known path. A null path = an entry point (valid from
-    // anywhere) — no guard.
-    String staleAssert(List<String>? path) {
-      if (path == null) return '';
-      final lits = path.map((s) => '$spec.$s').join(', ');
-      return "    assert(_endsWith($spec.graph.currentChain, const [$lits]),\n"
-          "        'stale nav — the stack has moved off this position');\n";
-    }
-
+    // A position-anchored handle (non-null path) navigates edge-required: the
+    // target must be a live edge from the current top or graph.go throws (a
+    // stale handle), never a silent canonical teleport. Stale-but-still-legal
+    // resolves. Entry-point navs (null path) stay total (canonical allowed).
     String goVerb(String child, String returns, [List<String>? path]) {
       final idT = idOf[child];
       final params = idT == null ? '' : '$idT id';
-      final args = idT == null ? '' : ', id';
+      final call = path != null
+          ? '$spec.graph.go($spec.$child, ${idT == null ? 'null' : 'id'}, true)'
+          : '$spec.graph.go($spec.$child${idT == null ? '' : ', id'})';
       return '  $returns go${_cap(child)}($params) {\n'
-          '${staleAssert(path)}'
-          '    $spec.graph.go($spec.$child$args);\n'
+          '    $call;\n'
           '    return const $returns._();\n'
           '  }';
     }
@@ -171,16 +166,17 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       // 0 edges → no go. 1 edge → just the named goXx (in verbs). 2+ → a typed,
       // edge-gated, ternary-capable go(Hop<N>) alongside the named verbs.
       if (edges.length >= 2) {
+        final hopCall = path != null
+            ? '$spec.graph.go(hop.spec, hop.id, true)'
+            : '$spec.graph.go(hop.spec, hop.id)';
         b.writeln('  N go<N extends AnyNav>($hopName<N> hop) {');
-        b.write(staleAssert(path));
-        b.writeln('    $spec.graph.go(hop.spec, hop.id);');
+        b.writeln('    $hopCall;');
         b.writeln('    return hop.nav;');
         b.writeln('  }');
       }
       if (parentScreen != null) {
         final ret = unionName(parentScreen);
         b.writeln('  $ret pop() {');
-        b.write(staleAssert(path));
         b.writeln('    $spec.graph.pop();');
         b.writeln('    return const $ret._();');
         b.writeln('  }');
@@ -191,7 +187,6 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       for (final e in pops.entries) {
         if (e.key == parentScreen) continue;
         b.writeln('  ${e.value} popTo${_cap(e.key)}() {');
-        b.write(staleAssert(path));
         b.writeln('    $spec.graph.pop($spec.${e.key});');
         b.writeln('    return const ${e.value}._();');
         b.writeln('  }');
@@ -201,7 +196,6 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       // popTo(.x) returns the exact ancestor nav, popTo(a ? .x : .y) the LUB.
       if (pops.length >= 2) {
         b.writeln('  N popTo<N extends AnyNav>($popName<N> to) {');
-        b.write(staleAssert(path));
         b.writeln('    $spec.graph.pop(to.spec);');
         b.writeln('    return to.nav;');
         b.writeln('  }');
