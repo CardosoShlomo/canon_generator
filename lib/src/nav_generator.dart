@@ -77,6 +77,25 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     // Preserved scope roots — the only screens reset() can target.
     final kept = [for (final root in tree) if (root.keep) root.screen];
 
+    // Cycle membership: each back-edge forms a cycle from its target down to its
+    // parent. Every screen on that path can recur.
+    final cycles = <Set<String>>[];
+    for (final ae in againEdges) {
+      final members = <String>{};
+      for (PlacementNode? p = ae.parent; p != null; p = p.parent) {
+        members.add(p.screen);
+        if (identical(p, ae.again)) break;
+      }
+      cycles.add(members);
+    }
+    // Screens that can recur — the only ones whose `on` token exposes `.depth(n)`
+    // and whose nav exposes a `depth` getter.
+    final cyclic = {for (final c in cycles) ...c};
+    // The OTHER members of any cycle a screen is in — its throwing cycle-pop
+    // targets (throws if not currently below; guard with a depth check).
+    Set<String> cycleMembers(String screen) =>
+        {for (final c in cycles) if (c.contains(screen)) ...c};
+
     // Canonical tree encoding — must match NavSpec.structureSignature exactly.
     // A mismatch at runtime means the tree was edited without regenerating.
     String sig(PlacementNode n) {
@@ -298,9 +317,12 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln('  }');
     b.writeln('  /// If the live top is this screen, its nav handle (navigate from the');
     b.writeln('  /// current position, reusing the live ancestor ids) — else null.');
+    final depthClause = cyclic.isEmpty
+        ? ''
+        : '&&\n              (which is! OnDepth || $spec.graph.countOf(which.spec, which.id) == (which as OnDepth).depth)';
     b.writeln('  static N? on<N extends AnyNav>(On<N> which) =>');
     b.writeln('      $spec.graph.current == which.spec &&');
-    b.writeln('              (which.id == null || $spec.graph.stack.last.id == which.id)');
+    b.writeln('              (which.id == null || $spec.graph.stack.last.id == which.id)$depthClause');
     b.writeln('          ? which.nav');
     b.writeln('          : null;');
     b.writeln('  /// The current EXACT placement nav — pattern-match it:');
@@ -342,9 +364,15 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     }
     b.writeln('}');
 
-    // Screen.on(.x) token: every screen (you may be live on any of them), each
-    // typed to that screen's union nav. Unlike Hop, NOT id-safe-restricted —
-    // on() is a position check, not a teleport, so it carries no id.
+    // Screen.on(.x) token: a one-shot refinement machine, cleanly split so no
+    // class carries both a depth METHOD and a depth FIELD.
+    //   On       — bare position (spec, id, nav). No depth. Screen.on takes On<N>.
+    //   OnId     — non-cyclic id: call(id) -> On.
+    //   OnCyclic — cyclic, depth-CAPABLE (the method): depth(n) -> OnDepth.
+    //   OnIdCyclic — cyclic id: call(id) -> OnCyclic, depth(n) -> OnDepth.
+    //   OnDepth  — terminal, carries the depth FIELD. No methods.
+    // Cyclic variants exist only for back-edge screens, so `.depth` is a compile
+    // error elsewhere. Legal paths: .x -> .x(id) -> .depth(n), or .x -> .depth(n).
     b.writeln('final class On<N extends AnyNav> {');
     b.writeln('  const On._(this.spec, this.id, this.nav);');
     b.writeln('  final $spec spec;');
@@ -352,10 +380,14 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln('  final N nav;');
     for (final r in rows) {
       final n = unionName(r.name);
-      if (r.idType == null) {
+      final isCyclic = cyclic.contains(r.name);
+      if (r.idType == null && isCyclic) {
+        b.writeln('  static const ${r.name} = OnCyclic<$n>._($spec.${r.name}, null, $n._());');
+      } else if (r.idType == null) {
         b.writeln('  static const ${r.name} = On<$n>._($spec.${r.name}, null, $n._());');
+      } else if (isCyclic) {
+        b.writeln('  static const ${r.name} = OnIdCyclic<$n, ${r.idType}>._($spec.${r.name}, $n._());');
       } else {
-        // id screen: bare `.x` = on any; `.x(id)` = on that one (call below).
         b.writeln('  static const ${r.name} = OnId<$n, ${r.idType}>._($spec.${r.name}, $n._());');
       }
     }
@@ -364,6 +396,26 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln('  const OnId._($spec s, N n) : super._(s, null, n);');
     b.writeln('  On<N> call(I id) => On._(spec, id, nav);');
     b.writeln('}');
+    if (cyclic.isNotEmpty) {
+      // Terminal: the only token with a depth field; on() reads it.
+      b.writeln('final class OnDepth<N extends AnyNav> extends On<N> {');
+      b.writeln('  const OnDepth._($spec s, Object? i, this.depth, N n) : super._(s, i, n);');
+      b.writeln('  final int depth;');
+      b.writeln('}');
+      // Depth-capable: the only token with a depth method (cyclic const, or after
+      // an id is set). Needed whenever any screen is cyclic.
+      b.writeln('final class OnCyclic<N extends AnyNav> extends On<N> {');
+      b.writeln('  const OnCyclic._($spec s, Object? i, N n) : super._(s, i, n);');
+      b.writeln('  OnDepth<N> depth(int d) => OnDepth._(spec, id, d, nav);');
+      b.writeln('}');
+    }
+    if (cyclic.any((s) => idOf[s] != null)) {
+      b.writeln('final class OnIdCyclic<N extends AnyNav, I> extends On<N> {');
+      b.writeln('  const OnIdCyclic._($spec s, N n) : super._(s, null, n);');
+      b.writeln('  OnCyclic<N> call(I id) => OnCyclic._(spec, id, nav);');
+      b.writeln('  OnDepth<N> depth(int d) => OnDepth._(spec, null, d, nav);');
+      b.writeln('}');
+    }
 
     // Instances carry only their own edge-gated go(Hop); jump-to-anywhere is
     // the static Screen.go, so a leaf nav cannot go nowhere by inheritance.
@@ -508,7 +560,10 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
           pgUnder.write('  }');
         }
 
-        final extra = pgUnder.isEmpty ? pg.toString() : '$pg\n$pgUnder';
+        var extra = pgUnder.isEmpty ? pg.toString() : '$pg\n$pgUnder';
+        if (cyclic.contains(r.name)) {
+          extra = '$extra\n  int get depth => $spec.graph.countOf($spec.${r.name});';
+        }
         navClass(navName, sharedVerbs(group, suffix),
             pops: sharedPops(group),
             edges: sharedEdges(group),
@@ -525,14 +580,22 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
         b.writeln('sealed class $m {}');
       }
       for (final n in nodes) {
+        final anc = ancestorsOf(n);
         navClass(
           placementName(n),
           goVerbs(n.children, childType, n.path),
-          pops: ancestorsOf(n),
+          pops: {
+            ...anc,
+            for (final m in cycleMembers(n.screen))
+              if (m != n.screen && !anc.containsKey(m)) m: unionName(m),
+          },
           edges: {for (final c in n.children) c.screen: childType(c)},
           parentScreen: n.parent?.screen,
           markers: leafMarkers[n]!.toList(),
           path: n.path,
+          extra: cyclic.contains(n.screen)
+              ? '  int get depth => $spec.graph.countOf($spec.${n.screen});'
+              : null,
         );
       }
     }
