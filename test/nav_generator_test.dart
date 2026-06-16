@@ -218,8 +218,8 @@ void main() {
           contains('final class ItemNavParent extends AnyNav'),
           contains('ItemNav goItem(String id)'), // pushes the target
           contains('parents.contains(_Screens.graph.current)'),
-          isNot(contains('get editItem =>')), // editItem: single parent -> excluded
-          isNot(contains('EditItemNavParent')),
+          isNot(contains('EditItemNavParent')), // editItem: single parent -> no parentOf
+          isNot(contains('OnParentOf<EditItemNavParent>')),
         ]),
         spec: _parentOfSpec,
       ));
@@ -238,7 +238,8 @@ void main() {
         contains('final class OnItem'), // step: item cyclic, child about
         contains('final class OnAbout'), // step: about cyclic leaf
         contains('final class OnDepth<'), // terminal depth field
-        contains('static OnItem item(String id)'), // entry with id
+        contains('static OnItem get item'), // id selector is a getter (any id)
+        contains('OnItem call(String id)'), // ...callable to pin a specific id
         contains('OnAbout get about'), // chain: item -> about
         contains('OnDepth<ItemNav> depth(int d)'), // depth method on cyclic step
       ])));

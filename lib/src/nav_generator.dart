@@ -628,10 +628,12 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       return (ms.map(stemOf).toList()..sort()).join();
     }
     // A step type is needed when the set can be refined further (forward
-    // children) or stopped-on with a depth (cyclic). A non-cyclic leaf set lands
-    // on a bare On<nav> terminal instead.
+    // children), stopped-on with a depth (cyclic), or carries an id (the OnX
+    // class hosts `call(id)` so the selector is `.x` for any id and `.x(id)` to
+    // pin one). Otherwise a non-cyclic id-free leaf lands on a bare On<nav>.
     String? stepNameFor(List<PlacementNode> ms) {
-      if (fwd(ms).isEmpty && !cyclic.contains(ms.first.screen)) return null;
+      final sc = ms.first.screen;
+      if (fwd(ms).isEmpty && !cyclic.contains(sc) && idOf[sc] == null) return null;
       return 'On${setStem(ms)}';
     }
     void emitStep(List<PlacementNode> ms) {
@@ -645,17 +647,17 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       }
       stepBuf.writeln('final class $name extends On<$nav> {');
       stepBuf.writeln('  const $name._(List<$spec> specs, List<Object?> ids, $nav nav) : super._(specs, ids, nav);');
+      // Every child selector is a getter (id appended as null = "match any");
+      // an id-bearing child's own step hosts `call(id)` to pin it.
       for (final e in groups.entries) {
         final cNav = navTypeOf(e.value);
         final cStep = stepNameFor(e.value);
         final ret = cStep ?? 'On<$cNav>';
         final ctor = cStep ?? 'On';
-        final idT = idOf[e.key];
-        if (idT == null) {
-          stepBuf.writeln('  $ret get ${e.key} => $ctor._([...specs, $spec.${e.key}], [...ids, null], const $cNav._());');
-        } else {
-          stepBuf.writeln('  $ret ${e.key}($idT id) => $ctor._([...specs, $spec.${e.key}], [...ids, id], const $cNav._());');
-        }
+        stepBuf.writeln('  $ret get ${e.key} => $ctor._([...specs, $spec.${e.key}], [...ids, null], const $cNav._());');
+      }
+      if (idOf[sc] != null) {
+        stepBuf.writeln('  $name call(${idOf[sc]} id) => $name._(specs, [...ids.sublist(0, ids.length - 1), id], nav);');
       }
       if (cyclic.contains(sc)) {
         stepBuf.writeln('  OnDepth<$nav> depth(int d) => OnDepth._(specs, ids, d, nav);');
@@ -678,12 +680,9 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       final step = stepNameFor(ms);
       final ret = step ?? 'On<$nav>';
       final ctor = step ?? 'On';
-      final idT = idOf[r.name];
-      if (idT == null) {
-        b.writeln('  static $ret get ${r.name} => const $ctor._([$spec.${r.name}], [null], $nav._());');
-      } else {
-        b.writeln('  static $ret ${r.name}($idT id) => $ctor._([$spec.${r.name}], [id], const $nav._());');
-      }
+      // Always a getter (id = null matches any); `.x(id)` invokes the step's
+      // call() to pin a specific id.
+      b.writeln('  static $ret get ${r.name} => const $ctor._([$spec.${r.name}], [null], $nav._());');
     }
     if (hasParentOf) {
       b.writeln('  /// Disambiguating push onto the current scope when a screen has');

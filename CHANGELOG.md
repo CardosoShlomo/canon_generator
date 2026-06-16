@@ -1,3 +1,7 @@
+## 0.10.0
+
+- **id-optional `on` selectors.** An id-bearing screen's selector is now a getter that matches any id — `Screen.on(.ad)?.goEditAd()` — and is callable to pin a specific one — `Screen.on(.ad(adId))`. (The matcher already treated the id as optional; only the selector's type surface required it.) Implemented by making each id-bearing `OnX` step host a `call(id)`; id-bearing leaves now also get an `OnX` class.
+
 ## 0.9.0
 
 - **`parentOf` is now disambiguation-only and a shared-capability handle.** It's offered only for screens with **2+ distinct parent screens** (a single-parent screen is just named, e.g. `Screen.on(.ad)?.goEditAd()`). The resolved handle now exposes the **intersection** of all its parents' capabilities: the push to the target, every sibling edge shared by all parents, and `pop()` when all parents are non-root — not just a lone pusher.

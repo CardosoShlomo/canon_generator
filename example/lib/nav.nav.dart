@@ -182,10 +182,10 @@ final class On<N extends AnyNav> {
       const OnFeed._([_Screens.feed], [null], FeedNav._());
   static OnProfile get profile =>
       const OnProfile._([_Screens.profile], [null], ProfileNav._());
-  static OnItem item(String id) =>
-      OnItem._([_Screens.item], [id], const ItemNav._());
-  static On<EditItemNav> editItem(String id) =>
-      On._([_Screens.editItem], [id], const EditItemNav._());
+  static OnItem get item =>
+      const OnItem._([_Screens.item], [null], ItemNav._());
+  static OnEditItem get editItem =>
+      const OnEditItem._([_Screens.editItem], [null], EditItemNav._());
   static OnSettings get settings =>
       const OnSettings._([_Screens.settings], [null], SettingsNav._());
   static On<AboutNav> get about =>
@@ -233,9 +233,9 @@ final class SettingsNavParent extends AnyNav {
 final class OnHome extends On<HomeNav> {
   const OnHome._(List<_Screens> specs, List<Object?> ids, HomeNav nav)
     : super._(specs, ids, nav);
-  OnHomeItem item(String id) => OnHomeItem._(
+  OnHomeItem get item => OnHomeItem._(
     [...specs, _Screens.item],
-    [...ids, id],
+    [...ids, null],
     const HomeItemNav._(),
   );
   OnHomeSettings get settings => OnHomeSettings._(
@@ -248,11 +248,23 @@ final class OnHome extends On<HomeNav> {
 final class OnHomeItem extends On<HomeItemNav> {
   const OnHomeItem._(List<_Screens> specs, List<Object?> ids, HomeItemNav nav)
     : super._(specs, ids, nav);
-  On<HomeItemEditItemNav> editItem(String id) => On._(
+  OnHomeItemEditItem get editItem => OnHomeItemEditItem._(
     [...specs, _Screens.editItem],
-    [...ids, id],
+    [...ids, null],
     const HomeItemEditItemNav._(),
   );
+  OnHomeItem call(String id) =>
+      OnHomeItem._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
+}
+
+final class OnHomeItemEditItem extends On<HomeItemEditItemNav> {
+  const OnHomeItemEditItem._(
+    List<_Screens> specs,
+    List<Object?> ids,
+    HomeItemEditItemNav nav,
+  ) : super._(specs, ids, nav);
+  OnHomeItemEditItem call(String id) =>
+      OnHomeItemEditItem._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class OnHomeSettings extends On<HomeSettingsNav> {
@@ -271,9 +283,9 @@ final class OnHomeSettings extends On<HomeSettingsNav> {
 final class OnFeed extends On<FeedNav> {
   const OnFeed._(List<_Screens> specs, List<Object?> ids, FeedNav nav)
     : super._(specs, ids, nav);
-  OnFeedItem item(String id) => OnFeedItem._(
+  OnFeedItem get item => OnFeedItem._(
     [...specs, _Screens.item],
-    [...ids, id],
+    [...ids, null],
     const FeedItemNav._(),
   );
 }
@@ -281,11 +293,23 @@ final class OnFeed extends On<FeedNav> {
 final class OnFeedItem extends On<FeedItemNav> {
   const OnFeedItem._(List<_Screens> specs, List<Object?> ids, FeedItemNav nav)
     : super._(specs, ids, nav);
-  On<FeedItemEditItemNav> editItem(String id) => On._(
+  OnFeedItemEditItem get editItem => OnFeedItemEditItem._(
     [...specs, _Screens.editItem],
-    [...ids, id],
+    [...ids, null],
     const FeedItemEditItemNav._(),
   );
+  OnFeedItem call(String id) =>
+      OnFeedItem._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
+}
+
+final class OnFeedItemEditItem extends On<FeedItemEditItemNav> {
+  const OnFeedItemEditItem._(
+    List<_Screens> specs,
+    List<Object?> ids,
+    FeedItemEditItemNav nav,
+  ) : super._(specs, ids, nav);
+  OnFeedItemEditItem call(String id) =>
+      OnFeedItemEditItem._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class OnProfile extends On<ProfileNav> {
@@ -314,8 +338,20 @@ final class OnProfileSettings extends On<ProfileSettingsNav> {
 final class OnItem extends On<ItemNav> {
   const OnItem._(List<_Screens> specs, List<Object?> ids, ItemNav nav)
     : super._(specs, ids, nav);
-  On<EditItemNav> editItem(String id) =>
-      On._([...specs, _Screens.editItem], [...ids, id], const EditItemNav._());
+  OnEditItem get editItem => OnEditItem._(
+    [...specs, _Screens.editItem],
+    [...ids, null],
+    const EditItemNav._(),
+  );
+  OnItem call(String id) =>
+      OnItem._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
+}
+
+final class OnEditItem extends On<EditItemNav> {
+  const OnEditItem._(List<_Screens> specs, List<Object?> ids, EditItemNav nav)
+    : super._(specs, ids, nav);
+  OnEditItem call(String id) =>
+      OnEditItem._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class OnSettings extends On<SettingsNav> {
