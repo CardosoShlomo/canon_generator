@@ -1,3 +1,14 @@
+## 0.6.0
+
+- Add the **global pop surface**. `Screen.canPop` returns a `CanPopNav?` — null iff the active top is a root placement (`currentChain.length > 1`), so it doubles as the back-button visibility gate. `CanPopNav.at` narrows to the current placement, `.pop()` executes the guaranteed pop and returns a `PopDestNav` whose `.at` resolves the destination from the post-pop chain (and exposes any forward verb common to *every* destination). `Screen.pop()` is **documented sugar** for `Screen.canPop?.pop()` — returns the typed destination, never a `bool`, never throws (null at root). Both are tree-gated: a tree with no non-root placement generates neither. Non-root placement navs `implements CanPopPlacement`; pop destinations `implements PopDestPlacement`.
+- Surface `Screen.observe((Screen from, Screen to) {...})` — a typed forwarder over `NavGraph.observe`, a side-effect listener fired on each navigation commit (returns a disposer). Requires canon ^0.5.0.
+- A widget shared by ≥2 screens with ≥2 distinct id types now gets a generated sealed **id union** + a resolver `Screen.<widget>Id(context)` (e.g. `Screen.chatScreenId(context)` → `ChatScreenId { AdChatId(ChatId) | LoopChatId(String) }`), so an id-ambiguous shared widget resolves its exact `(screen, typed id)` via an **exhaustive** switch instead of an open `(current, currentId)` match.
+
+## 0.5.0
+
+- `Screen.on` is now a **chained suffix selector**: `Screen.on(.home.item(id))?.verb()` addresses a placement by its path in the screen grammar — the same grammar as `go` — instead of by a generated placement-type name. Each chain step narrows the live placement set forward, so only satisfiable child paths are offered (no impossible chain like a child that exists only under a different parent). The bare form (`Screen.on(.item(id))`) is unchanged; per-segment ids pin each segment; a cyclic terminal still exposes `.depth(n)`. The matcher suffix-matches the live stack. Replaces the `On`/`OnId`/`OnCyclic`/`OnIdCyclic` token classes with per-screen step types.
+- **Removed `Screen.maybePop`/`maybePopTo`** (and the `Pop` token). A bool-returning "pop if you can" is the unprovable escape that defeats compile-safe navigation. Position-agnostic back (OS gesture, AppBar leading) is handled by the `RouterDelegate` internally; deliberate pops use a typed handle (`Screen.on(.x)?.pop()` / `nav.popToX()`), which the compiler proves reachable.
+
 ## 0.4.2
 
 - Cycle bare `pop()` now returns a predecessor-**union** nav whose `.at` narrows to the actual parent (exhaustive `switch (x.pop().at)`), instead of the canonical parent's type which could mislead in a cycle. Reuses a screen's own union when the predecessors are just its placements; chains one more level (`.pop().pop()`) when the grandparents resolve unambiguously.

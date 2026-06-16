@@ -31,6 +31,7 @@ bool _hasValueEquality(DartType t) {
 }
 
 String _cap(String s) => s[0].toUpperCase() + s.substring(1);
+String _lcFirst(String s) => s[0].toLowerCase() + s.substring(1);
 
 class NavGenerator extends GeneratorForAnnotation<Screens> {
   @override
@@ -45,10 +46,12 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     }
 
     final rows = <_Row>[];
+    final widgetOf = <String, String?>{};
     for (final field in element.fields) {
       if (!field.isEnumConstant) continue;
       final value = field.computeConstantValue();
       final idType = value?.getField('id')?.toTypeValue();
+      widgetOf[field.name!] = value?.getField('widget')?.type?.getDisplayString();
       if (idType != null && !_hasValueEquality(idType)) {
         log.warning(
             'id type ${idType.getDisplayString()} of "${field.name}" compares by '
@@ -59,6 +62,21 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       rows.add(_Row(field.name!, idType?.getDisplayString()));
     }
     final idOf = {for (final r in rows) r.name: r.idType};
+
+    // A widget shared by >=2 screens with >=2 distinct (non-null) id types is
+    // id-ambiguous: inside it you can't statically know which screen you are.
+    // Emit a sealed `(screen, typed id)` union + a resolver so the consumer
+    // disambiguates EXHAUSTIVELY (vs an open `(current, currentId)` switch).
+    final byWidget = <String, List<_Row>>{};
+    for (final r in rows) {
+      final w = widgetOf[r.name];
+      if (w != null) (byWidget[w] ??= []).add(r);
+    }
+    final widgetUnions = [
+      for (final e in byWidget.entries)
+        if (e.value.map((r) => r.idType).whereType<String>().toSet().length >= 2)
+          (sealed: '${e.key}Id', resolver: '${_lcFirst(e.key)}Id', members: e.value)
+    ];
 
     final tree = await readTree(element, buildStep, {for (final r in rows) r.name});
     final placements = {for (final r in rows) r.name: <PlacementNode>[]};
@@ -164,6 +182,34 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       }
     }
 
+    // Global pop surface: `canPop` is the union of all NON-ROOT placements (the
+    // ones that can be popped); `pop()` lands on a DESTINATION — any predecessor
+    // of a non-root placement. Both are markers the relevant placement navs
+    // implement, so resolution reuses the same `.at` machinery as the unions.
+    final canPopMembers = [
+      for (final r in rows)
+        for (final n in placements[r.name]!)
+          if (n.parent != null) n
+    ];
+    final destMembers = <PlacementNode>[];
+    {
+      final seen = <String>{};
+      for (final n in canPopMembers) {
+        for (final p in predecessorsOf(n)) {
+          if (seen.add(p.path.join('/'))) destMembers.add(p);
+        }
+      }
+    }
+    final hasCanPop = canPopMembers.isNotEmpty;
+    if (hasCanPop) {
+      for (final n in canPopMembers) {
+        (crossImpl[placementName(n)] ??= {}).add('CanPopPlacement');
+      }
+      for (final p in destMembers) {
+        (crossImpl[placementName(p)] ??= {}).add('PopDestPlacement');
+      }
+    }
+
     // Canonical ancestors — always in the live chain at this placement, so popTo
     // them can't fail. Cycle members are merged into the pops map separately (at
     // the navClass call sites) as throwing pops; see cycleMembers.
@@ -214,7 +260,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     // switch-markers it's a case of are listed via implements. Pops: ancestor
     // popToX never fails (always in the chain); cycle-member popToX (incl. self,
     // the previous occurrence) throws when not currently below — guard with the
-    // depth check. Unprovable pops still go through the global Screen.maybePopTo.
+    // depth check.
     // bare pop(): with one predecessor it returns that parent's nav. In a cycle
     // (multiple possible predecessors) it returns AnyNav, resolving the ACTUAL
     // one from the post-pop chain — pattern-match it (case HomeNav / case ChatNav)
@@ -309,15 +355,9 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     }
 
     final hasMulti = rows.any((r) => !isSingle(r.name));
-    // Pop targets for the dynamic global maybePopTo — only screens something
-    // can stand on top of (a childless screen is never a legal pop target).
-    final popable = [
-      for (final r in rows)
-        if (placements[r.name]!.any((n) => n.children.isNotEmpty)) r.name
-    ];
 
     b.writeln('// ignore_for_file: library_private_types_in_public_api');
-    if (hasMulti) {
+    if (hasMulti || hasCanPop) {
       b.writeln('bool _chainIs(List<$spec> a, List<$spec> b) {');
       b.writeln('  if (a.length != b.length) return false;');
       b.writeln('  for (var i = 0; i < a.length; i++) {');
@@ -366,16 +406,26 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln('    $spec.graph.go(hop.spec, hop.id);');
     b.writeln('    return hop.nav;');
     b.writeln('  }');
-    b.writeln('  /// If the live top is this screen, its nav handle (navigate from the');
-    b.writeln('  /// current position, reusing the live ancestor ids) — else null.');
-    final depthClause = cyclic.isEmpty
-        ? ''
-        : '&&\n              (which is! OnDepth || $spec.graph.countOf(which.spec, which.id) == (which as OnDepth).depth)';
-    b.writeln('  static N? on<N extends AnyNav>(On<N> which) =>');
-    b.writeln('      $spec.graph.current == which.spec &&');
-    b.writeln('              (which.id == null || $spec.graph.stack.last.id == which.id)$depthClause');
-    b.writeln('          ? which.nav');
-    b.writeln('          : null;');
+    b.writeln('  /// If the live stack ends with this selector path (every pinned id and,');
+    b.writeln('  /// for a cyclic terminal, its depth matching), its nav — else null.');
+    b.writeln('  static N? on<N extends AnyNav>(On<N> which) {');
+    b.writeln('    final st = $spec.graph.stack;');
+    b.writeln('    final specs = which.specs;');
+    b.writeln('    if (st.length < specs.length) return null;');
+    b.writeln('    final off = st.length - specs.length;');
+    b.writeln('    for (var i = 0; i < specs.length; i++) {');
+    b.writeln('      if (st[off + i].screen != specs[i]) return null;');
+    b.writeln('      final wid = which.ids[i];');
+    b.writeln('      if (wid != null && st[off + i].id != wid) return null;');
+    b.writeln('    }');
+    if (cyclic.isNotEmpty) {
+      b.writeln('    if (which is OnDepth &&');
+      b.writeln('        $spec.graph.countOf(specs.last, which.ids.last) != (which as OnDepth).depth) {');
+      b.writeln('      return null;');
+      b.writeln('    }');
+    }
+    b.writeln('    return which.nav;');
+    b.writeln('  }');
     b.writeln('  /// The current EXACT placement nav — pattern-match it:');
     b.writeln('  /// `if (Screen.at case HomeUserProfileNav n) ...`.');
     b.writeln('  static AnyNav get at => switch ($spec.graph.current) {');
@@ -386,9 +436,34 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
           : '        $spec.${r.name} => (const $n._()).at as AnyNav,');
     }
     b.writeln('      };');
-    b.writeln('  static bool maybePop() => $spec.graph.maybePop();');
-    if (popable.isNotEmpty) {
-      b.writeln('  static bool maybePopTo(Pop to) => $spec.graph.maybePop(to.spec);');
+    if (hasCanPop) {
+      b.writeln('  /// The poppable handle if the active top is a non-root placement,');
+      b.writeln('  /// else null (at a scope root). `.at` = current placement; `.pop()`');
+      b.writeln('  /// executes the guaranteed pop and returns the destination.');
+      b.writeln('  static CanPopNav? get canPop =>');
+      b.writeln('      $spec.graph.currentChain.length > 1 ? const CanPopNav._() : null;');
+      b.writeln('  /// Documented sugar for `canPop?.pop()` — pops the active top if any,');
+      b.writeln('  /// returns where it landed, or null at a root. Never throws.');
+      b.writeln('  static PopDestNav? pop() => canPop?.pop();');
+    }
+    b.writeln('  /// Side-effect listener fired after each navigation commits (new top');
+    b.writeln('  /// settled, before its transition animates). Wire it where state lives');
+    b.writeln('  /// (e.g. a provider); returns a disposer. Pure observation.');
+    b.writeln('  static void Function() observe(');
+    b.writeln('          void Function(Screen<Object?> from, Screen<Object?> to) fn) =>');
+    b.writeln('      $spec.graph.observe((f, t) => fn(of(f), of(t)));');
+    for (final u in widgetUnions) {
+      b.writeln('  /// Resolves a widget shared by several screens to its exact');
+      b.writeln('  /// (screen, typed id) — switch the sealed result exhaustively.');
+      b.writeln('  static ${u.sealed} ${u.resolver}(BuildContext context) {');
+      b.writeln('    final e = ScreenScope.of<$spec>(context);');
+      b.writeln('    return switch (e.screen) {');
+      for (final r in u.members) {
+        b.writeln('      $spec.${r.name} => ${_cap(r.name)}Id(e.id as ${r.idType ?? 'Object?'}),');
+      }
+      b.writeln("      _ => throw StateError('${u.resolver}() under \${e.screen.name}'),");
+      b.writeln('    };');
+      b.writeln('  }');
     }
     if (kept.isNotEmpty) {
       b.writeln('  static void reset(Keep scope) => $spec.graph.reset(scope.spec);');
@@ -415,58 +490,95 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     }
     b.writeln('}');
 
-    // Screen.on(.x) token: a one-shot refinement machine, cleanly split so no
-    // class carries both a depth METHOD and a depth FIELD.
-    //   On       — bare position (spec, id, nav). No depth. Screen.on takes On<N>.
-    //   OnId     — non-cyclic id: call(id) -> On.
-    //   OnCyclic — cyclic, depth-CAPABLE (the method): depth(n) -> OnDepth.
-    //   OnIdCyclic — cyclic id: call(id) -> OnCyclic, depth(n) -> OnDepth.
-    //   OnDepth  — terminal, carries the depth FIELD. No methods.
-    // Cyclic variants exist only for back-edge screens, so `.depth` is a compile
-    // error elsewhere. Legal paths: .x -> .x(id) -> .depth(n), or .x -> .depth(n).
+    // Screen.on(.path) selector: a suffix the matcher tests against the live
+    // stack. On<N> accumulates one (spec, id) per segment; each chain step
+    // narrows the live placement set FORWARD, so only satisfiable child paths are
+    // offered (no impossible chain like a child that exists only under a
+    // different parent). A cyclic terminal also exposes .depth(n) -> OnDepth, the
+    // only token carrying the depth FIELD (its method lives on the steps).
+    final stepBuf = StringBuffer();
+    final stepEmitted = <String>{};
+    String navTypeOf(List<PlacementNode> ms) =>
+        ms.length == 1 ? placementName(ms.single) : unionName(ms.first.screen);
+    List<PlacementNode> fwd(List<PlacementNode> ms) =>
+        [for (final m in ms) for (final c in m.children) if (c.again == null) c];
+    String setStem(List<PlacementNode> ms) {
+      if (ms.length == 1) {
+        final pn = placementName(ms.single);
+        return pn.substring(0, pn.length - 3);
+      }
+      if (ms.length == placements[ms.first.screen]!.length) return _cap(ms.first.screen);
+      return (ms.map(stemOf).toList()..sort()).join();
+    }
+    // A step type is needed when the set can be refined further (forward
+    // children) or stopped-on with a depth (cyclic). A non-cyclic leaf set lands
+    // on a bare On<nav> terminal instead.
+    String? stepNameFor(List<PlacementNode> ms) {
+      if (fwd(ms).isEmpty && !cyclic.contains(ms.first.screen)) return null;
+      return 'On${setStem(ms)}';
+    }
+    void emitStep(List<PlacementNode> ms) {
+      final name = stepNameFor(ms);
+      if (name == null || !stepEmitted.add(name)) return;
+      final sc = ms.first.screen;
+      final nav = navTypeOf(ms);
+      final groups = <String, List<PlacementNode>>{};
+      for (final c in fwd(ms)) {
+        (groups[c.screen] ??= []).add(c);
+      }
+      stepBuf.writeln('final class $name extends On<$nav> {');
+      stepBuf.writeln('  const $name._(List<$spec> specs, List<Object?> ids, $nav nav) : super._(specs, ids, nav);');
+      for (final e in groups.entries) {
+        final cNav = navTypeOf(e.value);
+        final cStep = stepNameFor(e.value);
+        final ret = cStep ?? 'On<$cNav>';
+        final ctor = cStep ?? 'On';
+        final idT = idOf[e.key];
+        if (idT == null) {
+          stepBuf.writeln('  $ret get ${e.key} => $ctor._([...specs, $spec.${e.key}], [...ids, null], const $cNav._());');
+        } else {
+          stepBuf.writeln('  $ret ${e.key}($idT id) => $ctor._([...specs, $spec.${e.key}], [...ids, id], const $cNav._());');
+        }
+      }
+      if (cyclic.contains(sc)) {
+        stepBuf.writeln('  OnDepth<$nav> depth(int d) => OnDepth._(specs, ids, d, nav);');
+      }
+      stepBuf.writeln('}');
+      for (final e in groups.entries) {
+        emitStep(e.value);
+      }
+    }
+
     b.writeln('final class On<N extends AnyNav> {');
-    b.writeln('  const On._(this.spec, this.id, this.nav);');
-    b.writeln('  final $spec spec;');
-    b.writeln('  final Object? id;');
+    b.writeln('  const On._(this.specs, this.ids, this.nav);');
+    b.writeln('  final List<$spec> specs;');
+    b.writeln('  final List<Object?> ids;');
     b.writeln('  final N nav;');
     for (final r in rows) {
-      final n = unionName(r.name);
-      final isCyclic = cyclic.contains(r.name);
-      if (r.idType == null && isCyclic) {
-        b.writeln('  static const ${r.name} = OnCyclic<$n>._($spec.${r.name}, null, $n._());');
-      } else if (r.idType == null) {
-        b.writeln('  static const ${r.name} = On<$n>._($spec.${r.name}, null, $n._());');
-      } else if (isCyclic) {
-        b.writeln('  static const ${r.name} = OnIdCyclic<$n, ${r.idType}>._($spec.${r.name}, $n._());');
+      final ms = placements[r.name]!;
+      if (ms.isEmpty) continue;
+      final nav = unionName(r.name);
+      final step = stepNameFor(ms);
+      final ret = step ?? 'On<$nav>';
+      final ctor = step ?? 'On';
+      final idT = idOf[r.name];
+      if (idT == null) {
+        b.writeln('  static $ret get ${r.name} => const $ctor._([$spec.${r.name}], [null], $nav._());');
       } else {
-        b.writeln('  static const ${r.name} = OnId<$n, ${r.idType}>._($spec.${r.name}, $n._());');
+        b.writeln('  static $ret ${r.name}($idT id) => $ctor._([$spec.${r.name}], [id], const $nav._());');
       }
     }
     b.writeln('}');
-    b.writeln('final class OnId<N extends AnyNav, I> extends On<N> {');
-    b.writeln('  const OnId._($spec s, N n) : super._(s, null, n);');
-    b.writeln('  On<N> call(I id) => On._(spec, id, nav);');
-    b.writeln('}');
     if (cyclic.isNotEmpty) {
-      // Terminal: the only token with a depth field; on() reads it.
       b.writeln('final class OnDepth<N extends AnyNav> extends On<N> {');
-      b.writeln('  const OnDepth._($spec s, Object? i, this.depth, N n) : super._(s, i, n);');
+      b.writeln('  const OnDepth._(List<$spec> specs, List<Object?> ids, this.depth, N nav) : super._(specs, ids, nav);');
       b.writeln('  final int depth;');
       b.writeln('}');
-      // Depth-capable: the only token with a depth method (cyclic const, or after
-      // an id is set). Needed whenever any screen is cyclic.
-      b.writeln('final class OnCyclic<N extends AnyNav> extends On<N> {');
-      b.writeln('  const OnCyclic._($spec s, Object? i, N n) : super._(s, i, n);');
-      b.writeln('  OnDepth<N> depth(int d) => OnDepth._(spec, id, d, nav);');
-      b.writeln('}');
     }
-    if (cyclic.any((s) => idOf[s] != null)) {
-      b.writeln('final class OnIdCyclic<N extends AnyNav, I> extends On<N> {');
-      b.writeln('  const OnIdCyclic._($spec s, N n) : super._(s, null, n);');
-      b.writeln('  OnCyclic<N> call(I id) => OnCyclic._(spec, id, nav);');
-      b.writeln('  OnDepth<N> depth(int d) => OnDepth._(spec, null, d, nav);');
-      b.writeln('}');
+    for (final r in rows) {
+      emitStep(placements[r.name]!);
     }
+    b.write(stepBuf);
 
     // Instances carry only their own edge-gated go(Hop); jump-to-anywhere is
     // the static Screen.go, so a leaf nav cannot go nowhere by inheritance.
@@ -507,14 +619,52 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       b.writeln('}');
     }
 
-    // The dynamic-pop token: bool-returning maybePopTo doesn't chain, so no
-    // per-constant type is needed — an enum is the leanest form with no loss.
-    if (popable.isNotEmpty) {
-      b.writeln('enum Pop {');
-      b.writeln('  ${[for (final name in popable) '$name($spec.$name)'].join(', ')};');
-      b.writeln('  const Pop(this.spec);');
-      b.writeln('  final $spec spec;');
+    // Global pop surface. CanPopNav: the union of poppable (non-root) placements
+    // — Screen.canPop returns it iff the active top is non-root. PopDestNav: where
+    // a pop lands, resolved from the post-pop chain; shared forward verbs appear
+    // only for children common to EVERY destination (an app-wide screen).
+    if (hasCanPop) {
+      b.writeln('sealed class CanPopPlacement {}');
+      b.writeln('sealed class PopDestPlacement {}');
+      b.writeln('final class CanPopNav extends AnyNav {');
+      b.writeln('  const CanPopNav._() : super._();');
+      b.writeln('  CanPopPlacement get at => Screen.at as CanPopPlacement;');
+      b.writeln('  PopDestNav pop() { $spec.graph.pop(); return const PopDestNav._(); }');
       b.writeln('}');
+      b.writeln('final class PopDestNav extends AnyNav {');
+      b.writeln('  const PopDestNav._() : super._();');
+      final destFwd = [
+        for (final p in destMembers)
+          {for (final c in p.children) if (c.again == null) c.screen}
+      ];
+      final destShared =
+          destFwd.isEmpty ? <String>{} : destFwd.reduce((a, b) => a.intersection(b));
+      for (final cs in destShared) {
+        b.writeln('  ${goVerb(cs, unionName(cs), const []).trim()}');
+      }
+      b.writeln('  PopDestPlacement get at {');
+      b.writeln('    final c = $spec.graph.currentChain;');
+      final sorted = [...destMembers]
+        ..sort((a, b) => b.path.length.compareTo(a.path.length));
+      for (final m in sorted) {
+        final lits = m.path.map((s) => '$spec.$s').join(', ');
+        b.writeln('    if (_chainIs(c, const [$lits])) return const ${placementName(m)}._();');
+      }
+      b.writeln("    throw StateError('unresolved PopDestNav: \$c');");
+      b.writeln('  }');
+      b.writeln('}');
+    }
+
+    // Shared-widget id unions: one sealed family per id-ambiguous widget, a
+    // case per screen carrying that screen's typed id.
+    for (final u in widgetUnions) {
+      b.writeln('sealed class ${u.sealed} {}');
+      for (final r in u.members) {
+        b.writeln('final class ${_cap(r.name)}Id extends ${u.sealed} {');
+        b.writeln('  const ${_cap(r.name)}Id(this.id);');
+        b.writeln('  final ${r.idType ?? 'Object?'} id;');
+        b.writeln('}');
+      }
     }
 
     // reset()'s gated target table: only preserved scope roots have a parked
