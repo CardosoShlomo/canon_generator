@@ -1,3 +1,7 @@
+## 0.12.3
+
+- Validate `inherit` id types at build time: an inheriting placement must declare the same id type as its (ultimate) source. Mismatches — or inheriting from an id-free source — now fail codegen with a clear error instead of erasing through the `Object?` chain and crashing at runtime on the typed-id cast.
+
 ## 0.12.2
 
 - Emit `On`/`OnDepth` forwarding constructors with **super parameters** (`super.specs, super.ids, super.nav`) instead of explicit forwarding, clearing the `use_super_parameters` lint on generated output.

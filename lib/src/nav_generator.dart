@@ -123,6 +123,40 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
 
     tree.forEach(collect);
 
+    // An inherited placement's id IS its source's, read live from the chain and
+    // stamped under the child screen — so the child must declare the SAME id
+    // type as its (ultimate) source. A mismatch would erase through the Object?
+    // chain entry and only crash at runtime on the `e.id as <type>` cast, so
+    // reject it at build time instead.
+    for (final ps in placements.values) {
+      for (final n in ps) {
+        final src = n.inheritSource;
+        if (src == null) continue;
+        final childT = idOf[n.screen];
+        final srcT = idOf[src.screen];
+        if (srcT == null) {
+          throw InvalidGenerationSourceError(
+              '"${n.screen}.inherit(${src.screen})": cannot inherit from '
+              '${src.screen} — it is id-free, so there is no id to inherit.',
+              element: element);
+        }
+        if (childT == null) {
+          throw InvalidGenerationSourceError(
+              '"${n.screen}.inherit(${src.screen})": ${n.screen} declares no id '
+              'type but inherit makes its id ${src.screen}\'s — give ${n.screen} '
+              'the id type $srcT.',
+              element: element);
+        }
+        if (childT != srcT) {
+          throw InvalidGenerationSourceError(
+              '"${n.screen}.inherit(${src.screen})": id type mismatch — '
+              '${n.screen} is $childT but ${src.screen} is $srcT. An inheriting '
+              'placement must declare the same id type as its source.',
+              element: element);
+        }
+      }
+    }
+
     // Preserved scope roots — the only screens reset() can target.
     final kept = [for (final root in tree) if (root.keep) root.screen];
 
