@@ -290,7 +290,9 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       final arg = src != null
           ? '_idOf($spec.$src)'
           : (idT == null ? 'null' : 'id');
-      return '  $ret go($params) {\n'
+      // Named after the committed target (go<Target>), consistent with every
+      // other push verb — the selector already narrowed to this screen.
+      return '  $ret go${_cap(x)}($params) {\n'
           '    $spec.graph.go($spec.$x, $arg, true);\n'
           '    return const $ret._();\n'
           '  }';

@@ -220,7 +220,7 @@ final class _ParentSel {
 
 final class ItemNavParent extends AnyNav {
   const ItemNavParent._() : super._();
-  ItemNav go(String id) {
+  ItemNav goItem(String id) {
     _Screens.graph.go(_Screens.item, id, true);
     return const ItemNav._();
   }
@@ -228,7 +228,7 @@ final class ItemNavParent extends AnyNav {
 
 final class EditItemNavParent extends AnyNav {
   const EditItemNavParent._() : super._();
-  EditItemNav go() {
+  EditItemNav goEditItem() {
     _Screens.graph.go(_Screens.editItem, _idOf(_Screens.item), true);
     return const EditItemNav._();
   }
@@ -236,7 +236,7 @@ final class EditItemNavParent extends AnyNav {
 
 final class SettingsNavParent extends AnyNav {
   const SettingsNavParent._() : super._();
-  SettingsNav go() {
+  SettingsNav goSettings() {
     _Screens.graph.go(_Screens.settings, null, true);
     return const SettingsNav._();
   }
@@ -244,7 +244,7 @@ final class SettingsNavParent extends AnyNav {
 
 final class AboutNavParent extends AnyNav {
   const AboutNavParent._() : super._();
-  AboutNav go() {
+  AboutNav goAbout() {
     _Screens.graph.go(_Screens.about, null, true);
     return const AboutNav._();
   }

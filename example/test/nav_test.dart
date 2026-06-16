@@ -29,7 +29,7 @@ void main() {
 
     // parentOf: push editItem onto whatever scope is on top, without naming
     // item's placement. We're on item (an editItem parent) → resolves.
-    Screen.on(.parentOf.editItem)?.go();
+    Screen.on(.parentOf.editItem)?.goEditItem();
     await tester.pumpAndSettle();
     expect(Screen.stack.current.name, 'editItem');
     expect(Screen.stack.currentId, '42');

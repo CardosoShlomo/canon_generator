@@ -188,8 +188,8 @@ void main() {
           contains('OnParentOf<AdNavParent> get ad'),
           contains('OnParentOf<EditAdNavParent> get editAd'),
           contains('final class AdNavParent extends AnyNav'),
-          contains('AdNav go(String id)'), // ad is id-bearing
-          contains('EditAdNav go() {'), // editAd inherits -> no-arg pusher
+          contains('AdNav goAd(String id)'), // ad is id-bearing, named after target
+          contains('EditAdNav goEditAd() {'), // editAd inherits -> no-arg pusher
           contains('parents.contains(_Screens.graph.current)'),
         ]),
         spec: _inheritSpec,

@@ -1,3 +1,7 @@
+## 0.8.1
+
+- The `parentOf` pusher's verb is now named after its target (`go<Target>`, e.g. `Screen.on(.parentOf.userProfile)?.goUserProfile(id)`) for consistency with every other push verb, instead of a bare `go`.
+
 ## 0.8.0
 
 - **`Screen.on(.parentOf.x)?.go(…)` — scope-agnostic push.** Pushes a non-root screen onto whatever scope is currently on top, resolved by membership in `x`'s parent set (null if the current top can't host it). Emitted as a per-screen `XNavParent` standalone pusher reached through an `OnParentOf<XNavParent>` selector. `parentOf` is a holder, not an `On`, so the bare `Screen.on(.parentOf)` is a compile error — committing a target is mandatory.
