@@ -307,9 +307,15 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     for (final r in rows) {
       final ps = <PlacementNode>[];
       final seen = <String>{};
-      for (final n in placements[r.name]!) {
-        final p = n.parent;
-        if (p != null && seen.add(p.path.join('/'))) ps.add(p);
+      for (final p in [
+        for (final n in placements[r.name]!)
+          if (n.parent != null) n.parent!,
+        // A screen reached via a back-edge (.stacked/.cycled) is pushable from
+        // that edge's parent too — so e.g. parentOf.userProfile covers a
+        // userProfile screen pushing another (the .stacked self-recursion).
+        ...?backPreds[r.name],
+      ]) {
+        if (seen.add(p.path.join('/'))) ps.add(p);
       }
       // Ambiguous only when the parents span 2+ distinct SCREENS — if they're
       // all the same screen you'd just name it (`on(.item)`). Shared

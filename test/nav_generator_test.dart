@@ -217,6 +217,17 @@ void main() {
         spec: _inheritSpec,
       ));
 
+  test('parentOf includes back-edge parents (a .stacked self-recursion)', () =>
+      // _spec: home -> item -> about -> item.stacked. item is pushable from home
+      // (forward) AND from about (the back-edge), so parentOf.item must list both.
+      _expectGenerated(
+        allOf([
+          contains('OnParentOf<ItemNavParent> get item'),
+          contains('_Screens.about'), // back-edge parent included
+          contains('_Screens.home'),
+        ]),
+      ));
+
   test('InitialScreen: typed initial heads mirror the kick-start surface', () =>
       _expectGenerated(
         allOf([

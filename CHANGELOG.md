@@ -1,3 +1,7 @@
+## 0.12.1
+
+- Fix: `parentOf.x` now includes **back-edge** (`.stacked`/`.cycled`) parents, not just forward ones — so e.g. `Screen.on(.parentOf.userProfile)` resolves on a userProfile screen (pushing another via the `.stacked` self-recursion), instead of returning null.
+
 ## 0.12.0
 
 - **`InitialScreen` — a typed, dot-shorthand `initial:`.** Emits `sealed class InitialScreen implements InitialScreenBase<_Screens>` with heads mirroring `Screen.goXx` minus `go` (id-free → `static const`, id-bearing/rescue → idMethod) and per-screen subclasses carrying the descent chain, so `NavGraph<_Screens, InitialScreen>(initial: .home.settings.about)` works and seeds the whole stack. Single-placement id-free screens get a direct head; multi-placement targets take the chain to disambiguate. Requires canon ^0.9.0.
