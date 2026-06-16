@@ -1,3 +1,9 @@
+## 0.8.0
+
+- **`Screen.on(.parentOf.x)?.go(…)` — scope-agnostic push.** Pushes a non-root screen onto whatever scope is currently on top, resolved by membership in `x`'s parent set (null if the current top can't host it). Emitted as a per-screen `XNavParent` standalone pusher reached through an `OnParentOf<XNavParent>` selector. `parentOf` is a holder, not an `On`, so the bare `Screen.on(.parentOf)` is a compile error — committing a target is mandatory.
+- **`inherit` support.** Parses `editAd.inherit(ad)` and emits a no-id chained verb (`goEditAd()`) that reads the live ancestor id via a generated `_idOf` helper; inherited edges are excluded from the ternary `go(Hop)` form.
+- Requires canon ^0.7.0.
+
 ## 0.7.0
 
 - **Breaking: `Screen.goX` is now the single-placement, id-free kick-start only.** A multi-placement (union) screen no longer gets a global verb (the arbitrary "canonical placement" pick is gone) — it's reached by chaining off a handle (`Screen.goTab().goX(id)` / `Screen.on(.x)?.…`), which disambiguates the placement and supplies real ancestor ids. This statically prevents the null-ancestor-id teleport that id-behind/union targets used to produce.

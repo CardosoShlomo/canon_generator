@@ -260,11 +260,56 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       return ps.single.ancestors.every((a) => idOf[a.screen] == null);
     }
 
+    // parentOf: every non-root screen X is pushable onto any of its parent
+    // screens. `Screen.on(.parentOf.x)` resolves (by current-top membership in
+    // X's parent set) to an XNavParent pusher, or null. The pusher is a
+    // standalone handle (NOT the nav — a nav pushes several children, so a
+    // generic `go` would collide across capabilities); its `go` pushes X
+    // edge-required, safe because membership already proved the live edge.
+    final parentScreensOf = <String, Set<String>>{};
+    for (final r in rows) {
+      final ps = {
+        for (final n in placements[r.name]!)
+          if (n.parent != null) n.parent!.screen
+      };
+      if (ps.isNotEmpty) parentScreensOf[r.name] = ps;
+    }
+    // Uniform inherit source across all of X's placements (null if none, or if
+    // mixed id-bearing/inherited — the signature-split case, deferred).
+    String? inheritSrcUniform(String screen) {
+      final ns = placements[screen]!;
+      if (ns.isEmpty || ns.any((n) => n.inheritSource == null)) return null;
+      final srcs = {for (final n in ns) n.inheritSource!.screen};
+      return srcs.length == 1 ? srcs.single : null;
+    }
+    String parentPush(String x) {
+      final ret = unionName(x);
+      final src = inheritSrcUniform(x);
+      final idT = idOf[x];
+      final params = (src != null || idT == null) ? '' : '$idT id';
+      final arg = src != null
+          ? '_idOf($spec.$src)'
+          : (idT == null ? 'null' : 'id');
+      return '  $ret go($params) {\n'
+          '    $spec.graph.go($spec.$x, $arg, true);\n'
+          '    return const $ret._();\n'
+          '  }';
+    }
+
     // A position-anchored handle (non-null path) navigates edge-required: the
     // target must be a live edge from the current top or graph.go throws (a
     // stale handle), never a silent canonical teleport. Stale-but-still-legal
     // resolves. Entry-point navs (null path) stay total (canonical allowed).
-    String goVerb(String child, String returns, [List<String>? path]) {
+    String goVerb(String child, String returns,
+        [List<String>? path, String? inheritSrc]) {
+      // Inherited edge (chained only): id IS the ancestor's, read live from the
+      // chain — no parameter to pass, none to get wrong.
+      if (inheritSrc != null && path != null) {
+        return '  $returns go${_cap(child)}() {\n'
+            '    $spec.graph.go($spec.$child, _idOf($spec.$inheritSrc), true);\n'
+            '    return const $returns._();\n'
+            '  }';
+      }
       final idT = idOf[child];
       final params = idT == null ? '' : '$idT id';
       final call = path != null
@@ -280,11 +325,14 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     // exactly, union tiers by screen.
     List<String> goVerbs(Iterable<PlacementNode> children,
         String Function(PlacementNode) type, [List<String>? path]) {
-      final byChild = <String, String>{};
+      final byChild = <String, PlacementNode>{};
       for (final c in children) {
-        byChild[c.screen] = type(c);
+        byChild[c.screen] = c;
       }
-      return [for (final e in byChild.entries) goVerb(e.key, e.value, path)];
+      return [
+        for (final e in byChild.entries)
+          goVerb(e.key, type(e.value), path, e.value.inheritSource?.screen)
+      ];
     }
 
     final b = StringBuffer();
@@ -388,8 +436,16 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     }
 
     final hasMulti = rows.any((r) => !isSingle(r.name));
+    final hasInherit =
+        placements.values.any((ps) => ps.any((n) => n.inheritSource != null));
+    final hasParentOf = parentScreensOf.isNotEmpty;
 
     b.writeln('// ignore_for_file: library_private_types_in_public_api');
+    if (hasInherit) {
+      // An inherited edge reads its ancestor's live id from the chain.
+      b.writeln('Object? _idOf($spec s) =>');
+      b.writeln('    $spec.graph.stack.lastWhere((e) => e.screen == s).id;');
+    }
     if (hasMulti || hasCanPop) {
       b.writeln('bool _chainIs(List<$spec> a, List<$spec> b) {');
       b.writeln('  if (a.length != b.length) return false;');
@@ -442,6 +498,14 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln('  /// If the live stack ends with this selector path (every pinned id and,');
     b.writeln('  /// for a cyclic terminal, its depth matching), its nav — else null.');
     b.writeln('  static N? on<N extends AnyNav>(On<N> which) {');
+    if (hasParentOf) {
+      // parentOf selector matches by current-top membership, not a suffix path.
+      b.writeln('    if (which is OnParentOf) {');
+      b.writeln('      return (which as OnParentOf).parents.contains($spec.graph.current)');
+      b.writeln('          ? which.nav');
+      b.writeln('          : null;');
+      b.writeln('    }');
+    }
     b.writeln('    final st = $spec.graph.stack;');
     b.writeln('    final specs = which.specs;');
     b.writeln('    if (st.length < specs.length) return null;');
@@ -601,7 +665,35 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
         b.writeln('  static $ret ${r.name}($idT id) => $ctor._([$spec.${r.name}], [id], const $nav._());');
       }
     }
+    if (hasParentOf) {
+      b.writeln('  /// Push a non-root screen onto whatever scope is on top:');
+      b.writeln('  /// `Screen.on(.parentOf.x)?.go(...)`. A namespace — `.parentOf`');
+      b.writeln('  /// alone is not an `On`, so the bare form will not compile.');
+      b.writeln('  static _ParentSel get parentOf => const _ParentSel._();');
+    }
     b.writeln('}');
+    if (hasParentOf) {
+      b.writeln('final class OnParentOf<N extends AnyNav> extends On<N> {');
+      b.writeln('  const OnParentOf._(this.parents, N nav) : super._(const [], const [], nav);');
+      b.writeln('  final Set<$spec> parents;');
+      b.writeln('}');
+      b.writeln('final class _ParentSel {');
+      b.writeln('  const _ParentSel._();');
+      for (final e in parentScreensOf.entries) {
+        final cap = '${_cap(e.key)}NavParent';
+        final lits = (e.value.toList()..sort()).map((s) => '$spec.$s').join(', ');
+        b.writeln('  OnParentOf<$cap> get ${e.key} =>');
+        b.writeln('      OnParentOf._(const {$lits}, const $cap._());');
+      }
+      b.writeln('}');
+      for (final e in parentScreensOf.entries) {
+        final cap = '${_cap(e.key)}NavParent';
+        b.writeln('final class $cap extends AnyNav {');
+        b.writeln('  const $cap._() : super._();');
+        b.writeln(parentPush(e.key));
+        b.writeln('}');
+      }
+    }
     if (cyclic.isNotEmpty) {
       b.writeln('final class OnDepth<N extends AnyNav> extends On<N> {');
       b.writeln('  const OnDepth._(List<$spec> specs, List<Object?> ids, this.depth, N nav) : super._(specs, ids, nav);');
@@ -727,7 +819,9 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
             for (final m in cycleMembers(r.name))
               if (!anc.containsKey(m)) m: unionName(m),
           },
-          edges: n == null ? const {} : {for (final c in n.children) c.screen: childType(c)},
+          edges: n == null
+              ? const {}
+              : {for (final c in n.children) if (c.inheritSource == null) c.screen: childType(c)},
           parentScreen: n?.parent?.screen,
           path: n?.path,
           extra: cyclic.contains(r.name)
@@ -746,7 +840,8 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
 
       // Shared (intersection) forward verbs / pop targets over a placement group.
       Set<String> sharedFwd(List<PlacementNode> group) => [
-            for (final n in group) {for (final c in n.children) c.screen}
+            for (final n in group)
+              {for (final c in n.children) if (c.inheritSource == null) c.screen}
           ].reduce((a, b) => a.intersection(b));
       List<String> sharedVerbs(List<PlacementNode> group, List<String> path) {
         final fwdShared = sharedFwd(group);

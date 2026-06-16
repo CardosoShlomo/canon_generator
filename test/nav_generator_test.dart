@@ -17,6 +17,7 @@ mixin ScreenNode<I, S extends ScreenNode<Object?, S>> on Enum {
   S keep([Set<S> children = const {}]) => this as S;
   S get cycled => this as S;
   S get stacked => this as S;
+  S inherit(S ancestor) => this as S;
 }
 
 class NavGraph<S> {
@@ -140,7 +141,60 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 }
 ''';
 
+// editAd inherits its ad parent's id: the chained push verb takes no id and
+// reads the live ancestor id instead.
+const _inheritSpec = '''
+import 'package:canon/canon.dart';
+
+part 'spec.nav.dart';
+
+@screens
+enum _Screens with ScreenNode<Object?, _Screens> {
+  home(0),
+  ad(0, String),
+  editAd(0, String);
+
+  const _Screens(this.widget, [this.id]);
+  final Object widget;
+  final Type? id;
+
+  static final graph = NavGraph<_Screens>(
+    {home({ad({editAd.inherit(ad)})})},
+    initial: home,
+    pageOf: (s, c, k) => 0,
+  );
+}
+''';
+
 void main() {
+  test('inherited edge: no-arg verb reads the ancestor id', () =>
+      _expectGenerated(
+        allOf(
+          contains('EditAdNav goEditAd() {'), // no id parameter
+          contains('_Screens.graph.go(_Screens.editAd, _idOf(_Screens.ad), true)'),
+          contains('Object? _idOf(_Screens s)'), // the live-ancestor reader
+          isNot(contains('goEditAd(String id)')), // id never passed
+        ),
+        spec: _inheritSpec,
+      ));
+
+  test('parentOf: a pusher per non-root screen, resolved by membership', () =>
+      _expectGenerated(
+        allOf([
+          contains('static _ParentSel get parentOf'),
+          contains('final class OnParentOf<'),
+          contains('final class _ParentSel {'), // a holder, NOT an On subtype
+          isNot(contains('_ParentSel extends')), // so bare on(.parentOf) can't compile
+          contains('OnParentOf<AdNavParent> get ad'),
+          contains('OnParentOf<EditAdNavParent> get editAd'),
+          contains('final class AdNavParent extends AnyNav'),
+          contains('AdNav go(String id)'), // ad is id-bearing
+          contains('EditAdNav go() {'), // editAd inherits -> no-arg pusher
+          contains('parents.contains(_Screens.graph.current)'),
+        ]),
+        spec: _inheritSpec,
+      ));
+
   test('emits the typed Screen surface', () => _expectGenerated(allOf(
         contains('final class Screen<I>'),
         contains('goItem(String id)'), // typed id verb

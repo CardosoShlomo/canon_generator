@@ -20,6 +20,11 @@ class PlacementNode {
   /// edge folds back to.
   PlacementNode? again;
 
+  /// Set when declared with `.inherit(ancestor)` — this placement's id IS the
+  /// named ancestor's (structurally), so its push verb takes no id and reads
+  /// the ancestor's live id instead.
+  PlacementNode? inheritSource;
+
   Iterable<PlacementNode> get ancestors sync* {
     for (var n = parent; n != null; n = n.parent) {
       yield n;
@@ -117,6 +122,25 @@ Future<List<PlacementNode>> readTree(
           )
           when rows.contains(name):
         return placeCall(name, argumentList, ancestors, keep: true);
+      // editAd.inherit(ad) — the placement's id is its ancestor's; resolve the
+      // source against the live ancestors (transitive: an inherited ancestor
+      // forwards to ITS source). Wraps the underlying placement (with children).
+      case MethodInvocation(
+            target: final inner?,
+            methodName: SimpleIdentifier(name: 'inherit'),
+            :final argumentList
+          )
+          when argumentList.arguments.firstOrNull is SimpleIdentifier &&
+              rows.contains(
+                  (argumentList.arguments.first as SimpleIdentifier).name):
+        final placed = place(inner, ancestors);
+        final srcName = (argumentList.arguments.first as SimpleIdentifier).name;
+        final src = placed.ancestors.firstWhere((a) => a.screen == srcName,
+            orElse: () => throw InvalidGenerationSourceError(
+                '"${placed.screen}.inherit($srcName)" — $srcName is not an ancestor',
+                element: element));
+        placed.inheritSource = src.inheritSource ?? src;
+        return placed;
       case MethodInvocation(
             methodName: SimpleIdentifier(:final name),
             :final argumentList
