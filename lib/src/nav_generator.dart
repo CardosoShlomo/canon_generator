@@ -1,3 +1,4 @@
+import 'package:analyzer/dart/constant/value.dart';
 import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:build/build.dart';
@@ -31,6 +32,21 @@ bool _hasValueEquality(DartType t) {
 }
 
 String _cap(String s) => s[0].toUpperCase() + s.substring(1);
+
+// Rebuilds a record type from a record-OF-Types id value (`(String, String)`).
+// Returns null if any field isn't a Type — then it's a record VALUE witness
+// (`('', '')`) and the caller falls back to the value's own type.
+String? _recordTypeOf(({List<DartObject> positional, Map<String, DartObject> named}) rec) {
+  String? t(DartObject o) => o.toTypeValue()?.getDisplayString();
+  final pos = [for (final p in rec.positional) t(p)];
+  final named = [for (final e in rec.named.entries) (e.key, t(e.value))];
+  if (pos.contains(null) || named.any((n) => n.$2 == null)) return null;
+  final parts = [
+    ...pos,
+    if (named.isNotEmpty) '{${[for (final n in named) '${n.$2} ${n.$1}'].join(', ')}}',
+  ];
+  return '(${parts.join(', ')})';
+}
 String _lcFirst(String s) => s[0].toLowerCase() + s.substring(1);
 
 class NavGenerator extends GeneratorForAnnotation<Screens> {
@@ -50,16 +66,31 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     for (final field in element.fields) {
       if (!field.isEnumConstant) continue;
       final value = field.computeConstantValue();
-      final idType = value?.getField('id')?.toTypeValue();
+      final idObj = value?.getField('id');
       widgetOf[field.name!] = value?.getField('widget')?.type?.getDisplayString();
-      if (idType != null && !_hasValueEquality(idType)) {
-        log.warning(
-            'id type ${idType.getDisplayString()} of "${field.name}" compares by '
-            'identity — repeat-collapse and prefix reuse fire only when two id '
-            'instances are equal, so for this screen they apply to identical '
-            'instances only; override == and hashCode for value semantics');
+      // The id field gives each screen's id TYPE, in any of three forms: a Type
+      // literal (`String`), a record-OF-Types (`(String, String)`), or a sample
+      // VALUE whose type is the id type (`0` -> int, `('', '')` -> (String,
+      // String)). The value/record forms need an `Object? id` field to compile.
+      final idType = idObj?.toTypeValue();
+      String? idStr;
+      DartType? idDartType;
+      if (idType != null) {
+        idStr = idType.getDisplayString();
+        idDartType = idType;
+      } else if (idObj != null && !idObj.isNull) {
+        final rec = idObj.toRecordValue();
+        idStr = (rec != null ? _recordTypeOf(rec) : null) ?? idObj.type?.getDisplayString();
+        idDartType = idObj.type;
       }
-      rows.add(_Row(field.name!, idType?.getDisplayString()));
+      if (idStr != null && idDartType != null && !_hasValueEquality(idDartType)) {
+        log.warning(
+            'id type $idStr of "${field.name}" compares by identity — repeat-collapse '
+            'and prefix reuse fire only when two id instances are equal, so for this '
+            'screen they apply to identical instances only; override == and hashCode '
+            'for value semantics');
+      }
+      rows.add(_Row(field.name!, idStr));
     }
     final idOf = {for (final r in rows) r.name: r.idType};
 
@@ -216,15 +247,17 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     Map<String, String> ancestorsOf(PlacementNode n) =>
         {for (final a in n.ancestors) a.screen: placementName(a)};
 
-    // The global teleport (Screen.go / Hop) may only target a screen whose
-    // CANONICAL chain has no id-bearing ancestor — else the rebuild would have
-    // to fabricate that ancestor's id (the null-id bug). Screens behind an id
-    // wall are reached by chaining a forward edge from the nearest id-safe
-    // ancestor, so the wall's id is always supplied, never skipped.
+    // The global teleport (Screen.go / Hop) is the unambiguous kick-start: it
+    // may target only a SINGLE-placement, id-free screen. Multi-placement
+    // (union) targets are ambiguous (which placement?) and id-behind targets
+    // would need a fabricated ancestor id (the null-id bug) — both are reached
+    // instead by chaining a forward edge off a handle (Screen.at/on or a prior
+    // goXx), where the position, and thus the placement and ancestor ids, is
+    // already pinned.
     bool globalSafe(String screen) {
       final ps = placements[screen]!;
-      if (ps.isEmpty) return false;
-      return ps.first.ancestors.every((a) => idOf[a.screen] == null);
+      if (ps.length != 1) return false;
+      return ps.single.ancestors.every((a) => idOf[a.screen] == null);
     }
 
     // A position-anchored handle (non-null path) navigates edge-required: the
@@ -658,7 +691,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     // Shared-widget id unions: one sealed family per id-ambiguous widget, a
     // case per screen carrying that screen's typed id.
     for (final u in widgetUnions) {
-      b.writeln('sealed class ${u.sealed} {}');
+      b.writeln('sealed class ${u.sealed} { const ${u.sealed}(); }');
       for (final r in u.members) {
         b.writeln('final class ${_cap(r.name)}Id extends ${u.sealed} {');
         b.writeln('  const ${_cap(r.name)}Id(this.id);');
@@ -859,6 +892,8 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln("    assert(identical(entry.screen, screen.spec), 'idOf(\${screen.name}) under \${entry.screen.name}');");
     b.writeln('    return entry.id as I;');
     b.writeln('  }');
+    b.writeln('  /// The screen this widget belongs to (its enclosing scope).');
+    b.writeln('  Screen<Object?> get screen => Screen.of(ScreenScope.of<$spec>(this).screen);');
     b.writeln('}');
 
     b.writeln('void verifyScreens() {');

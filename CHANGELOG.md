@@ -1,3 +1,11 @@
+## 0.7.0
+
+- **Breaking: `Screen.goX` is now the single-placement, id-free kick-start only.** A multi-placement (union) screen no longer gets a global verb (the arbitrary "canonical placement" pick is gone) — it's reached by chaining off a handle (`Screen.goTab().goX(id)` / `Screen.on(.x)?.…`), which disambiguates the placement and supplies real ancestor ids. This statically prevents the null-ancestor-id teleport that id-behind/union targets used to produce.
+- **Value-witness ids:** the id field accepts a Type literal (`String`), a record-of-Types (`(String, String)`), or a **sample value** whose type is inferred (`0`→int, `('','')`→(String,String), `ChatId(...)`→ChatId). Records need no typedef. Needs an `Object? id` field for the value/record forms.
+- Add **`context.screen`** (the widget's enclosing screen) to the generated `BuildContext` extension.
+- Fix: shared-widget id-union sealed base is emitted with a `const` constructor.
+- Requires canon ^0.6.0.
+
 ## 0.6.0
 
 - Add the **global pop surface**. `Screen.canPop` returns a `CanPopNav?` — null iff the active top is a root placement (`currentChain.length > 1`), so it doubles as the back-button visibility gate. `CanPopNav.at` narrows to the current placement, `.pop()` executes the guaranteed pop and returns a `PopDestNav` whose `.at` resolves the destination from the post-pop chain (and exposes any forward verb common to *every* destination). `Screen.pop()` is **documented sugar** for `Screen.canPop?.pop()` — returns the typed destination, never a `bool`, never throws (null at root). Both are tree-gated: a tree with no non-root placement generates neither. Non-root placement navs `implements CanPopPlacement`; pop destinations `implements PopDestPlacement`.

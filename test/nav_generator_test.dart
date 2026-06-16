@@ -115,6 +115,31 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 }
 ''';
 
+// id types written as sample VALUES (no Type literals, no typedef): a record
+// value `('', '')` -> (String, String), and a plain `0` -> int. Needs `Object? id`.
+const _recordIdSpec = '''
+import 'package:canon/canon.dart';
+
+part 'spec.nav.dart';
+
+@screens
+enum _Screens with ScreenNode<Object?, _Screens> {
+  home(0),
+  editImage('w', ('', '')),
+  page(true, 0);
+
+  const _Screens(this.widget, [this.id]);
+  final Object widget;
+  final Object? id;
+
+  static final graph = NavGraph<_Screens>(
+    {home({editImage, page})},
+    initial: home,
+    pageOf: (s, c, k) => 0,
+  );
+}
+''';
+
 void main() {
   test('emits the typed Screen surface', () => _expectGenerated(allOf(
         contains('final class Screen<I>'),
@@ -174,7 +199,7 @@ void main() {
   test('shared widget with distinct id types gets a sealed id union', () =>
       _expectGenerated(
         allOf([
-          contains('sealed class ChatScreenId {}'),
+          matches(RegExp(r'sealed class ChatScreenId \{\s*const ChatScreenId\(\);')),
           contains('final class AdChatId extends ChatScreenId'),
           contains('final class LoopChatId extends ChatScreenId'),
           contains('static ChatScreenId chatScreenId(BuildContext context)'),
@@ -183,6 +208,15 @@ void main() {
           isNot(contains('HomeScreenId')), // single-use widget: no union
         ]),
         spec: _sharedSpec,
+      ));
+
+  test('record id written directly is reconstructed (no typedef)', () =>
+      _expectGenerated(
+        allOf([
+          contains('Screen<(String, String)>'),
+          contains('goEditImage((String, String) id)'),
+        ]),
+        spec: _recordIdSpec,
       ));
 
   test('a flat (all-roots) tree generates no pop surface at all', () =>
