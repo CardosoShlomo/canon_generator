@@ -25,7 +25,7 @@ enum _Screens with ScreenNode<_Screens> {
   final Widget widget;
   final Type? id;
 
-  static final graph = NavGraph<_Screens>(
+  static final graph = NavGraph<_Screens, InitialScreen>(
     {
       splash,
       signIn,
@@ -39,7 +39,7 @@ enum _Screens with ScreenNode<_Screens> {
       // AND editAccount with the one id (the inherit kick-start rescue).
       profile.keep({settings({about}), account({editAccount.inherit(account)})}),
     },
-    initial: splash,
+    initial: .home.settings.about, // a descent chain seeds the whole stack
     pageOf: (screen, ctx, key) => MaterialPage(
       key: key,
       child: ScreenScope(entry: ctx.entry, child: screen.widget),

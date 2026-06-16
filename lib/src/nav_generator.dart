@@ -682,6 +682,11 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       final nav = navTypeOf(ms);
       final groups = <String, List<PlacementNode>>{};
       for (final c in fwd(ms)) {
+        // An inherited child is NOT a chain segment: its id is forced to the
+        // parent's, so a chain like on(.ad(id).editAd(other)) could contradict
+        // it. Select it directly instead — on(.editAd(id)) — keyed by the one
+        // shared id (its top-level On.editAd still exists).
+        if (c.inheritSource != null) continue;
         (groups[c.screen] ??= []).add(c);
       }
       stepBuf.writeln('final class $name extends On<$nav> {');
@@ -705,6 +710,64 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       for (final e in groups.entries) {
         emitStep(e.value);
       }
+    }
+
+    // InitialScreen: the typed `initial:` surface. Heads mirror Screen.goXx
+    // minus the `go` (id-free → static const, id-bearing → idMethod), so
+    // `NavGraph<$spec, InitialScreen>(initial: .home, ...)` resolves the leading
+    // dot; the per-screen subclasses carry the descent chain. Each carries its
+    // seed chain (root..target), ids stamped per inherit.
+    String initialClassName(List<PlacementNode> ms) => '${setStem(ms)}InitialScreen';
+    String initialChainLits(String x) => [
+          for (final s in placements[x]!.single.path)
+            '($spec.$s, ${idOf[s] != null ? 'id' : 'null'})'
+        ].join(', ');
+    // The descent trie: one InitialScreen class per reachable forward placement,
+    // continuations into its children (inherited children excluded — head-only,
+    // like the on-chain). Mirrors the Nav tree for `initial:`.
+    final initialEmitted = <String>{};
+    void emitInitialStep(List<PlacementNode> ms) {
+      final name = initialClassName(ms);
+      if (!initialEmitted.add(name)) return;
+      final groups = <String, List<PlacementNode>>{};
+      for (final c in fwd(ms)) {
+        if (c.inheritSource != null) continue;
+        (groups[c.screen] ??= []).add(c);
+      }
+      b.writeln('final class $name extends InitialScreen {');
+      b.writeln('  const $name._(super.chain);');
+      for (final e in groups.entries) {
+        final cName = initialClassName(e.value);
+        final idT = idOf[e.key];
+        if (idT == null) {
+          b.writeln('  $cName get ${e.key} => $cName._([...chain, ($spec.${e.key}, null)]);');
+        } else {
+          b.writeln('  $cName ${e.key}($idT id) => $cName._([...chain, ($spec.${e.key}, id)]);');
+        }
+      }
+      b.writeln('}');
+      for (final e in groups.entries) {
+        emitInitialStep(e.value);
+      }
+    }
+
+    b.writeln('sealed class InitialScreen implements InitialScreenBase<$spec> {');
+    b.writeln('  const InitialScreen(this.chain);');
+    b.writeln('  @override');
+    b.writeln('  final List<($spec, Object?)> chain;');
+    for (final r in rows) {
+      if (!globalSafe(r.name)) continue;
+      final cls = initialClassName(placements[r.name]!);
+      final lits = initialChainLits(r.name);
+      if (idOf[r.name] == null) {
+        b.writeln('  static const $cls ${r.name} = $cls._([$lits]);');
+      } else {
+        b.writeln('  static $cls ${r.name}(${idOf[r.name]} id) => $cls._([$lits]);');
+      }
+    }
+    b.writeln('}');
+    for (final r in rows) {
+      if (globalSafe(r.name)) emitInitialStep(placements[r.name]!);
     }
 
     b.writeln('final class On<N extends AnyNav> {');

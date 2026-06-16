@@ -186,6 +186,103 @@ final class Hop<N extends AnyNav> {
       Hop._(_Screens.account, id, const AccountNav._());
 }
 
+sealed class InitialScreen implements InitialScreenBase<_Screens> {
+  const InitialScreen(this.chain);
+  @override
+  final List<(_Screens, Object?)> chain;
+  static const SplashInitialScreen splash = SplashInitialScreen._([
+    (_Screens.splash, null),
+  ]);
+  static const SignInInitialScreen signIn = SignInInitialScreen._([
+    (_Screens.signIn, null),
+  ]);
+  static const HomeInitialScreen home = HomeInitialScreen._([
+    (_Screens.home, null),
+  ]);
+  static const FeedInitialScreen feed = FeedInitialScreen._([
+    (_Screens.feed, null),
+  ]);
+  static const ProfileInitialScreen profile = ProfileInitialScreen._([
+    (_Screens.profile, null),
+  ]);
+  static AccountInitialScreen account(String id) => AccountInitialScreen._([
+    (_Screens.profile, null),
+    (_Screens.account, id),
+  ]);
+  static EditAccountInitialScreen editAccount(String id) =>
+      EditAccountInitialScreen._([
+        (_Screens.profile, null),
+        (_Screens.account, id),
+        (_Screens.editAccount, id),
+      ]);
+}
+
+final class SplashInitialScreen extends InitialScreen {
+  const SplashInitialScreen._(super.chain);
+}
+
+final class SignInInitialScreen extends InitialScreen {
+  const SignInInitialScreen._(super.chain);
+}
+
+final class HomeInitialScreen extends InitialScreen {
+  const HomeInitialScreen._(super.chain);
+  HomeItemInitialScreen item(String id) =>
+      HomeItemInitialScreen._([...chain, (_Screens.item, id)]);
+  HomeSettingsInitialScreen get settings =>
+      HomeSettingsInitialScreen._([...chain, (_Screens.settings, null)]);
+}
+
+final class HomeItemInitialScreen extends InitialScreen {
+  const HomeItemInitialScreen._(super.chain);
+}
+
+final class HomeSettingsInitialScreen extends InitialScreen {
+  const HomeSettingsInitialScreen._(super.chain);
+  HomeSettingsAboutInitialScreen get about =>
+      HomeSettingsAboutInitialScreen._([...chain, (_Screens.about, null)]);
+}
+
+final class HomeSettingsAboutInitialScreen extends InitialScreen {
+  const HomeSettingsAboutInitialScreen._(super.chain);
+}
+
+final class FeedInitialScreen extends InitialScreen {
+  const FeedInitialScreen._(super.chain);
+  FeedItemInitialScreen item(String id) =>
+      FeedItemInitialScreen._([...chain, (_Screens.item, id)]);
+}
+
+final class FeedItemInitialScreen extends InitialScreen {
+  const FeedItemInitialScreen._(super.chain);
+}
+
+final class ProfileInitialScreen extends InitialScreen {
+  const ProfileInitialScreen._(super.chain);
+  ProfileSettingsInitialScreen get settings =>
+      ProfileSettingsInitialScreen._([...chain, (_Screens.settings, null)]);
+  AccountInitialScreen account(String id) =>
+      AccountInitialScreen._([...chain, (_Screens.account, id)]);
+}
+
+final class ProfileSettingsInitialScreen extends InitialScreen {
+  const ProfileSettingsInitialScreen._(super.chain);
+  ProfileSettingsAboutInitialScreen get about =>
+      ProfileSettingsAboutInitialScreen._([...chain, (_Screens.about, null)]);
+}
+
+final class ProfileSettingsAboutInitialScreen extends InitialScreen {
+  const ProfileSettingsAboutInitialScreen._(super.chain);
+}
+
+final class AccountInitialScreen extends InitialScreen {
+  const AccountInitialScreen._(super.chain);
+}
+
+final class EditAccountInitialScreen extends InitialScreen {
+  const EditAccountInitialScreen._(super.chain);
+}
+
 final class On<N extends AnyNav> {
   const On._(this.specs, this.ids, this.nav);
   final List<_Screens> specs;
@@ -271,23 +368,8 @@ final class OnHome extends On<HomeNav> {
 final class OnHomeItem extends On<HomeItemNav> {
   const OnHomeItem._(List<_Screens> specs, List<Object?> ids, HomeItemNav nav)
     : super._(specs, ids, nav);
-  OnHomeItemEditItem get editItem => OnHomeItemEditItem._(
-    [...specs, _Screens.editItem],
-    [...ids, null],
-    const HomeItemEditItemNav._(),
-  );
   OnHomeItem call(String id) =>
       OnHomeItem._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
-}
-
-final class OnHomeItemEditItem extends On<HomeItemEditItemNav> {
-  const OnHomeItemEditItem._(
-    List<_Screens> specs,
-    List<Object?> ids,
-    HomeItemEditItemNav nav,
-  ) : super._(specs, ids, nav);
-  OnHomeItemEditItem call(String id) =>
-      OnHomeItemEditItem._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class OnHomeSettings extends On<HomeSettingsNav> {
@@ -316,23 +398,8 @@ final class OnFeed extends On<FeedNav> {
 final class OnFeedItem extends On<FeedItemNav> {
   const OnFeedItem._(List<_Screens> specs, List<Object?> ids, FeedItemNav nav)
     : super._(specs, ids, nav);
-  OnFeedItemEditItem get editItem => OnFeedItemEditItem._(
-    [...specs, _Screens.editItem],
-    [...ids, null],
-    const FeedItemEditItemNav._(),
-  );
   OnFeedItem call(String id) =>
       OnFeedItem._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
-}
-
-final class OnFeedItemEditItem extends On<FeedItemEditItemNav> {
-  const OnFeedItemEditItem._(
-    List<_Screens> specs,
-    List<Object?> ids,
-    FeedItemEditItemNav nav,
-  ) : super._(specs, ids, nav);
-  OnFeedItemEditItem call(String id) =>
-      OnFeedItemEditItem._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class OnProfile extends On<ProfileNav> {
@@ -366,33 +433,13 @@ final class OnProfileSettings extends On<ProfileSettingsNav> {
 final class OnAccount extends On<AccountNav> {
   const OnAccount._(List<_Screens> specs, List<Object?> ids, AccountNav nav)
     : super._(specs, ids, nav);
-  OnEditAccount get editAccount => OnEditAccount._(
-    [...specs, _Screens.editAccount],
-    [...ids, null],
-    const EditAccountNav._(),
-  );
   OnAccount call(String id) =>
       OnAccount._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
-}
-
-final class OnEditAccount extends On<EditAccountNav> {
-  const OnEditAccount._(
-    List<_Screens> specs,
-    List<Object?> ids,
-    EditAccountNav nav,
-  ) : super._(specs, ids, nav);
-  OnEditAccount call(String id) =>
-      OnEditAccount._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class OnItem extends On<ItemNav> {
   const OnItem._(List<_Screens> specs, List<Object?> ids, ItemNav nav)
     : super._(specs, ids, nav);
-  OnEditItem get editItem => OnEditItem._(
-    [...specs, _Screens.editItem],
-    [...ids, null],
-    const EditItemNav._(),
-  );
   OnItem call(String id) =>
       OnItem._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
@@ -409,6 +456,16 @@ final class OnSettings extends On<SettingsNav> {
     : super._(specs, ids, nav);
   On<AboutNav> get about =>
       On._([...specs, _Screens.about], [...ids, null], const AboutNav._());
+}
+
+final class OnEditAccount extends On<EditAccountNav> {
+  const OnEditAccount._(
+    List<_Screens> specs,
+    List<Object?> ids,
+    EditAccountNav nav,
+  ) : super._(specs, ids, nav);
+  OnEditAccount call(String id) =>
+      OnEditAccount._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 abstract base class AnyNav {

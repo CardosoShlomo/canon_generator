@@ -7,9 +7,15 @@ void main() {
     verifyScreens();
     await tester.pumpWidget(MaterialApp.router(routerDelegate: Screen.delegate));
     await tester.pumpAndSettle();
-    expect(Screen.stack.current.name, 'splash');
-
-    Screen.goHome();
+    // initial: .home.settings.about — the descent chain seeds the WHOLE stack.
+    expect(Screen.stack.current.name, 'about');
+    expect(
+      Screen.stack.screens.map((s) => s.name).toList(),
+      ['home', 'settings', 'about'],
+    );
+    Screen.pop();
+    await tester.pumpAndSettle();
+    Screen.pop();
     await tester.pumpAndSettle();
     expect(Screen.stack.current.name, 'home');
 

@@ -1,3 +1,8 @@
+## 0.12.0
+
+- **`InitialScreen` — a typed, dot-shorthand `initial:`.** Emits `sealed class InitialScreen implements InitialScreenBase<_Screens>` with heads mirroring `Screen.goXx` minus `go` (id-free → `static const`, id-bearing/rescue → idMethod) and per-screen subclasses carrying the descent chain, so `NavGraph<_Screens, InitialScreen>(initial: .home.settings.about)` works and seeds the whole stack. Single-placement id-free screens get a direct head; multi-placement targets take the chain to disambiguate. Requires canon ^0.9.0.
+- **Fix: inherited children are excluded from the `on` chain** (e.g. `on(.ad(id).editAd())` is no longer generated) — an inherited child is selected directly as `on(.editAd(id))`, so a chained selector can't contradict the shared id.
+
 ## 0.11.0
 
 - **`inherit` kick-start rescue.** A single-placement screen whose only id-bearing ancestors are covered by its inherit chain (share its id) now gets a global kick-start verb — `Screen.goEditAd(adId)` builds `…→ad(adId)→editAd(adId)`, stamping the shared id at every level (never a null ancestor id). Such targets get the named `Screen.goX(id)` only, not the Hop/ternary form (the rescue needs a multi-step chain). Note: the inherit source must be non-root (a root seeds an id-less scope).

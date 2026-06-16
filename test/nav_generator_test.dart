@@ -217,6 +217,21 @@ void main() {
         spec: _inheritSpec,
       ));
 
+  test('InitialScreen: typed initial heads mirror the kick-start surface', () =>
+      _expectGenerated(
+        allOf([
+          contains('sealed class InitialScreen implements InitialScreenBase<_Screens>'),
+          contains('static const HomeInitialScreen home ='), // id-free root -> const
+          contains('static AdInitialScreen ad(String id)'), // id-bearing -> idMethod
+          contains('static EditAdInitialScreen editAd(String id)'), // rescue head
+          // the rescue head stamps the one id across the whole inherit chain:
+          contains('(_Screens.ad, id)'),
+          contains('(_Screens.editAd, id)'),
+          contains('final class HomeInitialScreen extends InitialScreen'),
+        ]),
+        spec: _inheritSpec,
+      ));
+
   test('parentOf: only for 2+-parent screens, resolved by membership', () =>
       _expectGenerated(
         allOf([
