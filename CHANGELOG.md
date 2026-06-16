@@ -1,3 +1,8 @@
+## 0.9.0
+
+- **`parentOf` is now disambiguation-only and a shared-capability handle.** It's offered only for screens with **2+ distinct parent screens** (a single-parent screen is just named, e.g. `Screen.on(.ad)?.goEditAd()`). The resolved handle now exposes the **intersection** of all its parents' capabilities: the push to the target, every sibling edge shared by all parents, and `pop()` when all parents are non-root — not just a lone pusher.
+- Fix: inherited edges now get their named no-id verb on **union** navs too (previously only on single-placement navs); they remain excluded only from the ternary `go(Hop)` form.
+
 ## 0.8.1
 
 - The `parentOf` pusher's verb is now named after its target (`go<Target>`, e.g. `Screen.on(.parentOf.userProfile)?.goUserProfile(id)`) for consistency with every other push verb, instead of a bare `go`.

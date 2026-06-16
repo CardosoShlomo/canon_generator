@@ -260,20 +260,38 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       return ps.single.ancestors.every((a) => idOf[a.screen] == null);
     }
 
-    // parentOf: every non-root screen X is pushable onto any of its parent
-    // screens. `Screen.on(.parentOf.x)` resolves (by current-top membership in
-    // X's parent set) to an XNavParent pusher, or null. The pusher is a
-    // standalone handle (NOT the nav — a nav pushes several children, so a
-    // generic `go` would collide across capabilities); its `go` pushes X
-    // edge-required, safe because membership already proved the live edge.
-    final parentScreensOf = <String, Set<String>>{};
+    // parentOf exists only to DISAMBIGUATE: it offers a screen X iff X has 2+
+    // distinct parent placements (with one parent you'd just name it, e.g.
+    // `Screen.on(.ad)?.goEditAd()`; a root has none). `Screen.on(.parentOf.x)`
+    // resolves — by current-top membership in X's parent screens — to a handle
+    // exposing what's provable at ANY of those parents: the push to X, every
+    // sibling edge shared by all parents, and pop() when all parents are
+    // non-root (the intersection of the parents' capabilities).
+    final parentsOf = <String, List<PlacementNode>>{};
     for (final r in rows) {
-      final ps = {
-        for (final n in placements[r.name]!)
-          if (n.parent != null) n.parent!.screen
-      };
-      if (ps.isNotEmpty) parentScreensOf[r.name] = ps;
+      final ps = <PlacementNode>[];
+      final seen = <String>{};
+      for (final n in placements[r.name]!) {
+        final p = n.parent;
+        if (p != null && seen.add(p.path.join('/'))) ps.add(p);
+      }
+      // Ambiguous only when the parents span 2+ distinct SCREENS — if they're
+      // all the same screen you'd just name it (`on(.item)`). Shared
+      // capabilities are still intersected over all parent placements below.
+      if ({for (final p in ps) p.screen}.length >= 2) parentsOf[r.name] = ps;
     }
+    final parentScreensOf = {
+      for (final e in parentsOf.entries)
+        e.key: {for (final p in e.value) p.screen}
+    };
+    // Children screens common to ALL of x's parents (x itself is always one,
+    // since every parent has x as a child).
+    Set<String> sharedChildrenOf(List<PlacementNode> parents) => parents
+        .map((p) => {for (final c in p.children) c.screen})
+        .reduce((a, b) => a.intersection(b));
+    // pop() is provable on the handle only if popping is legal at every parent.
+    bool allParentsNonRoot(List<PlacementNode> parents) =>
+        parents.every((p) => p.parent != null);
     // Uniform inherit source across all of X's placements (null if none, or if
     // mixed id-bearing/inherited — the signature-split case, deferred).
     String? inheritSrcUniform(String screen) {
@@ -668,9 +686,9 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       }
     }
     if (hasParentOf) {
-      b.writeln('  /// Push a non-root screen onto whatever scope is on top:');
-      b.writeln('  /// `Screen.on(.parentOf.x)?.go(...)`. A namespace — `.parentOf`');
-      b.writeln('  /// alone is not an `On`, so the bare form will not compile.');
+      b.writeln('  /// Disambiguating push onto the current scope when a screen has');
+      b.writeln('  /// 2+ parents: `Screen.on(.parentOf.x)?.goX(...)`. A namespace —');
+      b.writeln('  /// `.parentOf` alone is not an `On`, so the bare form will not compile.');
       b.writeln('  static _ParentSel get parentOf => const _ParentSel._();');
     }
     b.writeln('}');
@@ -688,11 +706,20 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
         b.writeln('      OnParentOf._(const {$lits}, const $cap._());');
       }
       b.writeln('}');
-      for (final e in parentScreensOf.entries) {
+      for (final e in parentsOf.entries) {
         final cap = '${_cap(e.key)}NavParent';
+        final parents = e.value;
+        // Push the target plus every sibling edge shared by all parents.
+        final shared = sharedChildrenOf(parents).toList()..sort();
         b.writeln('final class $cap extends AnyNav {');
         b.writeln('  const $cap._() : super._();');
-        b.writeln(parentPush(e.key));
+        for (final child in shared) {
+          b.writeln(parentPush(child));
+        }
+        // pop() is the parent-level pop; legal only if every parent is non-root.
+        if (hasCanPop && allParentsNonRoot(parents)) {
+          b.writeln('  PopDestNav pop() { $spec.graph.pop(); return const PopDestNav._(); }');
+        }
         b.writeln('}');
       }
     }
@@ -840,10 +867,11 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       // implemented, never extended) are the switch targets; every nav carries
       // its FULL level actions (re-providing the shared ones for completeness).
 
-      // Shared (intersection) forward verbs / pop targets over a placement group.
+      // Shared (intersection) forward children over a placement group. Includes
+      // inherited edges — they get a named no-id verb just like single
+      // placements; only the ternary go(Hop) form (sharedEdges) drops them.
       Set<String> sharedFwd(List<PlacementNode> group) => [
-            for (final n in group)
-              {for (final c in n.children) if (c.inheritSource == null) c.screen}
+            for (final n in group) {for (final c in n.children) c.screen}
           ].reduce((a, b) => a.intersection(b));
       List<String> sharedVerbs(List<PlacementNode> group, List<String> path) {
         final fwdShared = sharedFwd(group);
@@ -852,12 +880,22 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
           for (final n in group)
             for (final c in n.children)
               if (fwdShared.contains(c.screen) && seen.add(c.screen))
-                goVerb(c.screen, unionName(c.screen), path)
+                goVerb(c.screen, unionName(c.screen), path, c.inheritSource?.screen)
         ];
       }
-      // Edge-gated go over the group's shared (intersection) forward edges.
-      Map<String, String> sharedEdges(List<PlacementNode> group) =>
-          {for (final s in sharedFwd(group)) s: unionName(s)};
+      // Edge-gated go over the group's shared forward edges, excluding inherited
+      // ones (their id can't be supplied statically through a Hop).
+      Map<String, String> sharedEdges(List<PlacementNode> group) {
+        final inh = {
+          for (final n in group)
+            for (final c in n.children)
+              if (c.inheritSource != null) c.screen
+        };
+        return {
+          for (final s in sharedFwd(group))
+            if (!inh.contains(s)) s: unionName(s)
+        };
+      }
       // Guaranteed pops common to the whole group: a screen that's an ancestor
       // of every placement is always in the live chain regardless of which one
       // you're at. Union-typed where the ancestor itself is multi-placement.

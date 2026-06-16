@@ -166,6 +166,35 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 }
 ''';
 
+// item sits under TWO parents (home & feed) -> ambiguous -> gets parentOf.
+// editItem sits under one parent (item) -> nameable -> no parentOf entry.
+const _parentOfSpec = '''
+import 'package:canon/canon.dart';
+
+part 'spec.nav.dart';
+
+@screens
+enum _Screens with ScreenNode<Object?, _Screens> {
+  home(0),
+  feed(0),
+  item(0, String),
+  editItem(0, String);
+
+  const _Screens(this.widget, [this.id]);
+  final Object widget;
+  final Type? id;
+
+  static final graph = NavGraph<_Screens>(
+    {
+      home({item({editItem.inherit(item)})}),
+      feed({item({editItem.inherit(item)})}),
+    },
+    initial: home,
+    pageOf: (s, c, k) => 0,
+  );
+}
+''';
+
 void main() {
   test('inherited edge: no-arg verb reads the ancestor id', () =>
       _expectGenerated(
@@ -178,21 +207,21 @@ void main() {
         spec: _inheritSpec,
       ));
 
-  test('parentOf: a pusher per non-root screen, resolved by membership', () =>
+  test('parentOf: only for 2+-parent screens, resolved by membership', () =>
       _expectGenerated(
         allOf([
           contains('static _ParentSel get parentOf'),
           contains('final class OnParentOf<'),
           contains('final class _ParentSel {'), // a holder, NOT an On subtype
           isNot(contains('_ParentSel extends')), // so bare on(.parentOf) can't compile
-          contains('OnParentOf<AdNavParent> get ad'),
-          contains('OnParentOf<EditAdNavParent> get editAd'),
-          contains('final class AdNavParent extends AnyNav'),
-          contains('AdNav goAd(String id)'), // ad is id-bearing, named after target
-          contains('EditAdNav goEditAd() {'), // editAd inherits -> no-arg pusher
+          contains('OnParentOf<ItemNavParent> get item'), // item: 2 parents
+          contains('final class ItemNavParent extends AnyNav'),
+          contains('ItemNav goItem(String id)'), // pushes the target
           contains('parents.contains(_Screens.graph.current)'),
+          isNot(contains('get editItem =>')), // editItem: single parent -> excluded
+          isNot(contains('EditItemNavParent')),
         ]),
-        spec: _inheritSpec,
+        spec: _parentOfSpec,
       ));
 
   test('emits the typed Screen surface', () => _expectGenerated(allOf(

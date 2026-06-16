@@ -13,26 +13,18 @@ void main() {
     await tester.pumpAndSettle();
     expect(Screen.stack.current.name, 'home');
 
-    // `item` is a union (under home & feed) → no global verb; chain off the
-    // home handle (we're on home) to reach the home placement.
-    Screen.on(.home)!.goItem('42');
+    // parentOf: `item` has 2 distinct parents (home & feed), so it can't be
+    // named off a single one — `.parentOf.item` resolves whichever we're on.
+    Screen.on(.parentOf.item)?.goItem('42');
     await tester.pumpAndSettle();
     expect(Screen.stack.current.name, 'item');
 
-    // inherit: editItem's id IS item's, so the push verb takes no id.
-    Screen.on(.home.item('42'))!.goEditItem();
+    // inherit: editItem's id IS item's, so the push verb takes no id. editItem
+    // has a single parent (item), so we just name it — no parentOf entry.
+    Screen.on(.item('42'))!.goEditItem();
     await tester.pumpAndSettle();
     expect(Screen.stack.current.name, 'editItem');
     expect(Screen.stack.currentId, '42'); // inherited from item, not passed
-    Screen.pop();
-    await tester.pumpAndSettle();
-
-    // parentOf: push editItem onto whatever scope is on top, without naming
-    // item's placement. We're on item (an editItem parent) → resolves.
-    Screen.on(.parentOf.editItem)?.goEditItem();
-    await tester.pumpAndSettle();
-    expect(Screen.stack.current.name, 'editItem');
-    expect(Screen.stack.currentId, '42');
 
     expect(Screen.pop(), isNotNull); // typed global pop → back to item
     await tester.pumpAndSettle();

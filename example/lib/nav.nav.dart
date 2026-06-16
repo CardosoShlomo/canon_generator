@@ -191,9 +191,9 @@ final class On<N extends AnyNav> {
   static On<AboutNav> get about =>
       const On._([_Screens.about], [null], AboutNav._());
 
-  /// Push a non-root screen onto whatever scope is on top:
-  /// `Screen.on(.parentOf.x)?.go(...)`. A namespace — `.parentOf`
-  /// alone is not an `On`, so the bare form will not compile.
+  /// Disambiguating push onto the current scope when a screen has
+  /// 2+ parents: `Screen.on(.parentOf.x)?.goX(...)`. A namespace —
+  /// `.parentOf` alone is not an `On`, so the bare form will not compile.
   static _ParentSel get parentOf => const _ParentSel._();
 }
 
@@ -208,14 +208,10 @@ final class _ParentSel {
     _Screens.feed,
     _Screens.home,
   }, const ItemNavParent._());
-  OnParentOf<EditItemNavParent> get editItem =>
-      OnParentOf._(const {_Screens.item}, const EditItemNavParent._());
   OnParentOf<SettingsNavParent> get settings => OnParentOf._(const {
     _Screens.home,
     _Screens.profile,
   }, const SettingsNavParent._());
-  OnParentOf<AboutNavParent> get about =>
-      OnParentOf._(const {_Screens.settings}, const AboutNavParent._());
 }
 
 final class ItemNavParent extends AnyNav {
@@ -226,27 +222,11 @@ final class ItemNavParent extends AnyNav {
   }
 }
 
-final class EditItemNavParent extends AnyNav {
-  const EditItemNavParent._() : super._();
-  EditItemNav goEditItem() {
-    _Screens.graph.go(_Screens.editItem, _idOf(_Screens.item), true);
-    return const EditItemNav._();
-  }
-}
-
 final class SettingsNavParent extends AnyNav {
   const SettingsNavParent._() : super._();
   SettingsNav goSettings() {
     _Screens.graph.go(_Screens.settings, null, true);
     return const SettingsNav._();
-  }
-}
-
-final class AboutNavParent extends AnyNav {
-  const AboutNavParent._() : super._();
-  AboutNav goAbout() {
-    _Screens.graph.go(_Screens.about, null, true);
-    return const AboutNav._();
   }
 }
 
@@ -454,6 +434,11 @@ final class ItemNav extends AnyNav {
     if (_chainIs(c, const [_Screens.feed, _Screens.item]))
       return const FeedItemNav._();
     throw StateError('unresolved item placement: $c');
+  }
+
+  EditItemNav goEditItem() {
+    _Screens.graph.go(_Screens.editItem, _idOf(_Screens.item), true);
+    return const EditItemNav._();
   }
 }
 
