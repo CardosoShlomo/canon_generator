@@ -196,14 +196,24 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 ''';
 
 void main() {
-  test('inherited edge: no-arg verb reads the ancestor id', () =>
+  test('inherited edge: no-arg chained verb reads the ancestor id', () =>
       _expectGenerated(
         allOf(
-          contains('EditAdNav goEditAd() {'), // no id parameter
+          contains('EditAdNav goEditAd() {'), // chained: no id parameter
           contains('_Screens.graph.go(_Screens.editAd, _idOf(_Screens.ad), true)'),
           contains('Object? _idOf(_Screens s)'), // the live-ancestor reader
-          isNot(contains('goEditAd(String id)')), // id never passed
         ),
+        spec: _inheritSpec,
+      ));
+
+  test('inherit kick-start rescue: one id fills the whole chain', () =>
+      _expectGenerated(
+        allOf([
+          contains('static EditAdNav goEditAd(String id)'), // global kick-start
+          contains('_Screens.graph.go(_Screens.ad, id);'), // stamp the source
+          contains('_Screens.graph.go(_Screens.editAd, id, true)'), // ...then target
+          isNot(contains('Hop<EditAdNav>')), // rescued kick-start is not a Hop
+        ]),
         spec: _inheritSpec,
       ));
 

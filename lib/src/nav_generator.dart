@@ -257,7 +257,43 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     bool globalSafe(String screen) {
       final ps = placements[screen]!;
       if (ps.length != 1) return false;
-      return ps.single.ancestors.every((a) => idOf[a.screen] == null);
+      final node = ps.single;
+      final src = node.inheritSource;
+      // An id-bearing ancestor is allowed ONLY if it shares this screen's id —
+      // i.e. it's covered by the inherit chain (same ultimate source) — so the
+      // one kick-start id fills it. Otherwise it'd need a fabricated id.
+      for (final a in node.ancestors) {
+        if (idOf[a.screen] == null) continue;
+        if (src != null && identical(a.inheritSource ?? a, src)) continue;
+        return false;
+      }
+      return true;
+    }
+    // Kick-start body. Plain: one canonical go. Inherit-rescued (id shared with
+    // an id-bearing ancestor): kick-start to the source, then edge down to the
+    // target, stamping the shared id at every level (never a null ancestor id).
+    String kickStart(String screen) {
+      final ret = unionName(screen);
+      final node = placements[screen]!.single;
+      final src = node.inheritSource;
+      final idT = idOf[screen];
+      if (src == null) {
+        final params = idT == null ? '' : '$idT id';
+        final arg = idT == null ? '' : ', id';
+        return '  static $ret go${_cap(screen)}($params) {\n'
+            '    $spec.graph.go($spec.$screen$arg);\n'
+            '    return const $ret._();\n'
+            '  }';
+      }
+      final steps = node.path.sublist(node.path.indexOf(src.screen));
+      final lines = StringBuffer('    $spec.graph.go($spec.${steps.first}, id);\n');
+      for (final s in steps.skip(1)) {
+        lines.write('    $spec.graph.go($spec.$s, id, true);\n');
+      }
+      return '  static $ret go${_cap(screen)}($idT id) {\n'
+          '$lines'
+          '    return const $ret._();\n'
+          '  }';
     }
 
     // parentOf exists only to DISAMBIGUATE: it offers a screen X iff X has 2+
@@ -587,7 +623,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     }
     for (final r in rows) {
       if (!globalSafe(r.name)) continue; // id-behind targets: reach via chaining
-      b.writeln('  static ${goVerb(r.name, unionName(r.name)).trim()}');
+      b.writeln('  ${kickStart(r.name).trim()}');
     }
     b.writeln('}');
 
@@ -598,6 +634,9 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln('  final N nav;');
     for (final r in rows) {
       if (!globalSafe(r.name)) continue; // id-behind targets: reach via chaining
+      // Inherit-rescued kick-starts need a multi-step chain; a Hop is one go, so
+      // they get the named Screen.goX only, not the Hop/ternary form.
+      if (placements[r.name]!.single.inheritSource != null) continue;
       final n = unionName(r.name);
       if (r.idType == null) {
         b.writeln('  static const ${r.name} = Hop<$n>._($spec.${r.name}, null, $n._());');

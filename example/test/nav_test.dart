@@ -29,5 +29,16 @@ void main() {
     expect(Screen.pop(), isNotNull); // typed global pop → back to item
     await tester.pumpAndSettle();
     expect(Screen.stack.current.name, 'item');
+
+    // inherit kick-start rescue: editAccount inherits its single id-bearing
+    // parent, so one global id fills the whole chain.
+    Screen.goEditAccount('u1');
+    await tester.pumpAndSettle();
+    expect(Screen.stack.current.name, 'editAccount');
+    expect(Screen.stack.currentId, 'u1');
+    expect(Screen.pop(), isNotNull);
+    await tester.pumpAndSettle();
+    expect(Screen.stack.current.name, 'account');
+    expect(Screen.stack.currentId, 'u1'); // ancestor id stamped, not null
   });
 }

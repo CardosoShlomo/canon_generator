@@ -31,6 +31,8 @@ final class Screen<I> {
   static const editItem = Screen<String>._(_Screens.editItem);
   static const settings = Screen<Never>._(_Screens.settings);
   static const about = Screen<Never>._(_Screens.about);
+  static const account = Screen<String>._(_Screens.account);
+  static const editAccount = Screen<String>._(_Screens.editAccount);
   static Screen<Object?> of(_Screens spec) => _bySpec[spec]!;
   static const _bySpec = <_Screens, Screen<Object?>>{
     _Screens.splash: splash,
@@ -42,6 +44,8 @@ final class Screen<I> {
     _Screens.editItem: editItem,
     _Screens.settings: settings,
     _Screens.about: about,
+    _Screens.account: account,
+    _Screens.editAccount: editAccount,
   };
 
   /// The live active stack as wrappers: .current/.currentId/.tab/
@@ -50,7 +54,7 @@ final class Screen<I> {
     for (final e in _Screens.graph.stack) NavEntry(of(e.screen), e.id),
   ]);
   static const _treeSignature =
-      'feedK(item(editItem()));homeK(item(editItem()),settings(about()));profileK(settings(about()));signIn();splash()';
+      'feedK(item(editItem()));homeK(item(editItem()),settings(about()));profileK(account(editAccount()),settings(about()));signIn();splash()';
 
   /// True when this generated code still matches the live tree.
   /// Assert it in a test to fail CI on a stale (un-regenerated) tree:
@@ -106,6 +110,8 @@ final class Screen<I> {
     _Screens.editItem => (const EditItemNav._()).at as AnyNav,
     _Screens.settings => (const SettingsNav._()).at as AnyNav,
     _Screens.about => (const AboutNav._()).at as AnyNav,
+    _Screens.account => const AccountNav._(),
+    _Screens.editAccount => const EditAccountNav._(),
   };
 
   /// The poppable handle if the active top is a non-root placement,
@@ -149,6 +155,17 @@ final class Screen<I> {
     _Screens.graph.go(_Screens.profile);
     return const ProfileNav._();
   }
+
+  static AccountNav goAccount(String id) {
+    _Screens.graph.go(_Screens.account, id);
+    return const AccountNav._();
+  }
+
+  static EditAccountNav goEditAccount(String id) {
+    _Screens.graph.go(_Screens.account, id);
+    _Screens.graph.go(_Screens.editAccount, id, true);
+    return const EditAccountNav._();
+  }
 }
 
 final class Hop<N extends AnyNav> {
@@ -165,6 +182,8 @@ final class Hop<N extends AnyNav> {
     null,
     ProfileNav._(),
   );
+  static Hop<AccountNav> account(String id) =>
+      Hop._(_Screens.account, id, const AccountNav._());
 }
 
 final class On<N extends AnyNav> {
@@ -190,6 +209,10 @@ final class On<N extends AnyNav> {
       const OnSettings._([_Screens.settings], [null], SettingsNav._());
   static On<AboutNav> get about =>
       const On._([_Screens.about], [null], AboutNav._());
+  static OnAccount get account =>
+      const OnAccount._([_Screens.account], [null], AccountNav._());
+  static OnEditAccount get editAccount =>
+      const OnEditAccount._([_Screens.editAccount], [null], EditAccountNav._());
 
   /// Disambiguating push onto the current scope when a screen has
   /// 2+ parents: `Screen.on(.parentOf.x)?.goX(...)`. A namespace —
@@ -320,6 +343,11 @@ final class OnProfile extends On<ProfileNav> {
     [...ids, null],
     const ProfileSettingsNav._(),
   );
+  OnAccount get account => OnAccount._(
+    [...specs, _Screens.account],
+    [...ids, null],
+    const AccountNav._(),
+  );
 }
 
 final class OnProfileSettings extends On<ProfileSettingsNav> {
@@ -333,6 +361,28 @@ final class OnProfileSettings extends On<ProfileSettingsNav> {
     [...ids, null],
     const ProfileSettingsAboutNav._(),
   );
+}
+
+final class OnAccount extends On<AccountNav> {
+  const OnAccount._(List<_Screens> specs, List<Object?> ids, AccountNav nav)
+    : super._(specs, ids, nav);
+  OnEditAccount get editAccount => OnEditAccount._(
+    [...specs, _Screens.editAccount],
+    [...ids, null],
+    const EditAccountNav._(),
+  );
+  OnAccount call(String id) =>
+      OnAccount._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
+}
+
+final class OnEditAccount extends On<EditAccountNav> {
+  const OnEditAccount._(
+    List<_Screens> specs,
+    List<Object?> ids,
+    EditAccountNav nav,
+  ) : super._(specs, ids, nav);
+  OnEditAccount call(String id) =>
+      OnEditAccount._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class OnItem extends On<ItemNav> {
@@ -390,6 +440,8 @@ final class PopDestNav extends AnyNav {
       return const HomeSettingsNav._();
     if (_chainIs(c, const [_Screens.profile, _Screens.settings]))
       return const ProfileSettingsNav._();
+    if (_chainIs(c, const [_Screens.profile, _Screens.account]))
+      return const AccountNav._();
     if (_chainIs(c, const [_Screens.home])) return const HomeNav._();
     if (_chainIs(c, const [_Screens.feed])) return const FeedNav._();
     if (_chainIs(c, const [_Screens.profile])) return const ProfileNav._();
@@ -459,6 +511,30 @@ final class ProfileNav extends AnyNav implements PopDestPlacement {
     _Screens.graph.go(_Screens.settings, null, true);
     return const ProfileSettingsNav._();
   }
+
+  AccountNav goAccount(String id) {
+    _Screens.graph.go(_Screens.account, id, true);
+    return const AccountNav._();
+  }
+
+  N go<N extends AnyNav>(ProfileHop<N> hop) {
+    _Screens.graph.go(hop.spec, hop.id, true);
+    return hop.nav;
+  }
+}
+
+final class ProfileHop<N extends AnyNav> {
+  const ProfileHop._(this.spec, this.id, this.nav);
+  final _Screens spec;
+  final Object? id;
+  final N nav;
+  static const settings = ProfileHop<ProfileSettingsNav>._(
+    _Screens.settings,
+    null,
+    ProfileSettingsNav._(),
+  );
+  static ProfileHop<AccountNav> account(String id) =>
+      ProfileHop._(_Screens.account, id, const AccountNav._());
 }
 
 final class ItemNav extends AnyNav {
@@ -789,6 +865,52 @@ final class ProfileSettingsAboutPop<N extends AnyNav> {
   );
 }
 
+final class AccountNav extends AnyNav
+    implements CanPopPlacement, PopDestPlacement {
+  const AccountNav._() : super._();
+  EditAccountNav goEditAccount() {
+    _Screens.graph.go(_Screens.editAccount, _idOf(_Screens.account), true);
+    return const EditAccountNav._();
+  }
+
+  ProfileNav pop() {
+    _Screens.graph.pop();
+    return const ProfileNav._();
+  }
+}
+
+final class EditAccountNav extends AnyNav implements CanPopPlacement {
+  const EditAccountNav._() : super._();
+  AccountNav pop() {
+    _Screens.graph.pop();
+    return const AccountNav._();
+  }
+
+  ProfileNav popToProfile() {
+    _Screens.graph.pop(_Screens.profile);
+    return const ProfileNav._();
+  }
+
+  N popTo<N extends AnyNav>(EditAccountPop<N> to) {
+    _Screens.graph.pop(to.spec);
+    return to.nav;
+  }
+}
+
+final class EditAccountPop<N extends AnyNav> {
+  const EditAccountPop._(this.spec, this.nav);
+  final _Screens spec;
+  final N nav;
+  static const account = EditAccountPop<AccountNav>._(
+    _Screens.account,
+    AccountNav._(),
+  );
+  static const profile = EditAccountPop<ProfileNav>._(
+    _Screens.profile,
+    ProfileNav._(),
+  );
+}
+
 extension ScreenIdOf on BuildContext {
   I idOf<I>(Screen<I> screen) {
     final entry = ScreenScope.of<_Screens>(this);
@@ -841,6 +963,14 @@ void verifyScreens() {
     assert(
       _Screens.about.id == null,
       'about declares no id type but the generated tier expected none',
+    );
+    assert(
+      _Screens.account.id == String,
+      'account: stale generated id type — rerun build_runner',
+    );
+    assert(
+      _Screens.editAccount.id == String,
+      'editAccount: stale generated id type — rerun build_runner',
     );
     return true;
   }());

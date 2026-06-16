@@ -17,7 +17,9 @@ enum _Screens with ScreenNode<_Screens> {
   item(_Page('Item'), String), // a detail screen keyed by an id
   editItem(_Page('Edit item'), String), // its id IS item's (see .inherit below)
   settings(_Page('Settings')),
-  about(_Page('About'));
+  about(_Page('About')),
+  account(_Page('Account'), String), // single-placement, id-bearing root
+  editAccount(_Page('Edit account'), String); // inherits account's id
 
   const _Screens(this.widget, [this.id]);
   final Widget widget;
@@ -32,7 +34,10 @@ enum _Screens with ScreenNode<_Screens> {
       // takes no id (`goEditItem()`), reading the live item id instead.
       home.keep({item({editItem.inherit(item)}), settings({about})}),
       feed.keep({item({editItem.inherit(item)})}), // item lives under two tabs
-      profile.keep({settings({about})}),
+      // account (under profile) has a child editAccount that inherits its id →
+      // reachable by global kick-start: Screen.goEditAccount(id) fills account
+      // AND editAccount with the one id (the inherit kick-start rescue).
+      profile.keep({settings({about}), account({editAccount.inherit(account)})}),
     },
     initial: splash,
     pageOf: (screen, ctx, key) => MaterialPage(

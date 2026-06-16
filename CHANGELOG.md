@@ -1,3 +1,7 @@
+## 0.11.0
+
+- **`inherit` kick-start rescue.** A single-placement screen whose only id-bearing ancestors are covered by its inherit chain (share its id) now gets a global kick-start verb — `Screen.goEditAd(adId)` builds `…→ad(adId)→editAd(adId)`, stamping the shared id at every level (never a null ancestor id). Such targets get the named `Screen.goX(id)` only, not the Hop/ternary form (the rescue needs a multi-step chain). Note: the inherit source must be non-root (a root seeds an id-less scope).
+
 ## 0.10.0
 
 - **id-optional `on` selectors.** An id-bearing screen's selector is now a getter that matches any id — `Screen.on(.ad)?.goEditAd()` — and is callable to pin a specific one — `Screen.on(.ad(adId))`. (The matcher already treated the id as optional; only the selector's type surface required it.) Implemented by making each id-bearing `OnX` step host a `call(id)`; id-bearing leaves now also get an `OnX` class.
