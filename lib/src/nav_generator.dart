@@ -696,7 +696,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
         (groups[c.screen] ??= []).add(c);
       }
       stepBuf.writeln('final class $name extends On<$nav> {');
-      stepBuf.writeln('  const $name._(List<$spec> specs, List<Object?> ids, $nav nav) : super._(specs, ids, nav);');
+      stepBuf.writeln('  const $name._(super.specs, super.ids, super.nav) : super._();');
       // Every child selector is a getter (id appended as null = "match any");
       // an id-bearing child's own step hosts `call(id)` to pin it.
       for (final e in groups.entries) {
@@ -832,7 +832,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     }
     if (cyclic.isNotEmpty) {
       b.writeln('final class OnDepth<N extends AnyNav> extends On<N> {');
-      b.writeln('  const OnDepth._(List<$spec> specs, List<Object?> ids, this.depth, N nav) : super._(specs, ids, nav);');
+      b.writeln('  const OnDepth._(super.specs, super.ids, this.depth, super.nav) : super._();');
       b.writeln('  final int depth;');
       b.writeln('}');
     }

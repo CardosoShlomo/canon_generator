@@ -1,3 +1,7 @@
+## 0.12.2
+
+- Emit `On`/`OnDepth` forwarding constructors with **super parameters** (`super.specs, super.ids, super.nav`) instead of explicit forwarding, clearing the `use_super_parameters` lint on generated output.
+
 ## 0.12.1
 
 - Fix: `parentOf.x` now includes **back-edge** (`.stacked`/`.cycled`) parents, not just forward ones — so e.g. `Screen.on(.parentOf.userProfile)` resolves on a userProfile screen (pushing another via the `.stacked` self-recursion), instead of returning null.
