@@ -201,7 +201,7 @@ void main() {
         allOf(
           contains('EditAdNav goEditAd() {'), // chained: no id parameter
           contains('_Screens.graph.go(_Screens.editAd, _idOf(_Screens.ad), true)'),
-          contains('Object? _idOf(_Screens s)'), // the live-ancestor reader
+          contains('Object? _idOf(Enum s)'), // the live-ancestor reader
         ),
         spec: _inheritSpec,
       ));
@@ -231,7 +231,7 @@ void main() {
   test('InitialScreen: typed initial heads mirror the kick-start surface', () =>
       _expectGenerated(
         allOf([
-          contains('sealed class InitialScreen implements InitialScreenBase<_Screens>'),
+          contains('sealed class InitialScreen implements InitialScreenBase'),
           contains('static const HomeInitialScreen home ='), // id-free root -> const
           contains('static AdInitialScreen ad(String id)'), // id-bearing -> idMethod
           contains('static EditAdInitialScreen editAd(String id)'), // rescue head
@@ -269,7 +269,7 @@ void main() {
 
   test('emits the on-chain suffix selector + steps', () => _expectGenerated(allOf([
         contains('final class On<'),
-        contains('final List<_Screens> specs'), // suffix selector
+        contains('final List<Enum> specs'), // suffix selector
         contains('final class OnHome'), // step: home has child item
         contains('final class OnItem'), // step: item cyclic, child about
         contains('final class OnAbout'), // step: about cyclic leaf

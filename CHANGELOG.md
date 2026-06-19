@@ -1,6 +1,12 @@
+## 0.13.0
+
+- **Subtree-enums: split a graph across enums.** The reader follows `graft(Sub.subtree)` into sub-enums to build ONE virtual tree and emits a unified `Screen` surface blind to the split — a grafted screen gets the same `goX` verb as a native one (qualified only by its home enum in emitted values). Requires canon ^0.10.0 (erased engine).
+- **Shared screens collapse to their owner.** Same-named screens across enums are one screen: a null-widget ref collapses to the single widget-bearing owner — errors on two owners, a dangling ref, or conflicting id types — and the surface emits one verb at the owner value.
+- Emitted runtime types track canon's erasure (`NavGraph<I>`, `pageOf(widget, …)`, `Enum`-keyed maps and switches).
+
 ## 0.12.3
 
-- Validate `inherit` id types at build time: an inheriting placement must declare the same id type as its (ultimate) source. Mismatches — or inheriting from an id-free source — now fail codegen with a clear error instead of erasing through the `Object?` chain and crashing at runtime on the typed-id cast.
+- Validate `inherit` id types at build time — mismatched or id-free sources now fail codegen instead of crashing at runtime.
 
 ## 0.12.2
 

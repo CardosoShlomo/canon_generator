@@ -12,10 +12,17 @@ import 'package:canon/src/screens_annotation.dart';
 import 'tree_reader.dart';
 
 class _Row {
-  _Row(this.name, this.idType);
+  _Row(this.name, this.idType, this.spec, {this.owner = true});
 
   final String name;
   final String? idType;
+
+  /// The home enum's name — screens may come from grafted sub-enums.
+  final String spec;
+
+  /// True when this declaration carries a widget (the OWNER). A null-widget
+  /// declaration is a REF that collapses to its same-named owner.
+  final bool owner;
 }
 
 bool _hasValueEquality(DartType t) {
@@ -61,13 +68,19 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       throw InvalidGenerationSourceError('the @screens enum must be library-private', element: element);
     }
 
+    // Read the VIRTUAL tree first (follows grafts into sub-enums), then build
+    // rows from every enum it spans — each tagged with its home enum (`spec`).
+    final model = await readTree(element, buildStep);
     final rows = <_Row>[];
     final widgetOf = <String, String?>{};
-    for (final field in element.fields) {
-      if (!field.isEnumConstant) continue;
+    for (final e in model.enums) {
+      for (final field in e.fields) {
+        if (!field.isEnumConstant) continue;
       final value = field.computeConstantValue();
       final idObj = value?.getField('id');
-      widgetOf[field.name!] = value?.getField('widget')?.type?.getDisplayString();
+      final widgetObj = value?.getField('widget');
+      final owner = widgetObj != null && !widgetObj.isNull;
+      if (owner) widgetOf[field.name!] = widgetObj.type?.getDisplayString();
       // The id field gives each screen's id TYPE, in any of three forms: a Type
       // literal (`String`), a record-OF-Types (`(String, String)`), or a sample
       // VALUE whose type is the id type (`0` -> int, `('', '')` -> (String,
@@ -90,9 +103,60 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
             'screen they apply to identical instances only; override == and hashCode '
             'for value semantics');
       }
-      rows.add(_Row(field.name!, idStr));
+      rows.add(_Row(field.name!, idStr, e.name!, owner: owner));
+      }
     }
+    // A screen name is ONE screen across the virtual tree. It may be declared
+    // once with a widget (the OWNER) and any number of times with a null widget
+    // (REFS — a sub-enum's bare row reused for in-family inherit/cycled). Collapse
+    // every name to its single owner row; refs vanish into it. Mirror the runtime
+    // checks (screen_node `_canonicalize`): exactly one owner, no dangling ref,
+    // and all declarations of a name must agree on id type.
+    final byName = <String, List<_Row>>{};
+    for (final r in rows) {
+      (byName[r.name] ??= []).add(r);
+    }
+    final collapsed = <_Row>[];
+    for (final e in byName.entries) {
+      final owners = [for (final r in e.value) if (r.owner) r];
+      if (owners.length > 1) {
+        final specs = (owners.map((r) => r.spec).toSet().toList()..sort());
+        throw InvalidGenerationSourceError(
+            'screen "${e.key}" has ${owners.length} owners (${specs.join(', ')}) '
+            '— only one declaration may carry a widget; the rest must be null-'
+            'widget refs.',
+            element: element);
+      }
+      if (owners.isEmpty) {
+        throw InvalidGenerationSourceError(
+            'screen "${e.key}" is a ref (null widget) with no owner — one same-'
+            'named declaration must carry the widget.',
+            element: element);
+      }
+      final idTypes = e.value.map((r) => r.idType).whereType<String>().toSet();
+      if (idTypes.length > 1) {
+        throw InvalidGenerationSourceError(
+            'screen "${e.key}" has conflicting id types (${idTypes.join(', ')}) '
+            'across its declarations — owner and refs must agree.',
+            element: element);
+      }
+      // The owner carries the surviving row, but adopt a ref-declared id type if
+      // the owner left it off (any disagreement already rejected above).
+      collapsed.add(_Row(e.key, idTypes.isEmpty ? null : idTypes.first,
+          owners.single.spec));
+    }
+    rows
+      ..clear()
+      ..addAll(collapsed);
+
     final idOf = {for (final r in rows) r.name: r.idType};
+    final specOf = {for (final r in rows) r.name: r.spec};
+    // A screen's enum-qualified value (`_Root.home`, `Shop.shop`) — the only
+    // place graft surfaces in the output; everything else is by name.
+    String sv(String name) => '${specOf[name]}.$name';
+    // Enums that declare an `id` field — i.e. some row of theirs is id-bearing.
+    // Only these have `.id` to verify; an all-id-free enum has no field.
+    final specsWithId = {for (final r in rows) if (r.idType != null) r.spec};
 
     // A widget shared by >=2 screens with >=2 distinct (non-null) id types is
     // id-ambiguous: inside it you can't statically know which screen you are.
@@ -109,7 +173,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
           (sealed: '${e.key}Id', resolver: '${_lcFirst(e.key)}Id', members: e.value)
     ];
 
-    final tree = await readTree(element, buildStep, {for (final r in rows) r.name});
+    final tree = model.tree;
     final placements = {for (final r in rows) r.name: <PlacementNode>[]};
     final againEdges = <PlacementNode>[];
     void collect(PlacementNode n) {
@@ -157,8 +221,38 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       }
     }
 
-    // Preserved scope roots — the only screens reset() can target.
-    final kept = [for (final root in tree) if (root.keep) root.screen];
+    // Liveness toggles validate at build: a keep/forget that doesn't flip the
+    // inherited state is redundant (mirrors NavSpec._validate). Also collects
+    // every keep screen — forget()'s targets — at any depth.
+    final keptSet = <String>{};
+    void checkLiveness(PlacementNode n, bool live) {
+      if (n.keep) {
+        if (live) {
+          throw InvalidGenerationSourceError(
+              '"${n.screen}.keep" is redundant — an ancestor already keeps this '
+              'region (need a forget between them)',
+              element: element);
+        }
+        keptSet.add(n.screen);
+        live = true;
+      } else if (n.forget) {
+        if (!live) {
+          throw InvalidGenerationSourceError(
+              '"${n.screen}.forget" is redundant — this region is already not '
+              'kept (forget only carves inside a keep)',
+              element: element);
+        }
+        live = false;
+      }
+      for (final c in n.children) {
+        checkLiveness(c, live);
+      }
+    }
+
+    for (final root in tree) {
+      checkLiveness(root, false);
+    }
+    final kept = keptSet.toList()..sort();
 
     // Cycle membership: each back-edge forms a cycle from its target down to its
     // parent. Every screen on that path can recur.
@@ -202,7 +296,8 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     // A mismatch at runtime means the tree was edited without regenerating.
     String sig(PlacementNode n) {
       final kids = [for (final c in n.children) sig(c)]..sort();
-      final flags = '${n.keep ? 'K' : ''}${n.again != null ? 'A' : ''}';
+      final flags =
+          '${n.keep ? 'K' : ''}${n.forget ? 'F' : ''}${n.again != null ? 'A' : ''}';
       return '${n.screen}$flags(${kids.join(',')})';
     }
 
@@ -315,14 +410,14 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
         final params = idT == null ? '' : '$idT id';
         final arg = idT == null ? '' : ', id';
         return '  static $ret go${_cap(screen)}($params) {\n'
-            '    $spec.graph.go($spec.$screen$arg);\n'
+            '    $spec.graph.go(${sv(screen)}$arg);\n'
             '    return const $ret._();\n'
             '  }';
       }
       final steps = node.path.sublist(node.path.indexOf(src.screen));
-      final lines = StringBuffer('    $spec.graph.go($spec.${steps.first}, id);\n');
+      final lines = StringBuffer('    $spec.graph.go(${sv(steps.first)}, id);\n');
       for (final s in steps.skip(1)) {
-        lines.write('    $spec.graph.go($spec.$s, id, true);\n');
+        lines.write('    $spec.graph.go(${sv(s)}, id, true);\n');
       }
       return '  static $ret go${_cap(screen)}($idT id) {\n'
           '$lines'
@@ -382,12 +477,12 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       final idT = idOf[x];
       final params = (src != null || idT == null) ? '' : '$idT id';
       final arg = src != null
-          ? '_idOf($spec.$src)'
+          ? '_idOf(${sv(src)})'
           : (idT == null ? 'null' : 'id');
       // Named after the committed target (go<Target>), consistent with every
       // other push verb — the selector already narrowed to this screen.
       return '  $ret go${_cap(x)}($params) {\n'
-          '    $spec.graph.go($spec.$x, $arg, true);\n'
+          '    $spec.graph.go(${sv(x)}, $arg, true);\n'
           '    return const $ret._();\n'
           '  }';
     }
@@ -402,15 +497,15 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       // chain — no parameter to pass, none to get wrong.
       if (inheritSrc != null && path != null) {
         return '  $returns go${_cap(child)}() {\n'
-            '    $spec.graph.go($spec.$child, _idOf($spec.$inheritSrc), true);\n'
+            '    $spec.graph.go(${sv(child)}, _idOf(${sv(inheritSrc)}), true);\n'
             '    return const $returns._();\n'
             '  }';
       }
       final idT = idOf[child];
       final params = idT == null ? '' : '$idT id';
       final call = path != null
-          ? '$spec.graph.go($spec.$child, ${idT == null ? 'null' : 'id'}, true)'
-          : '$spec.graph.go($spec.$child${idT == null ? '' : ', id'})';
+          ? '$spec.graph.go(${sv(child)}, ${idT == null ? 'null' : 'id'}, true)'
+          : '$spec.graph.go(${sv(child)}${idT == null ? '' : ', id'})';
       return '  $returns go${_cap(child)}($params) {\n'
           '    $call;\n'
           '    return const $returns._();\n'
@@ -489,7 +584,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       for (final e in pops.entries) {
         if (e.key == parentScreen) continue;
         b.writeln('  ${e.value} popTo${_cap(e.key)}() {');
-        b.writeln('    $spec.graph.pop($spec.${e.key});');
+        b.writeln('    $spec.graph.pop(${sv(e.key)});');
         b.writeln('    return const ${e.value}._();');
         b.writeln('  }');
       }
@@ -506,25 +601,25 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       if (pops.length >= 2) {
         b.writeln('final class $popName<N extends AnyNav> {');
         b.writeln('  const $popName._(this.spec, this.nav);');
-        b.writeln('  final $spec spec;');
+        b.writeln('  final Enum spec;');
         b.writeln('  final N nav;');
         for (final e in pops.entries) {
-          b.writeln('  static const ${e.key} = $popName<${e.value}>._($spec.${e.key}, ${e.value}._());');
+          b.writeln('  static const ${e.key} = $popName<${e.value}>._(${sv(e.key)}, ${e.value}._());');
         }
         b.writeln('}');
       }
       if (edges.length >= 2) {
         b.writeln('final class $hopName<N extends AnyNav> {');
         b.writeln('  const $hopName._(this.spec, this.id, this.nav);');
-        b.writeln('  final $spec spec;');
+        b.writeln('  final Enum spec;');
         b.writeln('  final Object? id;');
         b.writeln('  final N nav;');
         for (final e in edges.entries) {
           final idT = idOf[e.key];
           if (idT == null) {
-            b.writeln('  static const ${e.key} = $hopName<${e.value}>._($spec.${e.key}, null, ${e.value}._());');
+            b.writeln('  static const ${e.key} = $hopName<${e.value}>._(${sv(e.key)}, null, ${e.value}._());');
           } else {
-            b.writeln('  static $hopName<${e.value}> ${e.key}($idT id) => $hopName._($spec.${e.key}, id, const ${e.value}._());');
+            b.writeln('  static $hopName<${e.value}> ${e.key}($idT id) => $hopName._(${sv(e.key)}, id, const ${e.value}._());');
           }
         }
         b.writeln('}');
@@ -539,11 +634,11 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln('// ignore_for_file: library_private_types_in_public_api');
     if (hasInherit) {
       // An inherited edge reads its ancestor's live id from the chain.
-      b.writeln('Object? _idOf($spec s) =>');
+      b.writeln('Object? _idOf(Enum s) =>');
       b.writeln('    $spec.graph.stack.lastWhere((e) => e.screen == s).id;');
     }
     if (hasMulti || hasCanPop) {
-      b.writeln('bool _chainIs(List<$spec> a, List<$spec> b) {');
+      b.writeln('bool _chainIs(List<Enum> a, List<Enum> b) {');
       b.writeln('  if (a.length != b.length) return false;');
       b.writeln('  for (var i = 0; i < a.length; i++) {');
       b.writeln('    if (a[i] != b[i]) return false;');
@@ -556,15 +651,15 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     var usesEndsWith = false;
     b.writeln('final class Screen<I> {');
     b.writeln('  const Screen._(this.spec);');
-    b.writeln('  final $spec spec;');
+    b.writeln('  final Enum spec;');
     b.writeln('  String get name => spec.name;');
     for (final r in rows) {
-      b.writeln('  static const ${r.name} = Screen<${r.idType ?? 'Never'}>._($spec.${r.name});');
+      b.writeln('  static const ${r.name} = Screen<${r.idType ?? 'Never'}>._(${sv(r.name)});');
     }
-    b.writeln('  static Screen<Object?> of($spec spec) => _bySpec[spec]!;');
-    b.writeln('  static const _bySpec = <$spec, Screen<Object?>>{');
+    b.writeln('  static Screen<Object?> of(Enum spec) => _bySpec[spec]!;');
+    b.writeln('  static const _bySpec = <Enum, Screen<Object?>>{');
     for (final r in rows) {
-      b.writeln('    $spec.${r.name}: ${r.name},');
+      b.writeln('    ${sv(r.name)}: ${r.name},');
     }
     b.writeln('  };');
     b.writeln('  /// The live active stack as wrappers: .current/.currentId/.tab/');
@@ -583,7 +678,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln("        'canon: the navigation tree changed but generated code is stale — run build_runner.');");
     b.writeln('    return true;');
     b.writeln('  }();');
-    b.writeln('  static NavDelegate<$spec> get delegate {');
+    b.writeln('  static NavDelegate get delegate {');
     b.writeln('    assert(_fresh);');
     b.writeln('    return $spec.graph.delegate;');
     b.writeln('  }');
@@ -625,9 +720,11 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     for (final r in rows) {
       final n = unionName(r.name);
       b.writeln(isSingle(r.name)
-          ? '        $spec.${r.name} => const $n._(),'
-          : '        $spec.${r.name} => (const $n._()).at as AnyNav,');
+          ? '        ${sv(r.name)} => const $n._(),'
+          : '        ${sv(r.name)} => (const $n._()).at as AnyNav,');
     }
+    // current is erased to Enum; the spec's screens are exhaustive in practice.
+    b.writeln("        _ => throw StateError('not a $spec screen'),");
     b.writeln('      };');
     if (hasCanPop) {
       b.writeln('  /// The poppable handle if the active top is a non-root placement,');
@@ -649,17 +746,22 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       b.writeln('  /// Resolves a widget shared by several screens to its exact');
       b.writeln('  /// (screen, typed id) — switch the sealed result exhaustively.');
       b.writeln('  static ${u.sealed} ${u.resolver}(BuildContext context) {');
-      b.writeln('    final e = ScreenScope.of<$spec>(context);');
+      b.writeln('    final e = ScreenScope.of(context);');
       b.writeln('    return switch (e.screen) {');
       for (final r in u.members) {
-        b.writeln('      $spec.${r.name} => ${_cap(r.name)}Id(e.id as ${r.idType ?? 'Object?'}),');
+        b.writeln('      ${sv(r.name)} => ${_cap(r.name)}Id(e.id as ${r.idType ?? 'Object?'}),');
       }
       b.writeln("      _ => throw StateError('${u.resolver}() under \${e.screen.name}'),");
       b.writeln('    };');
       b.writeln('  }');
     }
-    if (kept.isNotEmpty) {
-      b.writeln('  static void reset(Keep scope) => $spec.graph.reset(scope.spec);');
+    // forget(): free a parked keep. 0 keeps → no surface; 1 → a named zero-arg
+    // verb (forgetShop); 2+ → forget(Keep) taking the keep handle.
+    if (kept.length == 1) {
+      b.writeln('  static void forget${_cap(kept.single)}() => '
+          '$spec.graph.forget(${sv(kept.single)});');
+    } else if (kept.length >= 2) {
+      b.writeln('  static void forget(Keep keep) => $spec.graph.forget(keep.spec);');
     }
     for (final r in rows) {
       if (!globalSafe(r.name)) continue; // id-behind targets: reach via chaining
@@ -669,7 +771,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
 
     b.writeln('final class Hop<N extends AnyNav> {');
     b.writeln('  const Hop._(this.spec, this.id, this.nav);');
-    b.writeln('  final $spec spec;');
+    b.writeln('  final Enum spec;');
     b.writeln('  final Object? id;');
     b.writeln('  final N nav;');
     for (final r in rows) {
@@ -679,9 +781,9 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       if (placements[r.name]!.single.inheritSource != null) continue;
       final n = unionName(r.name);
       if (r.idType == null) {
-        b.writeln('  static const ${r.name} = Hop<$n>._($spec.${r.name}, null, $n._());');
+        b.writeln('  static const ${r.name} = Hop<$n>._(${sv(r.name)}, null, $n._());');
       } else {
-        b.writeln('  static Hop<$n> ${r.name}(${r.idType} id) => Hop._($spec.${r.name}, id, const $n._());');
+        b.writeln('  static Hop<$n> ${r.name}(${r.idType} id) => Hop._(${sv(r.name)}, id, const $n._());');
       }
     }
     b.writeln('}');
@@ -738,7 +840,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
         final cStep = stepNameFor(e.value);
         final ret = cStep ?? 'On<$cNav>';
         final ctor = cStep ?? 'On';
-        stepBuf.writeln('  $ret get ${e.key} => $ctor._([...specs, $spec.${e.key}], [...ids, null], const $cNav._());');
+        stepBuf.writeln('  $ret get ${e.key} => $ctor._([...specs, ${sv(e.key)}], [...ids, null], const $cNav._());');
       }
       if (idOf[sc] != null) {
         stepBuf.writeln('  $name call(${idOf[sc]} id) => $name._(specs, [...ids.sublist(0, ids.length - 1), id], nav);');
@@ -754,13 +856,13 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
 
     // InitialScreen: the typed `initial:` surface. Heads mirror Screen.goXx
     // minus the `go` (id-free → static const, id-bearing → idMethod), so
-    // `NavGraph<$spec, InitialScreen>(initial: .home, ...)` resolves the leading
+    // `NavGraph<InitialScreen>(initial: .home, ...)` resolves the leading
     // dot; the per-screen subclasses carry the descent chain. Each carries its
     // seed chain (root..target), ids stamped per inherit.
     String initialClassName(List<PlacementNode> ms) => '${setStem(ms)}InitialScreen';
     String initialChainLits(String x) => [
           for (final s in placements[x]!.single.path)
-            '($spec.$s, ${idOf[s] != null ? 'id' : 'null'})'
+            '(${sv(s)}, ${idOf[s] != null ? 'id' : 'null'})'
         ].join(', ');
     // The descent trie: one InitialScreen class per reachable forward placement,
     // continuations into its children (inherited children excluded — head-only,
@@ -780,9 +882,9 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
         final cName = initialClassName(e.value);
         final idT = idOf[e.key];
         if (idT == null) {
-          b.writeln('  $cName get ${e.key} => $cName._([...chain, ($spec.${e.key}, null)]);');
+          b.writeln('  $cName get ${e.key} => $cName._([...chain, (${sv(e.key)}, null)]);');
         } else {
-          b.writeln('  $cName ${e.key}($idT id) => $cName._([...chain, ($spec.${e.key}, id)]);');
+          b.writeln('  $cName ${e.key}($idT id) => $cName._([...chain, (${sv(e.key)}, id)]);');
         }
       }
       b.writeln('}');
@@ -791,10 +893,10 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       }
     }
 
-    b.writeln('sealed class InitialScreen implements InitialScreenBase<$spec> {');
+    b.writeln('sealed class InitialScreen implements InitialScreenBase {');
     b.writeln('  const InitialScreen(this.chain);');
     b.writeln('  @override');
-    b.writeln('  final List<($spec, Object?)> chain;');
+    b.writeln('  final List<(Enum, Object?)> chain;');
     for (final r in rows) {
       if (!globalSafe(r.name)) continue;
       final cls = initialClassName(placements[r.name]!);
@@ -812,7 +914,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
 
     b.writeln('final class On<N extends AnyNav> {');
     b.writeln('  const On._(this.specs, this.ids, this.nav);');
-    b.writeln('  final List<$spec> specs;');
+    b.writeln('  final List<Enum> specs;');
     b.writeln('  final List<Object?> ids;');
     b.writeln('  final N nav;');
     for (final r in rows) {
@@ -824,7 +926,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       final ctor = step ?? 'On';
       // Always a getter (id = null matches any); `.x(id)` invokes the step's
       // call() to pin a specific id.
-      b.writeln('  static $ret get ${r.name} => const $ctor._([$spec.${r.name}], [null], $nav._());');
+      b.writeln('  static $ret get ${r.name} => const $ctor._([${sv(r.name)}], [null], $nav._());');
     }
     if (hasParentOf) {
       b.writeln('  /// Disambiguating push onto the current scope when a screen has');
@@ -836,13 +938,13 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     if (hasParentOf) {
       b.writeln('final class OnParentOf<N extends AnyNav> extends On<N> {');
       b.writeln('  const OnParentOf._(this.parents, N nav) : super._(const [], const [], nav);');
-      b.writeln('  final Set<$spec> parents;');
+      b.writeln('  final Set<Enum> parents;');
       b.writeln('}');
       b.writeln('final class _ParentSel {');
       b.writeln('  const _ParentSel._();');
       for (final e in parentScreensOf.entries) {
         final cap = '${_cap(e.key)}NavParent';
-        final lits = (e.value.toList()..sort()).map((s) => '$spec.$s').join(', ');
+        final lits = (e.value.toList()..sort()).map((s) => '${sv(s)}').join(', ');
         b.writeln('  OnParentOf<$cap> get ${e.key} =>');
         b.writeln('      OnParentOf._(const {$lits}, const $cap._());');
       }
@@ -906,7 +1008,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       b.writeln('    final c = $spec.graph.currentChain;');
       final sorted = [...u.members]..sort((a, b) => b.path.length.compareTo(a.path.length));
       for (final m in sorted) {
-        final lits = m.path.map((s) => '$spec.$s').join(', ');
+        final lits = m.path.map((s) => '${sv(s)}').join(', ');
         b.writeln('    if (_endsWith(c, const [$lits])) return const ${placementName(m)}._();');
       }
       b.writeln("    throw StateError('unresolved ${u.nav}: \$c');");
@@ -942,7 +1044,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       final sorted = [...destMembers]
         ..sort((a, b) => b.path.length.compareTo(a.path.length));
       for (final m in sorted) {
-        final lits = m.path.map((s) => '$spec.$s').join(', ');
+        final lits = m.path.map((s) => '${sv(s)}').join(', ');
         b.writeln('    if (_chainIs(c, const [$lits])) return const ${placementName(m)}._();');
       }
       b.writeln("    throw StateError('unresolved PopDestNav: \$c');");
@@ -962,14 +1064,14 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       }
     }
 
-    // reset()'s gated target table: only preserved scope roots have a parked
-    // stack worth collapsing (unkept scopes reseed themselves on leave).
-    if (kept.isNotEmpty) {
+    // forget()'s gated target table — only when there are 2+ keeps (a single
+    // keep gets the named forget<Keep>() verb instead, so it needs no handle).
+    if (kept.length >= 2) {
       b.writeln('final class Keep {');
       b.writeln('  const Keep._(this.spec);');
-      b.writeln('  final $spec spec;');
+      b.writeln('  final Enum spec;');
       for (final name in kept) {
-        b.writeln('  static const $name = Keep._($spec.$name);');
+        b.writeln('  static const $name = Keep._(${sv(name)});');
       }
       b.writeln('}');
     }
@@ -995,7 +1097,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
           parentScreen: n?.parent?.screen,
           path: n?.path,
           extra: cyclic.contains(r.name)
-              ? '  int get depth => $spec.graph.countOf($spec.${r.name});'
+              ? '  int get depth => $spec.graph.countOf(${sv(r.name)});'
               : null,
         );
         continue;
@@ -1082,7 +1184,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
         pg.writeln('  $placementMarker get at {');
         pg.writeln('    final c = $spec.graph.currentChain;');
         for (final n in group) {
-          final p = n.path.map((s) => '$spec.$s').join(', ');
+          final p = n.path.map((s) => '${sv(s)}').join(', ');
           pg.writeln('    if (_chainIs(c, const [$p])) return const ${placementName(n)}._();');
         }
         pg.writeln("    throw StateError('unresolved ${r.name} placement: \$c');");
@@ -1104,7 +1206,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
             final subType = walk(sub, suffixLen + 1, [underMarker]);
             final subSuffix = sub.first.path
                 .sublist(sub.first.path.length - (suffixLen + 1))
-                .map((s) => '$spec.$s')
+                .map((s) => '${sv(s)}')
                 .join(', ');
             usesEndsWith = true;
             pgUnder.writeln('    if (_endsWith(c, const [$subSuffix])) return const $subType._();');
@@ -1115,7 +1217,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
 
         var extra = pgUnder.isEmpty ? pg.toString() : '$pg\n$pgUnder';
         if (cyclic.contains(r.name)) {
-          extra = '$extra\n  int get depth => $spec.graph.countOf($spec.${r.name});';
+          extra = '$extra\n  int get depth => $spec.graph.countOf(${sv(r.name)});';
         }
         final sp = sharedPops(group);
         navClass(navName, sharedVerbs(group, suffix),
@@ -1156,7 +1258,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
           markers: leafMarkers[n]!.toList(),
           path: n.path,
           extra: cyclic.contains(n.screen)
-              ? '  int get depth => $spec.graph.countOf($spec.${n.screen});'
+              ? '  int get depth => $spec.graph.countOf(${sv(n.screen)});'
               : null,
         );
       }
@@ -1164,21 +1266,23 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
 
     b.writeln('extension ScreenIdOf on BuildContext {');
     b.writeln('  I idOf<I>(Screen<I> screen) {');
-    b.writeln('    final entry = ScreenScope.of<$spec>(this);');
+    b.writeln('    final entry = ScreenScope.of(this);');
     b.writeln("    assert(identical(entry.screen, screen.spec), 'idOf(\${screen.name}) under \${entry.screen.name}');");
     b.writeln('    return entry.id as I;');
     b.writeln('  }');
     b.writeln('  /// The screen this widget belongs to (its enclosing scope).');
-    b.writeln('  Screen<Object?> get screen => Screen.of(ScreenScope.of<$spec>(this).screen);');
+    b.writeln('  Screen<Object?> get screen => Screen.of(ScreenScope.of(this).screen);');
     b.writeln('}');
 
     b.writeln('void verifyScreens() {');
     b.writeln('  assert(() {');
     for (final r in rows) {
+      // An all-id-free enum declares no `id` field — nothing to assert.
+      if (!specsWithId.contains(r.spec)) continue;
       if (r.idType == null) {
-        b.writeln("    assert($spec.${r.name}.id == null, '${r.name} declares no id type but the generated tier expected none');");
+        b.writeln("    assert(${sv(r.name)}.id == null, '${r.name} declares no id type but the generated tier expected none');");
       } else {
-        b.writeln("    assert($spec.${r.name}.id == ${r.idType}, '${r.name}: stale generated id type — rerun build_runner');");
+        b.writeln("    assert(${sv(r.name)}.id == ${r.idType}, '${r.name}: stale generated id type — rerun build_runner');");
       }
     }
     b.writeln('    return true;');
@@ -1186,7 +1290,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln('}');
 
     if (usesEndsWith) {
-      b.writeln('bool _endsWith(List<$spec> chain, List<$spec> suffix) {');
+      b.writeln('bool _endsWith(List<Enum> chain, List<Enum> suffix) {');
       b.writeln('  if (chain.length < suffix.length) return false;');
       b.writeln('  final off = chain.length - suffix.length;');
       b.writeln('  for (var i = 0; i < suffix.length; i++) {');

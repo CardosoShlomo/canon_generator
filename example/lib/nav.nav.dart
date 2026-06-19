@@ -8,9 +8,9 @@ part of 'nav.dart';
 // **************************************************************************
 
 // ignore_for_file: library_private_types_in_public_api
-Object? _idOf(_Screens s) =>
+Object? _idOf(Enum s) =>
     _Screens.graph.stack.lastWhere((e) => e.screen == s).id;
-bool _chainIs(List<_Screens> a, List<_Screens> b) {
+bool _chainIs(List<Enum> a, List<Enum> b) {
   if (a.length != b.length) return false;
   for (var i = 0; i < a.length; i++) {
     if (a[i] != b[i]) return false;
@@ -20,7 +20,7 @@ bool _chainIs(List<_Screens> a, List<_Screens> b) {
 
 final class Screen<I> {
   const Screen._(this.spec);
-  final _Screens spec;
+  final Enum spec;
   String get name => spec.name;
   static const splash = Screen<Never>._(_Screens.splash);
   static const signIn = Screen<Never>._(_Screens.signIn);
@@ -33,8 +33,8 @@ final class Screen<I> {
   static const about = Screen<Never>._(_Screens.about);
   static const account = Screen<String>._(_Screens.account);
   static const editAccount = Screen<String>._(_Screens.editAccount);
-  static Screen<Object?> of(_Screens spec) => _bySpec[spec]!;
-  static const _bySpec = <_Screens, Screen<Object?>>{
+  static Screen<Object?> of(Enum spec) => _bySpec[spec]!;
+  static const _bySpec = <Enum, Screen<Object?>>{
     _Screens.splash: splash,
     _Screens.signIn: signIn,
     _Screens.home: home,
@@ -68,7 +68,7 @@ final class Screen<I> {
     );
     return true;
   }();
-  static NavDelegate<_Screens> get delegate {
+  static NavDelegate get delegate {
     assert(_fresh);
     return _Screens.graph.delegate;
   }
@@ -112,6 +112,7 @@ final class Screen<I> {
     _Screens.about => (const AboutNav._()).at as AnyNav,
     _Screens.account => const AccountNav._(),
     _Screens.editAccount => const EditAccountNav._(),
+    _ => throw StateError('not a _Screens screen'),
   };
 
   /// The poppable handle if the active top is a non-root placement,
@@ -130,7 +131,7 @@ final class Screen<I> {
   static void Function() observe(
     void Function(Screen<Object?> from, Screen<Object?> to) fn,
   ) => _Screens.graph.observe((f, t) => fn(of(f), of(t)));
-  static void reset(Keep scope) => _Screens.graph.reset(scope.spec);
+  static void forget(Keep keep) => _Screens.graph.forget(keep.spec);
   static SplashNav goSplash() {
     _Screens.graph.go(_Screens.splash);
     return const SplashNav._();
@@ -170,7 +171,7 @@ final class Screen<I> {
 
 final class Hop<N extends AnyNav> {
   const Hop._(this.spec, this.id, this.nav);
-  final _Screens spec;
+  final Enum spec;
   final Object? id;
   final N nav;
   static const splash = Hop<SplashNav>._(_Screens.splash, null, SplashNav._());
@@ -186,10 +187,10 @@ final class Hop<N extends AnyNav> {
       Hop._(_Screens.account, id, const AccountNav._());
 }
 
-sealed class InitialScreen implements InitialScreenBase<_Screens> {
+sealed class InitialScreen implements InitialScreenBase {
   const InitialScreen(this.chain);
   @override
-  final List<(_Screens, Object?)> chain;
+  final List<(Enum, Object?)> chain;
   static const SplashInitialScreen splash = SplashInitialScreen._([
     (_Screens.splash, null),
   ]);
@@ -285,7 +286,7 @@ final class EditAccountInitialScreen extends InitialScreen {
 
 final class On<N extends AnyNav> {
   const On._(this.specs, this.ids, this.nav);
-  final List<_Screens> specs;
+  final List<Enum> specs;
   final List<Object?> ids;
   final N nav;
   static On<SplashNav> get splash =>
@@ -319,7 +320,7 @@ final class On<N extends AnyNav> {
 
 final class OnParentOf<N extends AnyNav> extends On<N> {
   const OnParentOf._(this.parents, N nav) : super._(const [], const [], nav);
-  final Set<_Screens> parents;
+  final Set<Enum> parents;
 }
 
 final class _ParentSel {
@@ -487,9 +488,9 @@ final class PopDestNav extends AnyNav {
 
 final class Keep {
   const Keep._(this.spec);
-  final _Screens spec;
-  static const home = Keep._(_Screens.home);
+  final Enum spec;
   static const feed = Keep._(_Screens.feed);
+  static const home = Keep._(_Screens.home);
   static const profile = Keep._(_Screens.profile);
 }
 
@@ -521,7 +522,7 @@ final class HomeNav extends AnyNav implements PopDestPlacement {
 
 final class HomeHop<N extends AnyNav> {
   const HomeHop._(this.spec, this.id, this.nav);
-  final _Screens spec;
+  final Enum spec;
   final Object? id;
   final N nav;
   static HomeHop<HomeItemNav> item(String id) =>
@@ -561,7 +562,7 @@ final class ProfileNav extends AnyNav implements PopDestPlacement {
 
 final class ProfileHop<N extends AnyNav> {
   const ProfileHop._(this.spec, this.id, this.nav);
-  final _Screens spec;
+  final Enum spec;
   final Object? id;
   final N nav;
   static const settings = ProfileHop<ProfileSettingsNav>._(
@@ -688,7 +689,7 @@ final class HomeItemEditItemNav extends AnyNav
 
 final class HomeItemEditItemPop<N extends AnyNav> {
   const HomeItemEditItemPop._(this.spec, this.nav);
-  final _Screens spec;
+  final Enum spec;
   final N nav;
   static const item = HomeItemEditItemPop<HomeItemNav>._(
     _Screens.item,
@@ -721,7 +722,7 @@ final class FeedItemEditItemNav extends AnyNav
 
 final class FeedItemEditItemPop<N extends AnyNav> {
   const FeedItemEditItemPop._(this.spec, this.nav);
-  final _Screens spec;
+  final Enum spec;
   final N nav;
   static const item = FeedItemEditItemPop<FeedItemNav>._(
     _Screens.item,
@@ -856,7 +857,7 @@ final class HomeSettingsAboutNav extends AnyNav
 
 final class HomeSettingsAboutPop<N extends AnyNav> {
   const HomeSettingsAboutPop._(this.spec, this.nav);
-  final _Screens spec;
+  final Enum spec;
   final N nav;
   static const settings = HomeSettingsAboutPop<HomeSettingsNav>._(
     _Screens.settings,
@@ -889,7 +890,7 @@ final class ProfileSettingsAboutNav extends AnyNav
 
 final class ProfileSettingsAboutPop<N extends AnyNav> {
   const ProfileSettingsAboutPop._(this.spec, this.nav);
-  final _Screens spec;
+  final Enum spec;
   final N nav;
   static const settings = ProfileSettingsAboutPop<ProfileSettingsNav>._(
     _Screens.settings,
@@ -935,7 +936,7 @@ final class EditAccountNav extends AnyNav implements CanPopPlacement {
 
 final class EditAccountPop<N extends AnyNav> {
   const EditAccountPop._(this.spec, this.nav);
-  final _Screens spec;
+  final Enum spec;
   final N nav;
   static const account = EditAccountPop<AccountNav>._(
     _Screens.account,
@@ -949,7 +950,7 @@ final class EditAccountPop<N extends AnyNav> {
 
 extension ScreenIdOf on BuildContext {
   I idOf<I>(Screen<I> screen) {
-    final entry = ScreenScope.of<_Screens>(this);
+    final entry = ScreenScope.of(this);
     assert(
       identical(entry.screen, screen.spec),
       'idOf(${screen.name}) under ${entry.screen.name}',
@@ -958,8 +959,7 @@ extension ScreenIdOf on BuildContext {
   }
 
   /// The screen this widget belongs to (its enclosing scope).
-  Screen<Object?> get screen =>
-      Screen.of(ScreenScope.of<_Screens>(this).screen);
+  Screen<Object?> get screen => Screen.of(ScreenScope.of(this).screen);
 }
 
 void verifyScreens() {
@@ -1012,7 +1012,7 @@ void verifyScreens() {
   }());
 }
 
-bool _endsWith(List<_Screens> chain, List<_Screens> suffix) {
+bool _endsWith(List<Enum> chain, List<Enum> suffix) {
   if (chain.length < suffix.length) return false;
   final off = chain.length - suffix.length;
   for (var i = 0; i < suffix.length; i++) {

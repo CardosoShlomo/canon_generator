@@ -4,25 +4,31 @@ import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
 
 /// One placement of a screen in the grammar tree, with its path from the root
-/// (used for placement-type naming) and its resolved back-edge target.
+/// (used for placement-type naming), the enum it belongs to ([spec] — the same
+/// for native and grafted screens; the generator emits `<spec>.<screen>`), and
+/// its resolved back-edge target.
 class PlacementNode {
-  PlacementNode(this.screen, this.path, this.parent);
+  PlacementNode(this.screen, this.spec, this.path, this.parent);
 
   final String screen;
+
+  /// The home enum's name (`_Root`, `Shop`, …). Grafted screens carry the
+  /// sub-enum; this is the ONLY graft-awareness in the model.
+  final String spec;
   final List<String> path;
   final PlacementNode? parent;
   final List<PlacementNode> children = [];
 
-  /// True when declared with `.keep` — a preserved scope root.
+  /// True when declared with `.keep` — a liveness-on boundary.
   bool keep = false;
 
-  /// Set when this node IS a `.cycled`/`.stacked` back-edge: the ancestor placement the
-  /// edge folds back to.
+  /// True when declared with `.forget` — a liveness-off boundary inside a keep.
+  bool forget = false;
+
+  /// Set when this node IS a `.cycled`/`.stacked` back-edge.
   PlacementNode? again;
 
-  /// Set when declared with `.inherit(ancestor)` — this placement's id IS the
-  /// named ancestor's (structurally), so its push verb takes no id and reads
-  /// the ancestor's live id instead.
+  /// Set when declared with `.inherit(ancestor)`.
   PlacementNode? inheritSource;
 
   Iterable<PlacementNode> get ancestors sync* {
@@ -35,134 +41,224 @@ class PlacementNode {
       identical(this, other) || ancestors.any((a) => identical(a, other));
 }
 
-/// Reads the grammar tree from the spec enum's static `graph` field,
-/// syntactically. The tree literal is runtime-built, so the builder walks its
-/// AST: enum-row invocations declare placements, `.cycled`/`.stacked` declare a
-/// back-edge to the nearest same-screen ancestor, and static expression-bodied
-/// helper calls inline their body.
-Future<List<PlacementNode>> readTree(
-  EnumElement element,
-  BuildStep buildStep,
-  Set<String> rows,
-) async {
-  final node = await buildStep.resolver
-      .astNodeFor(element.firstFragment, resolve: false);
-  if (node is! EnumDeclaration) {
-    throw InvalidGenerationSourceError('could not read the spec enum AST',
-        element: element);
-  }
+/// The virtual tree plus every enum it spans (root + grafted sub-enums).
+class TreeModel {
+  TreeModel(this.tree, this.enums);
+  final List<PlacementNode> tree;
+  final List<EnumElement> enums;
+}
 
-  final body = node.body;
-  if (body is! BlockEnumBody) {
-    throw InvalidGenerationSourceError('the spec enum has no body',
-        element: element);
-  }
-  Expression? graph;
-  final helpers = <String, Expression>{};
-  for (final member in body.members) {
-    if (member is FieldDeclaration) {
-      for (final field in member.fields.variables) {
-        if (field.name.lexeme == 'graph') graph = field.initializer;
+/// One enum's syntactic surface: its name, screen-row names, expression-bodied
+/// helpers, and its named fields (`graph`, `subtree`, …) as AST expressions.
+class _Frame {
+  _Frame(this.spec, this.rows, this.helpers, this.fields);
+  final String spec;
+  final Set<String> rows;
+  final Map<String, Expression> helpers;
+  final Map<String, Expression> fields;
+}
+
+/// Reads the grammar tree from the root enum's static `graph` field, following
+/// `graft(Sub.subtree)` / `graft(Sub.screen)` into sub-enums to build ONE
+/// virtual tree. Purely syntactic: enum-row invocations declare placements,
+/// `.cycled`/`.stacked` declare a back-edge, `.keep`/`.forget` toggle liveness,
+/// static expression-bodied helpers inline their body, and `graft` splices a
+/// foreign family's subtree (tagged with its own [PlacementNode.spec]).
+Future<TreeModel> readTree(EnumElement root, BuildStep buildStep) async {
+  final frames = <String, _Frame>{};
+  final enums = <EnumElement>[];
+
+  Future<_Frame> frameOf(EnumElement e) async {
+    final existing = frames[e.name];
+    if (existing != null) return existing;
+    final ast =
+        await buildStep.resolver.astNodeFor(e.firstFragment, resolve: false);
+    if (ast is! EnumDeclaration || ast.body is! BlockEnumBody) {
+      throw InvalidGenerationSourceError('could not read the enum AST',
+          element: e);
+    }
+    final helpers = <String, Expression>{};
+    final fields = <String, Expression>{};
+    for (final member in (ast.body as BlockEnumBody).members) {
+      if (member is FieldDeclaration) {
+        for (final v in member.fields.variables) {
+          if (v.initializer != null) fields[v.name.lexeme] = v.initializer!;
+        }
+      }
+      if (member is MethodDeclaration && member.body is ExpressionFunctionBody) {
+        helpers[member.name.lexeme] =
+            (member.body as ExpressionFunctionBody).expression;
       }
     }
-    if (member is MethodDeclaration && member.body is ExpressionFunctionBody) {
-      helpers[member.name.lexeme] =
-          (member.body as ExpressionFunctionBody).expression;
-    }
-  }
-  if (graph is! MethodInvocation) {
-    throw InvalidGenerationSourceError(
-        'the spec enum needs a static `graph` field constructing a NavGraph '
-        'with the tree as its first argument',
-        element: element);
+    final rows = {
+      for (final f in e.fields)
+        if (f.isEnumConstant && f.name != null) f.name!,
+    };
+    final frame = _Frame(e.name!, rows, helpers, fields);
+    frames[e.name!] = frame;
+    enums.add(e);
+    return frame;
   }
 
-  PlacementNode place(Expression expr, List<PlacementNode> ancestors) {
-    PlacementNode placeCall(
+  // Resolve a graft target enum by NAME from the root library's scope (the AST
+  // is unresolved, so we can't read `.element` off the identifier).
+  final rootLib = root.library;
+  EnumElement findEnum(String name) {
+    final libs = [
+      rootLib,
+      for (final f in rootLib.fragments) ...f.importedLibraries,
+    ];
+    for (final lib in libs) {
+      for (final en in lib.enums) {
+        if (en.name == name) return en;
+      }
+    }
+    throw InvalidGenerationSourceError(
+        'graft target enum "$name" is not visible from this library', element: root);
+  }
+
+  // The sub-enum a `graft(...)` argument targets (its prefix's name).
+  EnumElement graftEnum(Expression arg) {
+    final name = switch (arg) {
+      PrefixedIdentifier(:final prefix) => prefix.name,
+      MethodInvocation(target: SimpleIdentifier(:final name)) => name,
+      _ => throw InvalidGenerationSourceError(
+          'graft expects `OtherEnum.subtree` / `OtherEnum.screen`, got "$arg"',
+          element: root),
+    };
+    return findEnum(name);
+  }
+
+  // The sub-expression to place for a graft: a `subtree`/field ref resolves to
+  // that field's initializer; a bare screen / inline build is placed as-is.
+  Expression graftExpr(Expression arg, _Frame frame) {
+    if (arg is PrefixedIdentifier && frame.fields.containsKey(arg.identifier.name)) {
+      return frame.fields[arg.identifier.name]!;
+    }
+    if (arg is PrefixedIdentifier && frame.rows.contains(arg.identifier.name)) {
+      return arg.identifier; // graft(Sub.screen) — a bare leaf
+    }
+    return arg; // inline `Sub.x({...})`
+  }
+
+  late final Future<PlacementNode> Function(Expression, List<PlacementNode>, _Frame)
+      place;
+
+  Future<PlacementNode> placeImpl(
+      Expression expr, List<PlacementNode> ancestors, _Frame frame) async {
+    final spec = frame.spec;
+    final rows = frame.rows;
+
+    Future<PlacementNode> placeCall(
         String name, ArgumentList args, List<PlacementNode> ancestors,
-        {required bool keep}) {
-      final placed = PlacementNode(name,
+        {bool keep = false, bool forget = false}) async {
+      final placed = PlacementNode(name, spec,
           [for (final a in ancestors) a.screen, name], ancestors.lastOrNull)
-        ..keep = keep;
+        ..keep = keep
+        ..forget = forget;
       final children = args.arguments.firstOrNull;
       if (children is SetOrMapLiteral) {
         for (final child in children.elements) {
           if (child is! Expression) {
             throw InvalidGenerationSourceError(
-                'unsupported element in the tree literal: $child',
-                element: element);
+                'unsupported element in the tree literal: $child', element: root);
           }
-          placed.children.add(place(child, [...ancestors, placed]));
+          placed.children.add(await place(child, [...ancestors, placed], frame));
         }
       }
       return placed;
     }
 
     switch (expr) {
+      // graft(Sub.subtree) — splice a foreign family's subtree under here.
+      case MethodInvocation(
+          methodName: SimpleIdentifier(name: 'graft'),
+          :final argumentList,
+        ):
+        final arg = argumentList.arguments.first as Expression;
+        final sub = await frameOf(graftEnum(arg));
+        return place(graftExpr(arg, sub), ancestors, sub);
       case SimpleIdentifier(:final name) when rows.contains(name):
-        return PlacementNode(name,
+        return PlacementNode(name, spec,
             [for (final a in ancestors) a.screen, name], ancestors.lastOrNull);
       case PrefixedIdentifier(
-            :final prefix,
-            identifier: SimpleIdentifier(name: 'cycled' || 'stacked')
-          )
+          :final prefix,
+          identifier: SimpleIdentifier(name: 'cycled' || 'stacked'),
+        )
           when rows.contains(prefix.name):
         final target = ancestors.lastWhere((a) => a.screen == prefix.name,
             orElse: () => throw InvalidGenerationSourceError(
                 '"${prefix.name}.${expr.identifier.name}" has no same-screen ancestor',
-                element: element));
-        return PlacementNode(prefix.name,
-            [for (final a in ancestors) a.screen, prefix.name], ancestors.lastOrNull)
+                element: root));
+        return PlacementNode(prefix.name, spec,
+            [for (final a in ancestors) a.screen, prefix.name],
+            ancestors.lastOrNull)
           ..again = target;
-      // home.keep({...}) — preservation doesn't change edges, only lifetime.
       case MethodInvocation(
-            target: SimpleIdentifier(:final name),
-            methodName: SimpleIdentifier(name: 'keep'),
-            :final argumentList
-          )
+          target: SimpleIdentifier(:final name),
+          methodName: SimpleIdentifier(name: 'keep'),
+          :final argumentList,
+        )
           when rows.contains(name):
         return placeCall(name, argumentList, ancestors, keep: true);
-      // editAd.inherit(ad) — the placement's id is its ancestor's; resolve the
-      // source against the live ancestors (transitive: an inherited ancestor
-      // forwards to ITS source). Wraps the underlying placement (with children).
       case MethodInvocation(
-            target: final inner?,
-            methodName: SimpleIdentifier(name: 'inherit'),
-            :final argumentList
-          )
+          target: SimpleIdentifier(:final name),
+          methodName: SimpleIdentifier(name: 'forget'),
+          :final argumentList,
+        )
+          when rows.contains(name):
+        return placeCall(name, argumentList, ancestors, forget: true);
+      case MethodInvocation(
+          target: final inner?,
+          methodName: SimpleIdentifier(name: 'inherit'),
+          :final argumentList,
+        )
           when argumentList.arguments.firstOrNull is SimpleIdentifier &&
               rows.contains(
                   (argumentList.arguments.first as SimpleIdentifier).name):
-        final placed = place(inner, ancestors);
+        final placed = await place(inner, ancestors, frame);
         final srcName = (argumentList.arguments.first as SimpleIdentifier).name;
         final src = placed.ancestors.firstWhere((a) => a.screen == srcName,
             orElse: () => throw InvalidGenerationSourceError(
                 '"${placed.screen}.inherit($srcName)" — $srcName is not an ancestor',
-                element: element));
+                element: root));
         placed.inheritSource = src.inheritSource ?? src;
         return placed;
       case MethodInvocation(
-            methodName: SimpleIdentifier(:final name),
-            :final argumentList
-          )
+          methodName: SimpleIdentifier(:final name),
+          :final argumentList,
+        )
           when rows.contains(name):
-        return placeCall(name, argumentList, ancestors, keep: false);
+        return placeCall(name, argumentList, ancestors);
       case MethodInvocation(methodName: SimpleIdentifier(:final name))
-          when helpers.containsKey(name):
-        return place(helpers[name]!, ancestors);
+          when frame.helpers.containsKey(name):
+        return place(frame.helpers[name]!, ancestors, frame);
       default:
         throw InvalidGenerationSourceError(
             'cannot read tree expression "$expr" — use enum rows, .cycled/.stacked, '
-            'or expression-bodied static helpers',
-            element: element);
+            'graft, or expression-bodied static helpers',
+            element: root);
     }
   }
 
-  final tree = graph.argumentList.arguments.firstOrNull;
-  if (tree is! SetOrMapLiteral) {
+  place = placeImpl;
+
+  final rootFrame = await frameOf(root);
+  final graph = rootFrame.fields['graph'];
+  if (graph is! MethodInvocation) {
+    throw InvalidGenerationSourceError(
+        'the spec enum needs a static `graph` field constructing a NavGraph '
+        'with the tree as its first argument',
+        element: root);
+  }
+  final treeLit = graph.argumentList.arguments.firstOrNull;
+  if (treeLit is! SetOrMapLiteral) {
     throw InvalidGenerationSourceError(
         "NavGraph's first argument must be the tree set literal",
-        element: element);
+        element: root);
   }
-  return [for (final root in tree.elements) place(root as Expression, [])];
+  final tree = [
+    for (final r in treeLit.elements) await place(r as Expression, [], rootFrame)
+  ];
+  return TreeModel(tree, enums);
 }
