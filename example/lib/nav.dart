@@ -14,16 +14,16 @@ enum _Screens with ScreenNode<_Screens> {
   home(_Page('Home')),
   feed(_Page('Feed')),
   profile(_Page('Profile')),
-  item(_Page('Item'), String), // a detail screen keyed by an id
-  editItem(_Page('Edit item'), String), // its id IS item's (see .inherit below)
+  item(_Page('Item'), Codec.string), //a detail screen keyed by an id
+  editItem(_Page('Edit item'), Codec.string), //its id IS item's (see .inherit below)
   settings(_Page('Settings')),
   about(_Page('About')),
-  account(_Page('Account'), String), // single-placement, id-bearing root
-  editAccount(_Page('Edit account'), String); // inherits account's id
+  account(_Page('Account'), Codec.string), //single-placement, id-bearing root
+  editAccount(_Page('Edit account'), Codec.string); // inherits account's id
 
   const _Screens(this.widget, [this.id]);
   final Widget widget;
-  final Type? id;
+  final Codec? id;
 
   static final graph = NavGraph<InitialScreen>(
     {

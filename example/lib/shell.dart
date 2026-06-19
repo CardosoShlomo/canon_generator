@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:canon/canon.dart';
+import 'package:canon/canon.dart'; // re-exports Codec
 
 part 'shell.nav.dart';
 
@@ -31,16 +31,16 @@ enum _Shell with ScreenNode<_Shell> {
   );
 }
 
-// Owns `product` — it carries the widget and the String id.
+// Owns `product` — it carries the widget and a uuid id codec.
 enum Shop with SubScreenNode<Shop> {
   shop(_P('Shop')),
   catalog(_P('Catalog')),
-  product(_P('Product'), String);
+  product(_P('Product'), Codec.uuid);
 
   const Shop(this.widget, [this.id]);
   @override
   final Widget? widget;
-  final Type? id;
+  final Codec? id;
 
   static final subtree = shop({
     catalog({product})

@@ -1,4 +1,3 @@
-import 'package:analyzer/dart/constant/value.dart';
 import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:build/build.dart';
@@ -40,19 +39,17 @@ bool _hasValueEquality(DartType t) {
 
 String _cap(String s) => s[0].toUpperCase() + s.substring(1);
 
-// Rebuilds a record type from a record-OF-Types id value (`(String, String)`).
-// Returns null if any field isn't a Type — then it's a record VALUE witness
-// (`('', '')`) and the caller falls back to the value's own type.
-String? _recordTypeOf(({List<DartObject> positional, Map<String, DartObject> named}) rec) {
-  String? t(DartObject o) => o.toTypeValue()?.getDisplayString();
-  final pos = [for (final p in rec.positional) t(p)];
-  final named = [for (final e in rec.named.entries) (e.key, t(e.value))];
-  if (pos.contains(null) || named.any((n) => n.$2 == null)) return null;
-  final parts = [
-    ...pos,
-    if (named.isNotEmpty) '{${[for (final n in named) '${n.$2} ${n.$1}'].join(', ')}}',
-  ];
-  return '(${parts.join(', ')})';
+// The `T` of a `Codec<T>` value's type — walks supertypes (a built-in like
+// `_UuidCodec` implements `Codec<String>`), so it works for any codec. Null when
+// the value isn't a Codec (e.g. an id-free screen with no codec).
+DartType? _codecArg(DartType? t) {
+  if (t is! InterfaceType) return null;
+  for (final s in [t, ...t.allSupertypes]) {
+    if (s.element.name == 'Codec') {
+      return s.typeArguments.isNotEmpty ? s.typeArguments.first : null;
+    }
+  }
+  return null;
 }
 String _lcFirst(String s) => s[0].toLowerCase() + s.substring(1);
 
@@ -81,20 +78,22 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       final widgetObj = value?.getField('widget');
       final owner = widgetObj != null && !widgetObj.isNull;
       if (owner) widgetOf[field.name!] = widgetObj.type?.getDisplayString();
-      // The id field gives each screen's id TYPE, in any of three forms: a Type
-      // literal (`String`), a record-OF-Types (`(String, String)`), or a sample
-      // VALUE whose type is the id type (`0` -> int, `('', '')` -> (String,
-      // String)). The value/record forms need an `Object? id` field to compile.
-      final idType = idObj?.toTypeValue();
+      // The id is a `Codec<T>` (or null for an id-free screen): T is the id type
+      // (it drives the typed verb), and the codec round-trips the value for
+      // restoration. A repeated-key `Codec.list` can't be a single-token id.
       String? idStr;
       DartType? idDartType;
-      if (idType != null) {
-        idStr = idType.getDisplayString();
-        idDartType = idType;
-      } else if (idObj != null && !idObj.isNull) {
-        final rec = idObj.toRecordValue();
-        idStr = (rec != null ? _recordTypeOf(rec) : null) ?? idObj.type?.getDisplayString();
-        idDartType = idObj.type;
+      if (idObj != null && !idObj.isNull) {
+        final ct = idObj.type;
+        if (ct is InterfaceType && ct.element.name == 'ListCodec') {
+          throw InvalidGenerationSourceError(
+              'screen "${field.name}" uses Codec.list as its id — it carries '
+              'repeated URL keys, not a single token, so it can never round-trip. '
+              'Use Codec.csv for a single-token list id.',
+              element: e);
+        }
+        idDartType = _codecArg(ct);
+        idStr = idDartType?.getDisplayString();
       }
       if (idStr != null && idDartType != null && !_hasValueEquality(idDartType)) {
         log.warning(
@@ -1279,10 +1278,13 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     for (final r in rows) {
       // An all-id-free enum declares no `id` field — nothing to assert.
       if (!specsWithId.contains(r.spec)) continue;
+      // `.id` is now the screen's Codec (or null when id-free). Assert its
+      // presence matches the generated tier — codec added/removed without a
+      // rebuild is caught here; the structure signature catches shape drift.
       if (r.idType == null) {
-        b.writeln("    assert(${sv(r.name)}.id == null, '${r.name} declares no id type but the generated tier expected none');");
+        b.writeln("    assert(${sv(r.name)}.id == null, '${r.name} has an unexpected id codec — rerun build_runner');");
       } else {
-        b.writeln("    assert(${sv(r.name)}.id == ${r.idType}, '${r.name}: stale generated id type — rerun build_runner');");
+        b.writeln("    assert(${sv(r.name)}.id != null, '${r.name} is missing its id codec — rerun build_runner');");
       }
     }
     b.writeln('    return true;');

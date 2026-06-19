@@ -25,6 +25,20 @@ class NavGraph<S> {
       {required S initial,
       required Object Function(S, Object?, Object?) pageOf});
 }
+
+class Codec<T> {
+  const Codec();
+  static const Codec<String> string = _StrCodec();
+  static const Codec<int> integer = _IntCodec();
+}
+class _StrCodec implements Codec<String> { const _StrCodec(); }
+class _IntCodec implements Codec<int> { const _IntCodec(); }
+class Record2Codec<A, B> implements Codec<(A, B)> {
+  const Record2Codec(this.a, this.b, [this.sep = '~']);
+  final Codec<A> a;
+  final Codec<B> b;
+  final String sep;
+}
 ''';
 
 // home -> item(String) -> about -> item.stacked  (item & about form a cycle).
@@ -36,12 +50,12 @@ part 'spec.nav.dart';
 @screens
 enum _Screens with ScreenNode<Object?, _Screens> {
   home(0),
-  item(0, String),
+  item(0, Codec.string),
   about(0);
 
   const _Screens(this.widget, [this.id]);
   final Object widget;
-  final Type? id;
+  final Codec? id;
 
   static final graph = NavGraph<_Screens>(
     {
@@ -79,7 +93,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 
   const _Screens(this.widget, [this.id]);
   final Object widget;
-  final Type? id;
+  final Codec? id;
 
   static final graph = NavGraph<_Screens>(
     {home(), feed()},
@@ -101,12 +115,12 @@ class HomeScreen { const HomeScreen(); }
 @screens
 enum _Screens with ScreenNode<Object?, _Screens> {
   home(HomeScreen()),
-  adChat(ChatScreen(), String),
-  loopChat(ChatScreen(), int);
+  adChat(ChatScreen(), Codec.string),
+  loopChat(ChatScreen(), Codec.integer);
 
   const _Screens(this.widget, [this.id]);
   final Object widget;
-  final Type? id;
+  final Codec? id;
 
   static final graph = NavGraph<_Screens>(
     {home({adChat, loopChat})},
@@ -126,12 +140,12 @@ part 'spec.nav.dart';
 @screens
 enum _Screens with ScreenNode<Object?, _Screens> {
   home(0),
-  editImage('w', ('', '')),
-  page(true, 0);
+  editImage('w', Record2Codec(Codec.string, Codec.string)),
+  page(true, Codec.integer);
 
   const _Screens(this.widget, [this.id]);
   final Object widget;
-  final Object? id;
+  final Codec? id;
 
   static final graph = NavGraph<_Screens>(
     {home({editImage, page})},
@@ -151,12 +165,12 @@ part 'spec.nav.dart';
 @screens
 enum _Screens with ScreenNode<Object?, _Screens> {
   home(0),
-  ad(0, String),
-  editAd(0, String);
+  ad(0, Codec.string),
+  editAd(0, Codec.string);
 
   const _Screens(this.widget, [this.id]);
   final Object widget;
-  final Type? id;
+  final Codec? id;
 
   static final graph = NavGraph<_Screens>(
     {home({ad({editAd.inherit(ad)})})},
@@ -177,12 +191,12 @@ part 'spec.nav.dart';
 enum _Screens with ScreenNode<Object?, _Screens> {
   home(0),
   feed(0),
-  item(0, String),
-  editItem(0, String);
+  item(0, Codec.string),
+  editItem(0, Codec.string);
 
   const _Screens(this.widget, [this.id]);
   final Object widget;
-  final Type? id;
+  final Codec? id;
 
   static final graph = NavGraph<_Screens>(
     {

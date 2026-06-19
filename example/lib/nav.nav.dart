@@ -966,47 +966,47 @@ void verifyScreens() {
   assert(() {
     assert(
       _Screens.splash.id == null,
-      'splash declares no id type but the generated tier expected none',
+      'splash has an unexpected id codec — rerun build_runner',
     );
     assert(
       _Screens.signIn.id == null,
-      'signIn declares no id type but the generated tier expected none',
+      'signIn has an unexpected id codec — rerun build_runner',
     );
     assert(
       _Screens.home.id == null,
-      'home declares no id type but the generated tier expected none',
+      'home has an unexpected id codec — rerun build_runner',
     );
     assert(
       _Screens.feed.id == null,
-      'feed declares no id type but the generated tier expected none',
+      'feed has an unexpected id codec — rerun build_runner',
     );
     assert(
       _Screens.profile.id == null,
-      'profile declares no id type but the generated tier expected none',
+      'profile has an unexpected id codec — rerun build_runner',
     );
     assert(
-      _Screens.item.id == String,
-      'item: stale generated id type — rerun build_runner',
+      _Screens.item.id != null,
+      'item is missing its id codec — rerun build_runner',
     );
     assert(
-      _Screens.editItem.id == String,
-      'editItem: stale generated id type — rerun build_runner',
+      _Screens.editItem.id != null,
+      'editItem is missing its id codec — rerun build_runner',
     );
     assert(
       _Screens.settings.id == null,
-      'settings declares no id type but the generated tier expected none',
+      'settings has an unexpected id codec — rerun build_runner',
     );
     assert(
       _Screens.about.id == null,
-      'about declares no id type but the generated tier expected none',
+      'about has an unexpected id codec — rerun build_runner',
     );
     assert(
-      _Screens.account.id == String,
-      'account: stale generated id type — rerun build_runner',
+      _Screens.account.id != null,
+      'account is missing its id codec — rerun build_runner',
     );
     assert(
-      _Screens.editAccount.id == String,
-      'editAccount: stale generated id type — rerun build_runner',
+      _Screens.editAccount.id != null,
+      'editAccount is missing its id codec — rerun build_runner',
     );
     return true;
   }());

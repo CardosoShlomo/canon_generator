@@ -1,3 +1,9 @@
+## 0.14.0
+
+- **Id is now a `Codec`, not a `Type`.** A screen declares `name(widget, Codec.uuid)`; the generator reads the verb id type `T` off the codec (records via `Record2Codec`/`Codec<(...)>`), replacing the old Type/sample-value form. `Codec.list` as an id fails the build (use `Codec.csv`).
+- Restoration is built into canon at runtime, so no `Restoration` wiring is generated.
+- Requires canon ^0.11.0.
+
 ## 0.13.0
 
 - **Subtree-enums: split a graph across enums.** The reader follows `graft(Sub.subtree)` into sub-enums to build ONE virtual tree and emits a unified `Screen` surface blind to the split — a grafted screen gets the same `goX` verb as a native one (qualified only by its home enum in emitted values). Requires canon ^0.10.0 (erased engine).

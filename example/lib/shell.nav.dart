@@ -575,15 +575,15 @@ void verifyScreens() {
   assert(() {
     assert(
       Shop.shop.id == null,
-      'shop declares no id type but the generated tier expected none',
+      'shop has an unexpected id codec — rerun build_runner',
     );
     assert(
       Shop.catalog.id == null,
-      'catalog declares no id type but the generated tier expected none',
+      'catalog has an unexpected id codec — rerun build_runner',
     );
     assert(
-      Shop.product.id == String,
-      'product: stale generated id type — rerun build_runner',
+      Shop.product.id != null,
+      'product is missing its id codec — rerun build_runner',
     );
     return true;
   }());
