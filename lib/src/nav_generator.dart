@@ -684,9 +684,10 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln('    return $spec.graph.delegate;');
     b.writeln('  }');
     b.writeln('  /// A standalone nav host for `MaterialApp(home: ...)` — no Router,');
-    b.writeln('  /// no URL/deep-link channel. Owns system back; pass a restorationId');
-    b.writeln('  /// to also persist/restore the snapshot.');
-    b.writeln('  static Widget manager({String? restorationId}) {');
+    b.writeln('  /// no URL/deep-link channel. Owns system back and snapshot');
+    b.writeln('  /// restoration (always on; override [restorationId] only to avoid a');
+    b.writeln('  /// storage-key collision).');
+    b.writeln("  static Widget manager({String restorationId = 'nav'}) {");
     b.writeln('    assert(_fresh);');
     b.writeln('    return $spec.graph.manager(restorationId: restorationId);');
     b.writeln('  }');

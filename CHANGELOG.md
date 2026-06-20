@@ -1,3 +1,7 @@
+## 0.17.0
+
+- `Screen.manager()` emits restoration on by default (`restorationId` defaults to `'nav'`). Requires canon ^0.14.0.
+
 ## 0.16.0
 
 - Emit `Screen.snapshot()` / `Screen.restore(state)` (restoration facade) and `Screen.manager()` (standalone `MaterialApp(home: ...)` host). Requires canon ^0.13.0.
