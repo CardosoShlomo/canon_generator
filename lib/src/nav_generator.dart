@@ -631,6 +631,8 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     final hasParentOf = parentScreensOf.isNotEmpty;
 
     b.writeln('// ignore_for_file: library_private_types_in_public_api');
+    // The generated bridge calls canon's @internal ScreenScope statics.
+    b.writeln('// ignore_for_file: invalid_use_of_internal_member');
     if (hasInherit) {
       // An inherited edge reads its ancestor's live id from the chain.
       b.writeln('Object? _idOf(Enum s) =>');
@@ -745,12 +747,13 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       b.writeln('  /// Resolves a widget shared by several screens to its exact');
       b.writeln('  /// (screen, typed id) — switch the sealed result exhaustively.');
       b.writeln('  static ${u.sealed} ${u.resolver}(BuildContext context) {');
-      b.writeln('    final e = ScreenScope.of(context);');
-      b.writeln('    return switch (e.screen) {');
+      b.writeln('    final s = ScreenScope.of(context);');
+      b.writeln('    return switch (s) {');
       for (final r in u.members) {
-        b.writeln('      ${sv(r.name)} => ${_cap(r.name)}Id(e.id as ${r.idType ?? 'Object?'}),');
+        b.writeln('      ${sv(r.name)} => ${_cap(r.name)}Id('
+            'ScreenScope.idOf<${r.idType ?? 'Object?'}>(context, ${sv(r.name)})),');
       }
-      b.writeln("      _ => throw StateError('${u.resolver}() under \${e.screen.name}'),");
+      b.writeln("      _ => throw StateError('${u.resolver}() under \${s.name}'),");
       b.writeln('    };');
       b.writeln('  }');
     }
@@ -1263,14 +1266,25 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       }
     }
 
+    // A typed key for ONLY the id-bearing screens, so `context.idOf(.x)` can't
+    // be asked for a screen that has no id (it wouldn't compile).
+    final idRows = [for (final r in rows) if (r.idType != null) r];
+    if (idRows.isNotEmpty) {
+      b.writeln('extension type const ScreenId<I>._(Enum spec) {');
+      for (final r in idRows) {
+        b.writeln(
+            '  static const ${r.name} = ScreenId<${r.idType}>._(${sv(r.name)});');
+      }
+      b.writeln('}');
+    }
+
     b.writeln('extension ScreenIdOf on BuildContext {');
-    b.writeln('  I idOf<I>(Screen<I> screen) {');
-    b.writeln('    final entry = ScreenScope.of(this);');
-    b.writeln("    assert(identical(entry.screen, screen.spec), 'idOf(\${screen.name}) under \${entry.screen.name}');");
-    b.writeln('    return entry.id as I;');
-    b.writeln('  }');
+    if (idRows.isNotEmpty) {
+      b.writeln(
+          '  I idOf<I>(ScreenId<I> screen) => ScreenScope.idOf<I>(this, screen.spec);');
+    }
     b.writeln('  /// The screen this widget belongs to (its enclosing scope).');
-    b.writeln('  Screen<Object?> get screen => Screen.of(ScreenScope.of(this).screen);');
+    b.writeln('  Screen<Object?> get screen => Screen.of(ScreenScope.of(this));');
     b.writeln('}');
 
     b.writeln('void verifyScreens() {');

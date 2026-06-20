@@ -1,3 +1,7 @@
+## 0.15.0
+
+- Emit `ScreenId<I>` (id-bearing screens only) + a `context.idOf(.x)` that delegates to canon — typed, non-null id reads; asking the id of an id-free screen no longer compiles. Raw ids are no longer touched in generated consumer code. Requires canon ^0.12.0.
+
 ## 0.14.0
 
 - **Id is now a `Codec`, not a `Type`.** A screen declares `name(widget, Codec.uuid)`; the generator reads the verb id type `T` off the codec (records via `Record2Codec`/`Codec<(...)>`), replacing the old Type/sample-value form. `Codec.list` as an id fails the build (use `Codec.csv`).

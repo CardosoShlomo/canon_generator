@@ -24,10 +24,7 @@ enum _Shell with ScreenNode<_Shell> {
       }),
     },
     initial: .home,
-    pageOf: (widget, ctx, key) => MaterialPage(
-      key: key,
-      child: ScreenScope(entry: ctx.entry, child: widget),
-    ),
+    pageOf: (widget, ctx, key) => MaterialPage(key: key, child: widget),
   );
 }
 

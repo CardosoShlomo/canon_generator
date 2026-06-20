@@ -337,8 +337,8 @@ void main() {
           contains('final class AdChatId extends ChatScreenId'),
           contains('final class LoopChatId extends ChatScreenId'),
           contains('static ChatScreenId chatScreenId(BuildContext context)'),
-          contains('_Screens.adChat => AdChatId(e.id as String)'),
-          contains('_Screens.loopChat => LoopChatId(e.id as int)'),
+          contains('ScreenScope.idOf<String>(context, _Screens.adChat)'),
+          contains('ScreenScope.idOf<int>(context, _Screens.loopChat)'),
           isNot(contains('HomeScreenId')), // single-use widget: no union
         ]),
         spec: _sharedSpec,

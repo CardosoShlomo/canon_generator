@@ -40,10 +40,7 @@ enum _Screens with ScreenNode<_Screens> {
       profile.keep({settings({about}), account({editAccount.inherit(account)})}),
     },
     initial: .home.settings.about, // a descent chain seeds the whole stack
-    pageOf: (widget, ctx, key) => MaterialPage(
-      key: key,
-      child: ScreenScope(entry: ctx.entry, child: widget),
-    ),
+    pageOf: (widget, ctx, key) => MaterialPage(key: key, child: widget),
   );
 }
 

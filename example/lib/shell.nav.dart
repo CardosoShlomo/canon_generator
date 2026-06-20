@@ -8,6 +8,7 @@ part of 'shell.dart';
 // **************************************************************************
 
 // ignore_for_file: library_private_types_in_public_api
+// ignore_for_file: invalid_use_of_internal_member
 bool _chainIs(List<Enum> a, List<Enum> b) {
   if (a.length != b.length) return false;
   for (var i = 0; i < a.length; i++) {
@@ -557,18 +558,15 @@ final class SavedNav extends AnyNav
   }
 }
 
+extension type const ScreenId<I>._(Enum spec) {
+  static const product = ScreenId<String>._(Shop.product);
+}
+
 extension ScreenIdOf on BuildContext {
-  I idOf<I>(Screen<I> screen) {
-    final entry = ScreenScope.of(this);
-    assert(
-      identical(entry.screen, screen.spec),
-      'idOf(${screen.name}) under ${entry.screen.name}',
-    );
-    return entry.id as I;
-  }
+  I idOf<I>(ScreenId<I> screen) => ScreenScope.idOf<I>(this, screen.spec);
 
   /// The screen this widget belongs to (its enclosing scope).
-  Screen<Object?> get screen => Screen.of(ScreenScope.of(this).screen);
+  Screen<Object?> get screen => Screen.of(ScreenScope.of(this));
 }
 
 void verifyScreens() {
