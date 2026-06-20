@@ -458,6 +458,17 @@ void main() {
         isNot(contains('enum Pop')), // its token is gone too
       )));
 
+  test('Screen.go(Hop) returns a KickstartNav union narrowable via .at', () =>
+      _expectGenerated(allOf([
+        contains('sealed class KickstartPlacement {}'),
+        contains('final class KickstartNav extends AnyNav'),
+        contains('static KickstartNav go<N extends AnyNav>(Hop<N> hop)'),
+        contains('return const KickstartNav._();'),
+        contains('KickstartPlacement get at => Screen.at as KickstartPlacement'),
+        // kick-startable navs implement the marker
+        matches(RegExp(r'implements[^{\n]*KickstartPlacement')),
+      ])));
+
   test('emits the global canPop / Screen.pop sugar surface', () =>
       _expectGenerated(allOf([
         contains('sealed class CanPopPlacement {}'),

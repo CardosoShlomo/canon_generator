@@ -1,3 +1,7 @@
+## 0.19.0
+
+- `Screen.go(Hop)` now returns a `KickstartNav` — `.at` narrows to the exact (single-placement) target it landed on, for an exhaustive switch on a dynamic/ternary kick-start.
+
 ## 0.18.0
 
 - Broad reach: a single-placement id screen gets `goX(id)` on every ancestor that can reach it with that one id (id-free intermediates auto-filled); inherit chains flatten to the ultimate id source.

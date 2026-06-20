@@ -79,9 +79,9 @@ final class Screen<I> {
   /// false on a stale/incompatible snapshot.
   static bool restore(Map<String, Object?> state) =>
       _Shell.graph.restore(state);
-  static N go<N extends AnyNav>(Hop<N> hop) {
+  static KickstartNav go<N extends AnyNav>(Hop<N> hop) {
     _Shell.graph.go(hop.spec, hop.id);
-    return hop.nav;
+    return const KickstartNav._();
   }
 
   /// If the live stack ends with this selector path (every pinned id and,
@@ -379,7 +379,15 @@ final class PopDestNav extends AnyNav {
   }
 }
 
-final class HomeNav extends AnyNav implements PopDestPlacement {
+sealed class KickstartPlacement {}
+
+final class KickstartNav extends AnyNav {
+  const KickstartNav._() : super._();
+  KickstartPlacement get at => Screen.at as KickstartPlacement;
+}
+
+final class HomeNav extends AnyNav
+    implements PopDestPlacement, KickstartPlacement {
   const HomeNav._() : super._();
   SettingsNav goSettings() {
     _Shell.graph.go(_Shell.settings, null, true);
@@ -416,7 +424,8 @@ final class HomeHop<N extends AnyNav> {
   static const saved = HomeHop<SavedNav>._(Wishlist.saved, null, SavedNav._());
 }
 
-final class SettingsNav extends AnyNav implements CanPopPlacement {
+final class SettingsNav extends AnyNav
+    implements CanPopPlacement, KickstartPlacement {
   const SettingsNav._() : super._();
   HomeNav pop() {
     _Shell.graph.pop();
@@ -425,7 +434,7 @@ final class SettingsNav extends AnyNav implements CanPopPlacement {
 }
 
 final class ShopNav extends AnyNav
-    implements CanPopPlacement, PopDestPlacement {
+    implements CanPopPlacement, PopDestPlacement, KickstartPlacement {
   const ShopNav._() : super._();
   CatalogNav goCatalog() {
     _Shell.graph.go(Shop.catalog, null, true);
@@ -439,7 +448,7 @@ final class ShopNav extends AnyNav
 }
 
 final class CatalogNav extends AnyNav
-    implements CanPopPlacement, PopDestPlacement {
+    implements CanPopPlacement, PopDestPlacement, KickstartPlacement {
   const CatalogNav._() : super._();
   HomeShopCatalogProductNav goProduct(String id) {
     _Shell.graph.go(Shop.product, id, true);
@@ -562,7 +571,7 @@ final class HomeSavedProductPop<N extends AnyNav> {
 }
 
 final class SavedNav extends AnyNav
-    implements CanPopPlacement, PopDestPlacement {
+    implements CanPopPlacement, PopDestPlacement, KickstartPlacement {
   const SavedNav._() : super._();
   HomeSavedProductNav goProduct(String id) {
     _Shell.graph.go(Shop.product, id, true);

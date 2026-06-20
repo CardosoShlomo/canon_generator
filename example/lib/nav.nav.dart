@@ -91,9 +91,9 @@ final class Screen<I> {
   /// false on a stale/incompatible snapshot.
   static bool restore(Map<String, Object?> state) =>
       _Screens.graph.restore(state);
-  static N go<N extends AnyNav>(Hop<N> hop) {
+  static KickstartNav go<N extends AnyNav>(Hop<N> hop) {
     _Screens.graph.go(hop.spec, hop.id);
-    return hop.nav;
+    return const KickstartNav._();
   }
 
   /// If the live stack ends with this selector path (every pinned id and,
@@ -504,6 +504,13 @@ final class PopDestNav extends AnyNav {
   }
 }
 
+sealed class KickstartPlacement {}
+
+final class KickstartNav extends AnyNav {
+  const KickstartNav._() : super._();
+  KickstartPlacement get at => Screen.at as KickstartPlacement;
+}
+
 final class Keep {
   const Keep._(this.spec);
   final Enum spec;
@@ -512,15 +519,16 @@ final class Keep {
   static const profile = Keep._(_Screens.profile);
 }
 
-final class SplashNav extends AnyNav {
+final class SplashNav extends AnyNav implements KickstartPlacement {
   const SplashNav._() : super._();
 }
 
-final class SignInNav extends AnyNav {
+final class SignInNav extends AnyNav implements KickstartPlacement {
   const SignInNav._() : super._();
 }
 
-final class HomeNav extends AnyNav implements PopDestPlacement {
+final class HomeNav extends AnyNav
+    implements PopDestPlacement, KickstartPlacement {
   const HomeNav._() : super._();
   HomeItemNav goItem(String id) {
     _Screens.graph.go(_Screens.item, id, true);
@@ -552,7 +560,8 @@ final class HomeHop<N extends AnyNav> {
   );
 }
 
-final class FeedNav extends AnyNav implements PopDestPlacement {
+final class FeedNav extends AnyNav
+    implements PopDestPlacement, KickstartPlacement {
   const FeedNav._() : super._();
   FeedItemNav goItem(String id) {
     _Screens.graph.go(_Screens.item, id, true);
@@ -560,7 +569,8 @@ final class FeedNav extends AnyNav implements PopDestPlacement {
   }
 }
 
-final class ProfileNav extends AnyNav implements PopDestPlacement {
+final class ProfileNav extends AnyNav
+    implements PopDestPlacement, KickstartPlacement {
   const ProfileNav._() : super._();
   ProfileSettingsNav goSettings() {
     _Screens.graph.go(_Screens.settings, null, true);
@@ -927,7 +937,7 @@ final class ProfileSettingsAboutPop<N extends AnyNav> {
 }
 
 final class AccountNav extends AnyNav
-    implements CanPopPlacement, PopDestPlacement {
+    implements CanPopPlacement, PopDestPlacement, KickstartPlacement {
   const AccountNav._() : super._();
   EditAccountNav goEditAccount() {
     _Screens.graph.go(_Screens.editAccount, _idOf(_Screens.account), true);
@@ -940,7 +950,8 @@ final class AccountNav extends AnyNav
   }
 }
 
-final class EditAccountNav extends AnyNav implements CanPopPlacement {
+final class EditAccountNav extends AnyNav
+    implements CanPopPlacement, KickstartPlacement {
   const EditAccountNav._() : super._();
   AccountNav pop() {
     _Screens.graph.pop();

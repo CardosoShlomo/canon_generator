@@ -437,6 +437,18 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
           '  }';
     }
 
+    // Kick-start union: every globally reachable (single-placement) screen's nav
+    // implements `KickstartPlacement`, so `Screen.go(Hop)` returns a `KickstartNav`
+    // whose `.at` narrows to the exact target it landed on.
+    final kickstartNavs = [
+      for (final r in rows)
+        if (globalSafe(r.name)) unionName(r.name)
+    ];
+    final hasKickstart = kickstartNavs.isNotEmpty;
+    for (final nav in kickstartNavs) {
+      (crossImpl[nav] ??= {}).add('KickstartPlacement');
+    }
+
     // parentOf exists only to DISAMBIGUATE: it offers a screen X iff X has 2+
     // distinct parent placements (with one parent you'd just name it, e.g.
     // `Screen.on(.ad)?.goEditAd()`; a root has none). `Screen.on(.parentOf.x)`
@@ -759,10 +771,12 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln('  /// false on a stale/incompatible snapshot.');
     b.writeln('  static bool restore(Map<String, Object?> state) =>');
     b.writeln('      $spec.graph.restore(state);');
-    b.writeln('  static N go<N extends AnyNav>(Hop<N> hop) {');
-    b.writeln('    $spec.graph.go(hop.spec, hop.id);');
-    b.writeln('    return hop.nav;');
-    b.writeln('  }');
+    if (hasKickstart) {
+      b.writeln('  static KickstartNav go<N extends AnyNav>(Hop<N> hop) {');
+      b.writeln('    $spec.graph.go(hop.spec, hop.id);');
+      b.writeln('    return const KickstartNav._();');
+      b.writeln('  }');
+    }
     b.writeln('  /// If the live stack ends with this selector path (every pinned id and,');
     b.writeln('  /// for a cyclic terminal, its depth matching), its nav — else null.');
     b.writeln('  static N? on<N extends AnyNav>(On<N> which) {');
@@ -847,24 +861,26 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     }
     b.writeln('}');
 
-    b.writeln('final class Hop<N extends AnyNav> {');
-    b.writeln('  const Hop._(this.spec, this.id, this.nav);');
-    b.writeln('  final Enum spec;');
-    b.writeln('  final Object? id;');
-    b.writeln('  final N nav;');
-    for (final r in rows) {
-      if (!globalSafe(r.name)) continue; // id-behind targets: reach via chaining
-      // Inherit-rescued kick-starts need a multi-step chain; a Hop is one go, so
-      // they get the named Screen.goX only, not the Hop/ternary form.
-      if (placements[r.name]!.single.inheritSource != null) continue;
-      final n = unionName(r.name);
-      if (r.idType == null) {
-        b.writeln('  static const ${r.name} = Hop<$n>._(${sv(r.name)}, null, $n._());');
-      } else {
-        b.writeln('  static Hop<$n> ${r.name}(${r.idType} id) => Hop._(${sv(r.name)}, id, const $n._());');
+    if (hasKickstart) {
+      b.writeln('final class Hop<N extends AnyNav> {');
+      b.writeln('  const Hop._(this.spec, this.id, this.nav);');
+      b.writeln('  final Enum spec;');
+      b.writeln('  final Object? id;');
+      b.writeln('  final N nav;');
+      for (final r in rows) {
+        if (!globalSafe(r.name)) continue; // id-behind targets: reach via chaining
+        // Inherit-rescued kick-starts need a multi-step chain; a Hop is one go, so
+        // they get the named Screen.goX only, not the Hop/ternary form.
+        if (placements[r.name]!.single.inheritSource != null) continue;
+        final n = unionName(r.name);
+        if (r.idType == null) {
+          b.writeln('  static const ${r.name} = Hop<$n>._(${sv(r.name)}, null, $n._());');
+        } else {
+          b.writeln('  static Hop<$n> ${r.name}(${r.idType} id) => Hop._(${sv(r.name)}, id, const $n._());');
+        }
       }
+      b.writeln('}');
     }
-    b.writeln('}');
 
     // Screen.on(.path) selector: a suffix the matcher tests against the live
     // stack. On<N> accumulates one (spec, id) per segment; each chain step
@@ -1127,6 +1143,17 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       }
       b.writeln("    throw StateError('unresolved PopDestNav: \$c');");
       b.writeln('  }');
+      b.writeln('}');
+    }
+
+    // Kick-start union: `Screen.go(Hop)` returns this; `.at` narrows to the exact
+    // single-placement target it landed on (every kick-startable nav implements
+    // KickstartPlacement). Switch it exhaustively.
+    if (hasKickstart) {
+      b.writeln('sealed class KickstartPlacement {}');
+      b.writeln('final class KickstartNav extends AnyNav {');
+      b.writeln('  const KickstartNav._() : super._();');
+      b.writeln('  KickstartPlacement get at => Screen.at as KickstartPlacement;');
       b.writeln('}');
     }
 
