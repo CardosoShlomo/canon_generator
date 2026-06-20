@@ -63,9 +63,10 @@ final class Screen<I> {
   }
 
   /// A standalone nav host for `MaterialApp(home: ...)` — no Router,
-  /// no URL/deep-link channel. Owns system back; pass a restorationId
-  /// to also persist/restore the snapshot.
-  static Widget manager({String? restorationId}) {
+  /// no URL/deep-link channel. Owns system back and snapshot
+  /// restoration (always on; override [restorationId] only to avoid a
+  /// storage-key collision).
+  static Widget manager({String restorationId = 'nav'}) {
     assert(_fresh);
     return _Shell.graph.manager(restorationId: restorationId);
   }

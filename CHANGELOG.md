@@ -1,3 +1,7 @@
+## 0.18.0
+
+- Broad reach: a single-placement id screen gets `goX(id)` on every ancestor that can reach it with that one id (id-free intermediates auto-filled); inherit chains flatten to the ultimate id source.
+
 ## 0.17.0
 
 - `Screen.manager()` emits restoration on by default (`restorationId` defaults to `'nav'`). Requires canon ^0.14.0.

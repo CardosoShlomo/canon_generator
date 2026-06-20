@@ -180,6 +180,88 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 }
 ''';
 
+// A 3-deep inherit chain with an id-free intermediate (section): every ancestor
+// ABOVE the id source (ad) can reach editAd with the one id; the intermediate is
+// stamped null, the source and target with the id.
+const _deepInheritSpec = '''
+import 'package:canon/canon.dart';
+
+part 'spec.nav.dart';
+
+@screens
+enum _Screens with ScreenNode<Object?, _Screens> {
+  home(0),
+  section(0),
+  ad(0, Codec.string),
+  editAd(0, Codec.string);
+
+  const _Screens(this.widget, [this.id]);
+  final Object widget;
+  final Codec? id;
+
+  static final graph = NavGraph<_Screens>(
+    {home({section({ad({editAd.inherit(ad)})})})},
+    initial: home,
+    pageOf: (s, c, k) => 0,
+  );
+}
+''';
+
+// A chain of inherited id-screens: itemPreview inherits item, editItem inherits
+// itemPreview — all three share item's one id. From item's parent (home) you can
+// reach either with that single id; the chain flattens to the ultimate source.
+const _chainInheritSpec = '''
+import 'package:canon/canon.dart';
+
+part 'spec.nav.dart';
+
+@screens
+enum _Screens with ScreenNode<Object?, _Screens> {
+  home(0),
+  item(0, Codec.string),
+  itemPreview(0, Codec.string),
+  editItem(0, Codec.string);
+
+  const _Screens(this.widget, [this.id]);
+  final Object widget;
+  final Codec? id;
+
+  static final graph = NavGraph<_Screens>(
+    {home({item({itemPreview({editItem.inherit(itemPreview)}).inherit(item)})})},
+    initial: home,
+    pageOf: (s, c, k) => 0,
+  );
+}
+''';
+
+// chatProfile inherits profile, but chat (its OWN id) sits between them. No
+// single id can reach chatProfile from above chat (you'd need profile's AND
+// chat's ids), so there is no goChatProfile(id) reach verb anywhere; at chat the
+// id is already live, so it's the no-arg goChatProfile().
+const _interposedIdSpec = '''
+import 'package:canon/canon.dart';
+
+part 'spec.nav.dart';
+
+@screens
+enum _Screens with ScreenNode<Object?, _Screens> {
+  home(0),
+  profile(0, Codec.string),
+  chat(0, Codec.string),
+  chatProfile(0, Codec.string);
+
+  const _Screens(this.widget, [this.id]);
+  final Object widget;
+  final Codec? id;
+
+  static final graph = NavGraph<_Screens>(
+    {home({profile({chat({chatProfile.inherit(profile)})})})},
+    initial: home,
+    pageOf: (s, c, k) => 0,
+  );
+}
+''';
+
 // item sits under TWO parents (home & feed) -> ambiguous -> gets parentOf.
 // editItem sits under one parent (item) -> nameable -> no parentOf entry.
 const _parentOfSpec = '''
@@ -229,6 +311,71 @@ void main() {
           isNot(contains('Hop<EditAdNav>')), // rescued kick-start is not a Hop
         ]),
         spec: _inheritSpec,
+      ));
+
+  test('inherit ancestor-reach: parent gets goEdit(id), pushing both levels', () =>
+      _expectGenerated(
+        allOf([
+          contains('EditAdNav goEditAd(String id) {'), // on the ancestor handle (home)
+          // edge-required source push — distinguishes this from the kick-start,
+          // which pushes the source with a plain (non-edge) go.
+          contains('_Screens.graph.go(_Screens.ad, id, true)'),
+          contains('_Screens.graph.go(_Screens.editAd, id, true)'),
+        ]),
+        spec: _inheritSpec,
+      ));
+
+  test('inherit ancestor-reach reaches every ancestor above the source', () =>
+      _expectGenerated(
+        allOf([
+          // direct parent of the source (section): push source + target.
+          contains('EditAdNav goEditAd(String id) {\n'
+              '    _Screens.graph.go(_Screens.ad, id, true);\n'
+              '    _Screens.graph.go(_Screens.editAd, id, true);'),
+          // two levels up (home): the id-free intermediate is stamped null.
+          contains('EditAdNav goEditAd(String id) {\n'
+              '    _Screens.graph.go(_Screens.section, null, true);\n'
+              '    _Screens.graph.go(_Screens.ad, id, true);\n'
+              '    _Screens.graph.go(_Screens.editAd, id, true);'),
+        ]),
+        spec: _deepInheritSpec,
+      ));
+
+  test('inherit chain: one id reaches every inherited screen in the chain', () =>
+      _expectGenerated(
+        allOf([
+          // from item's parent: reach the mid-chain inherited screen with the id.
+          contains('ItemPreviewNav goItemPreview(String id) {\n'
+              '    _Screens.graph.go(_Screens.item, id, true);\n'
+              '    _Screens.graph.go(_Screens.itemPreview, id, true);'),
+          // ...and the end-of-chain one, the single id stamped at every level.
+          contains('EditItemNav goEditItem(String id) {\n'
+              '    _Screens.graph.go(_Screens.item, id, true);\n'
+              '    _Screens.graph.go(_Screens.itemPreview, id, true);\n'
+              '    _Screens.graph.go(_Screens.editItem, id, true);'),
+        ]),
+        spec: _chainInheritSpec,
+      ));
+
+  test('inherit blocked by an interposed id: no single-id reach, no-arg at chat', () =>
+      _expectGenerated(
+        allOf([
+          // at chat the source id is live → no-arg verb reading it.
+          contains('goChatProfile() {\n'
+              '    _Screens.graph.go(_Screens.chatProfile, _idOf(_Screens.profile), true)'),
+          // chat's id sits between profile and chatProfile → no single-id reach.
+          isNot(contains('goChatProfile(String id)')),
+        ]),
+        spec: _interposedIdSpec,
+      ));
+
+  test('broad reach: a plain id screen is reachable through id-free intermediates', () =>
+      _expectGenerated(
+        // home reaches ad with just ad's id — section (id-free) is stamped null.
+        contains('AdNav goAd(String id) {\n'
+            '    _Screens.graph.go(_Screens.section, null, true);\n'
+            '    _Screens.graph.go(_Screens.ad, id, true);'),
+        spec: _deepInheritSpec,
       ));
 
   test('parentOf includes back-edge parents (a .stacked self-recursion)', () =>

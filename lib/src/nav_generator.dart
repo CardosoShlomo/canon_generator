@@ -186,6 +186,19 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
 
     tree.forEach(collect);
 
+    // Flatten every inherit link to its ULTIMATE source, order-independently: a
+    // chain editItem→itemPreview→item resolves editItem's source to item (the id
+    // screen), so the shared id is detected no matter the declaration order.
+    for (final ps in placements.values) {
+      for (final n in ps) {
+        var s = n.inheritSource;
+        while (s != null && s.inheritSource != null) {
+          s = s.inheritSource;
+        }
+        n.inheritSource = s;
+      }
+    }
+
     // An inherited placement's id IS its source's, read live from the chain and
     // stamped under the child screen — so the child must declare the SAME id
     // type as its (ultimate) source. A mismatch would erase through the Object?
@@ -525,6 +538,52 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       ];
     }
 
+    // Broad reach (the kick-start's reachability, on every placement): a
+    // single-placement id screen X is reachable with ONE id from every ancestor
+    // whose path down to X crosses no UNRELATED id screen. X, its id source, and
+    // any inherited link share the id (stamped); id-free intermediates get null;
+    // an unrelated id screen in between disqualifies that ancestor. The id source
+    // is X itself when X isn't inherited. X's DIRECT parent already gets its verb
+    // from goVerbs (a with-id push, or the no-arg inherited edge), so reach only
+    // adds the ancestors above it. Keyed by the ancestor's nav class.
+    final reachVerbs = <String, List<String>>{};
+    for (final ns in placements.values) {
+      for (final e in ns) {
+        if (!isSingle(e.screen)) continue;
+        final srcScreen = e.inheritSource?.screen ?? e.screen;
+        final idT = idOf[srcScreen];
+        if (idT == null) continue; // X carries / inherits no id
+        final nodes = [...e.ancestors.toList().reversed, e]; // root..e
+        final srcIdx = e.inheritSource == null
+            ? nodes.length - 1
+            : nodes.indexWhere((n) => n.screen == srcScreen);
+        final directParentIdx = nodes.length - 2;
+        final ret = placementName(e);
+        bool covered(PlacementNode n) =>
+            n.screen == srcScreen || n.inheritSource?.screen == srcScreen;
+        for (var aIdx = srcIdx - 1; aIdx >= 0; aIdx--) {
+          if (aIdx == directParentIdx) continue; // goVerbs covers the direct parent
+          final pushes = <String>[];
+          var ok = true;
+          for (var i = aIdx + 1; i < nodes.length; i++) {
+            final n = nodes[i];
+            final arg = covered(n) ? 'id' : (idOf[n.screen] == null ? 'null' : null);
+            if (arg == null) {
+              ok = false;
+              break;
+            }
+            pushes.add('    $spec.graph.go(${sv(n.screen)}, $arg, true);');
+          }
+          if (!ok) continue;
+          (reachVerbs[placementName(nodes[aIdx])] ??= []).add(
+              '  $ret go${_cap(e.screen)}($idT id) {\n'
+              '${pushes.join('\n')}\n'
+              '    return const $ret._();\n'
+              '  }');
+        }
+      }
+    }
+
     final b = StringBuffer();
 
     // Emits a nav class. A nav always extends AnyNav; the empty sealed
@@ -552,6 +611,8 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       b.writeln('  const $className._() : super._();');
       if (extra != null) b.writeln(extra);
       verbs.forEach(b.writeln);
+      // Reach-an-inherited-descendant verbs for qualifying ancestors.
+      reachVerbs[className]?.forEach(b.writeln);
       // 0 edges → no go. 1 edge → just the named goXx (in verbs). 2+ → a typed,
       // edge-gated, ternary-capable go(Hop<N>) alongside the named verbs.
       if (edges.length >= 2) {
