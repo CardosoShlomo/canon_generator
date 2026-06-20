@@ -1,3 +1,7 @@
+## 0.16.0
+
+- Emit `Screen.snapshot()` / `Screen.restore(state)` (restoration facade) and `Screen.manager()` (standalone `MaterialApp(home: ...)` host). Requires canon ^0.13.0.
+
 ## 0.15.0
 
 - Emit `ScreenId<I>` (id-bearing screens only) + a `context.idOf(.x)` that delegates to canon — typed, non-null id reads; asking the id of an id-free screen no longer compiles. Raw ids are no longer touched in generated consumer code. Requires canon ^0.12.0.

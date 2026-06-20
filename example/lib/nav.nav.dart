@@ -74,6 +74,22 @@ final class Screen<I> {
     return _Screens.graph.delegate;
   }
 
+  /// A standalone nav host for `MaterialApp(home: ...)` — no Router,
+  /// no URL/deep-link channel. Owns system back; pass a restorationId
+  /// to also persist/restore the snapshot.
+  static Widget manager({String? restorationId}) {
+    assert(_fresh);
+    return _Screens.graph.manager(restorationId: restorationId);
+  }
+
+  /// A restoration-serializable snapshot of the whole nav state
+  /// (no URLs; ids via each screen codec). Persist + [restore] it.
+  static Map<String, Object?> snapshot() => _Screens.graph.toState();
+
+  /// Rebuilds the stack from a [snapshot], best-effort. Returns
+  /// false on a stale/incompatible snapshot.
+  static bool restore(Map<String, Object?> state) =>
+      _Screens.graph.restore(state);
   static N go<N extends AnyNav>(Hop<N> hop) {
     _Screens.graph.go(hop.spec, hop.id);
     return hop.nav;

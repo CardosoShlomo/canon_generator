@@ -7,12 +7,12 @@ environment:
   sdk: ^3.12.0
 
 dependencies:
-  canon: ^0.12.0 # re-exports Codec — no separate canon_codec dep needed
+  canon: ^0.13.0 # re-exports Codec — no separate canon_codec dep needed
   flutter:
     sdk: flutter
 dev_dependencies:
   build_runner: ^2.15.0
-  canon_generator: ^0.15.0
+  canon_generator: ^0.16.0
   flutter_test:
     sdk: flutter
 
