@@ -1,3 +1,7 @@
+## 0.19.1
+
+- Widen the canon constraint to `^0.15.0` (matches the 0.19.0 surface).
+
 ## 0.19.0
 
 - `Screen.go(Hop)` now returns a `KickstartNav` — `.at` narrows to the exact (single-placement) target it landed on, for an exhaustive switch on a dynamic/ternary kick-start.
