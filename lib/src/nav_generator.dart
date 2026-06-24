@@ -1483,6 +1483,9 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
         if (cyclic.contains(r.name)) {
           extra = '$extra\n  int get depth => $spec.graph.countOf(${sv(r.name)});';
         }
+        if (viewScreens.containsKey(r.name)) {
+          extra = '${viewGetters(r.name)}\n$extra';
+        }
         final sp = sharedPops(group);
         navClass(navName, sharedVerbs(group, suffix),
             // Cycle members (incl. self) so chains like popToProfile().popToProfile()
@@ -1495,7 +1498,10 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
             edges: sharedEdges(group),
             extra: extra,
             path: suffix,
-            markers: impl,
+            markers: [
+              ...impl,
+              if (viewScreens.containsKey(r.name)) '${_cap(r.name)}View',
+            ],
             parentScreen: suffix.length >= 2 ? suffix[suffix.length - 2] : null);
         return navName;
       }
@@ -1519,11 +1525,19 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
           },
           edges: {for (final c in n.children) c.screen: childType(c)},
           parentScreen: n.parent?.screen,
-          markers: leafMarkers[n]!.toList(),
+          markers: [
+            ...leafMarkers[n]!,
+            if (viewScreens.containsKey(n.screen)) '${_cap(n.screen)}View',
+          ],
           path: n.path,
-          extra: cyclic.contains(n.screen)
-              ? '  int get depth => $spec.graph.countOf(${sv(n.screen)});'
-              : null,
+          extra: () {
+            final parts = [
+              if (viewScreens.containsKey(n.screen)) viewGetters(n.screen),
+              if (cyclic.contains(n.screen))
+                '  int get depth => $spec.graph.countOf(${sv(n.screen)});',
+            ];
+            return parts.isEmpty ? null : parts.join('\n');
+          }(),
         );
       }
     }

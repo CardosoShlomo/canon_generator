@@ -240,6 +240,36 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 }
 ''';
 
+// A multi-placement screen (item under home AND feed) that declares view-state —
+// every one of its placement navs must implement the screen's `View`.
+const _multiViewSpec = '''
+import 'package:canon/canon.dart';
+
+part 'spec.nav.dart';
+
+enum _Keys with QueryKeyBase { tag }
+
+@screens
+enum _Screens with ScreenNode<Object?, _Screens> {
+  home(0),
+  feed(0),
+  item(0, Codec.string);
+
+  const _Screens(this.widget, [this.id]);
+  final Object widget;
+  final Codec? id;
+
+  static final graph = NavGraph<_Screens>(
+    {
+      home({item().query({_Keys.tag(Codec.string)})}),
+      feed({item()}),
+    },
+    initial: home,
+    pageOf: (s, c, k) => 0,
+  );
+}
+''';
+
 Future<void> _expectGenerated(Matcher content, {String spec = _spec}) =>
     testBuilder(
       navBuilder(BuilderOptions.empty),
@@ -720,6 +750,18 @@ void main() {
           contains('FeedQueryMut get query => const FeedQueryMut._();'),
         ]),
         spec: _viewSpec,
+      ));
+
+  test('a multi-placement view-state screen: every placement nav is its View', () =>
+      _expectGenerated(
+        allOf([
+          contains('abstract interface class ItemView'),
+          contains('class ItemQuery'),
+          contains('String? get tag =>'),
+          contains('implements ItemView'), // the placement navs implement it
+          contains('ItemQueryMut get query'), // …with the mutable getter
+        ]),
+        spec: _multiViewSpec,
       ));
 
   test('emits the URL-driven routerConfig host', () => _expectGenerated(allOf([
