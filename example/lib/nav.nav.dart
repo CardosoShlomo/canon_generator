@@ -40,10 +40,7 @@ final class Screen<I> {
   /// it to render per screen. Null when the current screen has no
   /// view-state. (`Placement.isOn`/`Placement.isCurrent` for raw checks.)
   static AnyView? of(BuildContext context) =>
-      switch (Placement.current(context)) {
-        _Screens.feed => const FeedNav._(),
-        _ => null,
-      };
+      _viewOf(Placement.current(context));
 
   /// Reactive: is the screen THIS context is under the current foreground
   /// top? Rebuilds only when that flips. The self-vs-current gate —
@@ -1310,4 +1307,26 @@ final class FeedQueryNot {
 /// this; the navigable `FeedNav` adds the setters.
 abstract interface class FeedView implements AnyView {
   FeedQuery get query;
+}
+
+AnyView? _viewOf(Enum? screen) => switch (screen) {
+  _Screens.feed => const FeedNav._(),
+  _ => null,
+};
+
+/// Reactive read-only view reads scoped to this BuildContext.
+extension ScreenViewContext on BuildContext {
+  /// SELF: is this widget's own placement [sel] (+ its conditions)?
+  AnyView? on<N extends AnyNav>(On<N> sel) =>
+      ScreenScope.of(this) == sel.specs.last &&
+          ViewMatch.conds(this, sel.specs.last, sel.conds)
+      ? _viewOf(sel.specs.last)
+      : null;
+
+  /// CURRENT foreground: does it match [sel] (+ conditions)?
+  AnyView? current<N extends AnyNav>(On<N> sel) =>
+      Placement.current(this) == sel.specs.last &&
+          ViewMatch.conds(this, sel.specs.last, sel.conds)
+      ? _viewOf(sel.specs.last)
+      : null;
 }

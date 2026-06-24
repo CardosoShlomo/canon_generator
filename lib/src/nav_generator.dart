@@ -802,12 +802,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       b.writeln('  /// it to render per screen. Null when the current screen has no');
       b.writeln('  /// view-state. (`Placement.isOn`/`Placement.isCurrent` for raw checks.)');
       b.writeln('  static AnyView? of(BuildContext context) =>');
-      b.writeln('      switch (Placement.current(context)) {');
-      for (final s in viewScreens.keys) {
-        b.writeln('        ${sv(s)} => const ${unionName(s)}._(),');
-      }
-      b.writeln('        _ => null,');
-      b.writeln('      };');
+      b.writeln('      _viewOf(Placement.current(context));');
     }
     b.writeln('  /// Reactive: is the screen THIS context is under the current foreground');
     b.writeln('  /// top? Rebuilds only when that flips. The self-vs-current gate —');
@@ -1867,6 +1862,38 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       if (e.value.fragment.isNotEmpty) {
         b.writeln('  ${_cap(e.key)}Fragment get fragment;');
       }
+      b.writeln('}');
+      b.writeln('');
+    }
+
+    if (viewScreens.isNotEmpty) {
+      // Current/self screen → its read-only view (or null). Shared by Screen.of
+      // and the context reads.
+      b.writeln('AnyView? _viewOf(Enum? screen) => switch (screen) {');
+      for (final s in viewScreens.keys) {
+        b.writeln('      ${sv(s)} => const ${unionName(s)}._(),');
+      }
+      b.writeln('      _ => null,');
+      b.writeln('    };');
+      b.writeln('');
+      // Reactive, read-only context reads. `context.on` = the widget's OWN
+      // placement (ignores screens above it); `context.current` = the foreground.
+      // Both rebuild on the selector's referenced view-state keys; `.current` also
+      // on placement. Read-only — navigate/write via the imperative `Screen.on`.
+      b.writeln('/// Reactive read-only view reads scoped to this BuildContext.');
+      b.writeln('extension ScreenViewContext on BuildContext {');
+      b.writeln('  /// SELF: is this widget\'s own placement [sel] (+ its conditions)?');
+      b.writeln('  AnyView? on<N extends AnyNav>(On<N> sel) =>');
+      b.writeln('      ScreenScope.of(this) == sel.specs.last &&');
+      b.writeln('              ViewMatch.conds(this, sel.specs.last, sel.conds)');
+      b.writeln('          ? _viewOf(sel.specs.last)');
+      b.writeln('          : null;');
+      b.writeln('  /// CURRENT foreground: does it match [sel] (+ conditions)?');
+      b.writeln('  AnyView? current<N extends AnyNav>(On<N> sel) =>');
+      b.writeln('      Placement.current(this) == sel.specs.last &&');
+      b.writeln('              ViewMatch.conds(this, sel.specs.last, sel.conds)');
+      b.writeln('          ? _viewOf(sel.specs.last)');
+      b.writeln('          : null;');
       b.writeln('}');
       b.writeln('');
     }
