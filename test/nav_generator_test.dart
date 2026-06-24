@@ -761,6 +761,11 @@ void main() {
           contains('OnFeed query(Set<FeedQueryCond> cs) =>'),
           // …evaluated by Screen.on against the live view store
           contains('if (!c.test(_Screens.graph.viewGet(specs.last, c.key))) return null;'),
+          // the selector carries the typed read-only view, so context.on returns it
+          contains('OnFeed extends On<FeedNav, FeedView>'),
+          contains('V? on<N extends AnyNav, V>(On<N, V> sel)'), // typed reactive read
+          contains('FeedNav get at;'), // the read→act hop on the View
+          contains('FeedNav get at => this;'), // single-parent: the view's `.at` is itself
         ]),
         spec: _viewSpec,
       ));
@@ -773,6 +778,9 @@ void main() {
           contains('String? get tag =>'),
           contains('implements ItemView'), // the placement navs implement it
           contains('ItemQueryMut get query'), // …with the mutable getter
+          contains('ItemPlacement get at;'), // the view's `.at` is the sealed placement
+          contains('ItemPlacement get at => this;'), // a resolved leaf IS its placement
+          contains('OnItem extends On<ItemNav, ItemView>'), // typed selector
         ]),
         spec: _multiViewSpec,
       ));

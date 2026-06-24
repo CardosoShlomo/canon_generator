@@ -2,6 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:canon_example/nav.dart';
 
+// Compile-only: the reactive read is TYPED (`FeedView?`, not `AnyView?`), and
+// `?.at` hops off the read-only view to the screen's placement (`FeedNav` here,
+// single-parent). Never called — its mere compilation proves the types line up.
+// ignore: unused_element
+FeedNav? _typecheck(BuildContext c) {
+  final FeedView? self = c.on(.feed.query({.category('books')}));
+  final FeedView? fg = c.current(.feed);
+  return (self ?? fg)?.at;
+}
+
 void main() {
   testWidgets('grammar validates, renders, and navigates', (tester) async {
     verifyScreens();

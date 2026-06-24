@@ -238,6 +238,22 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
 
     tree.forEach(collectView);
 
+    // Threading the read-only view type through the `On` selector so `context.on`
+    // returns the terminal screen's typed `…View` (or `AnyView`). Only when some
+    // screen declares view-state — otherwise `On` stays single-param `On<N>`.
+    final hasViews = viewScreens.isNotEmpty;
+    String viewTypeOf(String sc) =>
+        viewScreens.containsKey(sc) ? '${_cap(sc)}View' : 'AnyView';
+    // On's type-param list for a declaration (`class On<…>`), with optional extra.
+    String onDecl([String extra = '']) =>
+        hasViews ? 'N extends AnyNav, V$extra' : 'N extends AnyNav$extra';
+    // Forwarding the params generically (subclass `extends On<…>`, method bounds).
+    String onNV() => hasViews ? 'N, V' : 'N';
+    // The bare type-args for a CONCRETE target on screen [sc] with nav [nav].
+    String onArgs(String nav, String sc) =>
+        hasViews ? '$nav, ${viewTypeOf(sc)}' : nav;
+    String onOf(String nav, String sc) => 'On<${onArgs(nav, sc)}>';
+
     // The nav body lines exposing a screen's MUTABLE view-state (read+write), and
     // the read-only `<Screen>View` interface marker the nav implements.
     String viewGetters(String screen) {
@@ -382,6 +398,11 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
 
     bool isSingle(String screen) => placements[screen]!.length <= 1;
     String unionName(String s) => '${_cap(s)}Nav';
+    // What a view's `.at` resolves to: the lone nav for a single-parent screen,
+    // else the sealed `…Placement` covering its several parents.
+    String viewAtTypeOf(String s) => isSingle(s)
+        ? unionName(s)
+        : '${unionName(s).substring(0, unionName(s).length - 3)}Placement';
     String placementName(PlacementNode n) =>
         isSingle(n.screen) ? unionName(n.screen) : '${n.path.map(_cap).join()}Nav';
     String childType(PlacementNode c) =>
@@ -882,7 +903,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     }
     b.writeln('  /// If the live stack ends with this selector path (every pinned id and,');
     b.writeln('  /// for a cyclic terminal, its depth matching), its nav — else null.');
-    b.writeln('  static N? on<N extends AnyNav>(On<N> which) {');
+    b.writeln('  static N? on<${onDecl()}>(On<${onNV()}> which) {');
     if (hasParentOf) {
       // parentOf selector matches by current-top membership, not a suffix path.
       b.writeln('    if (which is OnParentOf) {');
@@ -1003,7 +1024,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     }
     b.writeln('  /// Scoped redirect — replace is decided here, before scoping; a miss');
     b.writeln('  /// (null) commits nothing, so the pending flag is dropped, not leaked.');
-    b.writeln('  N? on<N extends AnyNav>(On<N> which) {');
+    b.writeln('  N? on<${onDecl()}>(On<${onNV()}> which) {');
     b.writeln('    $spec.graph.markReplace();');
     b.writeln('    return Screen.on(which);');
     b.writeln('  }');
@@ -1136,7 +1157,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
         if (c.inheritSource != null) continue;
         (groups[c.screen] ??= []).add(c);
       }
-      stepBuf.writeln('final class $name extends On<$nav> {');
+      stepBuf.writeln('final class $name extends ${onOf(nav, sc)} {');
       stepBuf.writeln('  const $name._(super.specs, super.ids, super.nav, [super.conds]) : super._();');
       // View-state conditions narrow the match: `.query({.category('x')})`.
       if (viewScreens.containsKey(sc)) {
@@ -1155,7 +1176,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       for (final e in groups.entries) {
         final cNav = navTypeOf(e.value);
         final cStep = stepNameFor(e.value);
-        final ret = cStep ?? 'On<$cNav>';
+        final ret = cStep ?? onOf(cNav, e.key);
         final ctor = cStep ?? 'On';
         stepBuf.writeln('  $ret get ${e.key} => $ctor._([...specs, ${sv(e.key)}], [...ids, null], const $cNav._());');
       }
@@ -1163,7 +1184,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
         stepBuf.writeln('  $name call(${idOf[sc]} id) => $name._(specs, [...ids.sublist(0, ids.length - 1), id], nav);');
       }
       if (cyclic.contains(sc)) {
-        stepBuf.writeln('  OnDepth<$nav> depth(int d) => OnDepth._(specs, ids, d, nav);');
+        stepBuf.writeln('  OnDepth<${onArgs(nav, sc)}> depth(int d) => OnDepth._(specs, ids, d, nav);');
       }
       stepBuf.writeln('}');
       for (final e in groups.entries) {
@@ -1180,7 +1201,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln('/// `if (Screen.at case Initial()) ...` gates blob-null cold-boot UI.');
     b.writeln('final class Initial extends AnyNav implements AnyPlacement { const Initial._() : super._(); }');
 
-    b.writeln('final class On<N extends AnyNav> {');
+    b.writeln('final class On<${onDecl()}> {');
     b.writeln('  const On._(this.specs, this.ids, this.nav, [this.conds = const []]);');
     b.writeln('  final List<Enum> specs;');
     b.writeln('  final List<Object?> ids;');
@@ -1192,7 +1213,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       if (ms.isEmpty) continue;
       final nav = unionName(r.name);
       final step = stepNameFor(ms);
-      final ret = step ?? 'On<$nav>';
+      final ret = step ?? onOf(nav, r.name);
       final ctor = step ?? 'On';
       // Always a getter (id = null matches any); `.x(id)` invokes the step's
       // call() to pin a specific id.
@@ -1206,7 +1227,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     }
     b.writeln('}');
     if (hasParentOf) {
-      b.writeln('final class OnParentOf<N extends AnyNav> extends On<N> {');
+      b.writeln('final class OnParentOf<${onDecl()}> extends On<${onNV()}> {');
       b.writeln('  const OnParentOf._(this.parents, N nav) : super._(const [], const [], nav);');
       b.writeln('  final Set<Enum> parents;');
       b.writeln('}');
@@ -1215,7 +1236,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       for (final e in parentScreensOf.entries) {
         final cap = '${_cap(e.key)}NavParent';
         final lits = (e.value.toList()..sort()).map((s) => '${sv(s)}').join(', ');
-        b.writeln('  OnParentOf<$cap> get ${e.key} =>');
+        b.writeln('  OnParentOf<${onArgs(cap, e.key)}> get ${e.key} =>');
         b.writeln('      OnParentOf._(const {$lits}, const $cap._());');
       }
       b.writeln('}');
@@ -1237,7 +1258,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       }
     }
     if (cyclic.isNotEmpty) {
-      b.writeln('final class OnDepth<N extends AnyNav> extends On<N> {');
+      b.writeln('final class OnDepth<${onDecl()}> extends On<${onNV()}> {');
       b.writeln('  const OnDepth._(super.specs, super.ids, this.depth, super.nav) : super._();');
       b.writeln('  final int depth;');
       b.writeln('}');
@@ -1388,6 +1409,9 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
           extra: () {
             final parts = [
               if (viewScreens.containsKey(r.name)) viewGetters(r.name),
+              // Single-parent screen: its view's `.at` is the lone nav itself.
+              if (viewScreens.containsKey(r.name))
+                '  ${unionName(r.name)} get at => this;',
               if (cyclic.contains(r.name))
                 '  int get depth => $spec.graph.countOf(${sv(r.name)});',
             ];
@@ -1567,6 +1591,9 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
           extra: () {
             final parts = [
               if (viewScreens.containsKey(n.screen)) viewGetters(n.screen),
+              // A resolved leaf IS its own placement → the view's `.at` is itself.
+              if (viewScreens.containsKey(n.screen))
+                '  ${viewAtTypeOf(n.screen)} get at => this;',
               if (cyclic.contains(n.screen))
                 '  int get depth => $spec.graph.countOf(${sv(n.screen)});',
             ];
@@ -1885,6 +1912,9 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       if (e.value.fragment.isNotEmpty) {
         b.writeln('  ${_cap(e.key)}Fragment get fragment;');
       }
+      // The read→act hop: the resolved placement handle (sealed when the screen
+      // has several parents) — `context.on(sel)?.at` then navigate / switch on it.
+      b.writeln('  ${viewAtTypeOf(e.key)} get at;');
       b.writeln('}');
       b.writeln('');
     }
@@ -1905,15 +1935,16 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       // on placement. Read-only — navigate/write via the imperative `Screen.on`.
       b.writeln('/// Reactive read-only view reads scoped to this BuildContext.');
       b.writeln('extension ScreenViewContext on BuildContext {');
-      b.writeln('  /// SELF: is this widget\'s own placement [sel] (+ its conditions)?');
-      b.writeln('  AnyView? on<N extends AnyNav>(On<N> sel) =>');
+      b.writeln('  /// SELF: this widget\'s own placement [sel] (+ its conditions) as its');
+      b.writeln('  /// typed read-only view, else null. `?.at` hops to the placement handle.');
+      b.writeln('  V? on<${onDecl()}>(On<${onNV()}> sel) =>');
       b.writeln('      ScreenScope.of(this) == sel.specs.last &&');
       b.writeln('              ViewMatch.conds(this, sel.specs.last, sel.conds)');
-      b.writeln('          ? _viewOf(sel.specs.last)');
+      b.writeln('          ? _viewOf(sel.specs.last) as V?');
       b.writeln('          : null;');
-      b.writeln('  /// CURRENT foreground: does it match [sel] (full suffix + ids +');
-      b.writeln('  /// conditions)? Reactive on placement and the referenced keys.');
-      b.writeln('  AnyView? current<N extends AnyNav>(On<N> sel) {');
+      b.writeln('  /// CURRENT foreground: its typed read-only view if it matches [sel] (full');
+      b.writeln('  /// suffix + ids + conditions), else null. Reactive on placement + keys.');
+      b.writeln('  V? current<${onDecl()}>(On<${onNV()}> sel) {');
       b.writeln('    // A single-terminal selector matches purely on whether that screen is');
       b.writeln('    // foreground — subscribe to just its aspect (rebuilds only when it');
       b.writeln('    // (de)foregrounds), not every nav. A multi-spec suffix can shift while');
@@ -1924,7 +1955,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       b.writeln('      Placement.current(this);');
       b.writeln('    }');
       b.writeln('    ViewMatch.conds(this, sel.specs.last, sel.conds); // subscribe to the keys');
-      b.writeln('    return Screen.on(sel) != null ? _viewOf(sel.specs.last) : null;');
+      b.writeln('    return Screen.on(sel) != null ? _viewOf(sel.specs.last) as V? : null;');
       b.writeln('  }');
       b.writeln('}');
       b.writeln('');

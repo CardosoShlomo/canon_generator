@@ -138,7 +138,7 @@ final class Screen<I> {
 
   /// If the live stack ends with this selector path (every pinned id and,
   /// for a cyclic terminal, its depth matching), its nav — else null.
-  static N? on<N extends AnyNav>(On<N> which) {
+  static N? on<N extends AnyNav, V>(On<N, V> which) {
     if (which is OnParentOf) {
       return (which as OnParentOf).parents.contains(_Screens.graph.current)
           ? which.nav
@@ -260,7 +260,7 @@ final class Replace {
 
   /// Scoped redirect — replace is decided here, before scoping; a miss
   /// (null) commits nothing, so the pending flag is dropped, not leaked.
-  N? on<N extends AnyNav>(On<N> which) {
+  N? on<N extends AnyNav, V>(On<N, V> which) {
     _Screens.graph.markReplace();
     return Screen.on(which);
   }
@@ -408,7 +408,7 @@ final class Initial extends AnyNav implements AnyPlacement {
   const Initial._() : super._();
 }
 
-final class On<N extends AnyNav> {
+final class On<N extends AnyNav, V> {
   const On._(this.specs, this.ids, this.nav, [this.conds = const []]);
   final List<Enum> specs;
   final List<Object?> ids;
@@ -416,9 +416,9 @@ final class On<N extends AnyNav> {
 
   /// View-state conditions on the terminal screen (`.query`/`.fragment`).
   final List<ViewCond> conds;
-  static On<SplashNav> get splash =>
+  static On<SplashNav, AnyView> get splash =>
       const On._([_Screens.splash], [null], SplashNav._());
-  static On<SignInNav> get signIn =>
+  static On<SignInNav, AnyView> get signIn =>
       const On._([_Screens.signIn], [null], SignInNav._());
   static OnHome get home =>
       const OnHome._([_Screens.home], [null], HomeNav._());
@@ -432,7 +432,7 @@ final class On<N extends AnyNav> {
       const OnEditItem._([_Screens.editItem], [null], EditItemNav._());
   static OnSettings get settings =>
       const OnSettings._([_Screens.settings], [null], SettingsNav._());
-  static On<AboutNav> get about =>
+  static On<AboutNav, AnyView> get about =>
       const On._([_Screens.about], [null], AboutNav._());
   static OnAccount get account =>
       const OnAccount._([_Screens.account], [null], AccountNav._());
@@ -445,18 +445,18 @@ final class On<N extends AnyNav> {
   static _ParentSel get parentOf => const _ParentSel._();
 }
 
-final class OnParentOf<N extends AnyNav> extends On<N> {
+final class OnParentOf<N extends AnyNav, V> extends On<N, V> {
   const OnParentOf._(this.parents, N nav) : super._(const [], const [], nav);
   final Set<Enum> parents;
 }
 
 final class _ParentSel {
   const _ParentSel._();
-  OnParentOf<ItemNavParent> get item => OnParentOf._(const {
+  OnParentOf<ItemNavParent, AnyView> get item => OnParentOf._(const {
     _Screens.feed,
     _Screens.home,
   }, const ItemNavParent._());
-  OnParentOf<SettingsNavParent> get settings => OnParentOf._(const {
+  OnParentOf<SettingsNavParent, AnyView> get settings => OnParentOf._(const {
     _Screens.home,
     _Screens.profile,
   }, const SettingsNavParent._());
@@ -478,7 +478,7 @@ final class SettingsNavParent extends AnyNav {
   }
 }
 
-final class OnHome extends On<HomeNav> {
+final class OnHome extends On<HomeNav, AnyView> {
   const OnHome._(super.specs, super.ids, super.nav, [super.conds]) : super._();
   OnHomeItem get item => OnHomeItem._(
     [...specs, _Screens.item],
@@ -492,24 +492,24 @@ final class OnHome extends On<HomeNav> {
   );
 }
 
-final class OnHomeItem extends On<HomeItemNav> {
+final class OnHomeItem extends On<HomeItemNav, AnyView> {
   const OnHomeItem._(super.specs, super.ids, super.nav, [super.conds])
     : super._();
   OnHomeItem call(String id) =>
       OnHomeItem._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
-final class OnHomeSettings extends On<HomeSettingsNav> {
+final class OnHomeSettings extends On<HomeSettingsNav, AnyView> {
   const OnHomeSettings._(super.specs, super.ids, super.nav, [super.conds])
     : super._();
-  On<HomeSettingsAboutNav> get about => On._(
+  On<HomeSettingsAboutNav, AnyView> get about => On._(
     [...specs, _Screens.about],
     [...ids, null],
     const HomeSettingsAboutNav._(),
   );
 }
 
-final class OnFeed extends On<FeedNav> {
+final class OnFeed extends On<FeedNav, FeedView> {
   const OnFeed._(super.specs, super.ids, super.nav, [super.conds]) : super._();
   OnFeed query(Set<FeedQueryCond> cs) =>
       OnFeed._(specs, ids, nav, [...conds, ...cs]);
@@ -520,14 +520,14 @@ final class OnFeed extends On<FeedNav> {
   );
 }
 
-final class OnFeedItem extends On<FeedItemNav> {
+final class OnFeedItem extends On<FeedItemNav, AnyView> {
   const OnFeedItem._(super.specs, super.ids, super.nav, [super.conds])
     : super._();
   OnFeedItem call(String id) =>
       OnFeedItem._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
-final class OnProfile extends On<ProfileNav> {
+final class OnProfile extends On<ProfileNav, AnyView> {
   const OnProfile._(super.specs, super.ids, super.nav, [super.conds])
     : super._();
   OnProfileSettings get settings => OnProfileSettings._(
@@ -542,44 +542,44 @@ final class OnProfile extends On<ProfileNav> {
   );
 }
 
-final class OnProfileSettings extends On<ProfileSettingsNav> {
+final class OnProfileSettings extends On<ProfileSettingsNav, AnyView> {
   const OnProfileSettings._(super.specs, super.ids, super.nav, [super.conds])
     : super._();
-  On<ProfileSettingsAboutNav> get about => On._(
+  On<ProfileSettingsAboutNav, AnyView> get about => On._(
     [...specs, _Screens.about],
     [...ids, null],
     const ProfileSettingsAboutNav._(),
   );
 }
 
-final class OnAccount extends On<AccountNav> {
+final class OnAccount extends On<AccountNav, AnyView> {
   const OnAccount._(super.specs, super.ids, super.nav, [super.conds])
     : super._();
   OnAccount call(String id) =>
       OnAccount._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
-final class OnItem extends On<ItemNav> {
+final class OnItem extends On<ItemNav, AnyView> {
   const OnItem._(super.specs, super.ids, super.nav, [super.conds]) : super._();
   OnItem call(String id) =>
       OnItem._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
-final class OnEditItem extends On<EditItemNav> {
+final class OnEditItem extends On<EditItemNav, AnyView> {
   const OnEditItem._(super.specs, super.ids, super.nav, [super.conds])
     : super._();
   OnEditItem call(String id) =>
       OnEditItem._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
-final class OnSettings extends On<SettingsNav> {
+final class OnSettings extends On<SettingsNav, AnyView> {
   const OnSettings._(super.specs, super.ids, super.nav, [super.conds])
     : super._();
-  On<AboutNav> get about =>
+  On<AboutNav, AnyView> get about =>
       On._([...specs, _Screens.about], [...ids, null], const AboutNav._());
 }
 
-final class OnEditAccount extends On<EditAccountNav> {
+final class OnEditAccount extends On<EditAccountNav, AnyView> {
   const OnEditAccount._(super.specs, super.ids, super.nav, [super.conds])
     : super._();
   OnEditAccount call(String id) =>
@@ -688,6 +688,7 @@ final class FeedNav extends AnyNav
     implements AnyPlacement, FeedView, PopDestPlacement, KickstartPlacement {
   const FeedNav._() : super._();
   FeedQueryMut get query => const FeedQueryMut._();
+  FeedNav get at => this;
   FeedItemNav goItem(String id) {
     _Screens.graph.go(_Screens.item, id, true);
     return const FeedItemNav._();
@@ -1327,6 +1328,7 @@ final class FeedQueryNot {
 /// this; the navigable `FeedNav` adds the setters.
 abstract interface class FeedView implements AnyView {
   FeedQuery get query;
+  FeedNav get at;
 }
 
 AnyView? _viewOf(Enum? screen) => switch (screen) {
@@ -1336,16 +1338,17 @@ AnyView? _viewOf(Enum? screen) => switch (screen) {
 
 /// Reactive read-only view reads scoped to this BuildContext.
 extension ScreenViewContext on BuildContext {
-  /// SELF: is this widget's own placement [sel] (+ its conditions)?
-  AnyView? on<N extends AnyNav>(On<N> sel) =>
+  /// SELF: this widget's own placement [sel] (+ its conditions) as its
+  /// typed read-only view, else null. `?.at` hops to the placement handle.
+  V? on<N extends AnyNav, V>(On<N, V> sel) =>
       ScreenScope.of(this) == sel.specs.last &&
           ViewMatch.conds(this, sel.specs.last, sel.conds)
-      ? _viewOf(sel.specs.last)
+      ? _viewOf(sel.specs.last) as V?
       : null;
 
-  /// CURRENT foreground: does it match [sel] (full suffix + ids +
-  /// conditions)? Reactive on placement and the referenced keys.
-  AnyView? current<N extends AnyNav>(On<N> sel) {
+  /// CURRENT foreground: its typed read-only view if it matches [sel] (full
+  /// suffix + ids + conditions), else null. Reactive on placement + keys.
+  V? current<N extends AnyNav, V>(On<N, V> sel) {
     // A single-terminal selector matches purely on whether that screen is
     // foreground — subscribe to just its aspect (rebuilds only when it
     // (de)foregrounds), not every nav. A multi-spec suffix can shift while
@@ -1356,6 +1359,6 @@ extension ScreenViewContext on BuildContext {
       Placement.current(this);
     }
     ViewMatch.conds(this, sel.specs.last, sel.conds); // subscribe to the keys
-    return Screen.on(sel) != null ? _viewOf(sel.specs.last) : null;
+    return Screen.on(sel) != null ? _viewOf(sel.specs.last) as V? : null;
   }
 }
