@@ -633,6 +633,12 @@ void main() {
         spec: _widgetFormSpec,
       ));
 
+  test('emits the URL-driven routerConfig host', () => _expectGenerated(allOf([
+        contains('static RouterConfig<Object> get routerConfig'),
+        contains('routeInformationParser: const CanonRouteParser()'),
+        contains('routerDelegate: _Screens.graph.delegate'),
+      ])));
+
   test('emits the Screen.replace redirect facade', () => _expectGenerated(allOf([
         contains('static const replace = Replace._();'),
         contains('final class Replace {'),

@@ -63,6 +63,25 @@ final class Screen<I> {
     return _Shell.graph.delegate;
   }
 
+  /// The URL-driven host for `MaterialApp.router(routerConfig:
+  /// Screen.routerConfig)` — browser history + cold-start links via
+  /// the nav-mirror. Use [manager] instead for a Router-less
+  /// `MaterialApp(home: ...)` (no URL channel).
+  static RouterConfig<Object> get routerConfig {
+    assert(_fresh);
+    return RouterConfig(
+      routerDelegate: _Shell.graph.delegate,
+      routeInformationParser: const CanonRouteParser(),
+      routeInformationProvider: PlatformRouteInformationProvider(
+        initialRouteInformation: RouteInformation(
+          uri: Uri.parse(
+            WidgetsBinding.instance.platformDispatcher.defaultRouteName,
+          ),
+        ),
+      ),
+    );
+  }
+
   /// A standalone nav host for `MaterialApp(home: ...)` — no Router,
   /// no URL/deep-link channel. Owns system back and snapshot
   /// restoration (always on; override [restorationId] only to avoid a
