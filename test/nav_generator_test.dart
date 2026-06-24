@@ -748,6 +748,13 @@ void main() {
           contains('FeedQuery get query;'),
           contains('implements FeedView'),
           contains('FeedQueryMut get query => const FeedQueryMut._();'),
+          // …and the conditioned selector: a FeedQueryCond vocabulary + On.query
+          contains('class FeedQueryCond implements ViewCond'),
+          contains('static FeedQueryCond category(String v) =>'),
+          contains('class FeedQueryNot'), // the .not mirror
+          contains('OnFeed query(Set<FeedQueryCond> cs) =>'),
+          // …evaluated by Screen.on against the live view store
+          contains('if (!c.test(_Screens.graph.viewGet(specs.last, c.key))) return null;'),
         ]),
         spec: _viewSpec,
       ));

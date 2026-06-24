@@ -156,6 +156,9 @@ final class Screen<I> {
       final wid = which.ids[i];
       if (wid != null && st[off + i].id != wid) return null;
     }
+    for (final c in which.conds) {
+      if (!c.test(_Screens.graph.viewGet(specs.last, c.key))) return null;
+    }
     return which.nav;
   }
 
@@ -409,10 +412,13 @@ final class Initial extends AnyNav {
 }
 
 final class On<N extends AnyNav> {
-  const On._(this.specs, this.ids, this.nav);
+  const On._(this.specs, this.ids, this.nav, [this.conds = const []]);
   final List<Enum> specs;
   final List<Object?> ids;
   final N nav;
+
+  /// View-state conditions on the terminal screen (`.query`/`.fragment`).
+  final List<ViewCond> conds;
   static On<SplashNav> get splash =>
       const On._([_Screens.splash], [null], SplashNav._());
   static On<SignInNav> get signIn =>
@@ -476,7 +482,7 @@ final class SettingsNavParent extends AnyNav {
 }
 
 final class OnHome extends On<HomeNav> {
-  const OnHome._(super.specs, super.ids, super.nav) : super._();
+  const OnHome._(super.specs, super.ids, super.nav, [super.conds]) : super._();
   OnHomeItem get item => OnHomeItem._(
     [...specs, _Screens.item],
     [...ids, null],
@@ -490,13 +496,15 @@ final class OnHome extends On<HomeNav> {
 }
 
 final class OnHomeItem extends On<HomeItemNav> {
-  const OnHomeItem._(super.specs, super.ids, super.nav) : super._();
+  const OnHomeItem._(super.specs, super.ids, super.nav, [super.conds])
+    : super._();
   OnHomeItem call(String id) =>
       OnHomeItem._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class OnHomeSettings extends On<HomeSettingsNav> {
-  const OnHomeSettings._(super.specs, super.ids, super.nav) : super._();
+  const OnHomeSettings._(super.specs, super.ids, super.nav, [super.conds])
+    : super._();
   On<HomeSettingsAboutNav> get about => On._(
     [...specs, _Screens.about],
     [...ids, null],
@@ -505,7 +513,9 @@ final class OnHomeSettings extends On<HomeSettingsNav> {
 }
 
 final class OnFeed extends On<FeedNav> {
-  const OnFeed._(super.specs, super.ids, super.nav) : super._();
+  const OnFeed._(super.specs, super.ids, super.nav, [super.conds]) : super._();
+  OnFeed query(Set<FeedQueryCond> cs) =>
+      OnFeed._(specs, ids, nav, [...conds, ...cs]);
   OnFeedItem get item => OnFeedItem._(
     [...specs, _Screens.item],
     [...ids, null],
@@ -514,13 +524,15 @@ final class OnFeed extends On<FeedNav> {
 }
 
 final class OnFeedItem extends On<FeedItemNav> {
-  const OnFeedItem._(super.specs, super.ids, super.nav) : super._();
+  const OnFeedItem._(super.specs, super.ids, super.nav, [super.conds])
+    : super._();
   OnFeedItem call(String id) =>
       OnFeedItem._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class OnProfile extends On<ProfileNav> {
-  const OnProfile._(super.specs, super.ids, super.nav) : super._();
+  const OnProfile._(super.specs, super.ids, super.nav, [super.conds])
+    : super._();
   OnProfileSettings get settings => OnProfileSettings._(
     [...specs, _Screens.settings],
     [...ids, null],
@@ -534,7 +546,8 @@ final class OnProfile extends On<ProfileNav> {
 }
 
 final class OnProfileSettings extends On<ProfileSettingsNav> {
-  const OnProfileSettings._(super.specs, super.ids, super.nav) : super._();
+  const OnProfileSettings._(super.specs, super.ids, super.nav, [super.conds])
+    : super._();
   On<ProfileSettingsAboutNav> get about => On._(
     [...specs, _Screens.about],
     [...ids, null],
@@ -543,31 +556,35 @@ final class OnProfileSettings extends On<ProfileSettingsNav> {
 }
 
 final class OnAccount extends On<AccountNav> {
-  const OnAccount._(super.specs, super.ids, super.nav) : super._();
+  const OnAccount._(super.specs, super.ids, super.nav, [super.conds])
+    : super._();
   OnAccount call(String id) =>
       OnAccount._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class OnItem extends On<ItemNav> {
-  const OnItem._(super.specs, super.ids, super.nav) : super._();
+  const OnItem._(super.specs, super.ids, super.nav, [super.conds]) : super._();
   OnItem call(String id) =>
       OnItem._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class OnEditItem extends On<EditItemNav> {
-  const OnEditItem._(super.specs, super.ids, super.nav) : super._();
+  const OnEditItem._(super.specs, super.ids, super.nav, [super.conds])
+    : super._();
   OnEditItem call(String id) =>
       OnEditItem._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class OnSettings extends On<SettingsNav> {
-  const OnSettings._(super.specs, super.ids, super.nav) : super._();
+  const OnSettings._(super.specs, super.ids, super.nav, [super.conds])
+    : super._();
   On<AboutNav> get about =>
       On._([...specs, _Screens.about], [...ids, null], const AboutNav._());
 }
 
 final class OnEditAccount extends On<EditAccountNav> {
-  const OnEditAccount._(super.specs, super.ids, super.nav) : super._();
+  const OnEditAccount._(super.specs, super.ids, super.nav, [super.conds])
+    : super._();
   OnEditAccount call(String id) =>
       OnEditAccount._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }

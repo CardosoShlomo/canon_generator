@@ -911,6 +911,10 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       b.writeln('      return null;');
       b.writeln('    }');
     }
+    // View-state conditions on the terminal screen must all hold.
+    b.writeln('    for (final c in which.conds) {');
+    b.writeln('      if (!c.test($spec.graph.viewGet(specs.last, c.key))) return null;');
+    b.writeln('    }');
     b.writeln('    return which.nav;');
     b.writeln('  }');
     b.writeln('  /// Live-stack redirect: the chained verb REPLACES the current history');
@@ -1117,7 +1121,10 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     // pin one). Otherwise a non-cyclic id-free leaf lands on a bare On<nav>.
     String? stepNameFor(List<PlacementNode> ms) {
       final sc = ms.first.screen;
-      if (fwd(ms).isEmpty && !cyclic.contains(sc) && idOf[sc] == null) return null;
+      if (fwd(ms).isEmpty &&
+          !cyclic.contains(sc) &&
+          idOf[sc] == null &&
+          !viewScreens.containsKey(sc)) return null;
       return 'On${setStem(ms)}';
     }
     void emitStep(List<PlacementNode> ms) {
@@ -1135,7 +1142,19 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
         (groups[c.screen] ??= []).add(c);
       }
       stepBuf.writeln('final class $name extends On<$nav> {');
-      stepBuf.writeln('  const $name._(super.specs, super.ids, super.nav) : super._();');
+      stepBuf.writeln('  const $name._(super.specs, super.ids, super.nav, [super.conds]) : super._();');
+      // View-state conditions narrow the match: `.query({.category('x')})`.
+      if (viewScreens.containsKey(sc)) {
+        final vs = viewScreens[sc]!;
+        if (vs.query.isNotEmpty) {
+          stepBuf.writeln('  $name query(Set<${_cap(sc)}QueryCond> cs) =>'
+              ' $name._(specs, ids, nav, [...conds, ...cs]);');
+        }
+        if (vs.fragment.isNotEmpty) {
+          stepBuf.writeln('  $name fragment(Set<${_cap(sc)}FragmentCond> cs) =>'
+              ' $name._(specs, ids, nav, [...conds, ...cs]);');
+        }
+      }
       // Every child selector is a getter (id appended as null = "match any");
       // an id-bearing child's own step hosts `call(id)` to pin it.
       for (final e in groups.entries) {
@@ -1167,10 +1186,12 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln('final class Initial extends AnyNav { const Initial._() : super._(); }');
 
     b.writeln('final class On<N extends AnyNav> {');
-    b.writeln('  const On._(this.specs, this.ids, this.nav);');
+    b.writeln('  const On._(this.specs, this.ids, this.nav, [this.conds = const []]);');
     b.writeln('  final List<Enum> specs;');
     b.writeln('  final List<Object?> ids;');
     b.writeln('  final N nav;');
+    b.writeln('  /// View-state conditions on the terminal screen (`.query`/`.fragment`).');
+    b.writeln('  final List<ViewCond> conds;');
     for (final r in rows) {
       final ms = placements[r.name]!;
       if (ms.isEmpty) continue;
