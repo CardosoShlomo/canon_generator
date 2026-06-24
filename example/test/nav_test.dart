@@ -6,8 +6,11 @@ void main() {
   testWidgets('grammar validates, renders, and navigates', (tester) async {
     verifyScreens();
     await tester.pumpWidget(MaterialApp.router(routerDelegate: Screen.delegate));
+    // boots to Initial (the _Loading widget); don't settle — its spinner never
+    // does. The resolver drives the first nav out of boot.
+    expect(Screen.at, isA<Initial>());
+    Screen.goHome().goSettings().goAbout(); // seed home → settings → about
     await tester.pumpAndSettle();
-    // initial: .home.settings.about — the descent chain seeds the WHOLE stack.
     expect(Screen.stack.current.name, 'about');
     expect(
       Screen.stack.screens.map((s) => s.name).toList(),
@@ -46,5 +49,33 @@ void main() {
     await tester.pumpAndSettle();
     expect(Screen.stack.current.name, 'account');
     expect(Screen.stack.currentId, 'u1'); // ancestor id stamped, not null
+  });
+
+  testWidgets('view-state: write off the nav + conditioned Screen.on', (tester) async {
+    await tester.pumpWidget(MaterialApp.router(routerDelegate: Screen.delegate));
+    Screen.goFeed(); // out of boot; feed declares `.query({category, radius})`
+    await tester.pumpAndSettle();
+    expect(Screen.stack.current.name, 'feed');
+
+    // write view-state through the nav's mutable query (top-scoped)
+    Screen.on(.feed)!.query.category = 'books';
+    Screen.on(.feed)!.query.radius = 7;
+    await tester.pumpAndSettle();
+
+    // read it back, both context-free and via the conditioned selector
+    expect(Screen.query['category'], 'books');
+    expect(Screen.on(.feed)!.query.radius, 7);
+
+    // conditioned navigation: matches only when the view-state condition holds
+    expect(Screen.on(.feed.query({.category('books')})), isNotNull);
+    expect(Screen.on(.feed.query({.category('clothes')})), isNull);
+    expect(Screen.on(.feed.query({.not.category('clothes')})), isNotNull); // negated
+    expect(Screen.on(.feed.query({.category('books'), .radius(99)})), isNull); // AND
+
+    // clear → condition no longer holds
+    Screen.on(.feed)!.query.category = null;
+    await tester.pumpAndSettle();
+    expect(Screen.on(.feed.query({.category('books')})), isNull);
+    expect(Screen.query['category'], isNull);
   });
 }
