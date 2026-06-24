@@ -18,7 +18,11 @@ mixin ScreenNode<I, S extends ScreenNode<Object?, S>> on Enum {
   S get cycled => this as S;
   S get stacked => this as S;
   S inherit(S ancestor) => this as S;
+  S links([Set<Object?> children = const {}]) => this as S;
 }
+
+Object? slot(Object? codec) => null;
+Object? slots(Set<Object?> codecs) => null;
 
 class NavGraph<S> {
   NavGraph(Set<S> roots,
@@ -29,7 +33,10 @@ class NavGraph<S> {
 class Codec<T> {
   const Codec();
   static const Codec<String> string = _StrCodec();
+  static const Codec<String> uuid = _StrCodec();
+  static const Codec<String> username = _StrCodec();
   static const Codec<int> integer = _IntCodec();
+  static Codec<String> literal(String value) => const _StrCodec();
 }
 class _StrCodec implements Codec<String> { const _StrCodec(); }
 class _IntCodec implements Codec<int> { const _IntCodec(); }
@@ -60,6 +67,112 @@ enum _Screens with ScreenNode<Object?, _Screens> {
   static final graph = NavGraph<_Screens>(
     {
       home({item({about({item.stacked})})}),
+    },
+    initial: home,
+    pageOf: (s, c, k) => 0,
+  );
+}
+''';
+
+// home -> user, plus a `user.links({slot})` branch (link-world; generator-collected,
+// kept out of the nav tree).
+const _linksSpec = '''
+import 'package:canon/canon.dart';
+
+part 'spec.nav.dart';
+
+@screens
+enum _Screens with ScreenNode<Object?, _Screens> {
+  home(0),
+  user(0, Codec.string);
+
+  const _Screens(this.widget, [this.id]);
+  final Object widget;
+  final Codec? id;
+
+  static final graph = NavGraph<_Screens>(
+    {
+      home({user()}),
+      user.links({slot(Codec.string)}),
+    },
+    initial: home,
+    pageOf: (s, c, k) => 0,
+  );
+}
+''';
+
+// Same shape, but the link slot is a UNION of two codecs → a sealed variant type.
+const _unionSpec = '''
+import 'package:canon/canon.dart';
+
+part 'spec.nav.dart';
+
+@screens
+enum _Screens with ScreenNode<Object?, _Screens> {
+  home(0),
+  user(0, Codec.string);
+
+  const _Screens(this.widget, [this.id]);
+  final Object widget;
+  final Codec? id;
+
+  static final graph = NavGraph<_Screens>(
+    {
+      home({user()}),
+      user.links({slots({Codec.uuid, Codec.username})}),
+    },
+    initial: home,
+    pageOf: (s, c, k) => 0,
+  );
+}
+''';
+
+// A union whose first branch is a fixed literal segment → a payload-less variant.
+const _literalUnionSpec = '''
+import 'package:canon/canon.dart';
+
+part 'spec.nav.dart';
+
+@screens
+enum _Screens with ScreenNode<Object?, _Screens> {
+  home(0),
+  user(0, Codec.string);
+
+  const _Screens(this.widget, [this.id]);
+  final Object widget;
+  final Codec? id;
+
+  static final graph = NavGraph<_Screens>(
+    {
+      home({user()}),
+      user.links({slots({Codec.literal('me'), Codec.uuid, Codec.username})}),
+    },
+    initial: home,
+    pageOf: (s, c, k) => 0,
+  );
+}
+''';
+
+// The WIDGET form: a bare `slots` directly in a real placement's children. The
+// screen's own id (uuid) is injected as a WidgetLink branch; me/username resolve.
+const _widgetFormSpec = '''
+import 'package:canon/canon.dart';
+
+part 'spec.nav.dart';
+
+@screens
+enum _Screens with ScreenNode<Object?, _Screens> {
+  home(0),
+  user(0, Codec.uuid);
+
+  const _Screens(this.widget, [this.id]);
+  final Object widget;
+  final Codec? id;
+
+  static final graph = NavGraph<_Screens>(
+    {
+      home(),
+      user({slots({Codec.literal('me'), Codec.username})}),
     },
     initial: home,
     pageOf: (s, c, k) => 0,
@@ -427,6 +540,106 @@ void main() {
         contains('isCodegenFresh'), // stale-codegen guard
         contains('_treeSignature'),
       )));
+
+  test('emits the typed ScreenEntry stack + navigations surface', () =>
+      _expectGenerated(allOf([
+        contains('sealed class ScreenEntry'),
+        contains('final class ItemEntry extends ScreenEntry'),
+        contains('final String id;'), // item carries a TYPED id (not Object?)
+        contains('final class HomeEntry extends ScreenEntry'), // id-free variant
+        contains('ScreenEntry _entryOf(Enum s, Object? id)'),
+        contains('_Screens.item => ItemEntry(id as String)'), // cast at the seam
+        contains('_Screens.home => const HomeEntry()'),
+        contains('static NavStack<Screen<Object?>> get stack'),
+        contains('static Stream<ScreenNavigation> get navigations'),
+        contains('final class ScreenNavigation'),
+        contains('ScreenEntry get destination'),
+      ])));
+
+  test('a .links branch generates the Link surface; nav stays intact', () =>
+      _expectGenerated(
+        allOf([
+          contains('HomeEntry'), // home + user nav generation succeeded…
+          contains('UserEntry'),
+          isNot(contains('LinksEntry')), // …and .links added no phantom screen
+          contains('sealed class Link'), // …and emitted the typed Link surface
+          contains('sealed class WidgetlessLink extends Link'), // the families
+          // single-slot endpoint → one concrete widgetless class, no marker
+          contains('final class UserLink extends WidgetlessLink'),
+          contains('final String value0'), // the slot's typed field
+          contains('final class ParsedLink'), // …and the parse surface
+          contains('ParsedLink? parseLink(String url)'),
+          contains("'user/*' => UserLink(m.path[0] as String)"), // the typed map
+          // …and toUri (no @Screens domain → domain is required)
+          contains('String toUri(Link link, String domain)'),
+          contains('case UserLink(:final value0):'),
+          contains('encodeLink('),
+          contains("'user/*'"),
+          contains('<Object?>[value0]'),
+          contains('<int>[0]'),
+        ]),
+        spec: _linksSpec,
+      ));
+
+  test('a union slot generates sibling Link classes under a per-entity marker', () =>
+      _expectGenerated(
+        allOf([
+          contains('sealed class UserLink implements Link'), // the per-entity marker
+          contains(
+              'final class UserByUuidLink extends WidgetlessLink implements UserLink'),
+          contains('class UserByNameLink'), // username → entity-prefix stripped → ByName
+          contains('final String uuid;'), // semantic codec → field name
+          contains('final String username;'),
+          contains('switch (m.branches[0])'), // parse picks the branch…
+          contains('0 => UserByUuidLink(m.path[0] as String)'),
+          contains('1 => UserByNameLink(m.path[0] as String)'),
+          contains('case UserByUuidLink(:final uuid):'), // …toUri per sibling
+          contains('<Object?>[uuid]'),
+        ]),
+        spec: _unionSpec,
+      ));
+
+  test('a literal in a union slot becomes a payload-less widgetless sibling', () =>
+      _expectGenerated(
+        allOf([
+          contains('sealed class UserLink implements Link'),
+          contains(
+              'final class UserMeLink extends WidgetlessLink implements UserLink'),
+          contains('const UserMeLink();'), // payload-less, no field
+          contains(
+              'final class UserByUuidLink extends WidgetlessLink implements UserLink'),
+          contains('0 => UserMeLink()'), // parse: branch 0 reads no path token
+          contains('case UserMeLink():'), // encode: threads the literal back…
+          contains("<Object?>['me']"),
+        ]),
+        spec: _literalUnionSpec,
+      ));
+
+  test('the widget form injects the screen id as a WidgetLink sibling', () =>
+      _expectGenerated(
+        allOf([
+          contains('sealed class UserLink implements Link'),
+          // injected id branch → WidgetLink, field `<screen>Id`, class `…ByIdLink`
+          contains('final class UserByIdLink extends WidgetLink'),
+          contains('final String userId;'),
+          // declared branches stay widgetless
+          contains('final class UserMeLink extends WidgetlessLink'),
+          contains('class UserByNameLink'),
+          contains('final String username;'),
+          // order: literals → id → values  ⇒  me=0, uuid=1, username=2
+          contains('0 => UserMeLink()'),
+          contains('1 => UserByIdLink(m.path[0] as String)'),
+          contains('2 => UserByNameLink(m.path[0] as String)'),
+        ]),
+        spec: _widgetFormSpec,
+      ));
+
+  test('emits the Screen.replace redirect facade', () => _expectGenerated(allOf([
+        contains('static const replace = Replace._();'),
+        contains('final class Replace {'),
+        contains('graph.markReplace();'), // each verb flags replace…
+        contains('return Screen.go'), // …then delegates to the normal commit
+      ])));
 
   test('emits the on-chain suffix selector + steps', () => _expectGenerated(allOf([
         contains('final class On<'),

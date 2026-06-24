@@ -31,6 +31,19 @@ class PlacementNode {
   /// Set when declared with `.inherit(ancestor)`.
   PlacementNode? inheritSource;
 
+  /// True when this node is a `.links(...)` branch — a link-grammar root, NOT a
+  /// nav placement. Collected into [TreeModel.links]; nav emission never sees it.
+  bool isLink = false;
+
+  /// True when this link branch is the WIDGET form: a bare `slots`/`slot` sitting
+  /// directly in a real placement's children. The enclosing screen's id codec is
+  /// injected as an extra (WidgetLink) union branch; the rest resolve widgetless.
+  bool isWidgetForm = false;
+
+  /// Raw `.links({...})` child expressions (link DSL: slot/slots/seg/query),
+  /// walked by the link model builder rather than the nav placer.
+  List<Expression> linkChildren = const [];
+
   Iterable<PlacementNode> get ancestors sync* {
     for (var n = parent; n != null; n = n.parent) {
       yield n;
@@ -43,9 +56,14 @@ class PlacementNode {
 
 /// The virtual tree plus every enum it spans (root + grafted sub-enums).
 class TreeModel {
-  TreeModel(this.tree, this.enums);
+  TreeModel(this.tree, this.enums, this.links);
   final List<PlacementNode> tree;
   final List<EnumElement> enums;
+
+  /// `.links(...)` branches gathered across the tree (root + nested), for the
+  /// merged Link surface. Each carries its path context (`path`) and the raw
+  /// link children (`linkChildren`); none appears in [tree].
+  final List<PlacementNode> links;
 }
 
 /// One enum's syntactic surface: its name, screen-row names, expression-bodied
@@ -67,6 +85,7 @@ class _Frame {
 Future<TreeModel> readTree(EnumElement root, BuildStep buildStep) async {
   final frames = <String, _Frame>{};
   final enums = <EnumElement>[];
+  final links = <PlacementNode>[]; // `.links(...)` branches, kept out of the nav tree
 
   Future<_Frame> frameOf(EnumElement e) async {
     final existing = frames[e.name];
@@ -163,7 +182,8 @@ Future<TreeModel> readTree(EnumElement root, BuildStep buildStep) async {
             throw InvalidGenerationSourceError(
                 'unsupported element in the tree literal: $child', element: root);
           }
-          placed.children.add(await place(child, [...ancestors, placed], frame));
+          final node = await place(child, [...ancestors, placed], frame);
+          (node.isLink ? links : placed.children).add(node);
         }
       }
       return placed;
@@ -224,6 +244,35 @@ Future<TreeModel> readTree(EnumElement root, BuildStep buildStep) async {
                 element: root));
         placed.inheritSource = src.inheritSource ?? src;
         return placed;
+      // A bare `slots({...})` / `slot(...)` in a placement's children — the WIDGET
+      // form: a link branch on the enclosing screen, whose id codec is injected as
+      // the WidgetLink branch. ("slot/slots are themselves a link declaration.")
+      case MethodInvocation(
+          target: null,
+          methodName: SimpleIdentifier(name: 'slots' || 'slot'),
+        )
+          when ancestors.isNotEmpty:
+        final enclosing = ancestors.last;
+        return PlacementNode(
+            enclosing.screen, enclosing.spec, enclosing.path, enclosing.parent)
+          ..isLink = true
+          ..isWidgetForm = true
+          ..linkChildren = [expr];
+      // `screen.link({...})` / `.links({...})` — a link-grammar branch, NOT a
+      // nav placement (no widget seeded → its branches resolve widgetless).
+      case MethodInvocation(
+          target: SimpleIdentifier(:final name),
+          methodName: SimpleIdentifier(name: 'links' || 'link'),
+          :final argumentList,
+        )
+          when rows.contains(name):
+        final set = argumentList.arguments.firstOrNull;
+        return PlacementNode(name, spec,
+            [for (final a in ancestors) a.screen, name], ancestors.lastOrNull)
+          ..isLink = true
+          ..linkChildren = set is SetOrMapLiteral
+              ? [for (final e in set.elements) if (e is Expression) e]
+              : const [];
       case MethodInvocation(
           methodName: SimpleIdentifier(:final name),
           :final argumentList,
@@ -257,8 +306,10 @@ Future<TreeModel> readTree(EnumElement root, BuildStep buildStep) async {
         "NavGraph's first argument must be the tree set literal",
         element: root);
   }
-  final tree = [
-    for (final r in treeLit.elements) await place(r as Expression, [], rootFrame)
-  ];
-  return TreeModel(tree, enums);
+  final tree = <PlacementNode>[];
+  for (final r in treeLit.elements) {
+    final node = await place(r as Expression, [], rootFrame);
+    (node.isLink ? links : tree).add(node);
+  }
+  return TreeModel(tree, enums, links);
 }

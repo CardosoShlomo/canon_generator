@@ -116,6 +116,11 @@ final class Screen<I> {
     return which.nav;
   }
 
+  /// Live-stack redirect: the chained verb REPLACES the current history
+  /// entry instead of pushing. Decide it at the start —
+  /// `Screen.replace.goHome()`, `Screen.replace.on(.user)?.goChat(id)`.
+  static const replace = Replace._();
+
   /// The current EXACT placement nav — pattern-match it:
   /// `if (Screen.at case HomeUserProfileNav n) ...`.
   static AnyNav get at => switch (_Screens.graph.current) {
@@ -149,6 +154,12 @@ final class Screen<I> {
   static void Function() observe(
     void Function(Screen<Object?> from, Screen<Object?> to) fn,
   ) => _Screens.graph.observe((f, t) => fn(of(f), of(t)));
+
+  /// A broadcast stream of committed navigations as typed snapshots:
+  /// `from`/`to` are ScreenEntry stacks; `switch (e.destination)` for
+  /// the landed screen + its typed id. Filter with `.where`.
+  static Stream<ScreenNavigation> get navigations =>
+      _Screens.graph.navigations.map(ScreenNavigation._);
   static void forget(Keep keep) => _Screens.graph.forget(keep.spec);
   static SplashNav goSplash() {
     _Screens.graph.go(_Screens.splash);
@@ -186,6 +197,141 @@ final class Screen<I> {
     return const EditAccountNav._();
   }
 }
+
+/// The `Screen.replace` redirect facade — every verb mirrors `Screen`
+/// but commits as a history REPLACE (web `replaceState`).
+final class Replace {
+  const Replace._();
+  KickstartNav go<N extends AnyNav>(Hop<N> hop) {
+    _Screens.graph.markReplace();
+    return Screen.go(hop);
+  }
+
+  /// Scoped redirect — replace is decided here, before scoping; a miss
+  /// (null) commits nothing, so the pending flag is dropped, not leaked.
+  N? on<N extends AnyNav>(On<N> which) {
+    _Screens.graph.markReplace();
+    return Screen.on(which);
+  }
+
+  SplashNav goSplash() {
+    _Screens.graph.markReplace();
+    return Screen.goSplash();
+  }
+
+  SignInNav goSignIn() {
+    _Screens.graph.markReplace();
+    return Screen.goSignIn();
+  }
+
+  HomeNav goHome() {
+    _Screens.graph.markReplace();
+    return Screen.goHome();
+  }
+
+  FeedNav goFeed() {
+    _Screens.graph.markReplace();
+    return Screen.goFeed();
+  }
+
+  ProfileNav goProfile() {
+    _Screens.graph.markReplace();
+    return Screen.goProfile();
+  }
+
+  AccountNav goAccount(String id) {
+    _Screens.graph.markReplace();
+    return Screen.goAccount(id);
+  }
+
+  EditAccountNav goEditAccount(String id) {
+    _Screens.graph.markReplace();
+    return Screen.goEditAccount(id);
+  }
+}
+
+/// One committed navigation as typed [ScreenEntry] stacks.
+final class ScreenNavigation {
+  ScreenNavigation._(this._n);
+  final Navigation _n;
+  List<ScreenEntry> get from => [for (final e in _n.from) _entryOf(e.$1, e.$2)];
+  List<ScreenEntry> get to => [for (final e in _n.to) _entryOf(e.$1, e.$2)];
+  ScreenEntry get source => _entryOf(_n.source.$1, _n.source.$2);
+  ScreenEntry get destination => _entryOf(_n.destination.$1, _n.destination.$2);
+  NavDirection get direction => _n.direction;
+  bool get isForward => _n.isForward;
+  bool get isBackward => _n.isBackward;
+  bool get isRoundTrip => _n.isRoundTrip;
+  bool get isJump => _n.isJump;
+}
+
+/// One typed entry per screen — `switch` it for the screen-specific id.
+sealed class ScreenEntry {
+  const ScreenEntry();
+}
+
+final class SplashEntry extends ScreenEntry {
+  const SplashEntry();
+}
+
+final class SignInEntry extends ScreenEntry {
+  const SignInEntry();
+}
+
+final class HomeEntry extends ScreenEntry {
+  const HomeEntry();
+}
+
+final class FeedEntry extends ScreenEntry {
+  const FeedEntry();
+}
+
+final class ProfileEntry extends ScreenEntry {
+  const ProfileEntry();
+}
+
+final class ItemEntry extends ScreenEntry {
+  const ItemEntry(this.id);
+  final String id;
+}
+
+final class EditItemEntry extends ScreenEntry {
+  const EditItemEntry(this.id);
+  final String id;
+}
+
+final class SettingsEntry extends ScreenEntry {
+  const SettingsEntry();
+}
+
+final class AboutEntry extends ScreenEntry {
+  const AboutEntry();
+}
+
+final class AccountEntry extends ScreenEntry {
+  const AccountEntry(this.id);
+  final String id;
+}
+
+final class EditAccountEntry extends ScreenEntry {
+  const EditAccountEntry(this.id);
+  final String id;
+}
+
+ScreenEntry _entryOf(Enum s, Object? id) => switch (s) {
+  _Screens.splash => const SplashEntry(),
+  _Screens.signIn => const SignInEntry(),
+  _Screens.home => const HomeEntry(),
+  _Screens.feed => const FeedEntry(),
+  _Screens.profile => const ProfileEntry(),
+  _Screens.item => ItemEntry(id as String),
+  _Screens.editItem => EditItemEntry(id as String),
+  _Screens.settings => const SettingsEntry(),
+  _Screens.about => const AboutEntry(),
+  _Screens.account => AccountEntry(id as String),
+  _Screens.editAccount => EditAccountEntry(id as String),
+  _ => throw StateError('not a _Screens screen'),
+};
 
 final class Hop<N extends AnyNav> {
   const Hop._(this.spec, this.id, this.nav);
@@ -1054,4 +1200,86 @@ bool _endsWith(List<Enum> chain, List<Enum> suffix) {
     if (chain[off + i] != suffix[i]) return false;
   }
   return true;
+}
+
+/// A strict URL -> typed Link, from the tree's `.link` branches.
+sealed class Link {
+  const Link();
+}
+
+sealed class WidgetLink extends Link {
+  const WidgetLink();
+}
+
+sealed class WidgetlessLink extends Link {
+  const WidgetlessLink();
+}
+
+sealed class ItemLink implements Link {}
+
+final class ItemMeLink extends WidgetlessLink implements ItemLink {
+  const ItemMeLink();
+}
+
+final class ItemByIdLink extends WidgetlessLink implements ItemLink {
+  const ItemByIdLink(this.itemId);
+  final String itemId;
+}
+
+final class ItemByUsernameLink extends WidgetlessLink implements ItemLink {
+  const ItemByUsernameLink(this.username);
+  final String username;
+}
+
+/// A parsed [Link] plus the URL's origin (the host is reported,
+/// not matched — the platform already verified it is ours).
+final class ParsedLink {
+  const ParsedLink(this.link, this.domain);
+  final Link link;
+  final String domain;
+}
+
+/// Parses [url] into a typed [Link] + origin, or null if not a link.
+ParsedLink? parseLink(String url) {
+  final m = _Screens.graph.parseLink(url);
+  if (m == null) return null;
+  final uri = Uri.parse(url);
+  final link = switch (m.template) {
+    'item/*' => switch (m.branches[0]) {
+      0 => ItemMeLink(),
+      1 => ItemByIdLink(m.path[0] as String),
+      2 => ItemByUsernameLink(m.path[0] as String),
+      _ => throw StateError('bad union branch'),
+    },
+    _ => null,
+  };
+  if (link == null) return null;
+  return ParsedLink(link, '${uri.scheme}://${uri.host}');
+}
+
+/// Encodes a [Link] to a full URL under [domain].
+String toUri(Link link, [String domain = 'https://canon.example']) {
+  switch (link) {
+    case ItemMeLink():
+      return _Screens.graph.encodeLink(
+        domain,
+        'item/*',
+        <Object?>['me'],
+        <int>[0],
+      );
+    case ItemByIdLink(:final itemId):
+      return _Screens.graph.encodeLink(
+        domain,
+        'item/*',
+        <Object?>[itemId],
+        <int>[1],
+      );
+    case ItemByUsernameLink(:final username):
+      return _Screens.graph.encodeLink(
+        domain,
+        'item/*',
+        <Object?>[username],
+        <int>[2],
+      );
+  }
 }

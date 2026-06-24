@@ -104,6 +104,11 @@ final class Screen<I> {
     return which.nav;
   }
 
+  /// Live-stack redirect: the chained verb REPLACES the current history
+  /// entry instead of pushing. Decide it at the start —
+  /// `Screen.replace.goHome()`, `Screen.replace.on(.user)?.goChat(id)`.
+  static const replace = Replace._();
+
   /// The current EXACT placement nav — pattern-match it:
   /// `if (Screen.at case HomeUserProfileNav n) ...`.
   static AnyNav get at => switch (_Shell.graph.current) {
@@ -132,6 +137,12 @@ final class Screen<I> {
   static void Function() observe(
     void Function(Screen<Object?> from, Screen<Object?> to) fn,
   ) => _Shell.graph.observe((f, t) => fn(of(f), of(t)));
+
+  /// A broadcast stream of committed navigations as typed snapshots:
+  /// `from`/`to` are ScreenEntry stacks; `switch (e.destination)` for
+  /// the landed screen + its typed id. Filter with `.where`.
+  static Stream<ScreenNavigation> get navigations =>
+      _Shell.graph.navigations.map(ScreenNavigation._);
   static void forgetHome() => _Shell.graph.forget(_Shell.home);
   static HomeNav goHome() {
     _Shell.graph.go(_Shell.home);
@@ -158,6 +169,103 @@ final class Screen<I> {
     return const SavedNav._();
   }
 }
+
+/// The `Screen.replace` redirect facade — every verb mirrors `Screen`
+/// but commits as a history REPLACE (web `replaceState`).
+final class Replace {
+  const Replace._();
+  KickstartNav go<N extends AnyNav>(Hop<N> hop) {
+    _Shell.graph.markReplace();
+    return Screen.go(hop);
+  }
+
+  /// Scoped redirect — replace is decided here, before scoping; a miss
+  /// (null) commits nothing, so the pending flag is dropped, not leaked.
+  N? on<N extends AnyNav>(On<N> which) {
+    _Shell.graph.markReplace();
+    return Screen.on(which);
+  }
+
+  HomeNav goHome() {
+    _Shell.graph.markReplace();
+    return Screen.goHome();
+  }
+
+  SettingsNav goSettings() {
+    _Shell.graph.markReplace();
+    return Screen.goSettings();
+  }
+
+  ShopNav goShop() {
+    _Shell.graph.markReplace();
+    return Screen.goShop();
+  }
+
+  CatalogNav goCatalog() {
+    _Shell.graph.markReplace();
+    return Screen.goCatalog();
+  }
+
+  SavedNav goSaved() {
+    _Shell.graph.markReplace();
+    return Screen.goSaved();
+  }
+}
+
+/// One committed navigation as typed [ScreenEntry] stacks.
+final class ScreenNavigation {
+  ScreenNavigation._(this._n);
+  final Navigation _n;
+  List<ScreenEntry> get from => [for (final e in _n.from) _entryOf(e.$1, e.$2)];
+  List<ScreenEntry> get to => [for (final e in _n.to) _entryOf(e.$1, e.$2)];
+  ScreenEntry get source => _entryOf(_n.source.$1, _n.source.$2);
+  ScreenEntry get destination => _entryOf(_n.destination.$1, _n.destination.$2);
+  NavDirection get direction => _n.direction;
+  bool get isForward => _n.isForward;
+  bool get isBackward => _n.isBackward;
+  bool get isRoundTrip => _n.isRoundTrip;
+  bool get isJump => _n.isJump;
+}
+
+/// One typed entry per screen — `switch` it for the screen-specific id.
+sealed class ScreenEntry {
+  const ScreenEntry();
+}
+
+final class HomeEntry extends ScreenEntry {
+  const HomeEntry();
+}
+
+final class SettingsEntry extends ScreenEntry {
+  const SettingsEntry();
+}
+
+final class ShopEntry extends ScreenEntry {
+  const ShopEntry();
+}
+
+final class CatalogEntry extends ScreenEntry {
+  const CatalogEntry();
+}
+
+final class ProductEntry extends ScreenEntry {
+  const ProductEntry(this.id);
+  final String id;
+}
+
+final class SavedEntry extends ScreenEntry {
+  const SavedEntry();
+}
+
+ScreenEntry _entryOf(Enum s, Object? id) => switch (s) {
+  _Shell.home => const HomeEntry(),
+  _Shell.settings => const SettingsEntry(),
+  Shop.shop => const ShopEntry(),
+  Shop.catalog => const CatalogEntry(),
+  Shop.product => ProductEntry(id as String),
+  Wishlist.saved => const SavedEntry(),
+  _ => throw StateError('not a _Shell screen'),
+};
 
 final class Hop<N extends AnyNav> {
   const Hop._(this.spec, this.id, this.nav);

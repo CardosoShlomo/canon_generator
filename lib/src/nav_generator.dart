@@ -8,6 +8,7 @@ import 'package:source_gen/source_gen.dart';
 // ignore: implementation_imports
 import 'package:canon/src/screens_annotation.dart';
 
+import 'link_model.dart';
 import 'tree_reader.dart';
 
 class _Row {
@@ -52,6 +53,39 @@ DartType? _codecArg(DartType? t) {
   return null;
 }
 String _lcFirst(String s) => s[0].toLowerCase() + s.substring(1);
+
+// ---- link surface helpers (sibling-class naming, field names) ----------
+// A union slot becomes sibling `Link` classes (rule 14), one per branch, split
+// across the `WidgetLink`/`WidgetlessLink` families and IMPLEMENTing a per-entity
+// marker. A non-union endpoint is a single concrete class.
+String _linkBase(String className) =>
+    className.substring(0, className.length - 4); // drop the "Link" suffix
+// The lower-camel field a value codec contributes (`.uuid(#userId)` → userId).
+String _branchField(CodecSpec c) => c.nameOverride ?? c.fieldName ?? _lcFirst(c.name);
+// Drop a leading occurrence of the entity name (`User` + `username` → `Name`).
+String _stripEntity(String entity, String field) {
+  if (field.toLowerCase().startsWith(entity.toLowerCase()) &&
+      field.length > entity.length) {
+    return field.substring(entity.length);
+  }
+  return field;
+}
+// The sibling class name for a union branch: `UserMeLink` / `UserByIdLink`.
+String _siblingName(String entity, CodecSpec c) => c.isLiteral
+    ? '$entity${_cap(c.literal!)}Link'
+    : '${entity}By${_cap(_stripEntity(entity, _branchField(c)))}Link';
+// A non-union slot's field name on a single concrete class.
+String _slotFieldName(Endpoint e, int i) {
+  final c = e.slots[i].codecs.first;
+  return c.nameOverride ?? c.fieldName ?? 'value$i';
+}
+// The single union slot index of an endpoint, or null.
+int? _unionSlot(Endpoint e) {
+  for (var i = 0; i < e.slots.length; i++) {
+    if (e.slots[i].isUnion) return i;
+  }
+  return null;
+}
 
 class NavGenerator extends GeneratorForAnnotation<Screens> {
   @override
@@ -805,6 +839,10 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     }
     b.writeln('    return which.nav;');
     b.writeln('  }');
+    b.writeln('  /// Live-stack redirect: the chained verb REPLACES the current history');
+    b.writeln('  /// entry instead of pushing. Decide it at the start —');
+    b.writeln('  /// `Screen.replace.goHome()`, `Screen.replace.on(.user)?.goChat(id)`.');
+    b.writeln('  static const replace = Replace._();');
     b.writeln('  /// The current EXACT placement nav — pattern-match it:');
     b.writeln('  /// `if (Screen.at case HomeUserProfileNav n) ...`.');
     b.writeln('  static AnyNav get at => switch ($spec.graph.current) {');
@@ -833,6 +871,11 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln('  static void Function() observe(');
     b.writeln('          void Function(Screen<Object?> from, Screen<Object?> to) fn) =>');
     b.writeln('      $spec.graph.observe((f, t) => fn(of(f), of(t)));');
+    b.writeln('  /// A broadcast stream of committed navigations as typed snapshots:');
+    b.writeln('  /// `from`/`to` are ScreenEntry stacks; `switch (e.destination)` for');
+    b.writeln('  /// the landed screen + its typed id. Filter with `.where`.');
+    b.writeln('  static Stream<ScreenNavigation> get navigations =>');
+    b.writeln('      $spec.graph.navigations.map(ScreenNavigation._);');
     for (final u in widgetUnions) {
       b.writeln('  /// Resolves a widget shared by several screens to its exact');
       b.writeln('  /// (screen, typed id) — switch the sealed result exhaustively.');
@@ -860,6 +903,89 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       b.writeln('  ${kickStart(r.name).trim()}');
     }
     b.writeln('}');
+    b.writeln('');
+
+    // Screen.replace facade: a static-only redirect handle (replace lives only
+    // here, never on a Nav — so `Screen.replace.replace`/`nav.replace` are
+    // un-writable). Each verb flags the batch replace, then delegates to Screen;
+    // if `on(...)` misses, no commit runs and the engine drops the pending flag.
+    b.writeln('/// The `Screen.replace` redirect facade — every verb mirrors `Screen`');
+    b.writeln('/// but commits as a history REPLACE (web `replaceState`).');
+    b.writeln('final class Replace {');
+    b.writeln('  const Replace._();');
+    if (hasKickstart) {
+      b.writeln('  KickstartNav go<N extends AnyNav>(Hop<N> hop) {');
+      b.writeln('    $spec.graph.markReplace();');
+      b.writeln('    return Screen.go(hop);');
+      b.writeln('  }');
+    }
+    b.writeln('  /// Scoped redirect — replace is decided here, before scoping; a miss');
+    b.writeln('  /// (null) commits nothing, so the pending flag is dropped, not leaked.');
+    b.writeln('  N? on<N extends AnyNav>(On<N> which) {');
+    b.writeln('    $spec.graph.markReplace();');
+    b.writeln('    return Screen.on(which);');
+    b.writeln('  }');
+    for (final r in rows) {
+      if (!globalSafe(r.name)) continue;
+      final ret = unionName(r.name);
+      final idT = idOf[r.name];
+      final params = idT == null ? '' : '$idT id';
+      final args = idT == null ? '' : 'id';
+      b.writeln('  $ret go${_cap(r.name)}($params) {');
+      b.writeln('    $spec.graph.markReplace();');
+      b.writeln('    return Screen.go${_cap(r.name)}($args);');
+      b.writeln('  }');
+    }
+    b.writeln('}');
+    b.writeln('');
+
+    // A committed navigation, retyped: the engine's `(Enum, Object?)` stacks
+    // mapped to the public sealed `ScreenEntry`, so the destination's id is
+    // typed. Derivations (direction/forward/…) forward from the runtime snapshot.
+    b.writeln('/// One committed navigation as typed [ScreenEntry] stacks.');
+    b.writeln('final class ScreenNavigation {');
+    b.writeln('  ScreenNavigation._(this._n);');
+    b.writeln('  final Navigation _n;');
+    b.writeln('  List<ScreenEntry> get from =>');
+    b.writeln('      [for (final e in _n.from) _entryOf(e.\$1, e.\$2)];');
+    b.writeln('  List<ScreenEntry> get to =>');
+    b.writeln('      [for (final e in _n.to) _entryOf(e.\$1, e.\$2)];');
+    b.writeln('  ScreenEntry get source => _entryOf(_n.source.\$1, _n.source.\$2);');
+    b.writeln('  ScreenEntry get destination =>');
+    b.writeln('      _entryOf(_n.destination.\$1, _n.destination.\$2);');
+    b.writeln('  NavDirection get direction => _n.direction;');
+    b.writeln('  bool get isForward => _n.isForward;');
+    b.writeln('  bool get isBackward => _n.isBackward;');
+    b.writeln('  bool get isRoundTrip => _n.isRoundTrip;');
+    b.writeln('  bool get isJump => _n.isJump;');
+    b.writeln('}');
+    b.writeln('');
+
+    b.writeln('/// One typed entry per screen — `switch` it for the screen-specific id.');
+    b.writeln('sealed class ScreenEntry { const ScreenEntry(); }');
+    for (final r in rows) {
+      final idT = idOf[r.name];
+      final cls = '${_cap(r.name)}Entry';
+      if (idT == null) {
+        b.writeln('final class $cls extends ScreenEntry { const $cls(); }');
+      } else {
+        b.writeln('final class $cls extends ScreenEntry {');
+        b.writeln('  const $cls(this.id);');
+        b.writeln('  final $idT id;');
+        b.writeln('}');
+      }
+    }
+    b.writeln('ScreenEntry _entryOf(Enum s, Object? id) => switch (s) {');
+    for (final r in rows) {
+      final idT = idOf[r.name];
+      final cls = '${_cap(r.name)}Entry';
+      b.writeln(idT == null
+          ? '      ${sv(r.name)} => const $cls(),'
+          : '      ${sv(r.name)} => $cls(id as $idT),');
+    }
+    b.writeln("      _ => throw StateError('not a $spec screen'),");
+    b.writeln('    };');
+    b.writeln('');
 
     if (hasKickstart) {
       b.writeln('final class Hop<N extends AnyNav> {');
@@ -1416,6 +1542,158 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       b.writeln('    if (chain[off + i] != suffix[i]) return false;');
       b.writeln('  }');
       b.writeln('  return true;');
+      b.writeln('}');
+    }
+
+    // ── Link surface — typed `Link` classes from the tree's `.links` branches.
+    // Domain-agnostic; parse (C3b) is path-only — the platform verifies the host.
+    final endpoints =
+        linkEndpoints(model.links, element, {for (final r in rows) r.name}, idOf);
+    if (endpoints.isNotEmpty) {
+      b.writeln('');
+      // One concrete `Link` class per case (k = a union branch, or null for a
+      // single-slot endpoint). Phase A: a `.link` branch seeds no widget, so every
+      // case is `WidgetlessLink`; the `WidgetLink` family rides the placement form.
+      caseOf(Endpoint e, int? k) {
+        final ui = _unionSlot(e);
+        final entity = _linkBase(e.className);
+        final fields = <(String, String)>[]; // (name, type) in slot order
+        final ctorArgs = <String>[]; // m.path[..] reads, parse-side
+        final pathVals = <String>[]; // encode path values
+        final branchVals = <String>[]; // encode branch indices
+        for (var i = 0; i < e.slots.length; i++) {
+          if (i == ui && k != null) {
+            final c = e.slots[i].codecs[k];
+            branchVals.add('$k');
+            if (c.isLiteral) {
+              pathVals.add("'${c.literal}'"); // fixed segment carries no field
+            } else {
+              final f = _branchField(c);
+              fields.add((f, c.type));
+              ctorArgs.add('m.path[$i] as ${c.type}');
+              pathVals.add(f);
+            }
+          } else {
+            final f = _slotFieldName(e, i);
+            final t = e.slots[i].codecs.first.type;
+            fields.add((f, t));
+            ctorArgs.add('m.path[$i] as $t');
+            pathVals.add(f);
+            branchVals.add('0');
+          }
+        }
+        // The injected screen-id branch is renderable from the URL → WidgetLink;
+        // every other branch needs resolution → WidgetlessLink.
+        final widget = k != null && e.slots[ui!].codecs[k].isWidgetId;
+        return (
+          name: k == null ? e.className : _siblingName(entity, e.slots[ui!].codecs[k]),
+          marker: ui == null ? null : e.className,
+          family: widget ? 'WidgetLink' : 'WidgetlessLink',
+          fields: fields,
+          ctorArgs: ctorArgs,
+          pathVals: pathVals,
+          branchVals: branchVals,
+        );
+      }
+
+      // The (endpoint, branch) pairs — one per concrete class.
+      final cases = <({Endpoint e, int? k})>[];
+      for (final e in endpoints) {
+        final ui = _unionSlot(e);
+        if (ui == null) {
+          cases.add((e: e, k: null));
+        } else {
+          for (var k = 0; k < e.slots[ui].codecs.length; k++) {
+            cases.add((e: e, k: k));
+          }
+        }
+      }
+
+      b.writeln('/// A strict URL -> typed Link, from the tree\'s `.link` branches.');
+      b.writeln('sealed class Link { const Link(); }');
+      b.writeln('sealed class WidgetLink extends Link { const WidgetLink(); }');
+      b.writeln('sealed class WidgetlessLink extends Link { const WidgetlessLink(); }');
+      // per-entity marker (rule 14): the union cases IMPLEMENT it, cross-cutting
+      // the widget families, so `case UserLink()` catches any branch of that entity.
+      for (final e in endpoints) {
+        if (_unionSlot(e) != null) {
+          b.writeln('sealed class ${e.className} implements Link {}');
+        }
+      }
+      for (final c in cases) {
+        final d = caseOf(c.e, c.k);
+        final impl = d.marker != null ? ' implements ${d.marker}' : '';
+        final params = [for (final f in d.fields) 'this.${f.$1}'];
+        if (params.isEmpty) {
+          b.writeln('final class ${d.name} extends ${d.family}$impl '
+              '{ const ${d.name}(); }');
+        } else {
+          b.writeln('final class ${d.name} extends ${d.family}$impl {');
+          b.writeln('  const ${d.name}(${params.join(', ')});');
+          for (final f in d.fields) {
+            b.writeln('  final ${f.$2} ${f.$1};');
+          }
+          b.writeln('}');
+        }
+      }
+
+      // parse: runtime path match (host-agnostic) → typed Link + the URL's origin.
+      b.writeln('');
+      b.writeln('/// A parsed [Link] plus the URL\'s origin (the host is reported,');
+      b.writeln('/// not matched — the platform already verified it is ours).');
+      b.writeln('final class ParsedLink {');
+      b.writeln('  const ParsedLink(this.link, this.domain);');
+      b.writeln('  final Link link;');
+      b.writeln('  final String domain;');
+      b.writeln('}');
+      b.writeln('');
+      b.writeln('/// Parses [url] into a typed [Link] + origin, or null if not a link.');
+      b.writeln('ParsedLink? parseLink(String url) {');
+      b.writeln('  final m = $spec.graph.parseLink(url);');
+      b.writeln('  if (m == null) return null;');
+      b.writeln('  final uri = Uri.parse(url);');
+      b.writeln('  final link = switch (m.template) {');
+      for (final e in endpoints) {
+        final ui = _unionSlot(e);
+        if (ui == null) {
+          final d = caseOf(e, null);
+          b.writeln("    '${e.template}' => ${d.name}(${d.ctorArgs.join(', ')}),");
+        } else {
+          final arms = [
+            for (var k = 0; k < e.slots[ui].codecs.length; k++)
+              '$k => ${() {
+                final d = caseOf(e, k);
+                return '${d.name}(${d.ctorArgs.join(', ')})';
+              }()}'
+          ];
+          b.writeln("    '${e.template}' => switch (m.branches[$ui]) "
+              "{ ${arms.join(', ')}, _ => throw StateError('bad union branch') },");
+        }
+      }
+      b.writeln('    _ => null,');
+      b.writeln('  };');
+      b.writeln('  if (link == null) return null;');
+      b.writeln('  return ParsedLink(link, \'\${uri.scheme}://\${uri.host}\');');
+      b.writeln('}');
+
+      // encode: typed Link → full URL under the (default) domain.
+      final linkDomain = annotation.peek('domain')?.stringValue;
+      final sig = linkDomain != null
+          ? "Link link, [String domain = '$linkDomain']"
+          : 'Link link, String domain';
+      b.writeln('');
+      b.writeln('/// Encodes a [Link] to a full URL under [domain].');
+      b.writeln('String toUri($sig) {');
+      b.writeln('  switch (link) {');
+      for (final c in cases) {
+        final d = caseOf(c.e, c.k);
+        final pats = [for (final f in d.fields) ':final ${f.$1}'];
+        final pat = pats.isEmpty ? '${d.name}()' : '${d.name}(${pats.join(', ')})';
+        b.writeln('    case $pat:');
+        b.writeln("      return $spec.graph.encodeLink(domain, '${c.e.template}', "
+            '<Object?>[${d.pathVals.join(', ')}], <int>[${d.branchVals.join(', ')}]);');
+      }
+      b.writeln('  }');
       b.writeln('}');
     }
 

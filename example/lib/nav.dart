@@ -7,7 +7,7 @@ part 'nav.nav.dart';
 // generator turns it into a typed surface where illegal navigation is a
 // compile error (you can only `go` to a screen's real children, only `pop`
 // to a real ancestor).
-@screens
+@Screens(domain: 'https://canon.example')
 enum _Screens with ScreenNode<_Screens> {
   splash(_Page('Splash')),
   signIn(_Page('Sign in')),
@@ -38,6 +38,8 @@ enum _Screens with ScreenNode<_Screens> {
       // reachable by global kick-start: Screen.goEditAccount(id) fills account
       // AND editAccount with the one id (the inherit kick-start rescue).
       profile.keep({settings({about}), account({editAccount.inherit(account)})}),
+      // a shareable deep link → item, resolved by the generated parse layer.
+      item.link({slots({Codec.literal('me'), Codec.uuid(#itemId), Codec.username})}),
     },
     initial: .home.settings.about, // a descent chain seeds the whole stack
     pageOf: (widget, ctx, key) => MaterialPage(key: key, child: widget),
