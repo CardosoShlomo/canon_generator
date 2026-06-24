@@ -802,6 +802,11 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln('  /// robust-aspect, like `Query.of`/`Fragment.of`.');
     b.writeln('  static bool of(BuildContext context, Enum screen) =>');
     b.writeln('      Placement.isOn(context, screen);');
+    b.writeln('  /// Reactive: is the screen THIS context is under the current foreground');
+    b.writeln('  /// top? Rebuilds only when that flips. The self-vs-current gate —');
+    b.writeln('  /// `if (Screen.isCurrentOf(context)) …` to act only while visible.');
+    b.writeln('  static bool isCurrentOf(BuildContext context) =>');
+    b.writeln('      Placement.isCurrent(context, ScreenScope.of(context));');
     b.writeln('  static const _bySpec = <Enum, Screen<Object?>>{');
     // the boot sentinel maps to a placeholder Screen so stack/observe stay safe.
     b.writeln('    BootScreen.initial: Screen<Never>._(BootScreen.initial),');

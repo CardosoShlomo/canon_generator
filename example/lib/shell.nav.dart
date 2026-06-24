@@ -34,6 +34,12 @@ final class Screen<I> {
   /// robust-aspect, like `Query.of`/`Fragment.of`.
   static bool of(BuildContext context, Enum screen) =>
       Placement.isOn(context, screen);
+
+  /// Reactive: is the screen THIS context is under the current foreground
+  /// top? Rebuilds only when that flips. The self-vs-current gate —
+  /// `if (Screen.isCurrentOf(context)) …` to act only while visible.
+  static bool isCurrentOf(BuildContext context) =>
+      Placement.isCurrent(context, ScreenScope.of(context));
   static const _bySpec = <Enum, Screen<Object?>>{
     BootScreen.initial: Screen<Never>._(BootScreen.initial),
     _Shell.home: home,
