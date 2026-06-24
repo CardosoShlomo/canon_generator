@@ -220,6 +220,24 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
 
     tree.forEach(collect);
 
+    // View-state per screen (from `placement.query/.fragment`) → typed `<Screen>Query`
+    // / `<Screen>Fragment` read models + their `…Mut` setter subtypes.
+    final viewScreens =
+        <String, ({List<ViewKey> query, List<ViewKey> fragment})>{};
+    void collectView(PlacementNode n) {
+      if (n.viewQuery.isNotEmpty || n.viewFragment.isNotEmpty) {
+        viewScreens.putIfAbsent(
+            n.screen,
+            () => (
+                  query: viewKeys(n.viewQuery, element),
+                  fragment: viewKeys(n.viewFragment, element),
+                ));
+      }
+      n.children.forEach(collectView);
+    }
+
+    tree.forEach(collectView);
+
     // Flatten every inherit link to its ULTIMATE source, order-independently: a
     // chain editItem→itemPreview→item resolves editItem's source to item (the id
     // screen), so the shared id is detected no matter the declaration order.
@@ -758,23 +776,6 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     // `.under` actually referenced it (avoids an unused_element warning).
     var usesEndsWith = false;
 
-    // View-state per screen (from `placement.query/.fragment`): a typed handle
-    // backed by the runtime's URL-mirrored store. Collected across the whole tree.
-    final viewScreens = <String, List<ViewKey>>{};
-    void collectViews(List<PlacementNode> nodes) {
-      for (final n in nodes) {
-        if (n.viewQuery.isNotEmpty || n.viewFragment.isNotEmpty) {
-          viewScreens.putIfAbsent(n.screen, () => [
-                ...viewKeys(n.viewQuery, element),
-                ...viewKeys(n.viewFragment, element),
-              ]);
-        }
-        collectViews(n.children);
-      }
-    }
-
-    collectViews(model.tree);
-
     b.writeln('final class Screen<I> {');
     b.writeln('  const Screen._(this.spec);');
     b.writeln('  final Enum spec;');
@@ -782,7 +783,12 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     for (final r in rows) {
       b.writeln('  static const ${r.name} = Screen<${r.idType ?? 'Never'}>._(${sv(r.name)});');
     }
-    b.writeln('  static Screen<Object?> of(Enum spec) => _bySpec[spec]!;');
+    b.writeln('  static Screen<Object?> forSpec(Enum spec) => _bySpec[spec]!;');
+    b.writeln('  /// Reactive: whether the active placement chain currently includes');
+    b.writeln('  /// [screen] (on/at). The widget rebuilds only when that flips —');
+    b.writeln('  /// robust-aspect, like `Query.of`/`Fragment.of`.');
+    b.writeln('  static bool of(BuildContext context, Enum screen) =>');
+    b.writeln('      Placement.isOn(context, screen);');
     b.writeln('  static const _bySpec = <Enum, Screen<Object?>>{');
     // the boot sentinel maps to a placeholder Screen so stack/observe stay safe.
     b.writeln('    BootScreen.initial: Screen<Never>._(BootScreen.initial),');
@@ -793,8 +799,14 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln('  /// The live active stack as wrappers: .current/.currentId/.tab/');
     b.writeln('  /// .screens/.reachable, extensible without touching Screen.');
     b.writeln('  static NavStack<Screen<Object?>> get stack => NavStack([');
-    b.writeln('    for (final e in $spec.graph.stack) NavEntry(of(e.screen), e.id),');
+    b.writeln('    for (final e in $spec.graph.stack) NavEntry(forSpec(e.screen), e.id),');
     b.writeln('  ]);');
+    b.writeln('  /// The active top screen\'s QUERY view-state, read-only and');
+    b.writeln('  /// context-free (the headless peer of `Query.of(context, ...)`).');
+    b.writeln("  static Map<String, Object?> get query => $spec.graph.activeView('q');");
+    b.writeln('  /// The active top screen\'s FRAGMENT view-state, read-only and');
+    b.writeln('  /// context-free.');
+    b.writeln("  static Map<String, Object?> get fragment => $spec.graph.activeView('f');");
     b.writeln("  static const _treeSignature = '$treeSignature';");
     b.writeln('  /// True when this generated code still matches the live tree.');
     b.writeln('  /// Assert it in a test to fail CI on a stale (un-regenerated) tree:');
@@ -916,7 +928,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln('  /// (e.g. a provider); returns a disposer. Pure observation.');
     b.writeln('  static void Function() observe(');
     b.writeln('          void Function(Screen<Object?> from, Screen<Object?> to) fn) =>');
-    b.writeln('      $spec.graph.observe((f, t) => fn(of(f), of(t)));');
+    b.writeln('      $spec.graph.observe((f, t) => fn(forSpec(f), forSpec(t)));');
     b.writeln('  /// A broadcast stream of committed navigations as typed snapshots:');
     b.writeln('  /// `from`/`to` are ScreenEntry stacks; `switch (e.destination)` for');
     b.writeln('  /// the landed screen + its typed id. Filter with `.where`.');
@@ -948,40 +960,8 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       if (!globalSafe(r.name)) continue; // id-behind targets: reach via chaining
       b.writeln('  ${kickStart(r.name).trim()}');
     }
-    // Typed view-state handles: `Screen.feedView.category = 'books'` etc.
-    for (final screen in viewScreens.keys) {
-      b.writeln('  /// Screen-local view-state for `$screen` (URL-mirrored, '
-          'historyless).');
-      b.writeln('  static const ${_cap(screen)}View ${screen}View = '
-          '${_cap(screen)}View._();');
-    }
     b.writeln('}');
     b.writeln('');
-
-    // One typed view-state handle per screen that declared `.query`/`.fragment`.
-    // Each key reads/writes the runtime store (mirrored to the URL); a flag is a
-    // bool (set false ⟹ cleared), a value is nullable (null ⟹ cleared / default).
-    for (final e in viewScreens.entries) {
-      final screen = e.key;
-      final cls = '${_cap(screen)}View';
-      b.writeln('final class $cls {');
-      b.writeln('  const $cls._();');
-      for (final k in e.value) {
-        if (k.flag) {
-          b.writeln("  bool get ${k.name} => "
-              "$spec.graph.viewGet(${sv(screen)}, '${k.name}') == true;");
-          b.writeln('  set ${k.name}(bool v) => '
-              "$spec.graph.viewSet(${sv(screen)}, '${k.name}', v ? true : null);");
-        } else {
-          b.writeln('  ${k.type}? get ${k.name} => '
-              "$spec.graph.viewGet(${sv(screen)}, '${k.name}') as ${k.type}?;");
-          b.writeln('  set ${k.name}(${k.type}? v) => '
-              "$spec.graph.viewSet(${sv(screen)}, '${k.name}', v);");
-        }
-      }
-      b.writeln('}');
-      b.writeln('');
-    }
 
     // Screen.replace facade: a static-only redirect handle (replace lives only
     // here, never on a Nav — so `Screen.replace.replace`/`nav.replace` are
@@ -1542,7 +1522,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
           '  I idOf<I>(ScreenId<I> screen) => ScreenScope.idOf<I>(this, screen.spec);');
     }
     b.writeln('  /// The screen this widget belongs to (its enclosing scope).');
-    b.writeln('  Screen<Object?> get screen => Screen.of(ScreenScope.of(this));');
+    b.writeln('  Screen<Object?> get screen => Screen.forSpec(ScreenScope.of(this));');
     b.writeln('}');
 
     b.writeln('void verifyScreens() {');
@@ -1724,6 +1704,46 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       }
       b.writeln('  }');
       b.writeln('}');
+    }
+
+    // ── View-state data types: `<Screen>Query` (read getters) + `<Screen>QueryMut`
+    // (adds setters), same for fragment. Everything nullable; a flag is `bool`
+    // (set false ⟹ cleared). Backed by the runtime's view store.
+    void emitViewType(String screen, String part, List<ViewKey> keys) {
+      if (keys.isEmpty) return;
+      final base = '${_cap(screen)}${part == 'f' ? 'Fragment' : 'Query'}';
+      String getOf(ViewKey k) => k.flag
+          ? "$spec.graph.viewGet(${sv(screen)}, '${k.name}') == true"
+          : "$spec.graph.viewGet(${sv(screen)}, '${k.name}') as ${k.type}?";
+      b.writeln('/// Screen-local ${part == 'f' ? 'fragment' : 'query'} '
+          'view-state for `$screen` (read-only).');
+      b.writeln('class $base {');
+      b.writeln('  const $base._();');
+      for (final k in keys) {
+        final t = k.flag ? 'bool' : '${k.type}?';
+        b.writeln('  $t get ${k.name} => ${getOf(k)};');
+      }
+      b.writeln('}');
+      b.writeln('');
+      b.writeln('/// Mutable [$base] — a setter per key (null clears / removes from URL).');
+      b.writeln('final class ${base}Mut extends $base {');
+      b.writeln('  const ${base}Mut._() : super._();');
+      for (final k in keys) {
+        if (k.flag) {
+          b.writeln('  set ${k.name}(bool v) => '
+              "$spec.graph.viewSet(${sv(screen)}, '${k.name}', v ? true : null);");
+        } else {
+          b.writeln('  set ${k.name}(${k.type}? v) => '
+              "$spec.graph.viewSet(${sv(screen)}, '${k.name}', v);");
+        }
+      }
+      b.writeln('}');
+      b.writeln('');
+    }
+
+    for (final e in viewScreens.entries) {
+      emitViewType(e.key, 'q', e.value.query);
+      emitViewType(e.key, 'f', e.value.fragment);
     }
 
     return b.toString();

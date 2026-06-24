@@ -34,7 +34,13 @@ final class Screen<I> {
   static const about = Screen<Never>._(_Screens.about);
   static const account = Screen<String>._(_Screens.account);
   static const editAccount = Screen<String>._(_Screens.editAccount);
-  static Screen<Object?> of(Enum spec) => _bySpec[spec]!;
+  static Screen<Object?> forSpec(Enum spec) => _bySpec[spec]!;
+
+  /// Reactive: whether the active placement chain currently includes
+  /// [screen] (on/at). The widget rebuilds only when that flips —
+  /// robust-aspect, like `Query.of`/`Fragment.of`.
+  static bool of(BuildContext context, Enum screen) =>
+      Placement.isOn(context, screen);
   static const _bySpec = <Enum, Screen<Object?>>{
     BootScreen.initial: Screen<Never>._(BootScreen.initial),
     _Screens.splash: splash,
@@ -53,8 +59,16 @@ final class Screen<I> {
   /// The live active stack as wrappers: .current/.currentId/.tab/
   /// .screens/.reachable, extensible without touching Screen.
   static NavStack<Screen<Object?>> get stack => NavStack([
-    for (final e in _Screens.graph.stack) NavEntry(of(e.screen), e.id),
+    for (final e in _Screens.graph.stack) NavEntry(forSpec(e.screen), e.id),
   ]);
+
+  /// The active top screen's QUERY view-state, read-only and
+  /// context-free (the headless peer of `Query.of(context, ...)`).
+  static Map<String, Object?> get query => _Screens.graph.activeView('q');
+
+  /// The active top screen's FRAGMENT view-state, read-only and
+  /// context-free.
+  static Map<String, Object?> get fragment => _Screens.graph.activeView('f');
   static const _treeSignature =
       'feedK(item(editItem()));homeK(item(editItem()),settings(about()));profileK(account(editAccount()),settings(about()));signIn();splash()';
 
@@ -181,7 +195,7 @@ final class Screen<I> {
   /// (e.g. a provider); returns a disposer. Pure observation.
   static void Function() observe(
     void Function(Screen<Object?> from, Screen<Object?> to) fn,
-  ) => _Screens.graph.observe((f, t) => fn(of(f), of(t)));
+  ) => _Screens.graph.observe((f, t) => fn(forSpec(f), forSpec(t)));
 
   /// A broadcast stream of committed navigations as typed snapshots:
   /// `from`/`to` are ScreenEntry stacks; `switch (e.destination)` for
@@ -224,19 +238,6 @@ final class Screen<I> {
     _Screens.graph.go(_Screens.editAccount, id, true);
     return const EditAccountNav._();
   }
-
-  /// Screen-local view-state for `feed` (URL-mirrored, historyless).
-  static const FeedView feedView = FeedView._();
-}
-
-final class FeedView {
-  const FeedView._();
-  String? get category =>
-      _Screens.graph.viewGet(_Screens.feed, 'category') as String?;
-  set category(String? v) =>
-      _Screens.graph.viewSet(_Screens.feed, 'category', v);
-  int? get radius => _Screens.graph.viewGet(_Screens.feed, 'radius') as int?;
-  set radius(int? v) => _Screens.graph.viewSet(_Screens.feed, 'radius', v);
 }
 
 /// The `Screen.replace` redirect facade — every verb mirrors `Screen`
@@ -1090,7 +1091,7 @@ extension ScreenIdOf on BuildContext {
   I idOf<I>(ScreenId<I> screen) => ScreenScope.idOf<I>(this, screen.spec);
 
   /// The screen this widget belongs to (its enclosing scope).
-  Screen<Object?> get screen => Screen.of(ScreenScope.of(this));
+  Screen<Object?> get screen => Screen.forSpec(ScreenScope.of(this));
 }
 
 void verifyScreens() {
@@ -1232,4 +1233,20 @@ String toUri(Link link, [String domain = 'https://canon.example']) {
         <int>[2],
       );
   }
+}
+
+/// Screen-local query view-state for `feed` (read-only).
+class FeedQuery {
+  const FeedQuery._();
+  String? get category =>
+      _Screens.graph.viewGet(_Screens.feed, 'category') as String?;
+  int? get radius => _Screens.graph.viewGet(_Screens.feed, 'radius') as int?;
+}
+
+/// Mutable [FeedQuery] — a setter per key (null clears / removes from URL).
+final class FeedQueryMut extends FeedQuery {
+  const FeedQueryMut._() : super._();
+  set category(String? v) =>
+      _Screens.graph.viewSet(_Screens.feed, 'category', v);
+  set radius(int? v) => _Screens.graph.viewSet(_Screens.feed, 'radius', v);
 }

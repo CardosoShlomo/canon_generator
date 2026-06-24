@@ -27,7 +27,13 @@ final class Screen<I> {
   static const catalog = Screen<Never>._(Shop.catalog);
   static const product = Screen<String>._(Shop.product);
   static const saved = Screen<Never>._(Wishlist.saved);
-  static Screen<Object?> of(Enum spec) => _bySpec[spec]!;
+  static Screen<Object?> forSpec(Enum spec) => _bySpec[spec]!;
+
+  /// Reactive: whether the active placement chain currently includes
+  /// [screen] (on/at). The widget rebuilds only when that flips —
+  /// robust-aspect, like `Query.of`/`Fragment.of`.
+  static bool of(BuildContext context, Enum screen) =>
+      Placement.isOn(context, screen);
   static const _bySpec = <Enum, Screen<Object?>>{
     BootScreen.initial: Screen<Never>._(BootScreen.initial),
     _Shell.home: home,
@@ -41,8 +47,16 @@ final class Screen<I> {
   /// The live active stack as wrappers: .current/.currentId/.tab/
   /// .screens/.reachable, extensible without touching Screen.
   static NavStack<Screen<Object?>> get stack => NavStack([
-    for (final e in _Shell.graph.stack) NavEntry(of(e.screen), e.id),
+    for (final e in _Shell.graph.stack) NavEntry(forSpec(e.screen), e.id),
   ]);
+
+  /// The active top screen's QUERY view-state, read-only and
+  /// context-free (the headless peer of `Query.of(context, ...)`).
+  static Map<String, Object?> get query => _Shell.graph.activeView('q');
+
+  /// The active top screen's FRAGMENT view-state, read-only and
+  /// context-free.
+  static Map<String, Object?> get fragment => _Shell.graph.activeView('f');
   static const _treeSignature =
       'homeK(saved(product()),settings(),shop(catalog(product())))';
 
@@ -157,7 +171,7 @@ final class Screen<I> {
   /// (e.g. a provider); returns a disposer. Pure observation.
   static void Function() observe(
     void Function(Screen<Object?> from, Screen<Object?> to) fn,
-  ) => _Shell.graph.observe((f, t) => fn(of(f), of(t)));
+  ) => _Shell.graph.observe((f, t) => fn(forSpec(f), forSpec(t)));
 
   /// A broadcast stream of committed navigations as typed snapshots:
   /// `from`/`to` are ScreenEntry stacks; `switch (e.destination)` for
@@ -661,7 +675,7 @@ extension ScreenIdOf on BuildContext {
   I idOf<I>(ScreenId<I> screen) => ScreenScope.idOf<I>(this, screen.spec);
 
   /// The screen this widget belongs to (its enclosing scope).
-  Screen<Object?> get screen => Screen.of(ScreenScope.of(this));
+  Screen<Object?> get screen => Screen.forSpec(ScreenScope.of(this));
 }
 
 void verifyScreens() {

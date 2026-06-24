@@ -703,15 +703,16 @@ void main() {
             spec: _nestedLinkSpec,
           ));
 
-  test('emits a typed view-state handle from placement .query', () =>
+  test('placement .query emits typed FeedQuery (read) + FeedQueryMut (write)', () =>
       _expectGenerated(
         allOf([
-          contains('final class FeedView'),
-          contains('static const FeedView feedView = FeedView._();'),
-          contains('String? get category'),
-          contains("viewGet(_Screens.feed, 'category') as String?"),
-          contains('set category(String? v)'),
-          contains('int? get radius'),
+          contains('FeedNav'), // nav generation still succeeded…
+          contains('class FeedQuery {'), // read model
+          contains('String? get category =>'),
+          contains('int? get radius =>'),
+          contains('final class FeedQueryMut extends FeedQuery'), // mutable subtype
+          contains('set category(String? v) =>'),
+          contains("viewSet(_Screens.feed, 'category', v)"),
         ]),
         spec: _viewSpec,
       ));
@@ -786,7 +787,7 @@ void main() {
 
   test('emits the commit-phase observe() forwarder', () => _expectGenerated(allOf(
         contains('static void Function() observe('),
-        contains('_Screens.graph.observe((f, t) => fn(of(f), of(t)))'),
+        contains('_Screens.graph.observe((f, t) => fn(forSpec(f), forSpec(t)))'),
       )));
 
   test('shared widget with distinct id types gets a sealed id union', () =>
