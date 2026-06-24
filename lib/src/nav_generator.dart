@@ -1794,9 +1794,48 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       b.writeln('sealed class AnyView {}');
       b.writeln('');
     }
+    // Condition vocabulary for the selector grammar: `FeedQueryCond.category('x')`
+    // (equals), `.byFav` (flag true), and a `.not` mirror (not-equals / false). Each
+    // is a `ViewCond` carrying its key (the reactive aspect) + the test.
+    void emitCond(String screen, String part, List<ViewKey> keys) {
+      if (keys.isEmpty) return;
+      final base = '${_cap(screen)}${part == 'f' ? 'Fragment' : 'Query'}Cond';
+      final not = '${_cap(screen)}${part == 'f' ? 'Fragment' : 'Query'}Not';
+      // static factory on the cond type (positive); instance member on `.not`.
+      String pos(ViewKey k) => k.flag
+          ? "static const $base ${k.name} = $base._('${k.name}', true);"
+          : "static $base ${k.name}(${k.type} v) => $base._('${k.name}', v);";
+      String neg(ViewKey k) => k.flag
+          ? "$base get ${k.name} => const $base._('${k.name}', true, negate: true);"
+          : "$base ${k.name}(${k.type} v) => $base._('${k.name}', v, negate: true);";
+      b.writeln('/// Condition terms for `$screen`\'s ${part == 'f' ? 'fragment' : 'query'}'
+          ' — `.key(v)` equals, `.byFlag` true, `.not.…` negates.');
+      b.writeln('final class $base implements ViewCond {');
+      b.writeln('  const $base._(this.key, this.expected, {this.negate = false});');
+      b.writeln('  @override\n  final String key;');
+      b.writeln('  final Object? expected;');
+      b.writeln('  final bool negate;');
+      b.writeln('  @override');
+      b.writeln('  bool test(Object? v) { final eq = v == expected; return negate ? !eq : eq; }');
+      for (final k in keys) {
+        b.writeln('  ${pos(k)}');
+      }
+      b.writeln('  static const $not not = $not._();');
+      b.writeln('}');
+      b.writeln('final class $not {');
+      b.writeln('  const $not._();');
+      for (final k in keys) {
+        b.writeln('  ${neg(k)}');
+      }
+      b.writeln('}');
+      b.writeln('');
+    }
+
     for (final e in viewScreens.entries) {
       emitViewType(e.key, 'q', e.value.query);
       emitViewType(e.key, 'f', e.value.fragment);
+      emitCond(e.key, 'q', e.value.query);
+      emitCond(e.key, 'f', e.value.fragment);
       // The read-only view the nav implements: getters return the READ models,
       // while the nav's own getters return the mutable `…Mut` subtypes (covariant).
       final v = '${_cap(e.key)}View';

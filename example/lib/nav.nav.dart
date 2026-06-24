@@ -1264,6 +1264,31 @@ final class FeedQueryMut extends FeedQuery {
   set radius(int? v) => _Screens.graph.viewSet(_Screens.feed, 'radius', v);
 }
 
+/// Condition terms for `feed`'s query — `.key(v)` equals, `.byFlag` true, `.not.…` negates.
+final class FeedQueryCond implements ViewCond {
+  const FeedQueryCond._(this.key, this.expected, {this.negate = false});
+  @override
+  final String key;
+  final Object? expected;
+  final bool negate;
+  @override
+  bool test(Object? v) {
+    final eq = v == expected;
+    return negate ? !eq : eq;
+  }
+
+  static FeedQueryCond category(String v) => FeedQueryCond._('category', v);
+  static FeedQueryCond radius(int v) => FeedQueryCond._('radius', v);
+  static const FeedQueryNot not = FeedQueryNot._();
+}
+
+final class FeedQueryNot {
+  const FeedQueryNot._();
+  FeedQueryCond category(String v) =>
+      FeedQueryCond._('category', v, negate: true);
+  FeedQueryCond radius(int v) => FeedQueryCond._('radius', v, negate: true);
+}
+
 /// Read-only view-state of `feed` — the reactive reads return
 /// this; the navigable `FeedNav` adds the setters.
 abstract interface class FeedView implements AnyView {
