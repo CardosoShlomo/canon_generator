@@ -214,6 +214,32 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 }
 ''';
 
+// A link nested under a placement: the URL keeps the full path, the class is
+// named by the LEAF screen (no `HomeAccount…` stutter).
+const _nestedLinkSpec = '''
+import 'package:canon/canon.dart';
+
+part 'spec.nav.dart';
+
+@screens
+enum _Screens with ScreenNode<Object?, _Screens> {
+  home(0),
+  account(0, Codec.string);
+
+  const _Screens(this.widget, [this.id]);
+  final Object widget;
+  final Codec? id;
+
+  static final graph = NavGraph<_Screens>(
+    {
+      home({account(), account.link({slot(Codec.string)})}),
+    },
+    initial: home,
+    pageOf: (s, c, k) => 0,
+  );
+}
+''';
+
 Future<void> _expectGenerated(Matcher content, {String spec = _spec}) =>
     testBuilder(
       navBuilder(BuilderOptions.empty),
@@ -666,6 +692,16 @@ void main() {
         ]),
         spec: _widgetFormSpec,
       ));
+
+  test('a nested link is named by its leaf screen, path stays in the template',
+      () => _expectGenerated(
+            allOf([
+              contains('final class AccountLink'), // leaf name, not HomeAccountLink
+              isNot(contains('HomeAccountLink')),
+              contains("'home/account/*' => AccountLink("), // full path in the URL
+            ]),
+            spec: _nestedLinkSpec,
+          ));
 
   test('emits a typed view-state handle from placement .query', () =>
       _expectGenerated(

@@ -104,8 +104,11 @@ List<Endpoint> linkEndpoints(List<PlacementNode> branches, EnumElement element,
   void emit(List<String> path, List<SlotSpec> slots, _Node node) {
     final template = path.join('/');
     if (!seenTemplates.add(template)) return; // dedup repeated routes
-    var base = path.where((p) => p != '*').map(_pascal).join();
-    if (base.isEmpty) base = 'Root';
+    // Name by the LEAF screen, not the full path (`/profile/account/*` → Account,
+    // not ProfileAccount) — the path lives only in the URL template. Collisions
+    // across placements get a numeric suffix.
+    final segs = [for (final p in path) if (p != '*') p];
+    var base = segs.isEmpty ? 'Root' : _pascal(segs.last);
     var name = '${base}Link';
     for (var n = 2; !usedNames.add(name); n++) {
       name = '$base${n}Link';
