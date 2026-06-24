@@ -15,7 +15,7 @@ enum _Shell with ScreenNode<_Shell> {
   @override
   final Widget widget;
 
-  static final graph = NavGraph<InitialScreen>(
+  static final graph = NavGraph(
     {
       home.keep({
         settings,
@@ -23,9 +23,17 @@ enum _Shell with ScreenNode<_Shell> {
         graft(Wishlist.subtree),
       }),
     },
-    initial: .home,
+    initial: const _Boot(),
     pageOf: (widget, ctx, key) => MaterialPage(key: key, child: widget),
   );
+}
+
+// Boot loading UI for the shell graph.
+class _Boot extends StatelessWidget {
+  const _Boot();
+  @override
+  Widget build(BuildContext context) =>
+      const Scaffold(body: Center(child: CircularProgressIndicator()));
 }
 
 // Owns `product` — it carries the widget and a uuid id codec.

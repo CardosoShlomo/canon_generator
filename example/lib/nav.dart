@@ -25,7 +25,7 @@ enum _Screens with ScreenNode<_Screens> {
   final Widget widget;
   final Codec? id;
 
-  static final graph = NavGraph<InitialScreen>(
+  static final graph = NavGraph(
     {
       splash,
       signIn,
@@ -41,9 +41,23 @@ enum _Screens with ScreenNode<_Screens> {
       // a shareable deep link → item, resolved by the generated parse layer.
       item.link({slots({Codec.literal('me'), Codec.uuid(#itemId), Codec.username})}),
     },
-    initial: .home.settings.about, // a descent chain seeds the whole stack
+    // The boot loading UI: shown on blob-null cold-boot until the resolver (which
+    // may read `Screen.initialUrl`) commits a real screen. `Screen.at` is
+    // `Initial` until then; that first commit auto-replaces (no history entry).
+    initial: const _Loading(),
     pageOf: (widget, ctx, key) => MaterialPage(key: key, child: widget),
   );
+}
+
+// The boot loading UI (rule 2): a plain widget, NOT a screen — it has no place
+// in the nav tree. Shown while `Screen.at` is `Initial`.
+class _Loading extends StatelessWidget {
+  const _Loading();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(body: Center(child: CircularProgressIndicator()));
+  }
 }
 
 class _Page extends StatelessWidget {

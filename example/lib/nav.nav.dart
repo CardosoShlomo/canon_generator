@@ -36,6 +36,7 @@ final class Screen<I> {
   static const editAccount = Screen<String>._(_Screens.editAccount);
   static Screen<Object?> of(Enum spec) => _bySpec[spec]!;
   static const _bySpec = <Enum, Screen<Object?>>{
+    BootScreen.initial: Screen<Never>._(BootScreen.initial),
     _Screens.splash: splash,
     _Screens.signIn: signIn,
     _Screens.home: home,
@@ -135,8 +136,16 @@ final class Screen<I> {
     _Screens.about => (const AboutNav._()).at as AnyNav,
     _Screens.account => const AccountNav._(),
     _Screens.editAccount => const EditAccountNav._(),
+    BootScreen.initial => const Initial._(),
     _ => throw StateError('not a _Screens screen'),
   };
+
+  /// The cold-start link (already parsed), or null off the web,
+  /// warm, or when the URL is not a representable link.
+  static Link? get initialUrl {
+    final u = _Screens.graph.bootUrl;
+    return u == null ? null : parseLink(u)?.link;
+  }
 
   /// The poppable handle if the active top is a non-root placement,
   /// else null (at a scope root). `.at` = current placement; `.pop()`
@@ -351,101 +360,10 @@ final class Hop<N extends AnyNav> {
       Hop._(_Screens.account, id, const AccountNav._());
 }
 
-sealed class InitialScreen implements InitialScreenBase {
-  const InitialScreen(this.chain);
-  @override
-  final List<(Enum, Object?)> chain;
-  static const SplashInitialScreen splash = SplashInitialScreen._([
-    (_Screens.splash, null),
-  ]);
-  static const SignInInitialScreen signIn = SignInInitialScreen._([
-    (_Screens.signIn, null),
-  ]);
-  static const HomeInitialScreen home = HomeInitialScreen._([
-    (_Screens.home, null),
-  ]);
-  static const FeedInitialScreen feed = FeedInitialScreen._([
-    (_Screens.feed, null),
-  ]);
-  static const ProfileInitialScreen profile = ProfileInitialScreen._([
-    (_Screens.profile, null),
-  ]);
-  static AccountInitialScreen account(String id) => AccountInitialScreen._([
-    (_Screens.profile, null),
-    (_Screens.account, id),
-  ]);
-  static EditAccountInitialScreen editAccount(String id) =>
-      EditAccountInitialScreen._([
-        (_Screens.profile, null),
-        (_Screens.account, id),
-        (_Screens.editAccount, id),
-      ]);
-}
-
-final class SplashInitialScreen extends InitialScreen {
-  const SplashInitialScreen._(super.chain);
-}
-
-final class SignInInitialScreen extends InitialScreen {
-  const SignInInitialScreen._(super.chain);
-}
-
-final class HomeInitialScreen extends InitialScreen {
-  const HomeInitialScreen._(super.chain);
-  HomeItemInitialScreen item(String id) =>
-      HomeItemInitialScreen._([...chain, (_Screens.item, id)]);
-  HomeSettingsInitialScreen get settings =>
-      HomeSettingsInitialScreen._([...chain, (_Screens.settings, null)]);
-}
-
-final class HomeItemInitialScreen extends InitialScreen {
-  const HomeItemInitialScreen._(super.chain);
-}
-
-final class HomeSettingsInitialScreen extends InitialScreen {
-  const HomeSettingsInitialScreen._(super.chain);
-  HomeSettingsAboutInitialScreen get about =>
-      HomeSettingsAboutInitialScreen._([...chain, (_Screens.about, null)]);
-}
-
-final class HomeSettingsAboutInitialScreen extends InitialScreen {
-  const HomeSettingsAboutInitialScreen._(super.chain);
-}
-
-final class FeedInitialScreen extends InitialScreen {
-  const FeedInitialScreen._(super.chain);
-  FeedItemInitialScreen item(String id) =>
-      FeedItemInitialScreen._([...chain, (_Screens.item, id)]);
-}
-
-final class FeedItemInitialScreen extends InitialScreen {
-  const FeedItemInitialScreen._(super.chain);
-}
-
-final class ProfileInitialScreen extends InitialScreen {
-  const ProfileInitialScreen._(super.chain);
-  ProfileSettingsInitialScreen get settings =>
-      ProfileSettingsInitialScreen._([...chain, (_Screens.settings, null)]);
-  AccountInitialScreen account(String id) =>
-      AccountInitialScreen._([...chain, (_Screens.account, id)]);
-}
-
-final class ProfileSettingsInitialScreen extends InitialScreen {
-  const ProfileSettingsInitialScreen._(super.chain);
-  ProfileSettingsAboutInitialScreen get about =>
-      ProfileSettingsAboutInitialScreen._([...chain, (_Screens.about, null)]);
-}
-
-final class ProfileSettingsAboutInitialScreen extends InitialScreen {
-  const ProfileSettingsAboutInitialScreen._(super.chain);
-}
-
-final class AccountInitialScreen extends InitialScreen {
-  const AccountInitialScreen._(super.chain);
-}
-
-final class EditAccountInitialScreen extends InitialScreen {
-  const EditAccountInitialScreen._(super.chain);
+/// The boot placement: `Screen.at` returns it until the first commit.
+/// `if (Screen.at case Initial()) ...` gates blob-null cold-boot UI.
+final class Initial extends AnyNav {
+  const Initial._() : super._();
 }
 
 final class On<N extends AnyNav> {

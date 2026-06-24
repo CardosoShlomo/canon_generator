@@ -502,17 +502,16 @@ void main() {
         ]),
       ));
 
-  test('InitialScreen: typed initial heads mirror the kick-start surface', () =>
+  test('emits the Initial boot placement (no chain surface, no goInitial)', () =>
       _expectGenerated(
         allOf([
-          contains('sealed class InitialScreen implements InitialScreenBase'),
-          contains('static const HomeInitialScreen home ='), // id-free root -> const
-          contains('static AdInitialScreen ad(String id)'), // id-bearing -> idMethod
-          contains('static EditAdInitialScreen editAd(String id)'), // rescue head
-          // the rescue head stamps the one id across the whole inherit chain:
-          contains('(_Screens.ad, id)'),
-          contains('(_Screens.editAd, id)'),
-          contains('final class HomeInitialScreen extends InitialScreen'),
+          // the boot placement: a plain AnyNav, matched via `Screen.at case Initial()`
+          contains('final class Initial extends AnyNav'),
+          contains('BootScreen.initial => const Initial._()'), // Screen.at maps it
+          contains('BootScreen.initial: Screen<Never>._(BootScreen.initial)'), // of() safe
+          // the old InitialScreen-chain mechanism is gone (name freed for the consumer)
+          isNot(contains('sealed class InitialScreen')),
+          isNot(contains('goInitial')),
         ]),
         spec: _inheritSpec,
       ));

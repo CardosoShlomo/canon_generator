@@ -766,6 +766,8 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     }
     b.writeln('  static Screen<Object?> of(Enum spec) => _bySpec[spec]!;');
     b.writeln('  static const _bySpec = <Enum, Screen<Object?>>{');
+    // the boot sentinel maps to a placeholder Screen so stack/observe stay safe.
+    b.writeln('    BootScreen.initial: Screen<Never>._(BootScreen.initial),');
     for (final r in rows) {
       b.writeln('    ${sv(r.name)}: ${r.name},');
     }
@@ -852,9 +854,18 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
           ? '        ${sv(r.name)} => const $n._(),'
           : '        ${sv(r.name)} => (const $n._()).at as AnyNav,');
     }
+    b.writeln('        BootScreen.initial => const Initial._(),');
     // current is erased to Enum; the spec's screens are exhaustive in practice.
     b.writeln("        _ => throw StateError('not a $spec screen'),");
     b.writeln('      };');
+    if (model.links.isNotEmpty) {
+      b.writeln('  /// The cold-start link (already parsed), or null off the web,');
+      b.writeln('  /// warm, or when the URL is not a representable link.');
+      b.writeln('  static Link? get initialUrl {');
+      b.writeln('    final u = $spec.graph.bootUrl;');
+      b.writeln('    return u == null ? null : parseLink(u)?.link;');
+      b.writeln('  }');
+    }
     if (hasCanPop) {
       b.writeln('  /// The poppable handle if the active top is a non-root placement,');
       b.writeln('  /// else null (at a scope root). `.at` = current placement; `.pop()`');
@@ -1074,63 +1085,14 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       }
     }
 
-    // InitialScreen: the typed `initial:` surface. Heads mirror Screen.goXx
-    // minus the `go` (id-free → static const, id-bearing → idMethod), so
-    // `NavGraph<InitialScreen>(initial: .home, ...)` resolves the leading
-    // dot; the per-screen subclasses carry the descent chain. Each carries its
-    // seed chain (root..target), ids stamped per inherit.
-    String initialClassName(List<PlacementNode> ms) => '${setStem(ms)}InitialScreen';
-    String initialChainLits(String x) => [
-          for (final s in placements[x]!.single.path)
-            '(${sv(s)}, ${idOf[s] != null ? 'id' : 'null'})'
-        ].join(', ');
-    // The descent trie: one InitialScreen class per reachable forward placement,
-    // continuations into its children (inherited children excluded — head-only,
-    // like the on-chain). Mirrors the Nav tree for `initial:`.
-    final initialEmitted = <String>{};
-    void emitInitialStep(List<PlacementNode> ms) {
-      final name = initialClassName(ms);
-      if (!initialEmitted.add(name)) return;
-      final groups = <String, List<PlacementNode>>{};
-      for (final c in fwd(ms)) {
-        if (c.inheritSource != null) continue;
-        (groups[c.screen] ??= []).add(c);
-      }
-      b.writeln('final class $name extends InitialScreen {');
-      b.writeln('  const $name._(super.chain);');
-      for (final e in groups.entries) {
-        final cName = initialClassName(e.value);
-        final idT = idOf[e.key];
-        if (idT == null) {
-          b.writeln('  $cName get ${e.key} => $cName._([...chain, (${sv(e.key)}, null)]);');
-        } else {
-          b.writeln('  $cName ${e.key}($idT id) => $cName._([...chain, (${sv(e.key)}, id)]);');
-        }
-      }
-      b.writeln('}');
-      for (final e in groups.entries) {
-        emitInitialStep(e.value);
-      }
-    }
-
-    b.writeln('sealed class InitialScreen implements InitialScreenBase {');
-    b.writeln('  const InitialScreen(this.chain);');
-    b.writeln('  @override');
-    b.writeln('  final List<(Enum, Object?)> chain;');
-    for (final r in rows) {
-      if (!globalSafe(r.name)) continue;
-      final cls = initialClassName(placements[r.name]!);
-      final lits = initialChainLits(r.name);
-      if (idOf[r.name] == null) {
-        b.writeln('  static const $cls ${r.name} = $cls._([$lits]);');
-      } else {
-        b.writeln('  static $cls ${r.name}(${idOf[r.name]} id) => $cls._([$lits]);');
-      }
-    }
-    b.writeln('}');
-    for (final r in rows) {
-      if (globalSafe(r.name)) emitInitialStep(placements[r.name]!);
-    }
+    // The synthetic boot placement (rule 2): `Screen.at` returns it while booting
+    // (blob-null cold-boot, before the resolver commits). No `Nav` suffix (so it
+    // can't collide with a `<screen>Nav`), no `goInitial` (unreachable by
+    // navigation) — pattern-match `Screen.at case Initial()`. The first commit out
+    // of boot auto-replaces, so the loading screen leaves no history.
+    b.writeln('/// The boot placement: `Screen.at` returns it until the first commit.');
+    b.writeln('/// `if (Screen.at case Initial()) ...` gates blob-null cold-boot UI.');
+    b.writeln('final class Initial extends AnyNav { const Initial._() : super._(); }');
 
     b.writeln('final class On<N extends AnyNav> {');
     b.writeln('  const On._(this.specs, this.ids, this.nav);');

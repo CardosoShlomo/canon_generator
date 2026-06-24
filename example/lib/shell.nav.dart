@@ -29,6 +29,7 @@ final class Screen<I> {
   static const saved = Screen<Never>._(Wishlist.saved);
   static Screen<Object?> of(Enum spec) => _bySpec[spec]!;
   static const _bySpec = <Enum, Screen<Object?>>{
+    BootScreen.initial: Screen<Never>._(BootScreen.initial),
     _Shell.home: home,
     _Shell.settings: settings,
     Shop.shop: shop,
@@ -118,6 +119,7 @@ final class Screen<I> {
     Shop.catalog => const CatalogNav._(),
     Shop.product => (const ProductNav._()).at as AnyNav,
     Wishlist.saved => const SavedNav._(),
+    BootScreen.initial => const Initial._(),
     _ => throw StateError('not a _Shell screen'),
   };
 
@@ -283,70 +285,10 @@ final class Hop<N extends AnyNav> {
   static const saved = Hop<SavedNav>._(Wishlist.saved, null, SavedNav._());
 }
 
-sealed class InitialScreen implements InitialScreenBase {
-  const InitialScreen(this.chain);
-  @override
-  final List<(Enum, Object?)> chain;
-  static const HomeInitialScreen home = HomeInitialScreen._([
-    (_Shell.home, null),
-  ]);
-  static const SettingsInitialScreen settings = SettingsInitialScreen._([
-    (_Shell.home, null),
-    (_Shell.settings, null),
-  ]);
-  static const ShopInitialScreen shop = ShopInitialScreen._([
-    (_Shell.home, null),
-    (Shop.shop, null),
-  ]);
-  static const CatalogInitialScreen catalog = CatalogInitialScreen._([
-    (_Shell.home, null),
-    (Shop.shop, null),
-    (Shop.catalog, null),
-  ]);
-  static const SavedInitialScreen saved = SavedInitialScreen._([
-    (_Shell.home, null),
-    (Wishlist.saved, null),
-  ]);
-}
-
-final class HomeInitialScreen extends InitialScreen {
-  const HomeInitialScreen._(super.chain);
-  SettingsInitialScreen get settings =>
-      SettingsInitialScreen._([...chain, (_Shell.settings, null)]);
-  ShopInitialScreen get shop =>
-      ShopInitialScreen._([...chain, (Shop.shop, null)]);
-  SavedInitialScreen get saved =>
-      SavedInitialScreen._([...chain, (Wishlist.saved, null)]);
-}
-
-final class SettingsInitialScreen extends InitialScreen {
-  const SettingsInitialScreen._(super.chain);
-}
-
-final class ShopInitialScreen extends InitialScreen {
-  const ShopInitialScreen._(super.chain);
-  CatalogInitialScreen get catalog =>
-      CatalogInitialScreen._([...chain, (Shop.catalog, null)]);
-}
-
-final class CatalogInitialScreen extends InitialScreen {
-  const CatalogInitialScreen._(super.chain);
-  HomeShopCatalogProductInitialScreen product(String id) =>
-      HomeShopCatalogProductInitialScreen._([...chain, (Shop.product, id)]);
-}
-
-final class HomeShopCatalogProductInitialScreen extends InitialScreen {
-  const HomeShopCatalogProductInitialScreen._(super.chain);
-}
-
-final class SavedInitialScreen extends InitialScreen {
-  const SavedInitialScreen._(super.chain);
-  HomeSavedProductInitialScreen product(String id) =>
-      HomeSavedProductInitialScreen._([...chain, (Shop.product, id)]);
-}
-
-final class HomeSavedProductInitialScreen extends InitialScreen {
-  const HomeSavedProductInitialScreen._(super.chain);
+/// The boot placement: `Screen.at` returns it until the first commit.
+/// `if (Screen.at case Initial()) ...` gates blob-null cold-boot UI.
+final class Initial extends AnyNav {
+  const Initial._() : super._();
 }
 
 final class On<N extends AnyNav> {
