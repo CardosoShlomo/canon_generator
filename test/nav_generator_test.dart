@@ -713,6 +713,11 @@ void main() {
           contains('final class FeedQueryMut extends FeedQuery'), // mutable subtype
           contains('set category(String? v) =>'),
           contains("viewSet(_Screens.feed, 'category', v)"),
+          // …and the nav implements the read-only view, exposing the MUTABLE getter
+          contains('abstract interface class FeedView'),
+          contains('FeedQuery get query;'),
+          contains('implements FeedView'),
+          contains('FeedQueryMut get query => const FeedQueryMut._();'),
         ]),
         spec: _viewSpec,
       ));

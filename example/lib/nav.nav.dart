@@ -658,8 +658,9 @@ final class HomeHop<N extends AnyNav> {
 }
 
 final class FeedNav extends AnyNav
-    implements PopDestPlacement, KickstartPlacement {
+    implements FeedView, PopDestPlacement, KickstartPlacement {
   const FeedNav._() : super._();
+  FeedQueryMut get query => const FeedQueryMut._();
   FeedItemNav goItem(String id) {
     _Screens.graph.go(_Screens.item, id, true);
     return const FeedItemNav._();
@@ -1249,4 +1250,10 @@ final class FeedQueryMut extends FeedQuery {
   set category(String? v) =>
       _Screens.graph.viewSet(_Screens.feed, 'category', v);
   set radius(int? v) => _Screens.graph.viewSet(_Screens.feed, 'radius', v);
+}
+
+/// Read-only view-state of `feed` — the reactive reads return
+/// this; the navigable `FeedNav` adds the setters.
+abstract interface class FeedView {
+  FeedQuery get query;
 }

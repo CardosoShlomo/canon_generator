@@ -238,6 +238,19 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
 
     tree.forEach(collectView);
 
+    // The nav body lines exposing a screen's MUTABLE view-state (read+write), and
+    // the read-only `<Screen>View` interface marker the nav implements.
+    String viewGetters(String screen) {
+      final v = viewScreens[screen];
+      if (v == null) return '';
+      return [
+        if (v.query.isNotEmpty)
+          '  ${_cap(screen)}QueryMut get query => const ${_cap(screen)}QueryMut._();',
+        if (v.fragment.isNotEmpty)
+          '  ${_cap(screen)}FragmentMut get fragment => const ${_cap(screen)}FragmentMut._();',
+      ].join('\n');
+    }
+
     // Flatten every inherit link to its ULTIMATE source, order-independently: a
     // chain editItem→itemPreview→item resolves editItem's source to item (the id
     // screen), so the shared id is detected no matter the declaration order.
@@ -1334,11 +1347,17 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
           edges: n == null
               ? const {}
               : {for (final c in n.children) if (c.inheritSource == null) c.screen: childType(c)},
+          markers: [if (viewScreens.containsKey(r.name)) '${_cap(r.name)}View'],
           parentScreen: n?.parent?.screen,
           path: n?.path,
-          extra: cyclic.contains(r.name)
-              ? '  int get depth => $spec.graph.countOf(${sv(r.name)});'
-              : null,
+          extra: () {
+            final parts = [
+              if (viewScreens.containsKey(r.name)) viewGetters(r.name),
+              if (cyclic.contains(r.name))
+                '  int get depth => $spec.graph.countOf(${sv(r.name)});',
+            ];
+            return parts.isEmpty ? null : parts.join('\n');
+          }(),
         );
         continue;
       }
@@ -1744,6 +1763,18 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     for (final e in viewScreens.entries) {
       emitViewType(e.key, 'q', e.value.query);
       emitViewType(e.key, 'f', e.value.fragment);
+      // The read-only view the nav implements: getters return the READ models,
+      // while the nav's own getters return the mutable `…Mut` subtypes (covariant).
+      final v = '${_cap(e.key)}View';
+      b.writeln('/// Read-only view-state of `${e.key}` — the reactive reads return');
+      b.writeln('/// this; the navigable `${_cap(e.key)}Nav` adds the setters.');
+      b.writeln('abstract interface class $v {');
+      if (e.value.query.isNotEmpty) b.writeln('  ${_cap(e.key)}Query get query;');
+      if (e.value.fragment.isNotEmpty) {
+        b.writeln('  ${_cap(e.key)}Fragment get fragment;');
+      }
+      b.writeln('}');
+      b.writeln('');
     }
 
     return b.toString();
