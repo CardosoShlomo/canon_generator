@@ -146,14 +146,14 @@ final class Screen<I> {
   /// `Screen.replace.goHome()`, `Screen.replace.on(.user)?.goChat(id)`.
   static const replace = Replace._();
 
-  /// The current EXACT placement nav — pattern-match it:
-  /// `if (Screen.at case HomeUserProfileNav n) ...`.
-  static AnyNav get at => switch (_Shell.graph.current) {
+  /// The current EXACT placement, as the sealed [Placement] — an
+  /// exhaustive `switch (Screen.at) { case HomeUserProfileNav n => … }`.
+  static AnyPlacement get at => switch (_Shell.graph.current) {
     _Shell.home => const HomeNav._(),
     _Shell.settings => const SettingsNav._(),
     Shop.shop => const ShopNav._(),
     Shop.catalog => const CatalogNav._(),
-    Shop.product => (const ProductNav._()).at as AnyNav,
+    Shop.product => (const ProductNav._()).at,
     Wishlist.saved => const SavedNav._(),
     BootScreen.initial => const Initial._(),
     _ => throw StateError('not a _Shell screen'),
@@ -323,7 +323,7 @@ final class Hop<N extends AnyNav> {
 
 /// The boot placement: `Screen.at` returns it until the first commit.
 /// `if (Screen.at case Initial()) ...` gates blob-null cold-boot UI.
-final class Initial extends AnyNav {
+final class Initial extends AnyNav implements AnyPlacement {
   const Initial._() : super._();
 }
 
@@ -444,6 +444,8 @@ final class OnProduct extends On<ProductNav> {
       OnProduct._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
+sealed class AnyPlacement {}
+
 abstract base class AnyNav {
   const AnyNav._();
 }
@@ -483,7 +485,7 @@ final class KickstartNav extends AnyNav {
 }
 
 final class HomeNav extends AnyNav
-    implements PopDestPlacement, KickstartPlacement {
+    implements AnyPlacement, PopDestPlacement, KickstartPlacement {
   const HomeNav._() : super._();
   SettingsNav goSettings() {
     _Shell.graph.go(_Shell.settings, null, true);
@@ -521,7 +523,7 @@ final class HomeHop<N extends AnyNav> {
 }
 
 final class SettingsNav extends AnyNav
-    implements CanPopPlacement, KickstartPlacement {
+    implements AnyPlacement, CanPopPlacement, KickstartPlacement {
   const SettingsNav._() : super._();
   HomeNav pop() {
     _Shell.graph.pop();
@@ -530,7 +532,11 @@ final class SettingsNav extends AnyNav
 }
 
 final class ShopNav extends AnyNav
-    implements CanPopPlacement, PopDestPlacement, KickstartPlacement {
+    implements
+        AnyPlacement,
+        CanPopPlacement,
+        PopDestPlacement,
+        KickstartPlacement {
   const ShopNav._() : super._();
   CatalogNav goCatalog() {
     _Shell.graph.go(Shop.catalog, null, true);
@@ -544,7 +550,11 @@ final class ShopNav extends AnyNav
 }
 
 final class CatalogNav extends AnyNav
-    implements CanPopPlacement, PopDestPlacement, KickstartPlacement {
+    implements
+        AnyPlacement,
+        CanPopPlacement,
+        PopDestPlacement,
+        KickstartPlacement {
   const CatalogNav._() : super._();
   HomeShopCatalogProductNav goProduct(String id) {
     _Shell.graph.go(Shop.product, id, true);
@@ -592,7 +602,7 @@ final class ProductNav extends AnyNav {
   }
 }
 
-sealed class ProductPlacement {}
+sealed class ProductPlacement implements AnyPlacement {}
 
 final class HomeShopCatalogProductNav extends AnyNav
     implements ProductPlacement, CanPopPlacement {
@@ -667,7 +677,11 @@ final class HomeSavedProductPop<N extends AnyNav> {
 }
 
 final class SavedNav extends AnyNav
-    implements CanPopPlacement, PopDestPlacement, KickstartPlacement {
+    implements
+        AnyPlacement,
+        CanPopPlacement,
+        PopDestPlacement,
+        KickstartPlacement {
   const SavedNav._() : super._();
   HomeSavedProductNav goProduct(String id) {
     _Shell.graph.go(Shop.product, id, true);

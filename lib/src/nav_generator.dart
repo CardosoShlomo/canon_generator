@@ -916,14 +916,14 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln('  /// entry instead of pushing. Decide it at the start —');
     b.writeln('  /// `Screen.replace.goHome()`, `Screen.replace.on(.user)?.goChat(id)`.');
     b.writeln('  static const replace = Replace._();');
-    b.writeln('  /// The current EXACT placement nav — pattern-match it:');
-    b.writeln('  /// `if (Screen.at case HomeUserProfileNav n) ...`.');
-    b.writeln('  static AnyNav get at => switch ($spec.graph.current) {');
+    b.writeln('  /// The current EXACT placement, as the sealed [Placement] — an');
+    b.writeln('  /// exhaustive `switch (Screen.at) { case HomeUserProfileNav n => … }`.');
+    b.writeln('  static AnyPlacement get at => switch ($spec.graph.current) {');
     for (final r in rows) {
       final n = unionName(r.name);
       b.writeln(isSingle(r.name)
           ? '        ${sv(r.name)} => const $n._(),'
-          : '        ${sv(r.name)} => (const $n._()).at as AnyNav,');
+          : '        ${sv(r.name)} => (const $n._()).at,');
     }
     b.writeln('        BootScreen.initial => const Initial._(),');
     // current is erased to Enum; the spec's screens are exhaustive in practice.
@@ -1178,7 +1178,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     // of boot auto-replaces, so the loading screen leaves no history.
     b.writeln('/// The boot placement: `Screen.at` returns it until the first commit.');
     b.writeln('/// `if (Screen.at case Initial()) ...` gates blob-null cold-boot UI.');
-    b.writeln('final class Initial extends AnyNav { const Initial._() : super._(); }');
+    b.writeln('final class Initial extends AnyNav implements AnyPlacement { const Initial._() : super._(); }');
 
     b.writeln('final class On<N extends AnyNav> {');
     b.writeln('  const On._(this.specs, this.ids, this.nav, [this.conds = const []]);');
@@ -1247,6 +1247,11 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     }
     b.write(stepBuf);
 
+    // The sealed root of every foreground-resolvable placement — exactly what
+    // `Screen.at` / a view's `.at` resolve to, so a switch over them is
+    // exhaustive (each screen's `…Placement` and single-parent nav implement it).
+    b.writeln('sealed class AnyPlacement {}');
+    b.writeln('');
     // Instances carry only their own edge-gated go(Hop); jump-to-anywhere is
     // the static Screen.go, so a leaf nav cannot go nowhere by inheritance.
     b.writeln('abstract base class AnyNav {');
@@ -1375,7 +1380,9 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
           edges: n == null
               ? const {}
               : {for (final c in n.children) if (c.inheritSource == null) c.screen: childType(c)},
-          markers: [if (viewScreens.containsKey(r.name)) '${_cap(r.name)}View'],
+          // 'AnyPlacement' (the sealed root) since a single-parent screen's nav
+          // is exactly what `Screen.at` resolves to for it.
+          markers: ['AnyPlacement', if (viewScreens.containsKey(r.name)) '${_cap(r.name)}View'],
           parentScreen: n?.parent?.screen,
           path: n?.path,
           extra: () {
@@ -1532,7 +1539,11 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       walk(nodes, 1, const []);
 
       for (final m in markersToEmit) {
-        b.writeln('sealed class $m {}');
+        // A flat `…Placement` marker IS a foreground placement set → a subtype of
+        // the global sealed [AnyPlacement]; `…Under` partials are not.
+        b.writeln(m.endsWith('Placement')
+            ? 'sealed class $m implements AnyPlacement {}'
+            : 'sealed class $m {}');
       }
       for (final n in nodes) {
         final anc = ancestorsOf(n);
@@ -1903,7 +1914,15 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       b.writeln('  /// CURRENT foreground: does it match [sel] (full suffix + ids +');
       b.writeln('  /// conditions)? Reactive on placement and the referenced keys.');
       b.writeln('  AnyView? current<N extends AnyNav>(On<N> sel) {');
-      b.writeln('    Placement.current(this); // subscribe to placement changes');
+      b.writeln('    // A single-terminal selector matches purely on whether that screen is');
+      b.writeln('    // foreground — subscribe to just its aspect (rebuilds only when it');
+      b.writeln('    // (de)foregrounds), not every nav. A multi-spec suffix can shift while');
+      b.writeln('    // `top` holds, so it falls back to the broad placement subscription.');
+      b.writeln('    if (sel.specs.length == 1) {');
+      b.writeln('      Placement.isCurrent(this, sel.specs.last);');
+      b.writeln('    } else {');
+      b.writeln('      Placement.current(this);');
+      b.writeln('    }');
       b.writeln('    ViewMatch.conds(this, sel.specs.last, sel.conds); // subscribe to the keys');
       b.writeln('    return Screen.on(sel) != null ? _viewOf(sel.specs.last) : null;');
       b.writeln('  }');

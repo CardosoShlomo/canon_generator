@@ -628,6 +628,10 @@ void main() {
         contains('goItem(String id)'), // typed id verb
         contains('isCodegenFresh'), // stale-codegen guard
         contains('_treeSignature'),
+        // Screen.at is the sealed AnyPlacement → exhaustive `switch (Screen.at)`.
+        contains('sealed class AnyPlacement {}'),
+        contains('static AnyPlacement get at'),
+        matches(RegExp(r'extends AnyNav\s+implements AnyPlacement')),
       )));
 
   test('emits the typed ScreenEntry stack + navigations surface', () =>
@@ -746,7 +750,7 @@ void main() {
           // …and the nav implements the read-only view, exposing the MUTABLE getter
           contains('abstract interface class FeedView'),
           contains('FeedQuery get query;'),
-          contains('implements FeedView'),
+          contains('FeedView'), // the nav implements the read-only view
           contains('FeedQueryMut get query => const FeedQueryMut._();'),
           // …and the conditioned selector: a FeedQueryCond vocabulary + On.query
           contains('class FeedQueryCond<T> implements ViewCond'),
@@ -824,7 +828,7 @@ void main() {
         contains('return const KickstartNav._();'),
         contains('KickstartPlacement get at => Screen.at as KickstartPlacement'),
         // kick-startable navs implement the marker
-        matches(RegExp(r'implements[^{\n]*KickstartPlacement')),
+        matches(RegExp(r'implements[\s\S]*?KickstartPlacement')),
       ])));
 
   test('emits the global canPop / Screen.pop sugar surface', () =>
@@ -838,7 +842,7 @@ void main() {
         contains('static PopDestNav? pop() => canPop?.pop()'), // documented sugar
         contains('PopDestNav pop()'), // CanPopNav executes the guaranteed pop
         // non-root placements implement the poppable marker
-        contains('implements CanPopPlacement'),
+        contains('CanPopPlacement'),
       ])));
 
   test('emits the commit-phase observe() forwarder', () => _expectGenerated(allOf(

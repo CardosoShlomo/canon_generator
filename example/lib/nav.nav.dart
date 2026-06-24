@@ -164,18 +164,18 @@ final class Screen<I> {
   /// `Screen.replace.goHome()`, `Screen.replace.on(.user)?.goChat(id)`.
   static const replace = Replace._();
 
-  /// The current EXACT placement nav — pattern-match it:
-  /// `if (Screen.at case HomeUserProfileNav n) ...`.
-  static AnyNav get at => switch (_Screens.graph.current) {
+  /// The current EXACT placement, as the sealed [Placement] — an
+  /// exhaustive `switch (Screen.at) { case HomeUserProfileNav n => … }`.
+  static AnyPlacement get at => switch (_Screens.graph.current) {
     _Screens.splash => const SplashNav._(),
     _Screens.signIn => const SignInNav._(),
     _Screens.home => const HomeNav._(),
     _Screens.feed => const FeedNav._(),
     _Screens.profile => const ProfileNav._(),
-    _Screens.item => (const ItemNav._()).at as AnyNav,
-    _Screens.editItem => (const EditItemNav._()).at as AnyNav,
-    _Screens.settings => (const SettingsNav._()).at as AnyNav,
-    _Screens.about => (const AboutNav._()).at as AnyNav,
+    _Screens.item => (const ItemNav._()).at,
+    _Screens.editItem => (const EditItemNav._()).at,
+    _Screens.settings => (const SettingsNav._()).at,
+    _Screens.about => (const AboutNav._()).at,
     _Screens.account => const AccountNav._(),
     _Screens.editAccount => const EditAccountNav._(),
     BootScreen.initial => const Initial._(),
@@ -404,7 +404,7 @@ final class Hop<N extends AnyNav> {
 
 /// The boot placement: `Screen.at` returns it until the first commit.
 /// `if (Screen.at case Initial()) ...` gates blob-null cold-boot UI.
-final class Initial extends AnyNav {
+final class Initial extends AnyNav implements AnyPlacement {
   const Initial._() : super._();
 }
 
@@ -586,6 +586,8 @@ final class OnEditAccount extends On<EditAccountNav> {
       OnEditAccount._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
+sealed class AnyPlacement {}
+
 abstract base class AnyNav {
   const AnyNav._();
 }
@@ -639,16 +641,18 @@ final class Keep {
   static const profile = Keep._(_Screens.profile);
 }
 
-final class SplashNav extends AnyNav implements KickstartPlacement {
+final class SplashNav extends AnyNav
+    implements AnyPlacement, KickstartPlacement {
   const SplashNav._() : super._();
 }
 
-final class SignInNav extends AnyNav implements KickstartPlacement {
+final class SignInNav extends AnyNav
+    implements AnyPlacement, KickstartPlacement {
   const SignInNav._() : super._();
 }
 
 final class HomeNav extends AnyNav
-    implements PopDestPlacement, KickstartPlacement {
+    implements AnyPlacement, PopDestPlacement, KickstartPlacement {
   const HomeNav._() : super._();
   HomeItemNav goItem(String id) {
     _Screens.graph.go(_Screens.item, id, true);
@@ -681,7 +685,7 @@ final class HomeHop<N extends AnyNav> {
 }
 
 final class FeedNav extends AnyNav
-    implements FeedView, PopDestPlacement, KickstartPlacement {
+    implements AnyPlacement, FeedView, PopDestPlacement, KickstartPlacement {
   const FeedNav._() : super._();
   FeedQueryMut get query => const FeedQueryMut._();
   FeedItemNav goItem(String id) {
@@ -691,7 +695,7 @@ final class FeedNav extends AnyNav
 }
 
 final class ProfileNav extends AnyNav
-    implements PopDestPlacement, KickstartPlacement {
+    implements AnyPlacement, PopDestPlacement, KickstartPlacement {
   const ProfileNav._() : super._();
   ProfileSettingsNav goSettings() {
     _Screens.graph.go(_Screens.settings, null, true);
@@ -746,7 +750,7 @@ final class ItemNav extends AnyNav {
   }
 }
 
-sealed class ItemPlacement {}
+sealed class ItemPlacement implements AnyPlacement {}
 
 final class HomeItemNav extends AnyNav
     implements ItemPlacement, CanPopPlacement, PopDestPlacement {
@@ -817,11 +821,11 @@ final class EditItemNav extends AnyNav {
   }
 }
 
-sealed class EditItemPlacement {}
+sealed class EditItemPlacement implements AnyPlacement {}
 
 sealed class EditItemUnder {}
 
-sealed class ItemEditItemPlacement {}
+sealed class ItemEditItemPlacement implements AnyPlacement {}
 
 final class HomeItemEditItemNav extends AnyNav
     implements EditItemPlacement, ItemEditItemPlacement, CanPopPlacement {
@@ -906,7 +910,7 @@ final class SettingsNav extends AnyNav {
   }
 }
 
-sealed class SettingsPlacement {}
+sealed class SettingsPlacement implements AnyPlacement {}
 
 final class HomeSettingsNav extends AnyNav
     implements SettingsPlacement, CanPopPlacement, PopDestPlacement {
@@ -985,11 +989,11 @@ final class AboutNav extends AnyNav {
   }
 }
 
-sealed class AboutPlacement {}
+sealed class AboutPlacement implements AnyPlacement {}
 
 sealed class AboutUnder {}
 
-sealed class SettingsAboutPlacement {}
+sealed class SettingsAboutPlacement implements AnyPlacement {}
 
 final class HomeSettingsAboutNav extends AnyNav
     implements AboutPlacement, SettingsAboutPlacement, CanPopPlacement {
@@ -1058,7 +1062,11 @@ final class ProfileSettingsAboutPop<N extends AnyNav> {
 }
 
 final class AccountNav extends AnyNav
-    implements CanPopPlacement, PopDestPlacement, KickstartPlacement {
+    implements
+        AnyPlacement,
+        CanPopPlacement,
+        PopDestPlacement,
+        KickstartPlacement {
   const AccountNav._() : super._();
   EditAccountNav goEditAccount() {
     _Screens.graph.go(_Screens.editAccount, _idOf(_Screens.account), true);
@@ -1072,7 +1080,7 @@ final class AccountNav extends AnyNav
 }
 
 final class EditAccountNav extends AnyNav
-    implements CanPopPlacement, KickstartPlacement {
+    implements AnyPlacement, CanPopPlacement, KickstartPlacement {
   const EditAccountNav._() : super._();
   AccountNav pop() {
     _Screens.graph.pop();
@@ -1338,7 +1346,15 @@ extension ScreenViewContext on BuildContext {
   /// CURRENT foreground: does it match [sel] (full suffix + ids +
   /// conditions)? Reactive on placement and the referenced keys.
   AnyView? current<N extends AnyNav>(On<N> sel) {
-    Placement.current(this); // subscribe to placement changes
+    // A single-terminal selector matches purely on whether that screen is
+    // foreground — subscribe to just its aspect (rebuilds only when it
+    // (de)foregrounds), not every nav. A multi-spec suffix can shift while
+    // `top` holds, so it falls back to the broad placement subscription.
+    if (sel.specs.length == 1) {
+      Placement.isCurrent(this, sel.specs.last);
+    } else {
+      Placement.current(this);
+    }
     ViewMatch.conds(this, sel.specs.last, sel.conds); // subscribe to the keys
     return Screen.on(sel) != null ? _viewOf(sel.specs.last) : null;
   }
