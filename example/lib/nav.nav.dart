@@ -1236,6 +1236,9 @@ String toUri(Link link, [String domain = 'https://canon.example']) {
   }
 }
 
+/// Read-only placement view — the reactive reads return these.
+sealed class AnyView {}
+
 /// Screen-local query view-state for `feed` (read-only).
 class FeedQuery {
   const FeedQuery._();
@@ -1254,6 +1257,6 @@ final class FeedQueryMut extends FeedQuery {
 
 /// Read-only view-state of `feed` — the reactive reads return
 /// this; the navigable `FeedNav` adds the setters.
-abstract interface class FeedView {
+abstract interface class FeedView implements AnyView {
   FeedQuery get query;
 }

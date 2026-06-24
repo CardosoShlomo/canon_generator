@@ -1760,6 +1760,14 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       b.writeln('');
     }
 
+    if (viewScreens.isNotEmpty) {
+      // Sealed read-only base (named AnyView, mirroring AnyNav — `View` would
+      // collide with Flutter's View widget). `Screen.of(context)`/`context.on`
+      // return these; pattern-match `case FeedView()` to render per current screen.
+      b.writeln('/// Read-only placement view — the reactive reads return these.');
+      b.writeln('sealed class AnyView {}');
+      b.writeln('');
+    }
     for (final e in viewScreens.entries) {
       emitViewType(e.key, 'q', e.value.query);
       emitViewType(e.key, 'f', e.value.fragment);
@@ -1768,7 +1776,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       final v = '${_cap(e.key)}View';
       b.writeln('/// Read-only view-state of `${e.key}` — the reactive reads return');
       b.writeln('/// this; the navigable `${_cap(e.key)}Nav` adds the setters.');
-      b.writeln('abstract interface class $v {');
+      b.writeln('abstract interface class $v implements AnyView {');
       if (e.value.query.isNotEmpty) b.writeln('  ${_cap(e.key)}Query get query;');
       if (e.value.fragment.isNotEmpty) {
         b.writeln('  ${_cap(e.key)}Fragment get fragment;');
