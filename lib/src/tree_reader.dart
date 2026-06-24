@@ -44,6 +44,12 @@ class PlacementNode {
   /// walked by the link model builder rather than the nav placer.
   List<Expression> linkChildren = const [];
 
+  /// Raw `.query({...})` / `.fragment({...})` view-state key expressions on this
+  /// placement (a query-key enum's `key(codec)` / bare flag). The generator emits
+  /// a typed view surface; the runtime mirrors the values into the URL.
+  List<Expression> viewQuery = const [];
+  List<Expression> viewFragment = const [];
+
   Iterable<PlacementNode> get ancestors sync* {
     for (var n = parent; n != null; n = n.parent) {
       yield n;
@@ -243,6 +249,25 @@ Future<TreeModel> readTree(EnumElement root, BuildStep buildStep) async {
                 '"${placed.screen}.inherit($srcName)" — $srcName is not an ancestor',
                 element: root));
         placed.inheritSource = src.inheritSource ?? src;
+        return placed;
+      // `placement.query({...})` / `.fragment({...})` — view-state keys on a screen
+      // placement (NOT a link branch). Attach the raw key set; the generator types it.
+      case MethodInvocation(
+          target: final t?,
+          methodName: SimpleIdentifier(name: 'query' || 'fragment'),
+          :final argumentList,
+        )
+          when t is MethodInvocation || t is SimpleIdentifier || t is PrefixedIdentifier:
+        final placed = await place(t, ancestors, frame);
+        final set = argumentList.arguments.firstOrNull;
+        final terms = set is SetOrMapLiteral
+            ? [for (final e in set.elements) if (e is Expression) e]
+            : const <Expression>[];
+        if ((expr.methodName.name) == 'query') {
+          placed.viewQuery = terms;
+        } else {
+          placed.viewFragment = terms;
+        }
         return placed;
       // A bare `slots({...})` / `slot(...)` in a placement's children — the WIDGET
       // form: a link branch on the enclosing screen, whose id codec is injected as

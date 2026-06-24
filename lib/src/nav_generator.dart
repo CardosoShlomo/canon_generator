@@ -757,6 +757,24 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     // `_endsWith` is only used by `.under` narrowing; emit it at the end iff a
     // `.under` actually referenced it (avoids an unused_element warning).
     var usesEndsWith = false;
+
+    // View-state per screen (from `placement.query/.fragment`): a typed handle
+    // backed by the runtime's URL-mirrored store. Collected across the whole tree.
+    final viewScreens = <String, List<ViewKey>>{};
+    void collectViews(List<PlacementNode> nodes) {
+      for (final n in nodes) {
+        if (n.viewQuery.isNotEmpty || n.viewFragment.isNotEmpty) {
+          viewScreens.putIfAbsent(n.screen, () => [
+                ...viewKeys(n.viewQuery, element),
+                ...viewKeys(n.viewFragment, element),
+              ]);
+        }
+        collectViews(n.children);
+      }
+    }
+
+    collectViews(model.tree);
+
     b.writeln('final class Screen<I> {');
     b.writeln('  const Screen._(this.spec);');
     b.writeln('  final Enum spec;');
@@ -930,8 +948,40 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       if (!globalSafe(r.name)) continue; // id-behind targets: reach via chaining
       b.writeln('  ${kickStart(r.name).trim()}');
     }
+    // Typed view-state handles: `Screen.feedView.category = 'books'` etc.
+    for (final screen in viewScreens.keys) {
+      b.writeln('  /// Screen-local view-state for `$screen` (URL-mirrored, '
+          'historyless).');
+      b.writeln('  static const ${_cap(screen)}View ${screen}View = '
+          '${_cap(screen)}View._();');
+    }
     b.writeln('}');
     b.writeln('');
+
+    // One typed view-state handle per screen that declared `.query`/`.fragment`.
+    // Each key reads/writes the runtime store (mirrored to the URL); a flag is a
+    // bool (set false ⟹ cleared), a value is nullable (null ⟹ cleared / default).
+    for (final e in viewScreens.entries) {
+      final screen = e.key;
+      final cls = '${_cap(screen)}View';
+      b.writeln('final class $cls {');
+      b.writeln('  const $cls._();');
+      for (final k in e.value) {
+        if (k.flag) {
+          b.writeln("  bool get ${k.name} => "
+              "$spec.graph.viewGet(${sv(screen)}, '${k.name}') == true;");
+          b.writeln('  set ${k.name}(bool v) => '
+              "$spec.graph.viewSet(${sv(screen)}, '${k.name}', v ? true : null);");
+        } else {
+          b.writeln('  ${k.type}? get ${k.name} => '
+              "$spec.graph.viewGet(${sv(screen)}, '${k.name}') as ${k.type}?;");
+          b.writeln('  set ${k.name}(${k.type}? v) => '
+              "$spec.graph.viewSet(${sv(screen)}, '${k.name}', v);");
+        }
+      }
+      b.writeln('}');
+      b.writeln('');
+    }
 
     // Screen.replace facade: a static-only redirect handle (replace lives only
     // here, never on a Nav — so `Screen.replace.replace`/`nav.replace` are

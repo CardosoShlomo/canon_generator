@@ -249,6 +249,31 @@ List<Term> _terms(ArgumentList args, EnumElement element) {
   ];
 }
 
+/// One view-state key: its URL name, Dart type, and whether it's a flag (bare key
+/// = bool presence) vs a value (`key(codec)`).
+typedef ViewKey = ({String name, String type, bool flag});
+
+/// Reads a placement's `.query`/`.fragment` key expressions into [ViewKey]s,
+/// reusing the link query-term reader. Combinators are flattened to their keys.
+List<ViewKey> viewKeys(List<Expression> exprs, EnumElement element) {
+  final out = <ViewKey>[];
+  void add(Term t) {
+    switch (t) {
+      case KeyTerm():
+        out.add((name: t.name, type: t.type, flag: t.kind == ParamKind.flag));
+      case AllOfTerm():
+        t.members.forEach(add);
+      case OneOfTerm():
+        t.members.forEach(add);
+    }
+  }
+
+  for (final e in exprs) {
+    add(_term(e, element));
+  }
+  return out;
+}
+
 Term _term(Expression e, EnumElement element) {
   switch (e) {
     case MethodInvocation(

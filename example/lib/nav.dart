@@ -33,7 +33,10 @@ enum _Screens with ScreenNode<_Screens> {
       // `.inherit(item)` makes editItem's id structurally item's: its push verb
       // takes no id (`goEditItem()`), reading the live item id instead.
       home.keep({item({editItem.inherit(item)}), settings({about})}),
-      feed.keep({item({editItem.inherit(item)})}), // item lives under two tabs
+      // `.query({...})` declares feed's screen-local view-state → `?category=&radius=`,
+      // a historyless URL mirror. Set it via `Screen.feedView.category = ...`.
+      feed.keep({item({editItem.inherit(item)})}).query(
+          {_FeedKeys.category(Codec.string), _FeedKeys.radius(Codec.integer)}),
       // account (under profile) has a child editAccount that inherits its id →
       // reachable by global kick-start: Screen.goEditAccount(id) fills account
       // AND editAccount with the one id (the inherit kick-start rescue).
@@ -48,6 +51,9 @@ enum _Screens with ScreenNode<_Screens> {
     pageOf: (widget, ctx, key) => MaterialPage(key: key, child: widget),
   );
 }
+
+// feed's view-state keys (a QueryKeyBase enum): `key(codec)` = value key.
+enum _FeedKeys with QueryKeyBase { category, radius }
 
 // The boot loading UI (rule 2): a plain widget, NOT a screen — it has no place
 // in the nav tree. Shown while `Screen.at` is `Initial`.

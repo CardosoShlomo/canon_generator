@@ -224,6 +224,19 @@ final class Screen<I> {
     _Screens.graph.go(_Screens.editAccount, id, true);
     return const EditAccountNav._();
   }
+
+  /// Screen-local view-state for `feed` (URL-mirrored, historyless).
+  static const FeedView feedView = FeedView._();
+}
+
+final class FeedView {
+  const FeedView._();
+  String? get category =>
+      _Screens.graph.viewGet(_Screens.feed, 'category') as String?;
+  set category(String? v) =>
+      _Screens.graph.viewSet(_Screens.feed, 'category', v);
+  int? get radius => _Screens.graph.viewGet(_Screens.feed, 'radius') as int?;
+  set radius(int? v) => _Screens.graph.viewSet(_Screens.feed, 'radius', v);
 }
 
 /// The `Screen.replace` redirect facade — every verb mirrors `Screen`

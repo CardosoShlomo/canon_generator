@@ -19,6 +19,13 @@ mixin ScreenNode<I, S extends ScreenNode<Object?, S>> on Enum {
   S get stacked => this as S;
   S inherit(S ancestor) => this as S;
   S links([Set<Object?> children = const {}]) => this as S;
+  S link([Set<Object?> children = const {}]) => this as S;
+  S query(Set<Object?> terms) => this as S;
+  S fragment(Set<Object?> terms) => this as S;
+}
+
+mixin QueryKeyBase on Enum {
+  Object? call(Object? codec) => null;
 }
 
 Object? slot(Object? codec) => null;
@@ -173,6 +180,33 @@ enum _Screens with ScreenNode<Object?, _Screens> {
     {
       home(),
       user({slots({Codec.literal('me'), Codec.username})}),
+    },
+    initial: home,
+    pageOf: (s, c, k) => 0,
+  );
+}
+''';
+
+// A placement with view-state keys (query) → a typed `FeedView` handle.
+const _viewSpec = '''
+import 'package:canon/canon.dart';
+
+part 'spec.nav.dart';
+
+enum _Keys with QueryKeyBase { category, radius }
+
+@screens
+enum _Screens with ScreenNode<Object?, _Screens> {
+  home(0),
+  feed(0);
+
+  const _Screens(this.widget);
+  final Object widget;
+
+  static final graph = NavGraph<_Screens>(
+    {
+      home(),
+      feed().query({_Keys.category(Codec.string), _Keys.radius(Codec.integer)}),
     },
     initial: home,
     pageOf: (s, c, k) => 0,
@@ -631,6 +665,19 @@ void main() {
           contains('2 => UserByNameLink(m.path[0] as String)'),
         ]),
         spec: _widgetFormSpec,
+      ));
+
+  test('emits a typed view-state handle from placement .query', () =>
+      _expectGenerated(
+        allOf([
+          contains('final class FeedView'),
+          contains('static const FeedView feedView = FeedView._();'),
+          contains('String? get category'),
+          contains("viewGet(_Screens.feed, 'category') as String?"),
+          contains('set category(String? v)'),
+          contains('int? get radius'),
+        ]),
+        spec: _viewSpec,
       ));
 
   test('emits the URL-driven routerConfig host', () => _expectGenerated(allOf([
