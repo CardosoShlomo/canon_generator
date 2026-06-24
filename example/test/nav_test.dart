@@ -94,4 +94,42 @@ void main() {
     expect(Screen.on(.feed.query({.not.category})), isNotNull); // now absent
     expect(Screen.query['category'], isNull);
   });
+
+  testWidgets('multi-parent view-state: .at resolves the live placement', (tester) async {
+    await tester.pumpWidget(MaterialApp.router(routerDelegate: Screen.delegate));
+
+    // tests share the one static graph; collapse home's kept stack to its root
+    // so this starts from a known place.
+    Screen.goHome();
+    await tester.pumpAndSettle();
+    while (Screen.canPop != null) {
+      Screen.pop();
+      await tester.pumpAndSettle();
+    }
+
+    // reach `item` THROUGH home → its placement is HomeItemNav
+    Screen.goHome().goItem('42');
+    await tester.pumpAndSettle();
+    expect(Screen.at, isA<HomeItemNav>());
+    expect(Screen.at, isA<ItemPlacement>()); // …a subtype of the screen's sealed set
+    expect(Screen.at, isA<AnyPlacement>()); // …and of the global sealed root
+
+    // the item nav's `.at` resolves the same leaf off the live chain
+    final ItemPlacement here = Screen.on(.item('42'))!.at;
+    expect(here, isA<HomeItemNav>());
+
+    // write item's screen-local view-state through its mutable query
+    Screen.on(.item('42'))!.query.sort = 'name';
+    await tester.pumpAndSettle();
+    expect(Screen.query['sort'], 'name');
+    expect(Screen.on(.item('42').query({.sort('name')})), isNotNull); // equals holds
+    expect(Screen.on(.item('42').query({.sort('date')})), isNull);
+    expect(Screen.on(.item('42').query({.sort})), isNotNull); // present
+
+    // reach the SAME screen through feed → its placement is now FeedItemNav
+    Screen.goFeed().goItem('42');
+    await tester.pumpAndSettle();
+    expect(Screen.at, isA<FeedItemNav>());
+    expect(Screen.on(.item('42'))!.at, isA<FeedItemNav>());
+  });
 }

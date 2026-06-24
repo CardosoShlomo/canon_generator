@@ -32,10 +32,19 @@ enum _Screens with ScreenNode<_Screens> {
       // `.keep` preserves a tab's stack when you switch away and back.
       // `.inherit(item)` makes editItem's id structurally item's: its push verb
       // takes no id (`goEditItem()`), reading the live item id instead.
-      home.keep({item({editItem.inherit(item)}), settings({about})}),
+      // `item` lives under BOTH home and feed (a multi-parent union); its
+      // view-state is screen-local, so the same `.query` is declared on each
+      // placement. `context.on(.item…)?.at` then resolves the live placement
+      // (`HomeItemNav` vs `FeedItemNav`) off the read-only view.
+      home.keep({
+        item({editItem.inherit(item)}).query({_ItemKeys.sort(Codec.string)}),
+        settings({about}),
+      }),
       // `.query({...})` declares feed's screen-local view-state → `?category=&radius=`,
       // a historyless URL mirror. Set it via `Screen.feedView.category = ...`.
-      feed.keep({item({editItem.inherit(item)})}).query(
+      feed.keep({
+        item({editItem.inherit(item)}).query({_ItemKeys.sort(Codec.string)}),
+      }).query(
           {_FeedKeys.category(Codec.string), _FeedKeys.radius(Codec.integer)}),
       // account (under profile) has a child editAccount that inherits its id →
       // reachable by global kick-start: Screen.goEditAccount(id) fills account
@@ -54,6 +63,9 @@ enum _Screens with ScreenNode<_Screens> {
 
 // feed's view-state keys (a QueryKeyBase enum): `key(codec)` = value key.
 enum _FeedKeys with QueryKeyBase { category, radius }
+
+// item's view-state key — shared across both of item's placements.
+enum _ItemKeys with QueryKeyBase { sort }
 
 // The boot loading UI (rule 2): a plain widget, NOT a screen — it has no place
 // in the nav tree. Shown while `Screen.at` is `Initial`.

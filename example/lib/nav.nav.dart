@@ -452,7 +452,7 @@ final class OnParentOf<N extends AnyNav, V> extends On<N, V> {
 
 final class _ParentSel {
   const _ParentSel._();
-  OnParentOf<ItemNavParent, AnyView> get item => OnParentOf._(const {
+  OnParentOf<ItemNavParent, ItemView> get item => OnParentOf._(const {
     _Screens.feed,
     _Screens.home,
   }, const ItemNavParent._());
@@ -492,9 +492,11 @@ final class OnHome extends On<HomeNav, AnyView> {
   );
 }
 
-final class OnHomeItem extends On<HomeItemNav, AnyView> {
+final class OnHomeItem extends On<HomeItemNav, ItemView> {
   const OnHomeItem._(super.specs, super.ids, super.nav, [super.conds])
     : super._();
+  OnHomeItem query(Set<ItemQueryCond> cs) =>
+      OnHomeItem._(specs, ids, nav, [...conds, ...cs]);
   OnHomeItem call(String id) =>
       OnHomeItem._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
@@ -520,9 +522,11 @@ final class OnFeed extends On<FeedNav, FeedView> {
   );
 }
 
-final class OnFeedItem extends On<FeedItemNav, AnyView> {
+final class OnFeedItem extends On<FeedItemNav, ItemView> {
   const OnFeedItem._(super.specs, super.ids, super.nav, [super.conds])
     : super._();
+  OnFeedItem query(Set<ItemQueryCond> cs) =>
+      OnFeedItem._(specs, ids, nav, [...conds, ...cs]);
   OnFeedItem call(String id) =>
       OnFeedItem._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
@@ -559,8 +563,10 @@ final class OnAccount extends On<AccountNav, AnyView> {
       OnAccount._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
-final class OnItem extends On<ItemNav, AnyView> {
+final class OnItem extends On<ItemNav, ItemView> {
   const OnItem._(super.specs, super.ids, super.nav, [super.conds]) : super._();
+  OnItem query(Set<ItemQueryCond> cs) =>
+      OnItem._(specs, ids, nav, [...conds, ...cs]);
   OnItem call(String id) =>
       OnItem._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
@@ -734,8 +740,9 @@ final class ProfileHop<N extends AnyNav> {
       ProfileHop._(_Screens.account, id, const AccountNav._());
 }
 
-final class ItemNav extends AnyNav {
+final class ItemNav extends AnyNav implements ItemView {
   const ItemNav._() : super._();
+  ItemQueryMut get query => const ItemQueryMut._();
   ItemPlacement get at {
     final c = _Screens.graph.currentChain;
     if (_chainIs(c, const [_Screens.home, _Screens.item]))
@@ -754,8 +761,10 @@ final class ItemNav extends AnyNav {
 sealed class ItemPlacement implements AnyPlacement {}
 
 final class HomeItemNav extends AnyNav
-    implements ItemPlacement, CanPopPlacement, PopDestPlacement {
+    implements ItemPlacement, ItemView, CanPopPlacement, PopDestPlacement {
   const HomeItemNav._() : super._();
+  ItemQueryMut get query => const ItemQueryMut._();
+  ItemPlacement get at => this;
   HomeItemEditItemNav goEditItem() {
     _Screens.graph.go(_Screens.editItem, _idOf(_Screens.item), true);
     return const HomeItemEditItemNav._();
@@ -768,8 +777,10 @@ final class HomeItemNav extends AnyNav
 }
 
 final class FeedItemNav extends AnyNav
-    implements ItemPlacement, CanPopPlacement, PopDestPlacement {
+    implements ItemPlacement, ItemView, CanPopPlacement, PopDestPlacement {
   const FeedItemNav._() : super._();
+  ItemQueryMut get query => const ItemQueryMut._();
+  ItemPlacement get at => this;
   FeedItemEditItemNav goEditItem() {
     _Screens.graph.go(_Screens.editItem, _idOf(_Screens.item), true);
     return const FeedItemEditItemNav._();
@@ -1271,6 +1282,58 @@ String toUri(Link link, [String domain = 'https://canon.example']) {
 /// Read-only placement view — the reactive reads return these.
 sealed class AnyView {}
 
+/// Screen-local query view-state for `item` (read-only).
+class ItemQuery {
+  const ItemQuery._();
+  String? get sort => _Screens.graph.viewGet(_Screens.item, 'sort') as String?;
+}
+
+/// Mutable [ItemQuery] — a setter per key (null clears / removes from URL).
+final class ItemQueryMut extends ItemQuery {
+  const ItemQueryMut._() : super._();
+  set sort(String? v) => _Screens.graph.viewSet(_Screens.item, 'sort', v);
+}
+
+/// Condition terms for `item`'s query — `.key` present / `.key(v)` equals / `.flag` true; `.not.…` negates (`.not.key` = absent).
+final class ItemQueryCond<T> implements ViewCond {
+  const ItemQueryCond._(
+    this.key,
+    this.expected, {
+    this.negate = false,
+    this.presence = false,
+  });
+  @override
+  final String key;
+  final Object? expected;
+  final bool negate;
+  final bool presence;
+
+  /// `.key(v)` — narrow a present term to an equals term, keeping any negation.
+  ItemQueryCond<T> call(T v) => ItemQueryCond<T>._(key, v, negate: negate);
+  @override
+  bool test(Object? v) {
+    final m = presence ? v != null : v == expected;
+    return negate ? !m : m;
+  }
+
+  static ItemQueryCond<String> get sort =>
+      const ItemQueryCond._('sort', null, presence: true);
+  static const ItemQueryNot not = ItemQueryNot._();
+}
+
+final class ItemQueryNot {
+  const ItemQueryNot._();
+  ItemQueryCond<String> get sort =>
+      const ItemQueryCond._('sort', null, presence: true, negate: true);
+}
+
+/// Read-only view-state of `item` — the reactive reads return
+/// this; the navigable `ItemNav` adds the setters.
+abstract interface class ItemView implements AnyView {
+  ItemQuery get query;
+  ItemPlacement get at;
+}
+
 /// Screen-local query view-state for `feed` (read-only).
 class FeedQuery {
   const FeedQuery._();
@@ -1332,6 +1395,7 @@ abstract interface class FeedView implements AnyView {
 }
 
 AnyView? _viewOf(Enum? screen) => switch (screen) {
+  _Screens.item => const ItemNav._(),
   _Screens.feed => const FeedNav._(),
   _ => null,
 };
