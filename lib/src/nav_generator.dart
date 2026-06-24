@@ -797,11 +797,18 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       b.writeln('  static const ${r.name} = Screen<${r.idType ?? 'Never'}>._(${sv(r.name)});');
     }
     b.writeln('  static Screen<Object?> forSpec(Enum spec) => _bySpec[spec]!;');
-    b.writeln('  /// Reactive: whether the active placement chain currently includes');
-    b.writeln('  /// [screen] (on/at). The widget rebuilds only when that flips —');
-    b.writeln('  /// robust-aspect, like `Query.of`/`Fragment.of`.');
-    b.writeln('  static bool of(BuildContext context, Enum screen) =>');
-    b.writeln('      Placement.isOn(context, screen);');
+    if (viewScreens.isNotEmpty) {
+      b.writeln('  /// The current foreground as a read-only view, reactively — switch');
+      b.writeln('  /// it to render per screen. Null when the current screen has no');
+      b.writeln('  /// view-state. (`Placement.isOn`/`Placement.isCurrent` for raw checks.)');
+      b.writeln('  static AnyView? of(BuildContext context) =>');
+      b.writeln('      switch (Placement.current(context)) {');
+      for (final s in viewScreens.keys) {
+        b.writeln('        ${sv(s)} => const ${unionName(s)}._(),');
+      }
+      b.writeln('        _ => null,');
+      b.writeln('      };');
+    }
     b.writeln('  /// Reactive: is the screen THIS context is under the current foreground');
     b.writeln('  /// top? Rebuilds only when that flips. The self-vs-current gate —');
     b.writeln('  /// `if (Screen.isCurrentOf(context)) …` to act only while visible.');

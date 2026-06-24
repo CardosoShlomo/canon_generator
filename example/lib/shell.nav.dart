@@ -29,12 +29,6 @@ final class Screen<I> {
   static const saved = Screen<Never>._(Wishlist.saved);
   static Screen<Object?> forSpec(Enum spec) => _bySpec[spec]!;
 
-  /// Reactive: whether the active placement chain currently includes
-  /// [screen] (on/at). The widget rebuilds only when that flips —
-  /// robust-aspect, like `Query.of`/`Fragment.of`.
-  static bool of(BuildContext context, Enum screen) =>
-      Placement.isOn(context, screen);
-
   /// Reactive: is the screen THIS context is under the current foreground
   /// top? Rebuilds only when that flips. The self-vs-current gate —
   /// `if (Screen.isCurrentOf(context)) …` to act only while visible.

@@ -36,11 +36,14 @@ final class Screen<I> {
   static const editAccount = Screen<String>._(_Screens.editAccount);
   static Screen<Object?> forSpec(Enum spec) => _bySpec[spec]!;
 
-  /// Reactive: whether the active placement chain currently includes
-  /// [screen] (on/at). The widget rebuilds only when that flips —
-  /// robust-aspect, like `Query.of`/`Fragment.of`.
-  static bool of(BuildContext context, Enum screen) =>
-      Placement.isOn(context, screen);
+  /// The current foreground as a read-only view, reactively — switch
+  /// it to render per screen. Null when the current screen has no
+  /// view-state. (`Placement.isOn`/`Placement.isCurrent` for raw checks.)
+  static AnyView? of(BuildContext context) =>
+      switch (Placement.current(context)) {
+        _Screens.feed => const FeedNav._(),
+        _ => null,
+      };
 
   /// Reactive: is the screen THIS context is under the current foreground
   /// top? Rebuilds only when that flips. The self-vs-current gate —
