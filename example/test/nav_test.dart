@@ -72,10 +72,16 @@ void main() {
     expect(Screen.on(.feed.query({.not.category('clothes')})), isNotNull); // negated
     expect(Screen.on(.feed.query({.category('books'), .radius(99)})), isNull); // AND
 
+    // present / absent (`.category` / `.not.category` — callable getters)
+    expect(Screen.on(.feed.query({.category})), isNotNull); // set → present
+    expect(Screen.on(.feed.query({.not.category})), isNull); // not absent
+
     // clear → condition no longer holds
     Screen.on(.feed)!.query.category = null;
     await tester.pumpAndSettle();
     expect(Screen.on(.feed.query({.category('books')})), isNull);
+    expect(Screen.on(.feed.query({.category})), isNull); // not present
+    expect(Screen.on(.feed.query({.not.category})), isNotNull); // now absent
     expect(Screen.query['category'], isNull);
   });
 }

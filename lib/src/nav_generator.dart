@@ -1817,31 +1817,43 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       if (keys.isEmpty) return;
       final base = '${_cap(screen)}${part == 'f' ? 'Fragment' : 'Query'}Cond';
       final not = '${_cap(screen)}${part == 'f' ? 'Fragment' : 'Query'}Not';
-      // static factory on the cond type (positive); instance member on `.not`.
-      String pos(ViewKey k) => k.flag
-          ? "static const $base ${k.name} = $base._('${k.name}', true);"
-          : "static $base ${k.name}(${k.type} v) => $base._('${k.name}', v);";
-      String neg(ViewKey k) => k.flag
-          ? "$base get ${k.name} => const $base._('${k.name}', true, negate: true);"
-          : "$base ${k.name}(${k.type} v) => $base._('${k.name}', v, negate: true);";
+      // A value key is a callable getter: `.key` = present, `.key(v)` = equals
+      // (the present cond's `call(v)` narrows to equals, preserving negate). A
+      // flag: `.flag` = true. `.not.…` negates each (`.not.key` = absent).
+      String mk(ViewKey k, bool n) {
+        final neg = n ? ', negate: true' : '';
+        if (k.flag) {
+          return n
+              ? "$base get ${k.name} => const $base._('${k.name}', true, negate: true);"
+              : "static const $base ${k.name} = $base._('${k.name}', true);";
+        }
+        final s = n ? '' : 'static ';
+        return "$s$base<${k.type}> get ${k.name} =>"
+            " const $base._('${k.name}', null, presence: true$neg);";
+      }
+
       b.writeln('/// Condition terms for `$screen`\'s ${part == 'f' ? 'fragment' : 'query'}'
-          ' — `.key(v)` equals, `.byFlag` true, `.not.…` negates.');
-      b.writeln('final class $base implements ViewCond {');
-      b.writeln('  const $base._(this.key, this.expected, {this.negate = false});');
+          ' — `.key` present / `.key(v)` equals / `.flag` true; `.not.…` negates'
+          ' (`.not.key` = absent).');
+      b.writeln('final class $base<T> implements ViewCond {');
+      b.writeln('  const $base._(this.key, this.expected, {this.negate = false, this.presence = false});');
       b.writeln('  @override\n  final String key;');
       b.writeln('  final Object? expected;');
       b.writeln('  final bool negate;');
+      b.writeln('  final bool presence;');
+      b.writeln('  /// `.key(v)` — narrow a present term to an equals term, keeping any negation.');
+      b.writeln('  $base<T> call(T v) => $base<T>._(key, v, negate: negate);');
       b.writeln('  @override');
-      b.writeln('  bool test(Object? v) { final eq = v == expected; return negate ? !eq : eq; }');
+      b.writeln('  bool test(Object? v) { final m = presence ? v != null : v == expected; return negate ? !m : m; }');
       for (final k in keys) {
-        b.writeln('  ${pos(k)}');
+        b.writeln('  ${mk(k, false)}');
       }
       b.writeln('  static const $not not = $not._();');
       b.writeln('}');
       b.writeln('final class $not {');
       b.writeln('  const $not._();');
       for (final k in keys) {
-        b.writeln('  ${neg(k)}');
+        b.writeln('  ${mk(k, true)}');
       }
       b.writeln('}');
       b.writeln('');
@@ -1888,12 +1900,13 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       b.writeln('              ViewMatch.conds(this, sel.specs.last, sel.conds)');
       b.writeln('          ? _viewOf(sel.specs.last)');
       b.writeln('          : null;');
-      b.writeln('  /// CURRENT foreground: does it match [sel] (+ conditions)?');
-      b.writeln('  AnyView? current<N extends AnyNav>(On<N> sel) =>');
-      b.writeln('      Placement.current(this) == sel.specs.last &&');
-      b.writeln('              ViewMatch.conds(this, sel.specs.last, sel.conds)');
-      b.writeln('          ? _viewOf(sel.specs.last)');
-      b.writeln('          : null;');
+      b.writeln('  /// CURRENT foreground: does it match [sel] (full suffix + ids +');
+      b.writeln('  /// conditions)? Reactive on placement and the referenced keys.');
+      b.writeln('  AnyView? current<N extends AnyNav>(On<N> sel) {');
+      b.writeln('    Placement.current(this); // subscribe to placement changes');
+      b.writeln('    ViewMatch.conds(this, sel.specs.last, sel.conds); // subscribe to the keys');
+      b.writeln('    return Screen.on(sel) != null ? _viewOf(sel.specs.last) : null;');
+      b.writeln('  }');
       b.writeln('}');
       b.writeln('');
     }

@@ -749,8 +749,10 @@ void main() {
           contains('implements FeedView'),
           contains('FeedQueryMut get query => const FeedQueryMut._();'),
           // …and the conditioned selector: a FeedQueryCond vocabulary + On.query
-          contains('class FeedQueryCond implements ViewCond'),
-          contains('static FeedQueryCond category(String v) =>'),
+          contains('class FeedQueryCond<T> implements ViewCond'),
+          contains('static FeedQueryCond<String> get category =>'), // present getter
+          contains('FeedQueryCond<T> call(T v) =>'), // narrow to equals
+          contains('presence: true'), // the present/absent path
           contains('class FeedQueryNot'), // the .not mirror
           contains('OnFeed query(Set<FeedQueryCond> cs) =>'),
           // …evaluated by Screen.on against the live view store

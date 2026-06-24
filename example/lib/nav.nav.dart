@@ -1278,29 +1278,41 @@ final class FeedQueryMut extends FeedQuery {
   set radius(int? v) => _Screens.graph.viewSet(_Screens.feed, 'radius', v);
 }
 
-/// Condition terms for `feed`'s query — `.key(v)` equals, `.byFlag` true, `.not.…` negates.
-final class FeedQueryCond implements ViewCond {
-  const FeedQueryCond._(this.key, this.expected, {this.negate = false});
+/// Condition terms for `feed`'s query — `.key` present / `.key(v)` equals / `.flag` true; `.not.…` negates (`.not.key` = absent).
+final class FeedQueryCond<T> implements ViewCond {
+  const FeedQueryCond._(
+    this.key,
+    this.expected, {
+    this.negate = false,
+    this.presence = false,
+  });
   @override
   final String key;
   final Object? expected;
   final bool negate;
+  final bool presence;
+
+  /// `.key(v)` — narrow a present term to an equals term, keeping any negation.
+  FeedQueryCond<T> call(T v) => FeedQueryCond<T>._(key, v, negate: negate);
   @override
   bool test(Object? v) {
-    final eq = v == expected;
-    return negate ? !eq : eq;
+    final m = presence ? v != null : v == expected;
+    return negate ? !m : m;
   }
 
-  static FeedQueryCond category(String v) => FeedQueryCond._('category', v);
-  static FeedQueryCond radius(int v) => FeedQueryCond._('radius', v);
+  static FeedQueryCond<String> get category =>
+      const FeedQueryCond._('category', null, presence: true);
+  static FeedQueryCond<int> get radius =>
+      const FeedQueryCond._('radius', null, presence: true);
   static const FeedQueryNot not = FeedQueryNot._();
 }
 
 final class FeedQueryNot {
   const FeedQueryNot._();
-  FeedQueryCond category(String v) =>
-      FeedQueryCond._('category', v, negate: true);
-  FeedQueryCond radius(int v) => FeedQueryCond._('radius', v, negate: true);
+  FeedQueryCond<String> get category =>
+      const FeedQueryCond._('category', null, presence: true, negate: true);
+  FeedQueryCond<int> get radius =>
+      const FeedQueryCond._('radius', null, presence: true, negate: true);
 }
 
 /// Read-only view-state of `feed` — the reactive reads return
@@ -1323,10 +1335,11 @@ extension ScreenViewContext on BuildContext {
       ? _viewOf(sel.specs.last)
       : null;
 
-  /// CURRENT foreground: does it match [sel] (+ conditions)?
-  AnyView? current<N extends AnyNav>(On<N> sel) =>
-      Placement.current(this) == sel.specs.last &&
-          ViewMatch.conds(this, sel.specs.last, sel.conds)
-      ? _viewOf(sel.specs.last)
-      : null;
+  /// CURRENT foreground: does it match [sel] (full suffix + ids +
+  /// conditions)? Reactive on placement and the referenced keys.
+  AnyView? current<N extends AnyNav>(On<N> sel) {
+    Placement.current(this); // subscribe to placement changes
+    ViewMatch.conds(this, sel.specs.last, sel.conds); // subscribe to the keys
+    return Screen.on(sel) != null ? _viewOf(sel.specs.last) : null;
+  }
 }
