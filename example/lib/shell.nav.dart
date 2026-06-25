@@ -138,8 +138,40 @@ final class Screen<I> {
     for (final c in which.conds) {
       if (!c.test(_Shell.graph.viewGet(specs.last, c.key))) return null;
     }
-    return which.nav;
+    return _atOf(specs.last) as N;
   }
+
+  /// The placement if this selector path is anywhere on the live stack
+  /// (front OR buried) — for `Screen.at(.x)?.popToMe()`. Else null.
+  static N? at<N extends AnyNav>(On<N> which) {
+    final st = _Shell.graph.stack;
+    final specs = which.specs;
+    if (specs.isEmpty) return null;
+    outer:
+    for (var e = st.length - 1; e >= specs.length - 1; e--) {
+      final off = e - specs.length + 1;
+      for (var i = 0; i < specs.length; i++) {
+        if (st[off + i].screen != specs[i]) continue outer;
+        final wid = which.ids[i];
+        if (wid != null && st[off + i].id != wid) continue outer;
+      }
+      for (final c in which.conds) {
+        if (!c.test(_Shell.graph.viewGet(specs.last, c.key))) continue outer;
+      }
+      return _atOf(specs.last) as N;
+    }
+    return null;
+  }
+
+  /// The placement OWNING [context] (this widget's screen), reactive.
+  static AnyPlacement ownerOf(BuildContext context) {
+    Placement.isOn(context, ScreenScope.of(context));
+    return _atOf(ScreenScope.of(context));
+  }
+
+  /// Is the screen owning [context] the current foreground? Reactive.
+  static bool isForegroundOf(BuildContext context) =>
+      Placement.isCurrent(context, ScreenScope.of(context));
 
   /// Live-stack redirect: the chained verb REPLACES the current history
   /// entry instead of pushing. Decide it at the start —
@@ -148,16 +180,9 @@ final class Screen<I> {
 
   /// The current EXACT placement, as the sealed [Placement] — an
   /// exhaustive `switch (Screen.at) { case HomeUserProfileNav n => … }`.
-  static AnyPlacement get at => switch (_Shell.graph.current) {
-    _Shell.home => const HomeNav._(),
-    _Shell.settings => const SettingsNav._(),
-    Shop.shop => const ShopNav._(),
-    Shop.catalog => const CatalogNav._(),
-    Shop.product => (const ProductNav._()).at,
-    Wishlist.saved => const SavedNav._(),
-    BootScreen.initial => const Initial._(),
-    _ => throw StateError('not a _Shell screen'),
-  };
+  /// The current foreground placement (the front), as the sealed
+  /// [AnyPlacement] — `switch (Screen.current) { … }` is exhaustive.
+  static AnyPlacement get current => _atOf(_Shell.graph.current);
 
   /// The poppable handle if the active top is a non-root placement,
   /// else null (at a scope root). `.at` = current placement; `.pop()`
@@ -323,7 +348,7 @@ final class Hop<N extends AnyNav> {
 
 /// The boot placement: `Screen.at` returns it until the first commit.
 /// `if (Screen.at case Initial()) ...` gates blob-null cold-boot UI.
-final class Initial extends AnyNav implements AnyPlacement {
+final class Initial extends AnyPlacement {
   const Initial._() : super._();
 }
 
@@ -331,20 +356,22 @@ final class On<N extends AnyNav> {
   const On._(this.specs, this.ids, this.nav, [this.conds = const []]);
   final List<Enum> specs;
   final List<Object?> ids;
-  final N nav;
+
+  /// The exact nav for a single-placement terminal; null for a multi-
+  /// placement one — `Screen.on` resolves it from the live chain.
+  final N? nav;
 
   /// View-state conditions on the terminal screen (`.query`/`.fragment`).
   final List<ViewCond> conds;
-  static OnHome get home => const OnHome._([_Shell.home], [null], HomeNav._());
+  static OnHome get home => OnHome._([_Shell.home], [null], const HomeNav._());
   static On<SettingsNav> get settings =>
-      const On._([_Shell.settings], [null], SettingsNav._());
-  static OnShop get shop => const OnShop._([Shop.shop], [null], ShopNav._());
+      On._([_Shell.settings], [null], const SettingsNav._());
+  static OnShop get shop => OnShop._([Shop.shop], [null], const ShopNav._());
   static OnCatalog get catalog =>
-      const OnCatalog._([Shop.catalog], [null], CatalogNav._());
-  static OnProduct get product =>
-      const OnProduct._([Shop.product], [null], ProductNav._());
+      OnCatalog._([Shop.catalog], [null], const CatalogNav._());
+  static OnProduct get product => OnProduct._([Shop.product], [null], null);
   static OnSaved get saved =>
-      const OnSaved._([Wishlist.saved], [null], SavedNav._());
+      OnSaved._([Wishlist.saved], [null], const SavedNav._());
 
   /// Disambiguating push onto the current scope when a screen has
   /// 2+ parents: `Screen.on(.parentOf.x)?.goX(...)`. A namespace —
@@ -367,9 +394,9 @@ final class _ParentSel {
 
 final class ProductNavParent extends AnyNav {
   const ProductNavParent._() : super._();
-  ProductNav goProduct(String id) {
+  ProductPlacement goProduct(String id) {
     _Shell.graph.go(Shop.product, id, true);
-    return const ProductNav._();
+    return _atOf(Shop.product) as ProductPlacement;
   }
 
   PopDestNav pop() {
@@ -437,14 +464,31 @@ final class OnHomeSavedProduct extends On<HomeSavedProductNav> {
       OnHomeSavedProduct._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
-final class OnProduct extends On<ProductNav> {
+final class OnProduct extends On<ProductPlacement> {
   const OnProduct._(super.specs, super.ids, super.nav, [super.conds])
     : super._();
   OnProduct call(String id) =>
       OnProduct._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
-sealed class AnyPlacement {}
+sealed class AnyPlacement extends AnyNav {
+  const AnyPlacement._() : super._();
+}
+
+AnyPlacement _atOf(Enum s) {
+  final c = _Shell.graph.currentChain;
+  final p = c.sublist(0, c.lastIndexOf(s) + 1);
+  return switch (s) {
+    _Shell.home => const HomeNav._(),
+    _Shell.settings => const SettingsNav._(),
+    Shop.shop => const ShopNav._(),
+    Shop.catalog => const CatalogNav._(),
+    Shop.product => _resolveProductPlacement(p),
+    Wishlist.saved => const SavedNav._(),
+    BootScreen.initial => const Initial._(),
+    _ => throw StateError('not a _Shell screen'),
+  };
+}
 
 abstract base class AnyNav {
   const AnyNav._();
@@ -456,7 +500,7 @@ sealed class PopDestPlacement {}
 
 final class CanPopNav extends AnyNav {
   const CanPopNav._() : super._();
-  CanPopPlacement get at => Screen.at as CanPopPlacement;
+  CanPopPlacement get at => Screen.current as CanPopPlacement;
   PopDestNav pop() {
     _Shell.graph.pop();
     return const PopDestNav._();
@@ -481,23 +525,40 @@ sealed class KickstartPlacement {}
 
 final class KickstartNav extends AnyNav {
   const KickstartNav._() : super._();
-  KickstartPlacement get at => Screen.at as KickstartPlacement;
+  KickstartPlacement get at => Screen.current as KickstartPlacement;
 }
 
-final class HomeNav extends AnyNav
-    implements AnyPlacement, PopDestPlacement, KickstartPlacement {
+final class HomeNav extends AnyPlacement
+    implements PopDestPlacement, KickstartPlacement {
   const HomeNav._() : super._();
+  HomeNav popToMe() {
+    _Shell.graph.popTo(_Shell.home);
+    return const HomeNav._();
+  }
+
+  AnyPlacement? popToOneOfMyChildren() {
+    final c = _Shell.graph.currentChain;
+    final i = c.lastIndexOf(_Shell.home);
+    if (i < 0 || i + 1 >= c.length) return null;
+    final ch = c[i + 1];
+    _Shell.graph.popTo(ch);
+    return _atOf(ch);
+  }
+
   SettingsNav goSettings() {
+    _Shell.graph.popTo(_Shell.home);
     _Shell.graph.go(_Shell.settings, null, true);
     return const SettingsNav._();
   }
 
   ShopNav goShop() {
+    _Shell.graph.popTo(_Shell.home);
     _Shell.graph.go(Shop.shop, null, true);
     return const ShopNav._();
   }
 
   SavedNav goSaved() {
+    _Shell.graph.popTo(_Shell.home);
     _Shell.graph.go(Wishlist.saved, null, true);
     return const SavedNav._();
   }
@@ -522,23 +583,48 @@ final class HomeHop<N extends AnyNav> {
   static const saved = HomeHop<SavedNav>._(Wishlist.saved, null, SavedNav._());
 }
 
-final class SettingsNav extends AnyNav
-    implements AnyPlacement, CanPopPlacement, KickstartPlacement {
+final class SettingsNav extends AnyPlacement
+    implements CanPopPlacement, KickstartPlacement {
   const SettingsNav._() : super._();
+  SettingsNav popToMe() {
+    _Shell.graph.popTo(_Shell.settings);
+    return const SettingsNav._();
+  }
+
+  AnyPlacement? popToOneOfMyChildren() {
+    final c = _Shell.graph.currentChain;
+    final i = c.lastIndexOf(_Shell.settings);
+    if (i < 0 || i + 1 >= c.length) return null;
+    final ch = c[i + 1];
+    _Shell.graph.popTo(ch);
+    return _atOf(ch);
+  }
+
   HomeNav pop() {
     _Shell.graph.pop();
     return const HomeNav._();
   }
 }
 
-final class ShopNav extends AnyNav
-    implements
-        AnyPlacement,
-        CanPopPlacement,
-        PopDestPlacement,
-        KickstartPlacement {
+final class ShopNav extends AnyPlacement
+    implements CanPopPlacement, PopDestPlacement, KickstartPlacement {
   const ShopNav._() : super._();
+  ShopNav popToMe() {
+    _Shell.graph.popTo(Shop.shop);
+    return const ShopNav._();
+  }
+
+  AnyPlacement? popToOneOfMyChildren() {
+    final c = _Shell.graph.currentChain;
+    final i = c.lastIndexOf(Shop.shop);
+    if (i < 0 || i + 1 >= c.length) return null;
+    final ch = c[i + 1];
+    _Shell.graph.popTo(ch);
+    return _atOf(ch);
+  }
+
   CatalogNav goCatalog() {
+    _Shell.graph.popTo(Shop.shop);
     _Shell.graph.go(Shop.catalog, null, true);
     return const CatalogNav._();
   }
@@ -549,14 +635,25 @@ final class ShopNav extends AnyNav
   }
 }
 
-final class CatalogNav extends AnyNav
-    implements
-        AnyPlacement,
-        CanPopPlacement,
-        PopDestPlacement,
-        KickstartPlacement {
+final class CatalogNav extends AnyPlacement
+    implements CanPopPlacement, PopDestPlacement, KickstartPlacement {
   const CatalogNav._() : super._();
+  CatalogNav popToMe() {
+    _Shell.graph.popTo(Shop.catalog);
+    return const CatalogNav._();
+  }
+
+  AnyPlacement? popToOneOfMyChildren() {
+    final c = _Shell.graph.currentChain;
+    final i = c.lastIndexOf(Shop.catalog);
+    if (i < 0 || i + 1 >= c.length) return null;
+    final ch = c[i + 1];
+    _Shell.graph.popTo(ch);
+    return _atOf(ch);
+  }
+
   HomeShopCatalogProductNav goProduct(String id) {
+    _Shell.graph.popTo(Shop.catalog);
     _Shell.graph.go(Shop.product, id, true);
     return const HomeShopCatalogProductNav._();
   }
@@ -573,40 +670,48 @@ final class CatalogNav extends AnyNav
 
   N popTo<N extends AnyNav>(CatalogPop<N> to) {
     _Shell.graph.pop(to.spec);
-    return to.nav;
+    return _atOf(to.spec) as N;
   }
 }
 
 final class CatalogPop<N extends AnyNav> {
   const CatalogPop._(this.spec, this.nav);
   final Enum spec;
-  final N nav;
+  final N? nav;
   static const shop = CatalogPop<ShopNav>._(Shop.shop, ShopNav._());
   static const home = CatalogPop<HomeNav>._(_Shell.home, HomeNav._());
 }
 
-final class ProductNav extends AnyNav {
-  const ProductNav._() : super._();
-  ProductPlacement get at {
-    final c = _Shell.graph.currentChain;
-    if (_chainIs(c, const [_Shell.home, Shop.shop, Shop.catalog, Shop.product]))
-      return const HomeShopCatalogProductNav._();
-    if (_chainIs(c, const [_Shell.home, Wishlist.saved, Shop.product]))
-      return const HomeSavedProductNav._();
-    throw StateError('unresolved product placement: $c');
-  }
-
-  HomeNav popToHome() {
-    _Shell.graph.pop(_Shell.home);
-    return const HomeNav._();
-  }
+ProductPlacement _resolveProductPlacement(List<Enum> c) {
+  if (_chainIs(c, const [_Shell.home, Shop.shop, Shop.catalog, Shop.product]))
+    return const HomeShopCatalogProductNav._();
+  if (_chainIs(c, const [_Shell.home, Wishlist.saved, Shop.product]))
+    return const HomeSavedProductNav._();
+  throw StateError('unresolved product placement: $c');
 }
 
-sealed class ProductPlacement implements AnyPlacement {}
+sealed class ProductPlacement implements AnyPlacement {
+  ProductPlacement popToMe();
+  AnyPlacement? popToOneOfMyChildren();
+}
 
-final class HomeShopCatalogProductNav extends AnyNav
+final class HomeShopCatalogProductNav extends AnyPlacement
     implements ProductPlacement, CanPopPlacement {
   const HomeShopCatalogProductNav._() : super._();
+  HomeShopCatalogProductNav popToMe() {
+    _Shell.graph.popTo(Shop.product);
+    return const HomeShopCatalogProductNav._();
+  }
+
+  AnyPlacement? popToOneOfMyChildren() {
+    final c = _Shell.graph.currentChain;
+    final i = c.lastIndexOf(Shop.product);
+    if (i < 0 || i + 1 >= c.length) return null;
+    final ch = c[i + 1];
+    _Shell.graph.popTo(ch);
+    return _atOf(ch);
+  }
+
   CatalogNav pop() {
     _Shell.graph.pop();
     return const CatalogNav._();
@@ -624,14 +729,14 @@ final class HomeShopCatalogProductNav extends AnyNav
 
   N popTo<N extends AnyNav>(HomeShopCatalogProductPop<N> to) {
     _Shell.graph.pop(to.spec);
-    return to.nav;
+    return _atOf(to.spec) as N;
   }
 }
 
 final class HomeShopCatalogProductPop<N extends AnyNav> {
   const HomeShopCatalogProductPop._(this.spec, this.nav);
   final Enum spec;
-  final N nav;
+  final N? nav;
   static const catalog = HomeShopCatalogProductPop<CatalogNav>._(
     Shop.catalog,
     CatalogNav._(),
@@ -646,9 +751,23 @@ final class HomeShopCatalogProductPop<N extends AnyNav> {
   );
 }
 
-final class HomeSavedProductNav extends AnyNav
+final class HomeSavedProductNav extends AnyPlacement
     implements ProductPlacement, CanPopPlacement {
   const HomeSavedProductNav._() : super._();
+  HomeSavedProductNav popToMe() {
+    _Shell.graph.popTo(Shop.product);
+    return const HomeSavedProductNav._();
+  }
+
+  AnyPlacement? popToOneOfMyChildren() {
+    final c = _Shell.graph.currentChain;
+    final i = c.lastIndexOf(Shop.product);
+    if (i < 0 || i + 1 >= c.length) return null;
+    final ch = c[i + 1];
+    _Shell.graph.popTo(ch);
+    return _atOf(ch);
+  }
+
   SavedNav pop() {
     _Shell.graph.pop();
     return const SavedNav._();
@@ -661,14 +780,14 @@ final class HomeSavedProductNav extends AnyNav
 
   N popTo<N extends AnyNav>(HomeSavedProductPop<N> to) {
     _Shell.graph.pop(to.spec);
-    return to.nav;
+    return _atOf(to.spec) as N;
   }
 }
 
 final class HomeSavedProductPop<N extends AnyNav> {
   const HomeSavedProductPop._(this.spec, this.nav);
   final Enum spec;
-  final N nav;
+  final N? nav;
   static const saved = HomeSavedProductPop<SavedNav>._(
     Wishlist.saved,
     SavedNav._(),
@@ -676,14 +795,25 @@ final class HomeSavedProductPop<N extends AnyNav> {
   static const home = HomeSavedProductPop<HomeNav>._(_Shell.home, HomeNav._());
 }
 
-final class SavedNav extends AnyNav
-    implements
-        AnyPlacement,
-        CanPopPlacement,
-        PopDestPlacement,
-        KickstartPlacement {
+final class SavedNav extends AnyPlacement
+    implements CanPopPlacement, PopDestPlacement, KickstartPlacement {
   const SavedNav._() : super._();
+  SavedNav popToMe() {
+    _Shell.graph.popTo(Wishlist.saved);
+    return const SavedNav._();
+  }
+
+  AnyPlacement? popToOneOfMyChildren() {
+    final c = _Shell.graph.currentChain;
+    final i = c.lastIndexOf(Wishlist.saved);
+    if (i < 0 || i + 1 >= c.length) return null;
+    final ch = c[i + 1];
+    _Shell.graph.popTo(ch);
+    return _atOf(ch);
+  }
+
   HomeSavedProductNav goProduct(String id) {
+    _Shell.graph.popTo(Wishlist.saved);
     _Shell.graph.go(Shop.product, id, true);
     return const HomeSavedProductNav._();
   }

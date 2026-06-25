@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:canon_example/nav.dart';
 
-// Compile-only: the reactive read is TYPED (`FeedView?`, not `AnyView?`), and
-// `?.at` hops off the read-only view to the screen's placement (`FeedNav` here,
-// single-parent). Never called — its mere compilation proves the types line up.
+// Compile-only: the reactive stack reads are TYPED (`FeedView?`, not `AnyView?`).
+// `context.on` = foreground, `context.at` = anywhere on the stack. Never called —
+// its mere compilation proves the types line up.
 // ignore: unused_element
-FeedNav? _typecheck(BuildContext c) {
-  final FeedView? self = c.on(.feed.query({.category('books')}));
-  final FeedView? fg = c.current(.feed);
-  return (self ?? fg)?.at;
+FeedView? _typecheck(BuildContext c) {
+  final FeedView? front = c.on(.feed.query({.category('books')}));
+  final FeedView? anywhere = c.at(.feed);
+  return front ?? anywhere;
 }
 
 void main() {
@@ -18,7 +18,7 @@ void main() {
     await tester.pumpWidget(MaterialApp.router(routerDelegate: Screen.delegate));
     // boots to Initial (the _Loading widget); don't settle — its spinner never
     // does. The resolver drives the first nav out of boot.
-    expect(Screen.at, isA<Initial>());
+    expect(Screen.current, isA<Initial>());
     Screen.goHome().goSettings().goAbout(); // seed home → settings → about
     await tester.pumpAndSettle();
     expect(Screen.stack.current.name, 'about');
@@ -110,12 +110,12 @@ void main() {
     // reach `item` THROUGH home → its placement is HomeItemNav
     Screen.goHome().goItem('42');
     await tester.pumpAndSettle();
-    expect(Screen.at, isA<HomeItemNav>());
-    expect(Screen.at, isA<ItemPlacement>()); // …a subtype of the screen's sealed set
-    expect(Screen.at, isA<AnyPlacement>()); // …and of the global sealed root
+    expect(Screen.current, isA<HomeItemNav>());
+    expect(Screen.current, isA<ItemPlacement>()); // …a subtype of the screen's sealed set
+    expect(Screen.current, isA<AnyPlacement>()); // …and of the global sealed root
 
     // the item nav's `.at` resolves the same leaf off the live chain
-    final ItemPlacement here = Screen.on(.item('42'))!.at;
+    final ItemPlacement here = Screen.on(.item('42'))!;
     expect(here, isA<HomeItemNav>());
 
     // write item's screen-local view-state through its mutable query
@@ -129,7 +129,44 @@ void main() {
     // reach the SAME screen through feed → its placement is now FeedItemNav
     Screen.goFeed().goItem('42');
     await tester.pumpAndSettle();
-    expect(Screen.at, isA<FeedItemNav>());
-    expect(Screen.on(.item('42'))!.at, isA<FeedItemNav>());
+    expect(Screen.current, isA<FeedItemNav>());
+    expect(Screen.on(.item('42'))!, isA<FeedItemNav>());
+  });
+
+  testWidgets('Screen.at reaches a buried placement; popToMe surfaces it', (tester) async {
+    await tester.pumpWidget(MaterialApp.router(routerDelegate: Screen.delegate));
+    Screen.goFeed().goItem('7').goEditItem(); // feed → item → editItem (front)
+    await tester.pumpAndSettle();
+    expect(Screen.current, isA<FeedItemEditItemNav>());
+
+    // feed/item are now BURIED under editItem: `on` (front-only) misses them,
+    // `at` (anywhere on the stack) finds them.
+    expect(Screen.on(.item('7')), isNull); // not the front
+    expect(Screen.at(.item('7')), isNotNull); // but on the stack
+    expect(Screen.at(.feed), isNotNull);
+    expect(Screen.at(.item('9')), isNull); // wrong id → not reached
+
+    // popToMe surfaces the buried item and returns it forward-capable
+    Screen.at(.item('7'))!.popToMe();
+    await tester.pumpAndSettle();
+    expect(Screen.current, isA<FeedItemNav>());
+    expect(Screen.stack.current.name, 'item');
+  });
+
+  testWidgets('at(chain).goXx() is a smart jump (pop-to-self then go)', (tester) async {
+    await tester.pumpWidget(MaterialApp.router(routerDelegate: Screen.delegate));
+    Screen.goFeed().goItem('3').goEditItem(); // feed → item → editItem
+    await tester.pumpAndSettle();
+    expect(Screen.stack.current.name, 'editItem');
+
+    // editItem is the front; item is buried. `at(.item).goEditItem()` jumps back
+    // to item (popping editItem) then re-navigates — one atomic minimal diff.
+    Screen.at(.item('3'))!.goEditItem(); // direct, no popToMe
+    await tester.pumpAndSettle();
+    expect(Screen.stack.current.name, 'editItem');
+    expect(
+      Screen.stack.screens.map((s) => s.name).toList(),
+      ['feed', 'item', 'editItem'],
+    );
   });
 }

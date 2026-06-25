@@ -564,8 +564,8 @@ void main() {
       _expectGenerated(
         allOf([
           // at chat the source id is live → no-arg verb reading it.
-          contains('goChatProfile() {\n'
-              '    _Screens.graph.go(_Screens.chatProfile, _idOf(_Screens.profile), true)'),
+          contains('goChatProfile()'),
+          contains('_Screens.graph.go(_Screens.chatProfile, _idOf(_Screens.profile), true)'),
           // chat's id sits between profile and chatProfile → no single-id reach.
           isNot(contains('goChatProfile(String id)')),
         ]),
@@ -595,9 +595,9 @@ void main() {
   test('emits the Initial boot placement (no chain surface, no goInitial)', () =>
       _expectGenerated(
         allOf([
-          // the boot placement: a plain AnyNav, matched via `Screen.at case Initial()`
-          contains('final class Initial extends AnyNav'),
-          contains('BootScreen.initial => const Initial._()'), // Screen.at maps it
+          // the boot placement, matched via `Screen.current case Initial()`
+          contains('final class Initial extends AnyPlacement'),
+          contains('BootScreen.initial => const Initial._()'), // _atOf maps it
           contains('BootScreen.initial: Screen<Never>._(BootScreen.initial)'), // of() safe
           // the old InitialScreen-chain mechanism is gone (name freed for the consumer)
           isNot(contains('sealed class InitialScreen')),
@@ -628,10 +628,11 @@ void main() {
         contains('goItem(String id)'), // typed id verb
         contains('isCodegenFresh'), // stale-codegen guard
         contains('_treeSignature'),
-        // Screen.at is the sealed AnyPlacement → exhaustive `switch (Screen.at)`.
-        contains('sealed class AnyPlacement {}'),
-        contains('static AnyPlacement get at'),
-        matches(RegExp(r'extends AnyNav\s+implements AnyPlacement')),
+        // Screen.current is the sealed AnyPlacement → exhaustive switch. Placements
+        // EXTEND it (so cross-screen ternaries LUB to AnyPlacement, not AnyNav).
+        contains('sealed class AnyPlacement extends AnyNav'),
+        contains('static AnyPlacement get current'),
+        matches(RegExp(r'class \w+ extends AnyPlacement')),
       )));
 
   test('emits the typed ScreenEntry stack + navigations surface', () =>
@@ -776,11 +777,11 @@ void main() {
           contains('abstract interface class ItemView'),
           contains('class ItemQuery'),
           contains('String? get tag =>'),
-          contains('implements ItemView'), // the placement navs implement it
+          matches(RegExp(r'implements[^{]*ItemView')), // placement navs implement it
           contains('ItemQueryMut get query'), // …with the mutable getter
           contains('ItemPlacement get at;'), // the view's `.at` is the sealed placement
           contains('ItemPlacement get at => this;'), // a resolved leaf IS its placement
-          contains('OnItem extends On<ItemNav, ItemView>'), // typed selector
+          contains('OnItem extends On<ItemPlacement, ItemView>'), // typed selector
         ]),
         spec: _multiViewSpec,
       ));
@@ -834,7 +835,7 @@ void main() {
         contains('final class KickstartNav extends AnyNav'),
         contains('static KickstartNav go<N extends AnyNav>(Hop<N> hop)'),
         contains('return const KickstartNav._();'),
-        contains('KickstartPlacement get at => Screen.at as KickstartPlacement'),
+        contains('KickstartPlacement get at => Screen.current as KickstartPlacement'),
         // kick-startable navs implement the marker
         matches(RegExp(r'implements[\s\S]*?KickstartPlacement')),
       ])));
@@ -899,7 +900,7 @@ void main() {
         contains('AboutHomePopPlacement get at'),
         contains('AboutHomePopNav pop()'), // item pops into the union
         // predecessors implement the marker -> exhaustive switch(x.pop().at)
-        matches(RegExp(r'class HomeNav extends AnyNav\s+implements[^{]*AboutHomePopPlacement')),
-        matches(RegExp(r'class AboutNav extends AnyNav\s+implements[^{]*AboutHomePopPlacement')),
+        matches(RegExp(r'class HomeNav extends AnyPlacement\s+implements[^{]*AboutHomePopPlacement')),
+        matches(RegExp(r'class AboutNav extends AnyPlacement\s+implements[^{]*AboutHomePopPlacement')),
       )));
 }

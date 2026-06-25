@@ -156,7 +156,46 @@ final class Screen<I> {
     for (final c in which.conds) {
       if (!c.test(_Screens.graph.viewGet(specs.last, c.key))) return null;
     }
-    return which.nav;
+    return _atOf(specs.last) as N;
+  }
+
+  /// The placement if this selector path is anywhere on the live stack
+  /// (front OR buried) — for `Screen.at(.x)?.popToMe()`. Else null.
+  static N? at<N extends AnyNav, V>(On<N, V> which) {
+    final st = _Screens.graph.stack;
+    final specs = which.specs;
+    if (specs.isEmpty) return null;
+    outer:
+    for (var e = st.length - 1; e >= specs.length - 1; e--) {
+      final off = e - specs.length + 1;
+      for (var i = 0; i < specs.length; i++) {
+        if (st[off + i].screen != specs[i]) continue outer;
+        final wid = which.ids[i];
+        if (wid != null && st[off + i].id != wid) continue outer;
+      }
+      for (final c in which.conds) {
+        if (!c.test(_Screens.graph.viewGet(specs.last, c.key))) continue outer;
+      }
+      return _atOf(specs.last) as N;
+    }
+    return null;
+  }
+
+  /// The placement OWNING [context] (this widget's screen), reactive.
+  static AnyPlacement ownerOf(BuildContext context) {
+    Placement.isOn(context, ScreenScope.of(context));
+    return _atOf(ScreenScope.of(context));
+  }
+
+  /// Is the screen owning [context] the current foreground? Reactive.
+  static bool isForegroundOf(BuildContext context) =>
+      Placement.isCurrent(context, ScreenScope.of(context));
+
+  /// The read-only view of the screen owning [context] (or null if it
+  /// has no view-state) — `switch` it for the typed view. Reactive.
+  static AnyView? viewOf(BuildContext context) {
+    Placement.isOn(context, ScreenScope.of(context));
+    return _viewOf(ScreenScope.of(context));
   }
 
   /// Live-stack redirect: the chained verb REPLACES the current history
@@ -166,21 +205,9 @@ final class Screen<I> {
 
   /// The current EXACT placement, as the sealed [Placement] — an
   /// exhaustive `switch (Screen.at) { case HomeUserProfileNav n => … }`.
-  static AnyPlacement get at => switch (_Screens.graph.current) {
-    _Screens.splash => const SplashNav._(),
-    _Screens.signIn => const SignInNav._(),
-    _Screens.home => const HomeNav._(),
-    _Screens.feed => const FeedNav._(),
-    _Screens.profile => const ProfileNav._(),
-    _Screens.item => (const ItemNav._()).at,
-    _Screens.editItem => (const EditItemNav._()).at,
-    _Screens.settings => (const SettingsNav._()).at,
-    _Screens.about => (const AboutNav._()).at,
-    _Screens.account => const AccountNav._(),
-    _Screens.editAccount => const EditAccountNav._(),
-    BootScreen.initial => const Initial._(),
-    _ => throw StateError('not a _Screens screen'),
-  };
+  /// The current foreground placement (the front), as the sealed
+  /// [AnyPlacement] — `switch (Screen.current) { … }` is exhaustive.
+  static AnyPlacement get current => _atOf(_Screens.graph.current);
 
   /// The cold-start link (already parsed), or null off the web,
   /// warm, or when the URL is not a representable link.
@@ -404,7 +431,7 @@ final class Hop<N extends AnyNav> {
 
 /// The boot placement: `Screen.at` returns it until the first commit.
 /// `if (Screen.at case Initial()) ...` gates blob-null cold-boot UI.
-final class Initial extends AnyNav implements AnyPlacement {
+final class Initial extends AnyPlacement {
   const Initial._() : super._();
 }
 
@@ -412,32 +439,34 @@ final class On<N extends AnyNav, V> {
   const On._(this.specs, this.ids, this.nav, [this.conds = const []]);
   final List<Enum> specs;
   final List<Object?> ids;
-  final N nav;
+
+  /// The exact nav for a single-placement terminal; null for a multi-
+  /// placement one — `Screen.on` resolves it from the live chain.
+  final N? nav;
 
   /// View-state conditions on the terminal screen (`.query`/`.fragment`).
   final List<ViewCond> conds;
   static On<SplashNav, AnyView> get splash =>
-      const On._([_Screens.splash], [null], SplashNav._());
+      On._([_Screens.splash], [null], const SplashNav._());
   static On<SignInNav, AnyView> get signIn =>
-      const On._([_Screens.signIn], [null], SignInNav._());
+      On._([_Screens.signIn], [null], const SignInNav._());
   static OnHome get home =>
-      const OnHome._([_Screens.home], [null], HomeNav._());
+      OnHome._([_Screens.home], [null], const HomeNav._());
   static OnFeed get feed =>
-      const OnFeed._([_Screens.feed], [null], FeedNav._());
+      OnFeed._([_Screens.feed], [null], const FeedNav._());
   static OnProfile get profile =>
-      const OnProfile._([_Screens.profile], [null], ProfileNav._());
-  static OnItem get item =>
-      const OnItem._([_Screens.item], [null], ItemNav._());
+      OnProfile._([_Screens.profile], [null], const ProfileNav._());
+  static OnItem get item => OnItem._([_Screens.item], [null], null);
   static OnEditItem get editItem =>
-      const OnEditItem._([_Screens.editItem], [null], EditItemNav._());
+      OnEditItem._([_Screens.editItem], [null], null);
   static OnSettings get settings =>
-      const OnSettings._([_Screens.settings], [null], SettingsNav._());
-  static On<AboutNav, AnyView> get about =>
-      const On._([_Screens.about], [null], AboutNav._());
+      OnSettings._([_Screens.settings], [null], null);
+  static On<AboutPlacement, AnyView> get about =>
+      On._([_Screens.about], [null], null);
   static OnAccount get account =>
-      const OnAccount._([_Screens.account], [null], AccountNav._());
+      OnAccount._([_Screens.account], [null], const AccountNav._());
   static OnEditAccount get editAccount =>
-      const OnEditAccount._([_Screens.editAccount], [null], EditAccountNav._());
+      OnEditAccount._([_Screens.editAccount], [null], const EditAccountNav._());
 
   /// Disambiguating push onto the current scope when a screen has
   /// 2+ parents: `Screen.on(.parentOf.x)?.goX(...)`. A namespace —
@@ -464,17 +493,17 @@ final class _ParentSel {
 
 final class ItemNavParent extends AnyNav {
   const ItemNavParent._() : super._();
-  ItemNav goItem(String id) {
+  ItemPlacement goItem(String id) {
     _Screens.graph.go(_Screens.item, id, true);
-    return const ItemNav._();
+    return _atOf(_Screens.item) as ItemPlacement;
   }
 }
 
 final class SettingsNavParent extends AnyNav {
   const SettingsNavParent._() : super._();
-  SettingsNav goSettings() {
+  SettingsPlacement goSettings() {
     _Screens.graph.go(_Screens.settings, null, true);
-    return const SettingsNav._();
+    return _atOf(_Screens.settings) as SettingsPlacement;
   }
 }
 
@@ -563,7 +592,7 @@ final class OnAccount extends On<AccountNav, AnyView> {
       OnAccount._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
-final class OnItem extends On<ItemNav, ItemView> {
+final class OnItem extends On<ItemPlacement, ItemView> {
   const OnItem._(super.specs, super.ids, super.nav, [super.conds]) : super._();
   OnItem query(Set<ItemQueryCond> cs) =>
       OnItem._(specs, ids, nav, [...conds, ...cs]);
@@ -571,18 +600,18 @@ final class OnItem extends On<ItemNav, ItemView> {
       OnItem._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
-final class OnEditItem extends On<EditItemNav, AnyView> {
+final class OnEditItem extends On<EditItemPlacement, AnyView> {
   const OnEditItem._(super.specs, super.ids, super.nav, [super.conds])
     : super._();
   OnEditItem call(String id) =>
       OnEditItem._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
-final class OnSettings extends On<SettingsNav, AnyView> {
+final class OnSettings extends On<SettingsPlacement, AnyView> {
   const OnSettings._(super.specs, super.ids, super.nav, [super.conds])
     : super._();
-  On<AboutNav, AnyView> get about =>
-      On._([...specs, _Screens.about], [...ids, null], const AboutNav._());
+  On<AboutPlacement, AnyView> get about =>
+      On._([...specs, _Screens.about], [...ids, null], null);
 }
 
 final class OnEditAccount extends On<EditAccountNav, AnyView> {
@@ -592,7 +621,29 @@ final class OnEditAccount extends On<EditAccountNav, AnyView> {
       OnEditAccount._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
-sealed class AnyPlacement {}
+sealed class AnyPlacement extends AnyNav {
+  const AnyPlacement._() : super._();
+}
+
+AnyPlacement _atOf(Enum s) {
+  final c = _Screens.graph.currentChain;
+  final p = c.sublist(0, c.lastIndexOf(s) + 1);
+  return switch (s) {
+    _Screens.splash => const SplashNav._(),
+    _Screens.signIn => const SignInNav._(),
+    _Screens.home => const HomeNav._(),
+    _Screens.feed => const FeedNav._(),
+    _Screens.profile => const ProfileNav._(),
+    _Screens.item => _resolveItemPlacement(p),
+    _Screens.editItem => _resolveEditItemPlacement(p),
+    _Screens.settings => _resolveSettingsPlacement(p),
+    _Screens.about => _resolveAboutPlacement(p),
+    _Screens.account => const AccountNav._(),
+    _Screens.editAccount => const EditAccountNav._(),
+    BootScreen.initial => const Initial._(),
+    _ => throw StateError('not a _Screens screen'),
+  };
+}
 
 abstract base class AnyNav {
   const AnyNav._();
@@ -604,7 +655,7 @@ sealed class PopDestPlacement {}
 
 final class CanPopNav extends AnyNav {
   const CanPopNav._() : super._();
-  CanPopPlacement get at => Screen.at as CanPopPlacement;
+  CanPopPlacement get at => Screen.current as CanPopPlacement;
   PopDestNav pop() {
     _Screens.graph.pop();
     return const PopDestNav._();
@@ -636,7 +687,7 @@ sealed class KickstartPlacement {}
 
 final class KickstartNav extends AnyNav {
   const KickstartNav._() : super._();
-  KickstartPlacement get at => Screen.at as KickstartPlacement;
+  KickstartPlacement get at => Screen.current as KickstartPlacement;
 }
 
 final class Keep {
@@ -647,25 +698,65 @@ final class Keep {
   static const profile = Keep._(_Screens.profile);
 }
 
-final class SplashNav extends AnyNav
-    implements AnyPlacement, KickstartPlacement {
+final class SplashNav extends AnyPlacement implements KickstartPlacement {
   const SplashNav._() : super._();
+  SplashNav popToMe() {
+    _Screens.graph.popTo(_Screens.splash);
+    return const SplashNav._();
+  }
+
+  AnyPlacement? popToOneOfMyChildren() {
+    final c = _Screens.graph.currentChain;
+    final i = c.lastIndexOf(_Screens.splash);
+    if (i < 0 || i + 1 >= c.length) return null;
+    final ch = c[i + 1];
+    _Screens.graph.popTo(ch);
+    return _atOf(ch);
+  }
 }
 
-final class SignInNav extends AnyNav
-    implements AnyPlacement, KickstartPlacement {
+final class SignInNav extends AnyPlacement implements KickstartPlacement {
   const SignInNav._() : super._();
+  SignInNav popToMe() {
+    _Screens.graph.popTo(_Screens.signIn);
+    return const SignInNav._();
+  }
+
+  AnyPlacement? popToOneOfMyChildren() {
+    final c = _Screens.graph.currentChain;
+    final i = c.lastIndexOf(_Screens.signIn);
+    if (i < 0 || i + 1 >= c.length) return null;
+    final ch = c[i + 1];
+    _Screens.graph.popTo(ch);
+    return _atOf(ch);
+  }
 }
 
-final class HomeNav extends AnyNav
-    implements AnyPlacement, PopDestPlacement, KickstartPlacement {
+final class HomeNav extends AnyPlacement
+    implements PopDestPlacement, KickstartPlacement {
   const HomeNav._() : super._();
+  HomeNav popToMe() {
+    _Screens.graph.popTo(_Screens.home);
+    return const HomeNav._();
+  }
+
+  AnyPlacement? popToOneOfMyChildren() {
+    final c = _Screens.graph.currentChain;
+    final i = c.lastIndexOf(_Screens.home);
+    if (i < 0 || i + 1 >= c.length) return null;
+    final ch = c[i + 1];
+    _Screens.graph.popTo(ch);
+    return _atOf(ch);
+  }
+
   HomeItemNav goItem(String id) {
+    _Screens.graph.popTo(_Screens.home);
     _Screens.graph.go(_Screens.item, id, true);
     return const HomeItemNav._();
   }
 
   HomeSettingsNav goSettings() {
+    _Screens.graph.popTo(_Screens.home);
     _Screens.graph.go(_Screens.settings, null, true);
     return const HomeSettingsNav._();
   }
@@ -690,26 +781,57 @@ final class HomeHop<N extends AnyNav> {
   );
 }
 
-final class FeedNav extends AnyNav
-    implements AnyPlacement, FeedView, PopDestPlacement, KickstartPlacement {
+final class FeedNav extends AnyPlacement
+    implements FeedView, PopDestPlacement, KickstartPlacement {
   const FeedNav._() : super._();
+  FeedNav popToMe() {
+    _Screens.graph.popTo(_Screens.feed);
+    return const FeedNav._();
+  }
+
+  AnyPlacement? popToOneOfMyChildren() {
+    final c = _Screens.graph.currentChain;
+    final i = c.lastIndexOf(_Screens.feed);
+    if (i < 0 || i + 1 >= c.length) return null;
+    final ch = c[i + 1];
+    _Screens.graph.popTo(ch);
+    return _atOf(ch);
+  }
+
   FeedQueryMut get query => const FeedQueryMut._();
   FeedNav get at => this;
   FeedItemNav goItem(String id) {
+    _Screens.graph.popTo(_Screens.feed);
     _Screens.graph.go(_Screens.item, id, true);
     return const FeedItemNav._();
   }
 }
 
-final class ProfileNav extends AnyNav
-    implements AnyPlacement, PopDestPlacement, KickstartPlacement {
+final class ProfileNav extends AnyPlacement
+    implements PopDestPlacement, KickstartPlacement {
   const ProfileNav._() : super._();
+  ProfileNav popToMe() {
+    _Screens.graph.popTo(_Screens.profile);
+    return const ProfileNav._();
+  }
+
+  AnyPlacement? popToOneOfMyChildren() {
+    final c = _Screens.graph.currentChain;
+    final i = c.lastIndexOf(_Screens.profile);
+    if (i < 0 || i + 1 >= c.length) return null;
+    final ch = c[i + 1];
+    _Screens.graph.popTo(ch);
+    return _atOf(ch);
+  }
+
   ProfileSettingsNav goSettings() {
+    _Screens.graph.popTo(_Screens.profile);
     _Screens.graph.go(_Screens.settings, null, true);
     return const ProfileSettingsNav._();
   }
 
   AccountNav goAccount(String id) {
+    _Screens.graph.popTo(_Screens.profile);
     _Screens.graph.go(_Screens.account, id, true);
     return const AccountNav._();
   }
@@ -740,32 +862,42 @@ final class ProfileHop<N extends AnyNav> {
       ProfileHop._(_Screens.account, id, const AccountNav._());
 }
 
-final class ItemNav extends AnyNav implements ItemView {
-  const ItemNav._() : super._();
-  ItemQueryMut get query => const ItemQueryMut._();
-  ItemPlacement get at {
-    final c = _Screens.graph.currentChain;
-    if (_chainIs(c, const [_Screens.home, _Screens.item]))
-      return const HomeItemNav._();
-    if (_chainIs(c, const [_Screens.feed, _Screens.item]))
-      return const FeedItemNav._();
-    throw StateError('unresolved item placement: $c');
-  }
-
-  EditItemNav goEditItem() {
-    _Screens.graph.go(_Screens.editItem, _idOf(_Screens.item), true);
-    return const EditItemNav._();
-  }
+ItemPlacement _resolveItemPlacement(List<Enum> c) {
+  if (_chainIs(c, const [_Screens.home, _Screens.item]))
+    return const HomeItemNav._();
+  if (_chainIs(c, const [_Screens.feed, _Screens.item]))
+    return const FeedItemNav._();
+  throw StateError('unresolved item placement: $c');
 }
 
-sealed class ItemPlacement implements AnyPlacement {}
+sealed class ItemPlacement implements AnyPlacement {
+  EditItemPlacement goEditItem();
+  ItemPlacement popToMe();
+  AnyPlacement? popToOneOfMyChildren();
+  ItemQueryMut get query;
+}
 
-final class HomeItemNav extends AnyNav
+final class HomeItemNav extends AnyPlacement
     implements ItemPlacement, ItemView, CanPopPlacement, PopDestPlacement {
   const HomeItemNav._() : super._();
+  HomeItemNav popToMe() {
+    _Screens.graph.popTo(_Screens.item);
+    return const HomeItemNav._();
+  }
+
+  AnyPlacement? popToOneOfMyChildren() {
+    final c = _Screens.graph.currentChain;
+    final i = c.lastIndexOf(_Screens.item);
+    if (i < 0 || i + 1 >= c.length) return null;
+    final ch = c[i + 1];
+    _Screens.graph.popTo(ch);
+    return _atOf(ch);
+  }
+
   ItemQueryMut get query => const ItemQueryMut._();
   ItemPlacement get at => this;
   HomeItemEditItemNav goEditItem() {
+    _Screens.graph.popTo(_Screens.item);
     _Screens.graph.go(_Screens.editItem, _idOf(_Screens.item), true);
     return const HomeItemEditItemNav._();
   }
@@ -776,12 +908,27 @@ final class HomeItemNav extends AnyNav
   }
 }
 
-final class FeedItemNav extends AnyNav
+final class FeedItemNav extends AnyPlacement
     implements ItemPlacement, ItemView, CanPopPlacement, PopDestPlacement {
   const FeedItemNav._() : super._();
+  FeedItemNav popToMe() {
+    _Screens.graph.popTo(_Screens.item);
+    return const FeedItemNav._();
+  }
+
+  AnyPlacement? popToOneOfMyChildren() {
+    final c = _Screens.graph.currentChain;
+    final i = c.lastIndexOf(_Screens.item);
+    if (i < 0 || i + 1 >= c.length) return null;
+    final ch = c[i + 1];
+    _Screens.graph.popTo(ch);
+    return _atOf(ch);
+  }
+
   ItemQueryMut get query => const ItemQueryMut._();
   ItemPlacement get at => this;
   FeedItemEditItemNav goEditItem() {
+    _Screens.graph.popTo(_Screens.item);
     _Screens.graph.go(_Screens.editItem, _idOf(_Screens.item), true);
     return const FeedItemEditItemNav._();
   }
@@ -792,59 +939,46 @@ final class FeedItemNav extends AnyNav
   }
 }
 
-final class ItemEditItemNav extends AnyNav implements EditItemUnder {
-  const ItemEditItemNav._() : super._();
-  ItemEditItemPlacement get at {
-    final c = _Screens.graph.currentChain;
-    if (_chainIs(c, const [_Screens.home, _Screens.item, _Screens.editItem]))
-      return const HomeItemEditItemNav._();
-    if (_chainIs(c, const [_Screens.feed, _Screens.item, _Screens.editItem]))
-      return const FeedItemEditItemNav._();
-    throw StateError('unresolved editItem placement: $c');
-  }
-
-  ItemNav pop() {
-    _Screens.graph.pop();
-    return const ItemNav._();
-  }
+EditItemPlacement _resolveEditItemPlacement(List<Enum> c) {
+  if (_chainIs(c, const [_Screens.home, _Screens.item, _Screens.editItem]))
+    return const HomeItemEditItemNav._();
+  if (_chainIs(c, const [_Screens.feed, _Screens.item, _Screens.editItem]))
+    return const FeedItemEditItemNav._();
+  throw StateError('unresolved editItem placement: $c');
 }
 
-final class EditItemNav extends AnyNav {
-  const EditItemNav._() : super._();
-  EditItemPlacement get at {
-    final c = _Screens.graph.currentChain;
-    if (_chainIs(c, const [_Screens.home, _Screens.item, _Screens.editItem]))
-      return const HomeItemEditItemNav._();
-    if (_chainIs(c, const [_Screens.feed, _Screens.item, _Screens.editItem]))
-      return const FeedItemEditItemNav._();
-    throw StateError('unresolved editItem placement: $c');
-  }
-
-  EditItemUnder get under {
-    final c = _Screens.graph.currentChain;
-    if (_endsWith(c, const [_Screens.item, _Screens.editItem]))
-      return const ItemEditItemNav._();
-    throw StateError('unresolved editItem under: $c');
-  }
-
-  ItemNav popToItem() {
-    _Screens.graph.pop(_Screens.item);
-    return const ItemNav._();
-  }
+sealed class EditItemPlacement implements AnyPlacement {
+  EditItemPlacement popToMe();
+  AnyPlacement? popToOneOfMyChildren();
 }
-
-sealed class EditItemPlacement implements AnyPlacement {}
 
 sealed class EditItemUnder {}
 
-sealed class ItemEditItemPlacement implements AnyPlacement {}
+sealed class ItemEditItemPlacement implements AnyPlacement {
+  ItemEditItemPlacement popToMe();
+  AnyPlacement? popToOneOfMyChildren();
+}
 
-final class HomeItemEditItemNav extends AnyNav
+final class HomeItemEditItemNav extends AnyPlacement
     implements EditItemPlacement, ItemEditItemPlacement, CanPopPlacement {
   const HomeItemEditItemNav._() : super._();
-  ItemNav pop() {
+  HomeItemEditItemNav popToMe() {
+    _Screens.graph.popTo(_Screens.editItem);
+    return const HomeItemEditItemNav._();
+  }
+
+  AnyPlacement? popToOneOfMyChildren() {
+    final c = _Screens.graph.currentChain;
+    final i = c.lastIndexOf(_Screens.editItem);
+    if (i < 0 || i + 1 >= c.length) return null;
+    final ch = c[i + 1];
+    _Screens.graph.popTo(ch);
+    return _atOf(ch);
+  }
+
+  ItemPlacement pop() {
     _Screens.graph.pop();
-    return const ItemNav._();
+    return _atOf(_Screens.item) as ItemPlacement;
   }
 
   HomeNav popToHome() {
@@ -854,30 +988,41 @@ final class HomeItemEditItemNav extends AnyNav
 
   N popTo<N extends AnyNav>(HomeItemEditItemPop<N> to) {
     _Screens.graph.pop(to.spec);
-    return to.nav;
+    return _atOf(to.spec) as N;
   }
 }
 
 final class HomeItemEditItemPop<N extends AnyNav> {
   const HomeItemEditItemPop._(this.spec, this.nav);
   final Enum spec;
-  final N nav;
-  static const item = HomeItemEditItemPop<HomeItemNav>._(
-    _Screens.item,
-    HomeItemNav._(),
-  );
+  final N? nav;
+  static const item = HomeItemEditItemPop<ItemPlacement>._(_Screens.item, null);
   static const home = HomeItemEditItemPop<HomeNav>._(
     _Screens.home,
     HomeNav._(),
   );
 }
 
-final class FeedItemEditItemNav extends AnyNav
+final class FeedItemEditItemNav extends AnyPlacement
     implements EditItemPlacement, ItemEditItemPlacement, CanPopPlacement {
   const FeedItemEditItemNav._() : super._();
-  ItemNav pop() {
+  FeedItemEditItemNav popToMe() {
+    _Screens.graph.popTo(_Screens.editItem);
+    return const FeedItemEditItemNav._();
+  }
+
+  AnyPlacement? popToOneOfMyChildren() {
+    final c = _Screens.graph.currentChain;
+    final i = c.lastIndexOf(_Screens.editItem);
+    if (i < 0 || i + 1 >= c.length) return null;
+    final ch = c[i + 1];
+    _Screens.graph.popTo(ch);
+    return _atOf(ch);
+  }
+
+  ItemPlacement pop() {
     _Screens.graph.pop();
-    return const ItemNav._();
+    return _atOf(_Screens.item) as ItemPlacement;
   }
 
   FeedNav popToFeed() {
@@ -887,47 +1032,54 @@ final class FeedItemEditItemNav extends AnyNav
 
   N popTo<N extends AnyNav>(FeedItemEditItemPop<N> to) {
     _Screens.graph.pop(to.spec);
-    return to.nav;
+    return _atOf(to.spec) as N;
   }
 }
 
 final class FeedItemEditItemPop<N extends AnyNav> {
   const FeedItemEditItemPop._(this.spec, this.nav);
   final Enum spec;
-  final N nav;
-  static const item = FeedItemEditItemPop<FeedItemNav>._(
-    _Screens.item,
-    FeedItemNav._(),
-  );
+  final N? nav;
+  static const item = FeedItemEditItemPop<ItemPlacement>._(_Screens.item, null);
   static const feed = FeedItemEditItemPop<FeedNav>._(
     _Screens.feed,
     FeedNav._(),
   );
 }
 
-final class SettingsNav extends AnyNav {
-  const SettingsNav._() : super._();
-  SettingsPlacement get at {
-    final c = _Screens.graph.currentChain;
-    if (_chainIs(c, const [_Screens.home, _Screens.settings]))
-      return const HomeSettingsNav._();
-    if (_chainIs(c, const [_Screens.profile, _Screens.settings]))
-      return const ProfileSettingsNav._();
-    throw StateError('unresolved settings placement: $c');
-  }
-
-  AboutNav goAbout() {
-    _Screens.graph.go(_Screens.about, null, true);
-    return const AboutNav._();
-  }
+SettingsPlacement _resolveSettingsPlacement(List<Enum> c) {
+  if (_chainIs(c, const [_Screens.home, _Screens.settings]))
+    return const HomeSettingsNav._();
+  if (_chainIs(c, const [_Screens.profile, _Screens.settings]))
+    return const ProfileSettingsNav._();
+  throw StateError('unresolved settings placement: $c');
 }
 
-sealed class SettingsPlacement implements AnyPlacement {}
+sealed class SettingsPlacement implements AnyPlacement {
+  AboutPlacement goAbout();
+  SettingsPlacement popToMe();
+  AnyPlacement? popToOneOfMyChildren();
+}
 
-final class HomeSettingsNav extends AnyNav
+final class HomeSettingsNav extends AnyPlacement
     implements SettingsPlacement, CanPopPlacement, PopDestPlacement {
   const HomeSettingsNav._() : super._();
+  HomeSettingsNav popToMe() {
+    _Screens.graph.popTo(_Screens.settings);
+    return const HomeSettingsNav._();
+  }
+
+  AnyPlacement? popToOneOfMyChildren() {
+    final c = _Screens.graph.currentChain;
+    final i = c.lastIndexOf(_Screens.settings);
+    if (i < 0 || i + 1 >= c.length) return null;
+    final ch = c[i + 1];
+    _Screens.graph.popTo(ch);
+    return _atOf(ch);
+  }
+
   HomeSettingsAboutNav goAbout() {
+    _Screens.graph.popTo(_Screens.settings);
     _Screens.graph.go(_Screens.about, null, true);
     return const HomeSettingsAboutNav._();
   }
@@ -938,10 +1090,25 @@ final class HomeSettingsNav extends AnyNav
   }
 }
 
-final class ProfileSettingsNav extends AnyNav
+final class ProfileSettingsNav extends AnyPlacement
     implements SettingsPlacement, CanPopPlacement, PopDestPlacement {
   const ProfileSettingsNav._() : super._();
+  ProfileSettingsNav popToMe() {
+    _Screens.graph.popTo(_Screens.settings);
+    return const ProfileSettingsNav._();
+  }
+
+  AnyPlacement? popToOneOfMyChildren() {
+    final c = _Screens.graph.currentChain;
+    final i = c.lastIndexOf(_Screens.settings);
+    if (i < 0 || i + 1 >= c.length) return null;
+    final ch = c[i + 1];
+    _Screens.graph.popTo(ch);
+    return _atOf(ch);
+  }
+
   ProfileSettingsAboutNav goAbout() {
+    _Screens.graph.popTo(_Screens.settings);
     _Screens.graph.go(_Screens.about, null, true);
     return const ProfileSettingsAboutNav._();
   }
@@ -952,67 +1119,46 @@ final class ProfileSettingsNav extends AnyNav
   }
 }
 
-final class SettingsAboutNav extends AnyNav implements AboutUnder {
-  const SettingsAboutNav._() : super._();
-  SettingsAboutPlacement get at {
-    final c = _Screens.graph.currentChain;
-    if (_chainIs(c, const [_Screens.home, _Screens.settings, _Screens.about]))
-      return const HomeSettingsAboutNav._();
-    if (_chainIs(c, const [
-      _Screens.profile,
-      _Screens.settings,
-      _Screens.about,
-    ]))
-      return const ProfileSettingsAboutNav._();
-    throw StateError('unresolved about placement: $c');
-  }
-
-  SettingsNav pop() {
-    _Screens.graph.pop();
-    return const SettingsNav._();
-  }
+AboutPlacement _resolveAboutPlacement(List<Enum> c) {
+  if (_chainIs(c, const [_Screens.home, _Screens.settings, _Screens.about]))
+    return const HomeSettingsAboutNav._();
+  if (_chainIs(c, const [_Screens.profile, _Screens.settings, _Screens.about]))
+    return const ProfileSettingsAboutNav._();
+  throw StateError('unresolved about placement: $c');
 }
 
-final class AboutNav extends AnyNav {
-  const AboutNav._() : super._();
-  AboutPlacement get at {
-    final c = _Screens.graph.currentChain;
-    if (_chainIs(c, const [_Screens.home, _Screens.settings, _Screens.about]))
-      return const HomeSettingsAboutNav._();
-    if (_chainIs(c, const [
-      _Screens.profile,
-      _Screens.settings,
-      _Screens.about,
-    ]))
-      return const ProfileSettingsAboutNav._();
-    throw StateError('unresolved about placement: $c');
-  }
-
-  AboutUnder get under {
-    final c = _Screens.graph.currentChain;
-    if (_endsWith(c, const [_Screens.settings, _Screens.about]))
-      return const SettingsAboutNav._();
-    throw StateError('unresolved about under: $c');
-  }
-
-  SettingsNav popToSettings() {
-    _Screens.graph.pop(_Screens.settings);
-    return const SettingsNav._();
-  }
+sealed class AboutPlacement implements AnyPlacement {
+  AboutPlacement popToMe();
+  AnyPlacement? popToOneOfMyChildren();
 }
-
-sealed class AboutPlacement implements AnyPlacement {}
 
 sealed class AboutUnder {}
 
-sealed class SettingsAboutPlacement implements AnyPlacement {}
+sealed class SettingsAboutPlacement implements AnyPlacement {
+  SettingsAboutPlacement popToMe();
+  AnyPlacement? popToOneOfMyChildren();
+}
 
-final class HomeSettingsAboutNav extends AnyNav
+final class HomeSettingsAboutNav extends AnyPlacement
     implements AboutPlacement, SettingsAboutPlacement, CanPopPlacement {
   const HomeSettingsAboutNav._() : super._();
-  SettingsNav pop() {
+  HomeSettingsAboutNav popToMe() {
+    _Screens.graph.popTo(_Screens.about);
+    return const HomeSettingsAboutNav._();
+  }
+
+  AnyPlacement? popToOneOfMyChildren() {
+    final c = _Screens.graph.currentChain;
+    final i = c.lastIndexOf(_Screens.about);
+    if (i < 0 || i + 1 >= c.length) return null;
+    final ch = c[i + 1];
+    _Screens.graph.popTo(ch);
+    return _atOf(ch);
+  }
+
+  SettingsPlacement pop() {
     _Screens.graph.pop();
-    return const SettingsNav._();
+    return _atOf(_Screens.settings) as SettingsPlacement;
   }
 
   HomeNav popToHome() {
@@ -1022,17 +1168,17 @@ final class HomeSettingsAboutNav extends AnyNav
 
   N popTo<N extends AnyNav>(HomeSettingsAboutPop<N> to) {
     _Screens.graph.pop(to.spec);
-    return to.nav;
+    return _atOf(to.spec) as N;
   }
 }
 
 final class HomeSettingsAboutPop<N extends AnyNav> {
   const HomeSettingsAboutPop._(this.spec, this.nav);
   final Enum spec;
-  final N nav;
-  static const settings = HomeSettingsAboutPop<HomeSettingsNav>._(
+  final N? nav;
+  static const settings = HomeSettingsAboutPop<SettingsPlacement>._(
     _Screens.settings,
-    HomeSettingsNav._(),
+    null,
   );
   static const home = HomeSettingsAboutPop<HomeNav>._(
     _Screens.home,
@@ -1040,12 +1186,26 @@ final class HomeSettingsAboutPop<N extends AnyNav> {
   );
 }
 
-final class ProfileSettingsAboutNav extends AnyNav
+final class ProfileSettingsAboutNav extends AnyPlacement
     implements AboutPlacement, SettingsAboutPlacement, CanPopPlacement {
   const ProfileSettingsAboutNav._() : super._();
-  SettingsNav pop() {
+  ProfileSettingsAboutNav popToMe() {
+    _Screens.graph.popTo(_Screens.about);
+    return const ProfileSettingsAboutNav._();
+  }
+
+  AnyPlacement? popToOneOfMyChildren() {
+    final c = _Screens.graph.currentChain;
+    final i = c.lastIndexOf(_Screens.about);
+    if (i < 0 || i + 1 >= c.length) return null;
+    final ch = c[i + 1];
+    _Screens.graph.popTo(ch);
+    return _atOf(ch);
+  }
+
+  SettingsPlacement pop() {
     _Screens.graph.pop();
-    return const SettingsNav._();
+    return _atOf(_Screens.settings) as SettingsPlacement;
   }
 
   ProfileNav popToProfile() {
@@ -1055,17 +1215,17 @@ final class ProfileSettingsAboutNav extends AnyNav
 
   N popTo<N extends AnyNav>(ProfileSettingsAboutPop<N> to) {
     _Screens.graph.pop(to.spec);
-    return to.nav;
+    return _atOf(to.spec) as N;
   }
 }
 
 final class ProfileSettingsAboutPop<N extends AnyNav> {
   const ProfileSettingsAboutPop._(this.spec, this.nav);
   final Enum spec;
-  final N nav;
-  static const settings = ProfileSettingsAboutPop<ProfileSettingsNav>._(
+  final N? nav;
+  static const settings = ProfileSettingsAboutPop<SettingsPlacement>._(
     _Screens.settings,
-    ProfileSettingsNav._(),
+    null,
   );
   static const profile = ProfileSettingsAboutPop<ProfileNav>._(
     _Screens.profile,
@@ -1073,14 +1233,25 @@ final class ProfileSettingsAboutPop<N extends AnyNav> {
   );
 }
 
-final class AccountNav extends AnyNav
-    implements
-        AnyPlacement,
-        CanPopPlacement,
-        PopDestPlacement,
-        KickstartPlacement {
+final class AccountNav extends AnyPlacement
+    implements CanPopPlacement, PopDestPlacement, KickstartPlacement {
   const AccountNav._() : super._();
+  AccountNav popToMe() {
+    _Screens.graph.popTo(_Screens.account);
+    return const AccountNav._();
+  }
+
+  AnyPlacement? popToOneOfMyChildren() {
+    final c = _Screens.graph.currentChain;
+    final i = c.lastIndexOf(_Screens.account);
+    if (i < 0 || i + 1 >= c.length) return null;
+    final ch = c[i + 1];
+    _Screens.graph.popTo(ch);
+    return _atOf(ch);
+  }
+
   EditAccountNav goEditAccount() {
+    _Screens.graph.popTo(_Screens.account);
     _Screens.graph.go(_Screens.editAccount, _idOf(_Screens.account), true);
     return const EditAccountNav._();
   }
@@ -1091,9 +1262,23 @@ final class AccountNav extends AnyNav
   }
 }
 
-final class EditAccountNav extends AnyNav
-    implements AnyPlacement, CanPopPlacement, KickstartPlacement {
+final class EditAccountNav extends AnyPlacement
+    implements CanPopPlacement, KickstartPlacement {
   const EditAccountNav._() : super._();
+  EditAccountNav popToMe() {
+    _Screens.graph.popTo(_Screens.editAccount);
+    return const EditAccountNav._();
+  }
+
+  AnyPlacement? popToOneOfMyChildren() {
+    final c = _Screens.graph.currentChain;
+    final i = c.lastIndexOf(_Screens.editAccount);
+    if (i < 0 || i + 1 >= c.length) return null;
+    final ch = c[i + 1];
+    _Screens.graph.popTo(ch);
+    return _atOf(ch);
+  }
+
   AccountNav pop() {
     _Screens.graph.pop();
     return const AccountNav._();
@@ -1106,14 +1291,14 @@ final class EditAccountNav extends AnyNav
 
   N popTo<N extends AnyNav>(EditAccountPop<N> to) {
     _Screens.graph.pop(to.spec);
-    return to.nav;
+    return _atOf(to.spec) as N;
   }
 }
 
 final class EditAccountPop<N extends AnyNav> {
   const EditAccountPop._(this.spec, this.nav);
   final Enum spec;
-  final N nav;
+  final N? nav;
   static const account = EditAccountPop<AccountNav>._(
     _Screens.account,
     AccountNav._(),
@@ -1186,15 +1371,6 @@ void verifyScreens() {
     );
     return true;
   }());
-}
-
-bool _endsWith(List<Enum> chain, List<Enum> suffix) {
-  if (chain.length < suffix.length) return false;
-  final off = chain.length - suffix.length;
-  for (var i = 0; i < suffix.length; i++) {
-    if (chain[off + i] != suffix[i]) return false;
-  }
-  return true;
 }
 
 /// A strict URL -> typed Link, from the tree's `.link` branches.
@@ -1395,34 +1571,29 @@ abstract interface class FeedView implements AnyView {
 }
 
 AnyView? _viewOf(Enum? screen) => switch (screen) {
-  _Screens.item => const ItemNav._(),
+  _Screens.item => _atOf(_Screens.item) as AnyView?,
   _Screens.feed => const FeedNav._(),
   _ => null,
 };
 
-/// Reactive read-only view reads scoped to this BuildContext.
-extension ScreenViewContext on BuildContext {
-  /// SELF: this widget's own placement [sel] (+ its conditions) as its
-  /// typed read-only view, else null. `?.at` hops to the placement handle.
-  V? on<N extends AnyNav, V>(On<N, V> sel) =>
-      ScreenScope.of(this) == sel.specs.last &&
-          ViewMatch.conds(this, sel.specs.last, sel.conds)
-      ? _viewOf(sel.specs.last) as V?
-      : null;
+/// Reactive read-only stack reads scoped to this BuildContext.
+extension ScreenStackContext on BuildContext {
+  /// FOREGROUND: the typed read-only view if [sel] is the current front
+  /// (suffix + ids + conditions), else null. Reactive on top + keys.
+  V? on<N extends AnyNav, V>(On<N, V> sel) {
+    if (sel.specs.isNotEmpty) Placement.isCurrent(this, sel.specs.last);
+    ViewMatch.conds(this, _termOf(sel), sel.conds);
+    return Screen.on(sel) != null ? _viewOf(_termOf(sel)) as V? : null;
+  }
 
-  /// CURRENT foreground: its typed read-only view if it matches [sel] (full
-  /// suffix + ids + conditions), else null. Reactive on placement + keys.
-  V? current<N extends AnyNav, V>(On<N, V> sel) {
-    // A single-terminal selector matches purely on whether that screen is
-    // foreground — subscribe to just its aspect (rebuilds only when it
-    // (de)foregrounds), not every nav. A multi-spec suffix can shift while
-    // `top` holds, so it falls back to the broad placement subscription.
-    if (sel.specs.length == 1) {
-      Placement.isCurrent(this, sel.specs.last);
-    } else {
-      Placement.current(this);
-    }
-    ViewMatch.conds(this, sel.specs.last, sel.conds); // subscribe to the keys
-    return Screen.on(sel) != null ? _viewOf(sel.specs.last) as V? : null;
+  /// ANYWHERE on the stack (front OR buried): the typed read-only view if
+  /// [sel] is on the live stack, else null. Reactive on chain + keys.
+  V? at<N extends AnyNav, V>(On<N, V> sel) {
+    if (sel.specs.isNotEmpty) Placement.isOn(this, sel.specs.last);
+    ViewMatch.conds(this, _termOf(sel), sel.conds);
+    return Screen.at(sel) != null ? _viewOf(_termOf(sel)) as V? : null;
   }
 }
+
+Enum _termOf(On sel) =>
+    sel.specs.isEmpty ? _Screens.graph.current : sel.specs.last;

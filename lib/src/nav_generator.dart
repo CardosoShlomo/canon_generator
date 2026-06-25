@@ -582,18 +582,23 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       return srcs.length == 1 ? srcs.single : null;
     }
     String parentPush(String x) {
-      final ret = unionName(x);
       final src = inheritSrcUniform(x);
       final idT = idOf[x];
       final params = (src != null || idT == null) ? '' : '$idT id';
       final arg = src != null
           ? '_idOf(${sv(src)})'
           : (idT == null ? 'null' : 'id');
+      // Single target → its lone nav const; multi target → resolve the just-pushed
+      // placement off the live chain (`graph.go` updates it synchronously).
+      final ret = isSingle(x) ? unionName(x) : '${_cap(x)}Placement';
+      final back = isSingle(x)
+          ? 'const ${unionName(x)}._()'
+          : '_atOf(${sv(x)}) as $ret';
       // Named after the committed target (go<Target>), consistent with every
       // other push verb — the selector already narrowed to this screen.
       return '  $ret go${_cap(x)}($params) {\n'
           '    $spec.graph.go(${sv(x)}, $arg, true);\n'
-          '    return const $ret._();\n'
+          '    return $back;\n'
           '  }';
     }
 
@@ -603,18 +608,25 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     // resolves. Entry-point navs (null path) stay total (canonical allowed).
     String goVerb(String child, String returns,
         [List<String>? path, String? inheritSrc]) {
+      // A position-anchored verb first pops back to ITS placement (no-op when it's
+      // already the front, the jump when it's buried) — so `at(.x)?.goChild()`
+      // works from anywhere on the stack, and the forward `on`/chain case is
+      // unchanged. Batched atomically → one minimal diff (no teardown).
+      final popSelf = (path != null && path.isNotEmpty)
+          ? '$spec.graph.popTo(${sv(path.last)});\n    '
+          : '';
       // Inherited edge (chained only): id IS the ancestor's, read live from the
       // chain — no parameter to pass, none to get wrong.
       if (inheritSrc != null && path != null) {
         return '  $returns go${_cap(child)}() {\n'
-            '    $spec.graph.go(${sv(child)}, _idOf(${sv(inheritSrc)}), true);\n'
+            '    $popSelf$spec.graph.go(${sv(child)}, _idOf(${sv(inheritSrc)}), true);\n'
             '    return const $returns._();\n'
             '  }';
       }
       final idT = idOf[child];
       final params = idT == null ? '' : '$idT id';
       final call = path != null
-          ? '$spec.graph.go(${sv(child)}, ${idT == null ? 'null' : 'id'}, true)'
+          ? '$popSelf$spec.graph.go(${sv(child)}, ${idT == null ? 'null' : 'id'}, true)'
           : '$spec.graph.go(${sv(child)}${idT == null ? '' : ', id'})';
       return '  $returns go${_cap(child)}($params) {\n'
           '    $call;\n'
@@ -701,12 +713,30 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
         String? extra,
         List<String>? path}) {
       final allMarkers = [...markers, ...?crossImpl[className]];
+      // A foreground-resolvable placement EXTENDS the sealed [AnyPlacement] (so a
+      // ternary's LUB lands there, exhaustively switchable); other handles extend
+      // the bare [AnyNav]. The 'AnyPlacement' marker is the flag, consumed here.
+      final base = allMarkers.remove('AnyPlacement') ? 'AnyPlacement' : 'AnyNav';
       final impl = allMarkers.isEmpty ? '' : ' implements ${allMarkers.join(', ')}';
       final stem = className.substring(0, className.length - 3);
       final popName = '${stem}Pop';
       final hopName = '${stem}Hop';
-      b.writeln('final class $className extends AnyNav$impl {');
+      b.writeln('final class $className extends $base$impl {');
       b.writeln('  const $className._() : super._();');
+      // Every placement can pop the stack back to itself (no-op if already the
+      // front, via the sim-safe popTo) and return itself, forward-capable; and pop
+      // down to whichever of its children sits directly above it (null if none).
+      if (base == 'AnyPlacement' && path != null && path.isNotEmpty) {
+        b.writeln('  $className popToMe() { $spec.graph.popTo(${sv(path.last)}); return const $className._(); }');
+        b.writeln('  AnyPlacement? popToOneOfMyChildren() {');
+        b.writeln('    final c = $spec.graph.currentChain;');
+        b.writeln('    final i = c.lastIndexOf(${sv(path.last)});');
+        b.writeln('    if (i < 0 || i + 1 >= c.length) return null;');
+        b.writeln('    final ch = c[i + 1];');
+        b.writeln('    $spec.graph.popTo(ch);');
+        b.writeln('    return _atOf(ch);');
+        b.writeln('  }');
+      }
       if (extra != null) b.writeln(extra);
       verbs.forEach(b.writeln);
       // Reach-an-inherited-descendant verbs for qualifying ancestors.
@@ -730,21 +760,39 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
         b.writeln('    return const $popUnion._();');
         b.writeln('  }');
       } else if (parentScreen != null) {
-        final ret = unionName(parentScreen);
-        b.writeln('  $ret pop() {');
-        b.writeln('    $spec.graph.pop();');
-        b.writeln('    return const $ret._();');
-        b.writeln('  }');
+        // Single ancestor → its lone nav; multi-placement ancestor → resolve it
+        // off the live chain (it sits below the popped top, so it's known now).
+        if (isSingle(parentScreen)) {
+          final ret = unionName(parentScreen);
+          b.writeln('  $ret pop() {');
+          b.writeln('    $spec.graph.pop();');
+          b.writeln('    return const $ret._();');
+          b.writeln('  }');
+        } else {
+          final ret = '${_cap(parentScreen)}Placement';
+          b.writeln('  $ret pop() {');
+          b.writeln('    $spec.graph.pop();');
+          b.writeln('    return _atOf(${sv(parentScreen)}) as $ret;');
+          b.writeln('  }');
+        }
       }
       // Named popToXx for the DEEPER ancestors (the immediate parent is bare
       // pop(), its abbreviation — skipped here). Mirrors named goXx; the token
       // popTo(Pop<N>) below covers the same set plus ternary.
       for (final e in pops.entries) {
         if (e.key == parentScreen) continue;
-        b.writeln('  ${e.value} popTo${_cap(e.key)}() {');
-        b.writeln('    $spec.graph.pop(${sv(e.key)});');
-        b.writeln('    return const ${e.value}._();');
-        b.writeln('  }');
+        if (isSingle(e.key)) {
+          b.writeln('  ${e.value} popTo${_cap(e.key)}() {');
+          b.writeln('    $spec.graph.pop(${sv(e.key)});');
+          b.writeln('    return const ${e.value}._();');
+          b.writeln('  }');
+        } else {
+          final ret = '${_cap(e.key)}Placement';
+          b.writeln('  $ret popTo${_cap(e.key)}() {');
+          b.writeln('    $spec.graph.pop(${sv(e.key)});');
+          b.writeln('    return _atOf(${sv(e.key)}) as $ret;');
+          b.writeln('  }');
+        }
       }
       // 0 ancestors (root) → no popTo. 1 ancestor → it's the immediate parent,
       // covered by pop(). 2+ → a typed, gated, ternary-capable popTo(Pop<N>):
@@ -752,7 +800,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       if (pops.length >= 2) {
         b.writeln('  N popTo<N extends AnyNav>($popName<N> to) {');
         b.writeln('    $spec.graph.pop(to.spec);');
-        b.writeln('    return to.nav;');
+        b.writeln('    return _atOf(to.spec) as N;');
         b.writeln('  }');
       }
       b.writeln('}');
@@ -760,9 +808,11 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
         b.writeln('final class $popName<N extends AnyNav> {');
         b.writeln('  const $popName._(this.spec, this.nav);');
         b.writeln('  final Enum spec;');
-        b.writeln('  final N nav;');
+        b.writeln('  final N? nav;');
         for (final e in pops.entries) {
-          b.writeln('  static const ${e.key} = $popName<${e.value}>._(${sv(e.key)}, ${e.value}._());');
+          final pt = isSingle(e.key) ? e.value : '${_cap(e.key)}Placement';
+          final pv = isSingle(e.key) ? '${e.value}._()' : 'null';
+          b.writeln('  static const ${e.key} = $popName<$pt>._(${sv(e.key)}, $pv);');
         }
         b.writeln('}');
       }
@@ -931,25 +981,61 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln('    for (final c in which.conds) {');
     b.writeln('      if (!c.test($spec.graph.viewGet(specs.last, c.key))) return null;');
     b.writeln('    }');
-    b.writeln('    return which.nav;');
+    // Resolve the terminal's exact placement off the live chain (single-placement
+    // screens resolve to their lone nav; the selector carries no nav of its own).
+    b.writeln('    return _atOf(specs.last) as N;');
     b.writeln('  }');
+    // `at`: like `on`, but the path may end ANYWHERE on the live stack (buried or
+    // front), so you can pop back to it / `popToMe().goX()`. Same selector grammar.
+    b.writeln('  /// The placement if this selector path is anywhere on the live stack');
+    b.writeln('  /// (front OR buried) — for `Screen.at(.x)?.popToMe()`. Else null.');
+    b.writeln('  static N? at<${onDecl()}>(On<${onNV()}> which) {');
+    b.writeln('    final st = $spec.graph.stack;');
+    b.writeln('    final specs = which.specs;');
+    b.writeln('    if (specs.isEmpty) return null;'); // parentOf has no path to reach
+    b.writeln('    outer:');
+    b.writeln('    for (var e = st.length - 1; e >= specs.length - 1; e--) {');
+    b.writeln('      final off = e - specs.length + 1;');
+    b.writeln('      for (var i = 0; i < specs.length; i++) {');
+    b.writeln('        if (st[off + i].screen != specs[i]) continue outer;');
+    b.writeln('        final wid = which.ids[i];');
+    b.writeln('        if (wid != null && st[off + i].id != wid) continue outer;');
+    b.writeln('      }');
+    b.writeln('      for (final c in which.conds) {');
+    b.writeln('        if (!c.test($spec.graph.viewGet(specs.last, c.key))) continue outer;');
+    b.writeln('      }');
+    b.writeln('      return _atOf(specs.last) as N;');
+    b.writeln('    }');
+    b.writeln('    return null;');
+    b.writeln('  }');
+    // SELF / own reads — facets of the screen OWNING [context] (the widget\'s
+    // ScreenScope), reactive + buried-safe. `on`/`at` name a target; these read
+    // the context. View-state still via `Query.of`/`Fragment.of`.
+    b.writeln('  /// The placement OWNING [context] (this widget\'s screen), reactive.');
+    b.writeln('  static AnyPlacement ownerOf(BuildContext context) {');
+    b.writeln('    Placement.isOn(context, ScreenScope.of(context));');
+    b.writeln('    return _atOf(ScreenScope.of(context));');
+    b.writeln('  }');
+    b.writeln('  /// Is the screen owning [context] the current foreground? Reactive.');
+    b.writeln('  static bool isForegroundOf(BuildContext context) =>');
+    b.writeln('      Placement.isCurrent(context, ScreenScope.of(context));');
+    if (viewScreens.isNotEmpty) {
+      b.writeln('  /// The read-only view of the screen owning [context] (or null if it');
+      b.writeln('  /// has no view-state) — `switch` it for the typed view. Reactive.');
+      b.writeln('  static AnyView? viewOf(BuildContext context) {');
+      b.writeln('    Placement.isOn(context, ScreenScope.of(context));');
+      b.writeln('    return _viewOf(ScreenScope.of(context));');
+      b.writeln('  }');
+    }
     b.writeln('  /// Live-stack redirect: the chained verb REPLACES the current history');
     b.writeln('  /// entry instead of pushing. Decide it at the start —');
     b.writeln('  /// `Screen.replace.goHome()`, `Screen.replace.on(.user)?.goChat(id)`.');
     b.writeln('  static const replace = Replace._();');
     b.writeln('  /// The current EXACT placement, as the sealed [Placement] — an');
     b.writeln('  /// exhaustive `switch (Screen.at) { case HomeUserProfileNav n => … }`.');
-    b.writeln('  static AnyPlacement get at => switch ($spec.graph.current) {');
-    for (final r in rows) {
-      final n = unionName(r.name);
-      b.writeln(isSingle(r.name)
-          ? '        ${sv(r.name)} => const $n._(),'
-          : '        ${sv(r.name)} => (const $n._()).at,');
-    }
-    b.writeln('        BootScreen.initial => const Initial._(),');
-    // current is erased to Enum; the spec's screens are exhaustive in practice.
-    b.writeln("        _ => throw StateError('not a $spec screen'),");
-    b.writeln('      };');
+    b.writeln('  /// The current foreground placement (the front), as the sealed');
+    b.writeln('  /// [AnyPlacement] — `switch (Screen.current) { … }` is exhaustive.');
+    b.writeln('  static AnyPlacement get current => _atOf($spec.graph.current);');
     if (model.links.isNotEmpty) {
       b.writeln('  /// The cold-start link (already parsed), or null off the web,');
       b.writeln('  /// warm, or when the URL is not a representable link.');
@@ -1119,8 +1205,11 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     // only token carrying the depth FIELD (its method lives on the steps).
     final stepBuf = StringBuffer();
     final stepEmitted = <String>{};
-    String navTypeOf(List<PlacementNode> ms) =>
-        ms.length == 1 ? placementName(ms.single) : unionName(ms.first.screen);
+    // A single placement → its exact nav; a multi-placement screen → its sealed
+    // `…Placement` (resolved by `Screen.on`; the selector carries no nav).
+    String navTypeOf(List<PlacementNode> ms) => ms.length == 1
+        ? placementName(ms.single)
+        : '${_cap(ms.first.screen)}Placement';
     List<PlacementNode> fwd(List<PlacementNode> ms) =>
         [for (final m in ms) for (final c in m.children) if (c.again == null) c];
     String setStem(List<PlacementNode> ms) {
@@ -1178,7 +1267,11 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
         final cStep = stepNameFor(e.value);
         final ret = cStep ?? onOf(cNav, e.key);
         final ctor = cStep ?? 'On';
-        stepBuf.writeln('  $ret get ${e.key} => $ctor._([...specs, ${sv(e.key)}], [...ids, null], const $cNav._());');
+        // Single child → its exact nav; multi child → null (Screen.on resolves).
+        final cArg = e.value.length == 1
+            ? 'const ${placementName(e.value.single)}._()'
+            : 'null';
+        stepBuf.writeln('  $ret get ${e.key} => $ctor._([...specs, ${sv(e.key)}], [...ids, null], $cArg);');
       }
       if (idOf[sc] != null) {
         stepBuf.writeln('  $name call(${idOf[sc]} id) => $name._(specs, [...ids.sublist(0, ids.length - 1), id], nav);');
@@ -1199,25 +1292,28 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     // of boot auto-replaces, so the loading screen leaves no history.
     b.writeln('/// The boot placement: `Screen.at` returns it until the first commit.');
     b.writeln('/// `if (Screen.at case Initial()) ...` gates blob-null cold-boot UI.');
-    b.writeln('final class Initial extends AnyNav implements AnyPlacement { const Initial._() : super._(); }');
+    b.writeln('final class Initial extends AnyPlacement { const Initial._() : super._(); }');
 
     b.writeln('final class On<${onDecl()}> {');
     b.writeln('  const On._(this.specs, this.ids, this.nav, [this.conds = const []]);');
     b.writeln('  final List<Enum> specs;');
     b.writeln('  final List<Object?> ids;');
-    b.writeln('  final N nav;');
+    b.writeln('  /// The exact nav for a single-placement terminal; null for a multi-');
+    b.writeln('  /// placement one — `Screen.on` resolves it from the live chain.');
+    b.writeln('  final N? nav;');
     b.writeln('  /// View-state conditions on the terminal screen (`.query`/`.fragment`).');
     b.writeln('  final List<ViewCond> conds;');
     for (final r in rows) {
       final ms = placements[r.name]!;
       if (ms.isEmpty) continue;
-      final nav = unionName(r.name);
+      final nav = navTypeOf(ms);
+      final navArg = isSingle(r.name) ? 'const ${unionName(r.name)}._()' : 'null';
       final step = stepNameFor(ms);
       final ret = step ?? onOf(nav, r.name);
       final ctor = step ?? 'On';
       // Always a getter (id = null matches any); `.x(id)` invokes the step's
       // call() to pin a specific id.
-      b.writeln('  static $ret get ${r.name} => const $ctor._([${sv(r.name)}], [null], $nav._());');
+      b.writeln('  static $ret get ${r.name} => $ctor._([${sv(r.name)}], [null], $navArg);');
     }
     if (hasParentOf) {
       b.writeln('  /// Disambiguating push onto the current scope when a screen has');
@@ -1271,7 +1367,24 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     // The sealed root of every foreground-resolvable placement — exactly what
     // `Screen.at` / a view's `.at` resolve to, so a switch over them is
     // exhaustive (each screen's `…Placement` and single-parent nav implement it).
-    b.writeln('sealed class AnyPlacement {}');
+    b.writeln('sealed class AnyPlacement extends AnyNav { const AnyPlacement._() : super._(); }');
+    b.writeln('');
+    // The one resolver: a screen → its CURRENT placement, off the live chain
+    // truncated at that screen (so it resolves an ancestor as well as the top).
+    // `Screen.at`, `Screen.on`, and every `pop()` route through here.
+    b.writeln('AnyPlacement _atOf(Enum s) {');
+    b.writeln('  final c = $spec.graph.currentChain;');
+    b.writeln('  final p = c.sublist(0, c.lastIndexOf(s) + 1);');
+    b.writeln('  return switch (s) {');
+    for (final r in rows) {
+      b.writeln(isSingle(r.name)
+          ? '    ${sv(r.name)} => const ${unionName(r.name)}._(),'
+          : '    ${sv(r.name)} => _resolve${_cap(r.name)}Placement(p),');
+    }
+    b.writeln('    BootScreen.initial => const Initial._(),');
+    b.writeln("    _ => throw StateError('not a $spec screen'),");
+    b.writeln('  };');
+    b.writeln('}');
     b.writeln('');
     // Instances carry only their own edge-gated go(Hop); jump-to-anywhere is
     // the static Screen.go, so a leaf nav cannot go nowhere by inheritance.
@@ -1321,7 +1434,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       b.writeln('sealed class PopDestPlacement {}');
       b.writeln('final class CanPopNav extends AnyNav {');
       b.writeln('  const CanPopNav._() : super._();');
-      b.writeln('  CanPopPlacement get at => Screen.at as CanPopPlacement;');
+      b.writeln('  CanPopPlacement get at => Screen.current as CanPopPlacement;');
       b.writeln('  PopDestNav pop() { $spec.graph.pop(); return const PopDestNav._(); }');
       b.writeln('}');
       b.writeln('final class PopDestNav extends AnyNav {');
@@ -1355,7 +1468,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       b.writeln('sealed class KickstartPlacement {}');
       b.writeln('final class KickstartNav extends AnyNav {');
       b.writeln('  const KickstartNav._() : super._();');
-      b.writeln('  KickstartPlacement get at => Screen.at as KickstartPlacement;');
+      b.writeln('  KickstartPlacement get at => Screen.current as KickstartPlacement;');
       b.writeln('}');
     }
 
@@ -1444,6 +1557,26 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
                 goVerb(c.screen, unionName(c.screen), path, c.inheritSource?.screen)
         ];
       }
+      // The bare SIGNATURES of [sharedVerbs] — declared on the sealed placement so
+      // a `Screen.on(.x)` result can call them before any narrowing; each leaf
+      // supplies the body (the real, placement-specific return).
+      List<String> sharedVerbSigs(List<PlacementNode> group) {
+        final fwdShared = sharedFwd(group);
+        final seen = <String>{};
+        return [
+          for (final n in group)
+            for (final c in n.children)
+              if (fwdShared.contains(c.screen) && seen.add(c.screen))
+                (() {
+                  final idT = idOf[c.screen];
+                  final params = c.inheritSource != null || idT == null ? '' : '$idT id';
+                  final ret = isSingle(c.screen)
+                      ? unionName(c.screen)
+                      : '${_cap(c.screen)}Placement';
+                  return '  $ret go${_cap(c.screen)}($params);';
+                })()
+        ];
+      }
       // Edge-gated go over the group's shared forward edges, excluding inherited
       // ones (their id can't be supplied statically through a Hop).
       Map<String, String> sharedEdges(List<PlacementNode> group) {
@@ -1478,9 +1611,16 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
 
       final leafMarkers = {for (final n in nodes) n: <String>{}};
       final markersToEmit = <String>{};
+      // Per placement marker: the shared-verb SIGNATURES (+ view/depth) it declares,
+      // so `Screen.on(.x)` (which returns the marker) can call them; each leaf
+      // supplies the body. The top marker's name is the screen's resolved type.
+      final markerSigs = <String, List<String>>{};
+      // The eager resolvers: `…Placement _resolveX(List<Enum> c)` — the old `.at`
+      // logic, now called from Screen.on / _viewOf / Screen.at instead of a handle.
+      final resolverBuf = StringBuffer();
 
-      // Emits the nav for a group (suffixLen ancestors pinned), records the
-      // markers its leaves implement, recurses for `.under`. Returns its type.
+      // Records the markers each leaf implements (and the under-grouping), and the
+      // top group's resolver + signatures. No phantom union, no `.at`/`.under`.
       String walk(List<PlacementNode> group, int suffixLen, List<String> impl) {
         if (group.length == 1) {
           leafMarkers[group.single]!.addAll(impl);
@@ -1492,81 +1632,62 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
             suffixLen == 1 ? unionName(r.name) : '${suffix.map(_cap).join()}Nav';
         final stem = navName.substring(0, navName.length - 3);
 
-        // .placement — flat to this group's leaves.
         final placementMarker = '${stem}Placement';
         markersToEmit.add(placementMarker);
         for (final n in group) {
           leafMarkers[n]!.add(placementMarker);
         }
-        final pg = StringBuffer();
-        pg.writeln('  $placementMarker get at {');
-        pg.writeln('    final c = $spec.graph.currentChain;');
-        for (final n in group) {
-          final p = n.path.map((s) => '${sv(s)}').join(', ');
-          pg.writeln('    if (_chainIs(c, const [$p])) return const ${placementName(n)}._();');
-        }
-        pg.writeln("    throw StateError('unresolved ${r.name} placement: \$c');");
-        pg.write('  }');
 
-        // .under — one step outward, grouped by next ancestor.
+        // The flat resolver: live chain → the exact leaf. Only the top group needs
+        // one (it already matches every leaf's full path); `.under` is gone.
+        if (suffixLen == 1) {
+          resolverBuf.writeln('$placementMarker _resolve$placementMarker(List<Enum> c) {');
+          for (final n in group) {
+            final p = n.path.map((s) => '${sv(s)}').join(', ');
+            resolverBuf.writeln('  if (_chainIs(c, const [$p])) return const ${placementName(n)}._();');
+          }
+          resolverBuf.writeln("  throw StateError('unresolved ${r.name} placement: \$c');");
+          resolverBuf.writeln('}');
+        }
+
+        // Signatures the marker declares (verbs shared by the whole group, plus
+        // the screen's view getter / cyclic depth). Leaves already implement them.
+        markerSigs[placementMarker] = [
+          ...sharedVerbSigs(group),
+          '  $placementMarker popToMe();', // pop the stack back to this placement
+          '  AnyPlacement? popToOneOfMyChildren();', // pop down to the child above
+          if (viewScreens.containsKey(r.name))
+            '  ${_cap(r.name)}QueryMut get query;',
+          if (cyclic.contains(r.name)) '  int get depth;',
+        ];
+
+        // Under markers: keep the TYPE (leaves implement it, so a coarse
+        // `case …Under` switch stays exhaustive) but emit NO `.under` accessor.
         final subgroups = <String?, List<PlacementNode>>{};
         for (final n in group) {
           final i = n.path.length - 1 - suffixLen;
           subgroups.putIfAbsent(i >= 0 ? n.path[i] : null, () => []).add(n);
         }
-        final pgUnder = StringBuffer();
         if (subgroups.values.any((g) => g.length > 1)) {
           final underMarker = '${stem}Under';
           markersToEmit.add(underMarker);
-          pgUnder.writeln('  $underMarker get under {');
-          pgUnder.writeln('    final c = $spec.graph.currentChain;');
           for (final sub in subgroups.values) {
-            final subType = walk(sub, suffixLen + 1, [underMarker]);
-            final subSuffix = sub.first.path
-                .sublist(sub.first.path.length - (suffixLen + 1))
-                .map((s) => '${sv(s)}')
-                .join(', ');
-            usesEndsWith = true;
-            pgUnder.writeln('    if (_endsWith(c, const [$subSuffix])) return const $subType._();');
+            walk(sub, suffixLen + 1, [underMarker]);
           }
-          pgUnder.writeln("    throw StateError('unresolved ${r.name} under: \$c');");
-          pgUnder.write('  }');
         }
-
-        var extra = pgUnder.isEmpty ? pg.toString() : '$pg\n$pgUnder';
-        if (cyclic.contains(r.name)) {
-          extra = '$extra\n  int get depth => $spec.graph.countOf(${sv(r.name)});';
-        }
-        if (viewScreens.containsKey(r.name)) {
-          extra = '${viewGetters(r.name)}\n$extra';
-        }
-        final sp = sharedPops(group);
-        navClass(navName, sharedVerbs(group, suffix),
-            // Cycle members (incl. self) so chains like popToProfile().popToProfile()
-            // keep returning a handle that still exposes the cycle pops.
-            pops: {
-              ...sp,
-              for (final m in cycleMembers(r.name))
-                if (!sp.containsKey(m)) m: unionName(m),
-            },
-            edges: sharedEdges(group),
-            extra: extra,
-            path: suffix,
-            markers: [
-              ...impl,
-              if (viewScreens.containsKey(r.name)) '${_cap(r.name)}View',
-            ],
-            parentScreen: suffix.length >= 2 ? suffix[suffix.length - 2] : null);
-        return navName;
+        return placementMarker;
       }
 
       walk(nodes, 1, const []);
+      b.write(resolverBuf);
 
       for (final m in markersToEmit) {
+        final sigs = markerSigs[m]?.join('\n') ?? '';
         // A flat `…Placement` marker IS a foreground placement set → a subtype of
-        // the global sealed [AnyPlacement]; `…Under` partials are not.
+        // the global sealed [AnyPlacement]; `…Under` partials are not. The flat
+        // marker also declares the shared-verb signatures callable on it directly.
         b.writeln(m.endsWith('Placement')
-            ? 'sealed class $m implements AnyPlacement {}'
+            ? 'sealed class $m implements AnyPlacement {\n$sigs\n}'
             : 'sealed class $m {}');
       }
       for (final n in nodes) {
@@ -1584,6 +1705,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
           edges: {for (final c in n.children) c.screen: childType(c)},
           parentScreen: n.parent?.screen,
           markers: [
+            'AnyPlacement', // a resolved leaf IS a placement → extends AnyPlacement
             ...leafMarkers[n]!,
             if (viewScreens.containsKey(n.screen)) '${_cap(n.screen)}View',
           ],
@@ -1924,40 +2046,42 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       // and the context reads.
       b.writeln('AnyView? _viewOf(Enum? screen) => switch (screen) {');
       for (final s in viewScreens.keys) {
-        b.writeln('      ${sv(s)} => const ${unionName(s)}._(),');
+        // Single → its lone view; multi → the foreground-resolved leaf (which
+        // implements the read-only view). (Self/scope-aware resolution: TODO.)
+        b.writeln(isSingle(s)
+            ? '      ${sv(s)} => const ${unionName(s)}._(),'
+            : '      ${sv(s)} => _atOf(${sv(s)}) as AnyView?,');
       }
       b.writeln('      _ => null,');
       b.writeln('    };');
       b.writeln('');
-      // Reactive, read-only context reads. `context.on` = the widget's OWN
-      // placement (ignores screens above it); `context.current` = the foreground.
-      // Both rebuild on the selector's referenced view-state keys; `.current` also
-      // on placement. Read-only — navigate/write via the imperative `Screen.on`.
-      b.writeln('/// Reactive read-only view reads scoped to this BuildContext.');
-      b.writeln('extension ScreenViewContext on BuildContext {');
-      b.writeln('  /// SELF: this widget\'s own placement [sel] (+ its conditions) as its');
-      b.writeln('  /// typed read-only view, else null. `?.at` hops to the placement handle.');
-      b.writeln('  V? on<${onDecl()}>(On<${onNV()}> sel) =>');
-      b.writeln('      ScreenScope.of(this) == sel.specs.last &&');
-      b.writeln('              ViewMatch.conds(this, sel.specs.last, sel.conds)');
-      b.writeln('          ? _viewOf(sel.specs.last) as V?');
-      b.writeln('          : null;');
-      b.writeln('  /// CURRENT foreground: its typed read-only view if it matches [sel] (full');
-      b.writeln('  /// suffix + ids + conditions), else null. Reactive on placement + keys.');
-      b.writeln('  V? current<${onDecl()}>(On<${onNV()}> sel) {');
-      b.writeln('    // A single-terminal selector matches purely on whether that screen is');
-      b.writeln('    // foreground — subscribe to just its aspect (rebuilds only when it');
-      b.writeln('    // (de)foregrounds), not every nav. A multi-spec suffix can shift while');
-      b.writeln('    // `top` holds, so it falls back to the broad placement subscription.');
-      b.writeln('    if (sel.specs.length == 1) {');
-      b.writeln('      Placement.isCurrent(this, sel.specs.last);');
-      b.writeln('    } else {');
-      b.writeln('      Placement.current(this);');
-      b.writeln('    }');
-      b.writeln('    ViewMatch.conds(this, sel.specs.last, sel.conds); // subscribe to the keys');
-      b.writeln('    return Screen.on(sel) != null ? _viewOf(sel.specs.last) as V? : null;');
+      // Reactive, read-only GLOBAL stack reads (the mirror of imperative
+      // Screen.on/at). `context.on` = foreground match; `context.at` = anywhere on
+      // the stack. Both rebuild on placement changes for the terminal + the
+      // selector's view-state keys. Self/own reads are the `Screen.xxOf(context)`
+      // family, not here. Read-only — navigate via the imperative `Screen.on/at`.
+      b.writeln('/// Reactive read-only stack reads scoped to this BuildContext.');
+      b.writeln('extension ScreenStackContext on BuildContext {');
+      b.writeln('  /// FOREGROUND: the typed read-only view if [sel] is the current front');
+      b.writeln('  /// (suffix + ids + conditions), else null. Reactive on top + keys.');
+      b.writeln('  V? on<${onDecl()}>(On<${onNV()}> sel) {');
+      b.writeln('    if (sel.specs.isNotEmpty) Placement.isCurrent(this, sel.specs.last);');
+      b.writeln('    ViewMatch.conds(this, _termOf(sel), sel.conds);');
+      b.writeln('    return Screen.on(sel) != null ? _viewOf(_termOf(sel)) as V? : null;');
+      b.writeln('  }');
+      b.writeln('  /// ANYWHERE on the stack (front OR buried): the typed read-only view if');
+      b.writeln('  /// [sel] is on the live stack, else null. Reactive on chain + keys.');
+      b.writeln('  V? at<${onDecl()}>(On<${onNV()}> sel) {');
+      b.writeln('    if (sel.specs.isNotEmpty) Placement.isOn(this, sel.specs.last);');
+      b.writeln('    ViewMatch.conds(this, _termOf(sel), sel.conds);');
+      b.writeln('    return Screen.at(sel) != null ? _viewOf(_termOf(sel)) as V? : null;');
       b.writeln('  }');
       b.writeln('}');
+      b.writeln('');
+      // The terminal a selector reads view-state against: its last spec, or the
+      // live foreground for a placement-less `On.query({…})` (global view-state).
+      b.writeln('Enum _termOf(On sel) =>');
+      b.writeln('    sel.specs.isEmpty ? $spec.graph.current : sel.specs.last;');
       b.writeln('');
     }
 
