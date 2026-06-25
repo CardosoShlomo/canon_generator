@@ -664,9 +664,9 @@ void main() {
           contains('final class ParsedLink'), // …and the parse surface
           contains('ParsedLink? parseLink(String url)'),
           contains("'user/*' => UserLink(m.path[0] as String)"), // the typed map
-          // …and toUri (no @Screens domain → domain is required)
-          contains('String toUri(Link link, String domain)'),
-          contains('case UserLink(:final value0):'),
+          // …and an instance toUri per class (no @Screens domain → domain required)
+          contains('Uri toUri(String domain);'), // base declares it abstract
+          contains('Uri toUri(String domain) => Uri.parse('), // each class implements
           contains('encodeLink('),
           contains("'user/*'"),
           contains('<Object?>[value0]'),
@@ -687,7 +687,7 @@ void main() {
           contains('switch (m.branches[0])'), // parse picks the branch…
           contains('0 => UserByUuidLink(m.path[0] as String)'),
           contains('1 => UserByNameLink(m.path[0] as String)'),
-          contains('case UserByUuidLink(:final uuid):'), // …toUri per sibling
+          contains('Uri toUri(String domain) =>'), // …an instance toUri per sibling
           contains('<Object?>[uuid]'),
         ]),
         spec: _unionSpec,
@@ -703,8 +703,7 @@ void main() {
           contains(
               'final class UserByUuidLink extends WidgetlessLink implements UserLink'),
           contains('0 => UserMeLink()'), // parse: branch 0 reads no path token
-          contains('case UserMeLink():'), // encode: threads the literal back…
-          contains("<Object?>['me']"),
+          contains("<Object?>['me']"), // encode threads the literal back in toUri
         ]),
         spec: _literalUnionSpec,
       ));

@@ -307,6 +307,14 @@ final class Replace {
     return Screen.on(which);
   }
 
+  /// Replace-mode reach: the placement anywhere on the stack, so the
+  /// following `surface()` / `goX()` commits as a replace (or, on a miss,
+  /// nothing — the flag drops, not leaks).
+  N? at<N extends AnyNav, V>(On<N, V> which) {
+    _Screens.graph.markReplace();
+    return Screen.at(which);
+  }
+
   SplashNav goSplash() {
     _Screens.graph.markReplace();
     return Screen.goSplash();
@@ -1253,8 +1261,10 @@ void verifyScreens() {
 }
 
 /// A strict URL -> typed Link, from the tree's `.link` branches.
+/// Build a URL from any link with `link.toUri([domain])`.
 sealed class Link {
   const Link();
+  Uri toUri([String? domain]);
 }
 
 sealed class WidgetLink extends Link {
@@ -1269,16 +1279,43 @@ sealed class ItemLink implements Link {}
 
 final class ItemMeLink extends WidgetlessLink implements ItemLink {
   const ItemMeLink();
+  @override
+  Uri toUri([String? domain]) => Uri.parse(
+    _Screens.graph.encodeLink(
+      domain ?? 'https://canon.example',
+      'item/*',
+      <Object?>['me'],
+      <int>[0],
+    ),
+  );
 }
 
 final class ItemByIdLink extends WidgetlessLink implements ItemLink {
   const ItemByIdLink(this.itemId);
   final String itemId;
+  @override
+  Uri toUri([String? domain]) => Uri.parse(
+    _Screens.graph.encodeLink(
+      domain ?? 'https://canon.example',
+      'item/*',
+      <Object?>[itemId],
+      <int>[1],
+    ),
+  );
 }
 
 final class ItemByUsernameLink extends WidgetlessLink implements ItemLink {
   const ItemByUsernameLink(this.username);
   final String username;
+  @override
+  Uri toUri([String? domain]) => Uri.parse(
+    _Screens.graph.encodeLink(
+      domain ?? 'https://canon.example',
+      'item/*',
+      <Object?>[username],
+      <int>[2],
+    ),
+  );
 }
 
 /// A parsed [Link] plus the URL's origin (the host is reported,
@@ -1305,33 +1342,6 @@ ParsedLink? parseLink(String url) {
   };
   if (link == null) return null;
   return ParsedLink(link, '${uri.scheme}://${uri.host}');
-}
-
-/// Encodes a [Link] to a full URL under [domain].
-String toUri(Link link, [String domain = 'https://canon.example']) {
-  switch (link) {
-    case ItemMeLink():
-      return _Screens.graph.encodeLink(
-        domain,
-        'item/*',
-        <Object?>['me'],
-        <int>[0],
-      );
-    case ItemByIdLink(:final itemId):
-      return _Screens.graph.encodeLink(
-        domain,
-        'item/*',
-        <Object?>[itemId],
-        <int>[1],
-      );
-    case ItemByUsernameLink(:final username):
-      return _Screens.graph.encodeLink(
-        domain,
-        'item/*',
-        <Object?>[username],
-        <int>[2],
-      );
-  }
 }
 
 /// Read-only placement view — the reactive reads return these.

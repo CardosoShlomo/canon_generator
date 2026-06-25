@@ -264,6 +264,14 @@ final class Replace {
     return Screen.on(which);
   }
 
+  /// Replace-mode reach: the placement anywhere on the stack, so the
+  /// following `surface()` / `goX()` commits as a replace (or, on a miss,
+  /// nothing — the flag drops, not leaks).
+  N? at<N extends AnyNav>(On<N> which) {
+    _Shell.graph.markReplace();
+    return Screen.at(which);
+  }
+
   HomeNav goHome() {
     _Shell.graph.markReplace();
     return Screen.goHome();

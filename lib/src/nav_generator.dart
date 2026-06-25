@@ -1123,6 +1123,13 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln('    $spec.graph.markReplace();');
     b.writeln('    return Screen.on(which);');
     b.writeln('  }');
+    b.writeln('  /// Replace-mode reach: the placement anywhere on the stack, so the');
+    b.writeln('  /// following `surface()` / `goX()` commits as a replace (or, on a miss,');
+    b.writeln('  /// nothing — the flag drops, not leaks).');
+    b.writeln('  N? at<${onDecl()}>(On<${onNV()}> which) {');
+    b.writeln('    $spec.graph.markReplace();');
+    b.writeln('    return Screen.at(which);');
+    b.writeln('  }');
     for (final r in rows) {
       if (!globalSafe(r.name)) continue;
       final ret = unionName(r.name);
@@ -1860,8 +1867,14 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
         }
       }
 
+      // Encode is an instance method `link.toUri([domain])` (mirrors canon_link),
+      // not a global `toUri(link)`. Domain defaults to the grammar's when declared.
+      final linkDomain = annotation.peek('domain')?.stringValue;
+      final domainSig = linkDomain != null ? '[String? domain]' : 'String domain';
+      final domainArg = linkDomain != null ? "domain ?? '$linkDomain'" : 'domain';
       b.writeln('/// A strict URL -> typed Link, from the tree\'s `.link` branches.');
-      b.writeln('sealed class Link { const Link(); }');
+      b.writeln('/// Build a URL from any link with `link.toUri([domain])`.');
+      b.writeln('sealed class Link { const Link(); Uri toUri($domainSig); }');
       b.writeln('sealed class WidgetLink extends Link { const WidgetLink(); }');
       b.writeln('sealed class WidgetlessLink extends Link { const WidgetlessLink(); }');
       // per-entity marker (rule 14): the union cases IMPLEMENT it, cross-cutting
@@ -1875,17 +1888,18 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
         final d = caseOf(c.e, c.k);
         final impl = d.marker != null ? ' implements ${d.marker}' : '';
         final params = [for (final f in d.fields) 'this.${f.$1}'];
-        if (params.isEmpty) {
-          b.writeln('final class ${d.name} extends ${d.family}$impl '
-              '{ const ${d.name}(); }');
-        } else {
-          b.writeln('final class ${d.name} extends ${d.family}$impl {');
-          b.writeln('  const ${d.name}(${params.join(', ')});');
-          for (final f in d.fields) {
-            b.writeln('  final ${f.$2} ${f.$1};');
-          }
-          b.writeln('}');
+        b.writeln('final class ${d.name} extends ${d.family}$impl {');
+        b.writeln(params.isEmpty
+            ? '  const ${d.name}();'
+            : '  const ${d.name}(${params.join(', ')});');
+        for (final f in d.fields) {
+          b.writeln('  final ${f.$2} ${f.$1};');
         }
+        b.writeln('  @override');
+        b.writeln('  Uri toUri($domainSig) => Uri.parse($spec.graph.encodeLink('
+            "$domainArg, '${c.e.template}', "
+            '<Object?>[${d.pathVals.join(', ')}], <int>[${d.branchVals.join(', ')}]));');
+        b.writeln('}');
       }
 
       // parse: runtime path match (host-agnostic) → typed Link + the URL's origin.
@@ -1926,26 +1940,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       b.writeln('  if (link == null) return null;');
       b.writeln('  return ParsedLink(link, \'\${uri.scheme}://\${uri.host}\');');
       b.writeln('}');
-
-      // encode: typed Link → full URL under the (default) domain.
-      final linkDomain = annotation.peek('domain')?.stringValue;
-      final sig = linkDomain != null
-          ? "Link link, [String domain = '$linkDomain']"
-          : 'Link link, String domain';
-      b.writeln('');
-      b.writeln('/// Encodes a [Link] to a full URL under [domain].');
-      b.writeln('String toUri($sig) {');
-      b.writeln('  switch (link) {');
-      for (final c in cases) {
-        final d = caseOf(c.e, c.k);
-        final pats = [for (final f in d.fields) ':final ${f.$1}'];
-        final pat = pats.isEmpty ? '${d.name}()' : '${d.name}(${pats.join(', ')})';
-        b.writeln('    case $pat:');
-        b.writeln("      return $spec.graph.encodeLink(domain, '${c.e.template}', "
-            '<Object?>[${d.pathVals.join(', ')}], <int>[${d.branchVals.join(', ')}]);');
-      }
-      b.writeln('  }');
-      b.writeln('}');
+      // encode is the instance `link.toUri([domain])` emitted on each class above.
     }
 
     // ── View-state data types: `<Screen>Query` (read getters) + `<Screen>QueryMut`
