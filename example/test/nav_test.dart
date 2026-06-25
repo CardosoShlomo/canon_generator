@@ -133,7 +133,7 @@ void main() {
     expect(Screen.on(.item('42'))!, isA<FeedItemNav>());
   });
 
-  testWidgets('Screen.at reaches a buried placement; popToMe surfaces it', (tester) async {
+  testWidgets('Screen.at reaches a buried placement; surface() brings it up', (tester) async {
     await tester.pumpWidget(MaterialApp.router(routerDelegate: Screen.delegate));
     Screen.goFeed().goItem('7').goEditItem(); // feed → item → editItem (front)
     await tester.pumpAndSettle();
@@ -146,11 +146,36 @@ void main() {
     expect(Screen.at(.feed), isNotNull);
     expect(Screen.at(.item('9')), isNull); // wrong id → not reached
 
-    // popToMe surfaces the buried item and returns it forward-capable
-    Screen.at(.item('7'))!.popToMe();
+    // surface() brings the buried item up and returns it forward-capable
+    Screen.at(.item('7'))!.surface();
     await tester.pumpAndSettle();
     expect(Screen.current, isA<FeedItemNav>());
     expect(Screen.stack.current.name, 'item');
+  });
+
+  testWidgets('placement-less On.query: global view-state, on=foreground/at=anywhere', (tester) async {
+    await tester.pumpWidget(MaterialApp.router(routerDelegate: Screen.delegate));
+    Screen.goFeed();
+    await tester.pumpAndSettle();
+    Screen.on(.feed)!.query.category = 'books'; // feed's category (a global key)
+    await tester.pumpAndSettle();
+
+    // placement-less query against the FOREGROUND (feed): on matches.
+    expect(Screen.on(.query({.category('books')})), isNotNull);
+    expect(Screen.on(.query({.category('clothes')})), isNull);
+    expect(Screen.at(.query({.category('books')})), isNotNull); // also on the stack
+
+    // push item ON TOP (feed now buried); set item's sort (another global key).
+    Screen.goFeed().goItem('5');
+    await tester.pumpAndSettle();
+    Screen.on(.item('5'))!.query.sort = 'name';
+    await tester.pumpAndSettle();
+
+    // `on` (foreground = item) doesn't see feed's category; `at` (anywhere) does.
+    expect(Screen.on(.query({.category('books')})), isNull); // feed is buried
+    expect(Screen.at(.query({.category('books')})), isNotNull); // …but found by at
+    expect(Screen.on(.query({.sort('name')})), isNotNull); // item is the front
+    expect(Screen.at(.query({.sort('missing')})), isNull);
   });
 
   testWidgets('at(chain).goXx() is a smart jump (pop-to-self then go)', (tester) async {

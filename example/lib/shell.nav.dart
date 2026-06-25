@@ -128,6 +128,13 @@ final class Screen<I> {
     }
     final st = _Shell.graph.stack;
     final specs = which.specs;
+    if (specs.isEmpty) {
+      for (final c in which.conds) {
+        if (!c.test(_Shell.graph.viewGet(_Shell.graph.current, c.key)))
+          return null;
+      }
+      return _atOf(_Shell.graph.current) as N;
+    }
     if (st.length < specs.length) return null;
     final off = st.length - specs.length;
     for (var i = 0; i < specs.length; i++) {
@@ -142,11 +149,21 @@ final class Screen<I> {
   }
 
   /// The placement if this selector path is anywhere on the live stack
-  /// (front OR buried) — for `Screen.at(.x)?.popToMe()`. Else null.
+  /// (front OR buried) — for `Screen.at(.x)?.surface()`. Else null.
   static N? at<N extends AnyNav>(On<N> which) {
     final st = _Shell.graph.stack;
     final specs = which.specs;
-    if (specs.isEmpty) return null;
+    if (which is OnParentOf) return null;
+    if (specs.isEmpty) {
+      for (final entry in st) {
+        if (which.conds.every(
+          (c) => c.test(_Shell.graph.viewGet(entry.screen, c.key)),
+        )) {
+          return _atOf(entry.screen) as N;
+        }
+      }
+      return null;
+    }
     outer:
     for (var e = st.length - 1; e >= specs.length - 1; e--) {
       final off = e - specs.length + 1;
@@ -178,8 +195,6 @@ final class Screen<I> {
   /// `Screen.replace.goHome()`, `Screen.replace.on(.user)?.goChat(id)`.
   static const replace = Replace._();
 
-  /// The current EXACT placement, as the sealed [Placement] — an
-  /// exhaustive `switch (Screen.at) { case HomeUserProfileNav n => … }`.
   /// The current foreground placement (the front), as the sealed
   /// [AnyPlacement] — `switch (Screen.current) { … }` is exhaustive.
   static AnyPlacement get current => _atOf(_Shell.graph.current);
@@ -346,8 +361,8 @@ final class Hop<N extends AnyNav> {
   static const saved = Hop<SavedNav>._(Wishlist.saved, null, SavedNav._());
 }
 
-/// The boot placement: `Screen.at` returns it until the first commit.
-/// `if (Screen.at case Initial()) ...` gates blob-null cold-boot UI.
+/// The boot placement: `Screen.current` returns it until the first commit.
+/// `if (Screen.current case Initial()) ...` gates blob-null cold-boot UI.
 final class Initial extends AnyPlacement {
   const Initial._() : super._();
 }
@@ -531,18 +546,9 @@ final class KickstartNav extends AnyNav {
 final class HomeNav extends AnyPlacement
     implements PopDestPlacement, KickstartPlacement {
   const HomeNav._() : super._();
-  HomeNav popToMe() {
+  HomeNav surface() {
     _Shell.graph.popTo(_Shell.home);
     return const HomeNav._();
-  }
-
-  AnyPlacement? popToOneOfMyChildren() {
-    final c = _Shell.graph.currentChain;
-    final i = c.lastIndexOf(_Shell.home);
-    if (i < 0 || i + 1 >= c.length) return null;
-    final ch = c[i + 1];
-    _Shell.graph.popTo(ch);
-    return _atOf(ch);
   }
 
   SettingsNav goSettings() {
@@ -586,18 +592,9 @@ final class HomeHop<N extends AnyNav> {
 final class SettingsNav extends AnyPlacement
     implements CanPopPlacement, KickstartPlacement {
   const SettingsNav._() : super._();
-  SettingsNav popToMe() {
+  SettingsNav surface() {
     _Shell.graph.popTo(_Shell.settings);
     return const SettingsNav._();
-  }
-
-  AnyPlacement? popToOneOfMyChildren() {
-    final c = _Shell.graph.currentChain;
-    final i = c.lastIndexOf(_Shell.settings);
-    if (i < 0 || i + 1 >= c.length) return null;
-    final ch = c[i + 1];
-    _Shell.graph.popTo(ch);
-    return _atOf(ch);
   }
 
   HomeNav pop() {
@@ -609,18 +606,9 @@ final class SettingsNav extends AnyPlacement
 final class ShopNav extends AnyPlacement
     implements CanPopPlacement, PopDestPlacement, KickstartPlacement {
   const ShopNav._() : super._();
-  ShopNav popToMe() {
+  ShopNav surface() {
     _Shell.graph.popTo(Shop.shop);
     return const ShopNav._();
-  }
-
-  AnyPlacement? popToOneOfMyChildren() {
-    final c = _Shell.graph.currentChain;
-    final i = c.lastIndexOf(Shop.shop);
-    if (i < 0 || i + 1 >= c.length) return null;
-    final ch = c[i + 1];
-    _Shell.graph.popTo(ch);
-    return _atOf(ch);
   }
 
   CatalogNav goCatalog() {
@@ -638,18 +626,9 @@ final class ShopNav extends AnyPlacement
 final class CatalogNav extends AnyPlacement
     implements CanPopPlacement, PopDestPlacement, KickstartPlacement {
   const CatalogNav._() : super._();
-  CatalogNav popToMe() {
+  CatalogNav surface() {
     _Shell.graph.popTo(Shop.catalog);
     return const CatalogNav._();
-  }
-
-  AnyPlacement? popToOneOfMyChildren() {
-    final c = _Shell.graph.currentChain;
-    final i = c.lastIndexOf(Shop.catalog);
-    if (i < 0 || i + 1 >= c.length) return null;
-    final ch = c[i + 1];
-    _Shell.graph.popTo(ch);
-    return _atOf(ch);
   }
 
   HomeShopCatalogProductNav goProduct(String id) {
@@ -691,25 +670,15 @@ ProductPlacement _resolveProductPlacement(List<Enum> c) {
 }
 
 sealed class ProductPlacement implements AnyPlacement {
-  ProductPlacement popToMe();
-  AnyPlacement? popToOneOfMyChildren();
+  ProductPlacement surface();
 }
 
 final class HomeShopCatalogProductNav extends AnyPlacement
     implements ProductPlacement, CanPopPlacement {
   const HomeShopCatalogProductNav._() : super._();
-  HomeShopCatalogProductNav popToMe() {
+  HomeShopCatalogProductNav surface() {
     _Shell.graph.popTo(Shop.product);
     return const HomeShopCatalogProductNav._();
-  }
-
-  AnyPlacement? popToOneOfMyChildren() {
-    final c = _Shell.graph.currentChain;
-    final i = c.lastIndexOf(Shop.product);
-    if (i < 0 || i + 1 >= c.length) return null;
-    final ch = c[i + 1];
-    _Shell.graph.popTo(ch);
-    return _atOf(ch);
   }
 
   CatalogNav pop() {
@@ -754,18 +723,9 @@ final class HomeShopCatalogProductPop<N extends AnyNav> {
 final class HomeSavedProductNav extends AnyPlacement
     implements ProductPlacement, CanPopPlacement {
   const HomeSavedProductNav._() : super._();
-  HomeSavedProductNav popToMe() {
+  HomeSavedProductNav surface() {
     _Shell.graph.popTo(Shop.product);
     return const HomeSavedProductNav._();
-  }
-
-  AnyPlacement? popToOneOfMyChildren() {
-    final c = _Shell.graph.currentChain;
-    final i = c.lastIndexOf(Shop.product);
-    if (i < 0 || i + 1 >= c.length) return null;
-    final ch = c[i + 1];
-    _Shell.graph.popTo(ch);
-    return _atOf(ch);
   }
 
   SavedNav pop() {
@@ -798,18 +758,9 @@ final class HomeSavedProductPop<N extends AnyNav> {
 final class SavedNav extends AnyPlacement
     implements CanPopPlacement, PopDestPlacement, KickstartPlacement {
   const SavedNav._() : super._();
-  SavedNav popToMe() {
+  SavedNav surface() {
     _Shell.graph.popTo(Wishlist.saved);
     return const SavedNav._();
-  }
-
-  AnyPlacement? popToOneOfMyChildren() {
-    final c = _Shell.graph.currentChain;
-    final i = c.lastIndexOf(Wishlist.saved);
-    if (i < 0 || i + 1 >= c.length) return null;
-    final ch = c[i + 1];
-    _Shell.graph.popTo(ch);
-    return _atOf(ch);
   }
 
   HomeSavedProductNav goProduct(String id) {

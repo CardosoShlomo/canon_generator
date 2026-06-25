@@ -723,19 +723,12 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       final hopName = '${stem}Hop';
       b.writeln('final class $className extends $base$impl {');
       b.writeln('  const $className._() : super._();');
-      // Every placement can pop the stack back to itself (no-op if already the
-      // front, via the sim-safe popTo) and return itself, forward-capable; and pop
-      // down to whichever of its children sits directly above it (null if none).
+      // `surface()`: ensure this placement is the foreground — a no-op if it
+      // already is, else pop the stack back to it (sim-safe). Returns itself,
+      // forward-capable. The one op `at` adds over `on` (popping to a child is
+      // just the smart `goXx`). Bare name dodges the `popTo<Screen>` collision.
       if (base == 'AnyPlacement' && path != null && path.isNotEmpty) {
-        b.writeln('  $className popToMe() { $spec.graph.popTo(${sv(path.last)}); return const $className._(); }');
-        b.writeln('  AnyPlacement? popToOneOfMyChildren() {');
-        b.writeln('    final c = $spec.graph.currentChain;');
-        b.writeln('    final i = c.lastIndexOf(${sv(path.last)});');
-        b.writeln('    if (i < 0 || i + 1 >= c.length) return null;');
-        b.writeln('    final ch = c[i + 1];');
-        b.writeln('    $spec.graph.popTo(ch);');
-        b.writeln('    return _atOf(ch);');
-        b.writeln('  }');
+        b.writeln('  $className surface() { $spec.graph.popTo(${sv(path.last)}); return const $className._(); }');
       }
       if (extra != null) b.writeln(extra);
       verbs.forEach(b.writeln);
@@ -964,6 +957,13 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     }
     b.writeln('    final st = $spec.graph.stack;');
     b.writeln('    final specs = which.specs;');
+    // Placement-less `On.query({…})`: no path, conditions on the FOREGROUND.
+    b.writeln('    if (specs.isEmpty) {');
+    b.writeln('      for (final c in which.conds) {');
+    b.writeln('        if (!c.test($spec.graph.viewGet($spec.graph.current, c.key))) return null;');
+    b.writeln('      }');
+    b.writeln('      return _atOf($spec.graph.current) as N;');
+    b.writeln('    }');
     b.writeln('    if (st.length < specs.length) return null;');
     b.writeln('    final off = st.length - specs.length;');
     b.writeln('    for (var i = 0; i < specs.length; i++) {');
@@ -986,13 +986,24 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln('    return _atOf(specs.last) as N;');
     b.writeln('  }');
     // `at`: like `on`, but the path may end ANYWHERE on the live stack (buried or
-    // front), so you can pop back to it / `popToMe().goX()`. Same selector grammar.
+    // front), so you can `surface()` it or `goX()` (a smart jump). Same grammar.
     b.writeln('  /// The placement if this selector path is anywhere on the live stack');
-    b.writeln('  /// (front OR buried) — for `Screen.at(.x)?.popToMe()`. Else null.');
+    b.writeln('  /// (front OR buried) — for `Screen.at(.x)?.surface()`. Else null.');
     b.writeln('  static N? at<${onDecl()}>(On<${onNV()}> which) {');
     b.writeln('    final st = $spec.graph.stack;');
     b.writeln('    final specs = which.specs;');
-    b.writeln('    if (specs.isEmpty) return null;'); // parentOf has no path to reach
+    if (hasParentOf) {
+      b.writeln('    if (which is OnParentOf) return null;'); // a forward-push selector, not a reach
+    }
+    // Placement-less `On.query({…})`: conditions on ANY screen on the stack.
+    b.writeln('    if (specs.isEmpty) {');
+    b.writeln('      for (final entry in st) {');
+    b.writeln('        if (which.conds.every((c) => c.test($spec.graph.viewGet(entry.screen, c.key)))) {');
+    b.writeln('          return _atOf(entry.screen) as N;');
+    b.writeln('        }');
+    b.writeln('      }');
+    b.writeln('      return null;');
+    b.writeln('    }');
     b.writeln('    outer:');
     b.writeln('    for (var e = st.length - 1; e >= specs.length - 1; e--) {');
     b.writeln('      final off = e - specs.length + 1;');
@@ -1031,8 +1042,6 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln('  /// entry instead of pushing. Decide it at the start —');
     b.writeln('  /// `Screen.replace.goHome()`, `Screen.replace.on(.user)?.goChat(id)`.');
     b.writeln('  static const replace = Replace._();');
-    b.writeln('  /// The current EXACT placement, as the sealed [Placement] — an');
-    b.writeln('  /// exhaustive `switch (Screen.at) { case HomeUserProfileNav n => … }`.');
     b.writeln('  /// The current foreground placement (the front), as the sealed');
     b.writeln('  /// [AnyPlacement] — `switch (Screen.current) { … }` is exhaustive.');
     b.writeln('  static AnyPlacement get current => _atOf($spec.graph.current);');
@@ -1285,13 +1294,13 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       }
     }
 
-    // The synthetic boot placement (rule 2): `Screen.at` returns it while booting
-    // (blob-null cold-boot, before the resolver commits). No `Nav` suffix (so it
-    // can't collide with a `<screen>Nav`), no `goInitial` (unreachable by
-    // navigation) — pattern-match `Screen.at case Initial()`. The first commit out
-    // of boot auto-replaces, so the loading screen leaves no history.
-    b.writeln('/// The boot placement: `Screen.at` returns it until the first commit.');
-    b.writeln('/// `if (Screen.at case Initial()) ...` gates blob-null cold-boot UI.');
+    // The synthetic boot placement (rule 2): `Screen.current` returns it while
+    // booting (blob-null cold-boot, before the resolver commits). No `Nav` suffix
+    // (so it can't collide with a `<screen>Nav`), no `goInitial` (unreachable by
+    // navigation) — pattern-match `Screen.current case Initial()`. The first commit
+    // out of boot auto-replaces, so the loading screen leaves no history.
+    b.writeln('/// The boot placement: `Screen.current` returns it until the first commit.');
+    b.writeln('/// `if (Screen.current case Initial()) ...` gates blob-null cold-boot UI.');
     b.writeln('final class Initial extends AnyPlacement { const Initial._() : super._(); }');
 
     b.writeln('final class On<${onDecl()}> {');
@@ -1314,6 +1323,19 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       // Always a getter (id = null matches any); `.x(id)` invokes the step's
       // call() to pin a specific id.
       b.writeln('  static $ret get ${r.name} => $ctor._([${sv(r.name)}], [null], $navArg);');
+    }
+    // Placement-less GLOBAL view-state selectors: no screen, just conditions on
+    // the live view-state (`context.on` = foreground, `context.at` = any stack).
+    if (viewScreens.values.any((v) => v.query.isNotEmpty)) {
+      b.writeln('  /// GLOBAL query conditions, unbound to a screen — `context.on(.query(');
+      b.writeln('  /// {…}))` (foreground) / `context.at(.query({…}))` (anywhere on stack).');
+      b.writeln('  static On<AnyPlacement, AnyView> query(Set<QueryCond> cs) =>');
+      b.writeln('      On._(const [], const [], null, [...cs]);');
+    }
+    if (viewScreens.values.any((v) => v.fragment.isNotEmpty)) {
+      b.writeln('  /// GLOBAL fragment conditions, unbound to a screen.');
+      b.writeln('  static On<AnyPlacement, AnyView> fragment(Set<FragmentCond> cs) =>');
+      b.writeln('      On._(const [], const [], null, [...cs]);');
     }
     if (hasParentOf) {
       b.writeln('  /// Disambiguating push onto the current scope when a screen has');
@@ -1654,8 +1676,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
         // the screen's view getter / cyclic depth). Leaves already implement them.
         markerSigs[placementMarker] = [
           ...sharedVerbSigs(group),
-          '  $placementMarker popToMe();', // pop the stack back to this placement
-          '  AnyPlacement? popToOneOfMyChildren();', // pop down to the child above
+          '  $placementMarker surface();', // ensure this placement is the foreground
           if (viewScreens.containsKey(r.name))
             '  ${_cap(r.name)}QueryMut get query;',
           if (cyclic.contains(r.name)) '  int get depth;',
@@ -1973,10 +1994,12 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     // Condition vocabulary for the selector grammar: `FeedQueryCond.category('x')`
     // (equals), `.byFav` (flag true), and a `.not` mirror (not-equals / false). Each
     // is a `ViewCond` carrying its key (the reactive aspect) + the test.
-    void emitCond(String screen, String part, List<ViewKey> keys) {
+    // [prefix] is the screen cap (`Feed` → `FeedQueryCond`) or '' for the GLOBAL,
+    // placement-less vocabulary (`QueryCond`) used by `On.query({…})`.
+    void emitCondWith(String prefix, String part, List<ViewKey> keys) {
       if (keys.isEmpty) return;
-      final base = '${_cap(screen)}${part == 'f' ? 'Fragment' : 'Query'}Cond';
-      final not = '${_cap(screen)}${part == 'f' ? 'Fragment' : 'Query'}Not';
+      final base = '$prefix${part == 'f' ? 'Fragment' : 'Query'}Cond';
+      final not = '$prefix${part == 'f' ? 'Fragment' : 'Query'}Not';
       // A value key is a callable getter: `.key` = present, `.key(v)` = equals
       // (the present cond's `call(v)` narrows to equals, preserving negate). A
       // flag: `.flag` = true. `.not.…` negates each (`.not.key` = absent).
@@ -1992,9 +2015,9 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
             " const $base._('${k.name}', null, presence: true$neg);";
       }
 
-      b.writeln('/// Condition terms for `$screen`\'s ${part == 'f' ? 'fragment' : 'query'}'
-          ' — `.key` present / `.key(v)` equals / `.flag` true; `.not.…` negates'
-          ' (`.not.key` = absent).');
+      b.writeln('/// ${prefix.isEmpty ? 'GLOBAL' : '`$prefix`'} ${part == 'f' ? 'fragment' : 'query'}'
+          ' condition terms — `.key` present / `.key(v)` equals / `.flag` true;'
+          ' `.not.…` negates (`.not.key` = absent).');
       b.writeln('final class $base<T> implements ViewCond {');
       b.writeln('  const $base._(this.key, this.expected, {this.negate = false, this.presence = false});');
       b.writeln('  @override\n  final String key;');
@@ -2019,11 +2042,23 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       b.writeln('');
     }
 
+    // The GLOBAL view-state vocabulary: every query/fragment key any screen
+    // mirrors, deduped by name (URL-level keys are shared across screens). Backs
+    // the placement-less `On.query({…})` / `On.fragment({…})`.
+    final globalQuery = <String, ViewKey>{};
+    final globalFragment = <String, ViewKey>{};
+    for (final v in viewScreens.values) {
+      for (final k in v.query) globalQuery.putIfAbsent(k.name, () => k);
+      for (final k in v.fragment) globalFragment.putIfAbsent(k.name, () => k);
+    }
+    emitCondWith('', 'q', [...globalQuery.values]);
+    emitCondWith('', 'f', [...globalFragment.values]);
+
     for (final e in viewScreens.entries) {
       emitViewType(e.key, 'q', e.value.query);
       emitViewType(e.key, 'f', e.value.fragment);
-      emitCond(e.key, 'q', e.value.query);
-      emitCond(e.key, 'f', e.value.fragment);
+      emitCondWith(_cap(e.key), 'q', e.value.query);
+      emitCondWith(_cap(e.key), 'f', e.value.fragment);
       // The read-only view the nav implements: getters return the READ models,
       // while the nav's own getters return the mutable `…Mut` subtypes (covariant).
       final v = '${_cap(e.key)}View';
@@ -2046,8 +2081,8 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       // and the context reads.
       b.writeln('AnyView? _viewOf(Enum? screen) => switch (screen) {');
       for (final s in viewScreens.keys) {
-        // Single → its lone view; multi → the foreground-resolved leaf (which
-        // implements the read-only view). (Self/scope-aware resolution: TODO.)
+        // Single → its lone view; multi → the leaf resolved off the live chain
+        // (buried-safe via _atOf's lastIndexOf), which implements the read-only view.
         b.writeln(isSingle(s)
             ? '      ${sv(s)} => const ${unionName(s)}._(),'
             : '      ${sv(s)} => _atOf(${sv(s)}) as AnyView?,');
