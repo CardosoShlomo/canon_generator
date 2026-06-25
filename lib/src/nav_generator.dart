@@ -2130,57 +2130,53 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
             }
           }
         }
-        // View-state: a screen that declares `.query`/`.fragment` exposes a
-        // FLUENT setter chain (`feed.query.category('books').fragment.tab('x')`),
-        // so the consumer never names a generated type — each key autocompletes
-        // off the chain. Query and fragment are SEPARATE stages, mirroring the
-        // URL's `?…#…` split: `.query` opens the query stage (which has a
-        // `.fragment` transition); `.fragment` opens the fragment stage (terminal).
+        // View-state: a screen that declares `.query`/`.fragment` takes a
+        // dot-shorthand TERM SET, exactly like On's match selector but ASSIGNING
+        // (`link.query({.category('books')}).fragment({.tab('x')})`) — the
+        // consumer never names a generated type. Query and fragment are SEPARATE
+        // stages (mirror the `?…#…` split): `.query({…})` opens the query stage
+        // (which keeps a `.fragment({…})` transition); `.fragment({…})` is
+        // terminal — no query after fragment.
         final vs = viewScreens[n.screen];
+        final qArg = '${_cap(n.screen)}QueryArg';
+        final fArg = '${_cap(n.screen)}FragmentArg';
         final qName = '${name}Q';
         final fName = '${name}F';
         final hasQ = vs != null && vs.query.isNotEmpty;
         final hasF = vs != null && vs.fragment.isNotEmpty;
+        // `{for (t in set) t.key: t.value}` collapses a term set to its map.
+        String qMap(String set) => '{for (final t in $set) t.key: t.value}';
         if (hasQ) {
-          chainBuf.writeln('  $qName get query => '
-              '$qName(_s, _i, const {}, const {});');
+          chainBuf.writeln('  $qName query(Set<$qArg> q) => '
+              '$qName(_s, _i, ${qMap('q')}, const {});');
         }
         if (hasF) {
-          chainBuf.writeln('  $fName get fragment => '
-              '$fName(_s, _i, const {}, const {});');
+          chainBuf.writeln('  $fName fragment(Set<$fArg> f) => '
+              '$fName(_s, _i, const {}, ${qMap('f')});');
         }
         chainBuf.writeln('  Uri toUri($domainSig) => '
             'Uri.parse($spec.graph.encodeNavUrl($domainArg, _s, _i));');
         chainBuf.writeln('}');
-        // A view-stage builder: a chainable setter per key (a flag takes no arg,
-        // presence ⟹ true; a value key takes its typed value), then `.toUri()`.
-        void viewStage(String cls, List<ViewKey> keys, String part,
-            {String? transition}) {
+        // A view stage: holds the accumulated maps, builds the URL, and (query
+        // stage only) transitions into the fragment stage.
+        void viewStage(String cls, {String? transition}) {
           chainBuf.writeln('class $cls {');
           chainBuf.writeln('  $cls(this._s, this._i, this._q, this._f);');
           chainBuf.writeln('  final List<Enum> _s;');
           chainBuf.writeln('  final List<Object?> _i;');
           chainBuf.writeln('  final Map<String, Object?> _q;');
           chainBuf.writeln('  final Map<String, Object?> _f;');
-          for (final k in keys) {
-            final sig = k.flag ? '${k.name}()' : '${k.name}(${k.type} v)';
-            final val = k.flag ? 'true' : 'v';
-            final maps = part == 'q'
-                ? "{..._q, '${k.name}': $val}, _f"
-                : "_q, {..._f, '${k.name}': $val}";
-            chainBuf.writeln('  $cls $sig => $cls(_s, _i, $maps);');
-          }
           if (transition != null) {
-            chainBuf.writeln('  $transition get fragment => '
-                '$transition(_s, _i, _q, _f);');
+            chainBuf.writeln('  $transition fragment(Set<$fArg> f) => '
+                '$transition(_s, _i, _q, ${qMap('f')});');
           }
           chainBuf.writeln('  Uri toUri($domainSig) => Uri.parse('
               '$spec.graph.encodeNavUrl($domainArg, _s, _i, _q, _f));');
           chainBuf.writeln('}');
         }
 
-        if (hasQ) viewStage(qName, vs.query, 'q', transition: hasF ? fName : null);
-        if (hasF) viewStage(fName, vs.fragment, 'f');
+        if (hasQ) viewStage(qName, transition: hasF ? fName : null);
+        if (hasF) viewStage(fName);
         for (final c in kids) {
           emitWlStep(c);
         }
@@ -2387,6 +2383,29 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       b.writeln('');
     }
 
+    // The BUILD vocabulary, mirroring the match `…Cond` set but ASSIGNING values
+    // (no `.not` — you don't negate when building a URL): `<Screen>QueryArg` /
+    // `<Screen>FragmentArg`, a dot-shorthand term set the link chain takes —
+    // `link.query({.category('books'), .pinned})`. A value key is a static method
+    // `.key(v)`; a flag is a static const `.flag` (presence ⟹ true).
+    void emitSetWith(String prefix, String part, List<ViewKey> keys) {
+      if (keys.isEmpty) return;
+      final base = '$prefix${part == 'f' ? 'Fragment' : 'Query'}Arg';
+      b.writeln('/// `$prefix` ${part == 'f' ? 'fragment' : 'query'} build terms —'
+          ' `.key(v)` sets a value, `.flag` sets a flag. No `.not` (build, not match).');
+      b.writeln('final class $base {');
+      b.writeln('  const $base._(this.key, this.value);');
+      b.writeln('  final String key;');
+      b.writeln('  final Object? value;');
+      for (final k in keys) {
+        b.writeln(k.flag
+            ? "  static const $base ${k.name} = $base._('${k.name}', true);"
+            : "  static $base ${k.name}(${k.type} v) => $base._('${k.name}', v);");
+      }
+      b.writeln('}');
+      b.writeln('');
+    }
+
     // The GLOBAL view-state vocabulary: every query/fragment key any screen
     // mirrors, deduped by name (URL-level keys are shared across screens). Backs
     // the placement-less `On.query({…})` / `On.fragment({…})`.
@@ -2404,6 +2423,8 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       emitViewType(e.key, 'f', e.value.fragment);
       emitCondWith(_cap(e.key), 'q', e.value.query);
       emitCondWith(_cap(e.key), 'f', e.value.fragment);
+      emitSetWith(_cap(e.key), 'q', e.value.query);
+      emitSetWith(_cap(e.key), 'f', e.value.fragment);
       // The read-only view the nav implements: getters return the READ models,
       // while the nav's own getters return the mutable `…Mut` subtypes (covariant).
       final v = '${_cap(e.key)}View';

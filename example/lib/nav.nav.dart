@@ -1460,7 +1460,8 @@ class _WLHomeItem {
   final List<Object?> _i;
   _WLHomeItemEditItem get editItem =>
       _WLHomeItemEditItem._([..._s, _Screens.editItem], [..._i, null]);
-  _WLHomeItemQ get query => _WLHomeItemQ(_s, _i, const {}, const {});
+  _WLHomeItemQ query(Set<ItemQueryArg> q) =>
+      _WLHomeItemQ(_s, _i, {for (final t in q) t.key: t.value}, const {});
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://canon.example', _s, _i),
   );
@@ -1472,7 +1473,6 @@ class _WLHomeItemQ {
   final List<Object?> _i;
   final Map<String, Object?> _q;
   final Map<String, Object?> _f;
-  _WLHomeItemQ sort(String v) => _WLHomeItemQ(_s, _i, {..._q, 'sort': v}, _f);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(
       domain ?? 'https://canon.example',
@@ -1523,8 +1523,10 @@ class _WLFeed {
     [..._s, _Screens.item, _Screens.editItem],
     [..._i, id, null],
   );
-  _WLFeedQ get query => _WLFeedQ(_s, _i, const {}, const {});
-  _WLFeedF get fragment => _WLFeedF(_s, _i, const {}, const {});
+  _WLFeedQ query(Set<FeedQueryArg> q) =>
+      _WLFeedQ(_s, _i, {for (final t in q) t.key: t.value}, const {});
+  _WLFeedF fragment(Set<FeedFragmentArg> f) =>
+      _WLFeedF(_s, _i, const {}, {for (final t in f) t.key: t.value});
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://canon.example', _s, _i),
   );
@@ -1536,9 +1538,8 @@ class _WLFeedQ {
   final List<Object?> _i;
   final Map<String, Object?> _q;
   final Map<String, Object?> _f;
-  _WLFeedQ category(String v) => _WLFeedQ(_s, _i, {..._q, 'category': v}, _f);
-  _WLFeedQ radius(int v) => _WLFeedQ(_s, _i, {..._q, 'radius': v}, _f);
-  _WLFeedF get fragment => _WLFeedF(_s, _i, _q, _f);
+  _WLFeedF fragment(Set<FeedFragmentArg> f) =>
+      _WLFeedF(_s, _i, _q, {for (final t in f) t.key: t.value});
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(
       domain ?? 'https://canon.example',
@@ -1556,8 +1557,6 @@ class _WLFeedF {
   final List<Object?> _i;
   final Map<String, Object?> _q;
   final Map<String, Object?> _f;
-  _WLFeedF tab(String v) => _WLFeedF(_s, _i, _q, {..._f, 'tab': v});
-  _WLFeedF pinned() => _WLFeedF(_s, _i, _q, {..._f, 'pinned': true});
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(
       domain ?? 'https://canon.example',
@@ -1575,7 +1574,8 @@ class _WLFeedItem {
   final List<Object?> _i;
   _WLFeedItemEditItem get editItem =>
       _WLFeedItemEditItem._([..._s, _Screens.editItem], [..._i, null]);
-  _WLFeedItemQ get query => _WLFeedItemQ(_s, _i, const {}, const {});
+  _WLFeedItemQ query(Set<ItemQueryArg> q) =>
+      _WLFeedItemQ(_s, _i, {for (final t in q) t.key: t.value}, const {});
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://canon.example', _s, _i),
   );
@@ -1587,7 +1587,6 @@ class _WLFeedItemQ {
   final List<Object?> _i;
   final Map<String, Object?> _q;
   final Map<String, Object?> _f;
-  _WLFeedItemQ sort(String v) => _WLFeedItemQ(_s, _i, {..._q, 'sort': v}, _f);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(
       domain ?? 'https://canon.example',
@@ -1793,6 +1792,14 @@ final class ItemQueryNot {
       const ItemQueryCond._('sort', null, presence: true, negate: true);
 }
 
+/// `Item` query build terms — `.key(v)` sets a value, `.flag` sets a flag. No `.not` (build, not match).
+final class ItemQueryArg {
+  const ItemQueryArg._(this.key, this.value);
+  final String key;
+  final Object? value;
+  static ItemQueryArg sort(String v) => ItemQueryArg._('sort', v);
+}
+
 /// Read-only view-state of `item` — the reactive reads return
 /// this; the navigable `ItemNav` adds the setters.
 abstract interface class ItemView implements AnyView {
@@ -1903,6 +1910,24 @@ final class FeedFragmentNot {
       const FeedFragmentCond._('tab', null, presence: true, negate: true);
   FeedFragmentCond get pinned =>
       const FeedFragmentCond._('pinned', true, negate: true);
+}
+
+/// `Feed` query build terms — `.key(v)` sets a value, `.flag` sets a flag. No `.not` (build, not match).
+final class FeedQueryArg {
+  const FeedQueryArg._(this.key, this.value);
+  final String key;
+  final Object? value;
+  static FeedQueryArg category(String v) => FeedQueryArg._('category', v);
+  static FeedQueryArg radius(int v) => FeedQueryArg._('radius', v);
+}
+
+/// `Feed` fragment build terms — `.key(v)` sets a value, `.flag` sets a flag. No `.not` (build, not match).
+final class FeedFragmentArg {
+  const FeedFragmentArg._(this.key, this.value);
+  final String key;
+  final Object? value;
+  static FeedFragmentArg tab(String v) => FeedFragmentArg._('tab', v);
+  static const FeedFragmentArg pinned = FeedFragmentArg._('pinned', true);
 }
 
 /// Read-only view-state of `feed` — the reactive reads return

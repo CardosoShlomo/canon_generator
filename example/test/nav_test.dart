@@ -213,29 +213,26 @@ void main() {
         'https://canon.example/profile/account/u1/edit-account');
   });
 
-  test('WidgetLink view-state: a fluent .query chain mirrors into the URL', () {
-    // no generated type named at the build site — each key autocompletes off the
-    // chain; view-state lands on the target screen as ?query.
-    expect(WidgetLink.feed.query.category('books').radius(7).toUri().toString(),
+  test('WidgetLink view-state: an On-shape term set mirrors into the URL', () {
+    // a dot-shorthand term SET, exactly like `Screen.on(.feed.query({…}))` but
+    // ASSIGNING (no `.not`) — no generated type named at the build site.
+    expect(WidgetLink.feed.query({.category('books'), .radius(7)}).toUri().toString(),
         'https://canon.example/feed?category=books&radius=7');
-    // unset keys are simply absent; order follows the schema
-    expect(WidgetLink.feed.query.category('books').toUri().toString(),
+    // unset keys are simply absent
+    expect(WidgetLink.feed.query({.category('books')}).toUri().toString(),
         'https://canon.example/feed?category=books');
     // item carries its own view-state (sort), under its full nav path
-    expect(WidgetLink.home.item('42').query.sort('name').toUri().toString(),
+    expect(WidgetLink.home.item('42').query({.sort('name')}).toUri().toString(),
         'https://canon.example/home/item/42?sort=name');
 
-    // fragments too: `.fragment` opens the same builder; a flag key takes no arg
-    expect(WidgetLink.feed.fragment.tab('chat').toUri().toString(),
+    // fragments too: `.fragment({…})` is its own stage; a flag is a bare term
+    expect(WidgetLink.feed.fragment({.tab('chat')}).toUri().toString(),
         'https://canon.example/feed#tab=chat');
-    // query + fragment in one chain → ?…#… ; the `.fragment` sentinel separates
-    // the stages (query keys, then fragment keys — never mixed).
+    // query then fragment → ?…#… ; fragment is terminal (no query after it)
     expect(
-        WidgetLink.feed.query
-            .category('books')
-            .fragment
-            .tab('chat')
-            .pinned()
+        WidgetLink.feed
+            .query({.category('books')})
+            .fragment({.tab('chat'), .pinned})
             .toUri()
             .toString(),
         'https://canon.example/feed?category=books#tab=chat&pinned');

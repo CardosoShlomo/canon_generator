@@ -933,18 +933,19 @@ void main() {
         spec: _spec,
       ));
 
-  test('a view-state screen exposes a fluent .query setter chain on its link',
+  test('a view-state screen takes an On-shape build term set on its link',
       () => _expectGenerated(
             allOf([
-              // `.query` opens the query STAGE; no generated type is named at a
-              // call site — each key autocompletes off the chain
-              contains('_WLFeedQ get query =>'),
+              // `.query({…})` takes a dot-shorthand build-term set (no .not)
+              contains('_WLFeedQ query(Set<FeedQueryArg> q) =>'),
               contains('class _WLFeedQ {'),
-              // one chainable setter per key, returning the stage
-              contains("_WLFeedQ category(String v) => "
-                  "_WLFeedQ(_s, _i, {..._q, 'category': v}, _f);"),
-              contains("_WLFeedQ radius(int v) =>"),
-              // terminal builds the URL with the accumulated query/fragment maps
+              // the build vocabulary mirrors the match `Cond` set, ASSIGNING
+              contains('final class FeedQueryArg {'),
+              contains("static FeedQueryArg category(String v) => "
+                  "FeedQueryArg._('category', v);"),
+              contains("static FeedQueryArg radius(int v) =>"),
+              // the set collapses to a map; the terminal builds the URL with it
+              contains('{for (final t in q) t.key: t.value}'),
               contains('encodeNavUrl(domain, _s, _i, _q, _f)'),
             ]),
             spec: _viewSpec,
@@ -954,15 +955,14 @@ void main() {
       _expectGenerated(
         allOf([
           // the screen step opens either stage (fragment without a query first)
-          contains('_WLFeedQ get query =>'),
-          contains('_WLFeedF get fragment =>'),
+          contains('_WLFeedQ query(Set<FeedQueryArg> q) =>'),
+          contains('_WLFeedF fragment(Set<FeedFragmentArg> f) =>'),
           // the query stage transitions INTO fragment…
           contains('class _WLFeedQ {'),
-          contains('  _WLFeedF get fragment => _WLFeedF(_s, _i, _q, _f);'),
-          // …and the fragment stage is terminal — setters + toUri, no way back
+          contains('  _WLFeedF fragment(Set<FeedFragmentArg> f) =>'),
+          // …and the fragment stage is terminal — a build + toUri, no way back
           contains('class _WLFeedF {'),
-          contains('_WLFeedF tab(String v) =>'),
-          // (the only `get query` is on the screen step, never inside _WLFeedF)
+          // (no `query(Set` inside _WLFeedF — it has only toUri)
         ]),
         spec: _viewBothSpec,
       ));
