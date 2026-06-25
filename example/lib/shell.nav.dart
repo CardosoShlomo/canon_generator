@@ -811,3 +811,130 @@ void verifyScreens() {
     return true;
   }());
 }
+
+/// A typed deep link. `Link.<route>….toUri([domain])` builds a
+/// URL (the nav-target tree + the resolve-branch leaves); a parsed
+/// link round-trips with `link.toUri([domain])`.
+sealed class Link {
+  const Link();
+  Uri toUri(String domain);
+  static _WLHome get home => _WLHome._([_Shell.home], [null]);
+  static _WLHomeSettings get settings =>
+      _WLHomeSettings._([_Shell.home, _Shell.settings], [null, null]);
+  static _WLHomeShop get shop =>
+      _WLHomeShop._([_Shell.home, Shop.shop], [null, null]);
+  static _WLHomeShopCatalog get catalog => _WLHomeShopCatalog._(
+    [_Shell.home, Shop.shop, Shop.catalog],
+    [null, null, null],
+  );
+  static _WLHomeSaved get saved =>
+      _WLHomeSaved._([_Shell.home, Wishlist.saved], [null, null]);
+}
+
+/// Nav targets — every screen reachable on the stack, root-down.
+sealed class WidgetLink extends Link {
+  const WidgetLink();
+  static _WLHome get home => _WLHome._([_Shell.home], [null]);
+  static _WLHomeSettings get settings =>
+      _WLHomeSettings._([_Shell.home, _Shell.settings], [null, null]);
+  static _WLHomeShop get shop =>
+      _WLHomeShop._([_Shell.home, Shop.shop], [null, null]);
+  static _WLHomeShopCatalog get catalog => _WLHomeShopCatalog._(
+    [_Shell.home, Shop.shop, Shop.catalog],
+    [null, null, null],
+  );
+  static _WLHomeSaved get saved =>
+      _WLHomeSaved._([_Shell.home, Wishlist.saved], [null, null]);
+}
+
+/// Resolve branches — addressed from the nearest unambiguous parent.
+sealed class WidgetlessLink extends Link {
+  const WidgetlessLink();
+}
+
+/// A parsed [Link] plus the URL's origin (the host is reported,
+/// not matched — the platform already verified it is ours).
+final class ParsedLink {
+  const ParsedLink(this.link, this.domain);
+  final Link link;
+  final String domain;
+}
+
+/// Parses [url] into a typed [Link] + origin, or null if not a link.
+ParsedLink? parseLink(String url) {
+  final m = _Shell.graph.parseLink(url);
+  if (m == null) return null;
+  final uri = Uri.parse(url);
+  final link = switch (m.template) {
+    _ => null,
+  };
+  if (link == null) return null;
+  return ParsedLink(link, '${uri.scheme}://${uri.host}');
+}
+
+class _WLHome {
+  const _WLHome._(this._s, this._i);
+  final List<Enum> _s;
+  final List<Object?> _i;
+  _WLHomeSettings get settings =>
+      _WLHomeSettings._([..._s, _Shell.settings], [..._i, null]);
+  _WLHomeShop get shop => _WLHomeShop._([..._s, Shop.shop], [..._i, null]);
+  _WLHomeSaved get saved =>
+      _WLHomeSaved._([..._s, Wishlist.saved], [..._i, null]);
+  Uri toUri(String domain) =>
+      Uri.parse(_Shell.graph.encodeNavUrl(domain, _s, _i));
+}
+
+class _WLHomeSettings {
+  const _WLHomeSettings._(this._s, this._i);
+  final List<Enum> _s;
+  final List<Object?> _i;
+  Uri toUri(String domain) =>
+      Uri.parse(_Shell.graph.encodeNavUrl(domain, _s, _i));
+}
+
+class _WLHomeShop {
+  const _WLHomeShop._(this._s, this._i);
+  final List<Enum> _s;
+  final List<Object?> _i;
+  _WLHomeShopCatalog get catalog =>
+      _WLHomeShopCatalog._([..._s, Shop.catalog], [..._i, null]);
+  Uri toUri(String domain) =>
+      Uri.parse(_Shell.graph.encodeNavUrl(domain, _s, _i));
+}
+
+class _WLHomeShopCatalog {
+  const _WLHomeShopCatalog._(this._s, this._i);
+  final List<Enum> _s;
+  final List<Object?> _i;
+  _WLHomeShopCatalogProduct product(String id) =>
+      _WLHomeShopCatalogProduct._([..._s, Shop.product], [..._i, id]);
+  Uri toUri(String domain) =>
+      Uri.parse(_Shell.graph.encodeNavUrl(domain, _s, _i));
+}
+
+class _WLHomeShopCatalogProduct {
+  const _WLHomeShopCatalogProduct._(this._s, this._i);
+  final List<Enum> _s;
+  final List<Object?> _i;
+  Uri toUri(String domain) =>
+      Uri.parse(_Shell.graph.encodeNavUrl(domain, _s, _i));
+}
+
+class _WLHomeSaved {
+  const _WLHomeSaved._(this._s, this._i);
+  final List<Enum> _s;
+  final List<Object?> _i;
+  _WLHomeSavedProduct product(String id) =>
+      _WLHomeSavedProduct._([..._s, Shop.product], [..._i, id]);
+  Uri toUri(String domain) =>
+      Uri.parse(_Shell.graph.encodeNavUrl(domain, _s, _i));
+}
+
+class _WLHomeSavedProduct {
+  const _WLHomeSavedProduct._(this._s, this._i);
+  final List<Enum> _s;
+  final List<Object?> _i;
+  Uri toUri(String domain) =>
+      Uri.parse(_Shell.graph.encodeNavUrl(domain, _s, _i));
+}

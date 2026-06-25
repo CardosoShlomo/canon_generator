@@ -99,7 +99,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 
   static final graph = NavGraph<_Screens>(
     {
-      home({user()}),
+      home({user}),
       user.links({slot(Codec.string)}),
     },
     initial: home,
@@ -125,7 +125,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 
   static final graph = NavGraph<_Screens>(
     {
-      home({user()}),
+      home({user}),
       user.links({slots({Codec.uuid, Codec.username})}),
     },
     initial: home,
@@ -151,7 +151,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 
   static final graph = NavGraph<_Screens>(
     {
-      home({user()}),
+      home({user}),
       user.links({slots({Codec.literal('me'), Codec.uuid, Codec.username})}),
     },
     initial: home,
@@ -178,7 +178,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 
   static final graph = NavGraph<_Screens>(
     {
-      home(),
+      home,
       user({slots({Codec.literal('me'), Codec.username})}),
     },
     initial: home,
@@ -205,8 +205,37 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 
   static final graph = NavGraph<_Screens>(
     {
-      home(),
-      feed().query({_Keys.category(Codec.string), _Keys.radius(Codec.integer)}),
+      home,
+      feed.query({_Keys.category(Codec.string), _Keys.radius(Codec.integer)}),
+    },
+    initial: home,
+    pageOf: (s, c, k) => 0,
+  );
+}
+''';
+
+// A screen with BOTH query and fragment view-state → the link chain stages them
+// (`.query…` then `.fragment…`; fragment is terminal).
+const _viewBothSpec = '''
+import 'package:canon/canon.dart';
+
+part 'spec.nav.dart';
+
+enum _Q with QueryKeyBase { category }
+enum _F with QueryKeyBase { tab }
+
+@screens
+enum _Screens with ScreenNode<Object?, _Screens> {
+  home(0),
+  feed(0);
+
+  const _Screens(this.widget);
+  final Object widget;
+
+  static final graph = NavGraph<_Screens>(
+    {
+      home,
+      feed.query({_Q.category(Codec.string)}).fragment({_F.tab(Codec.string)}),
     },
     initial: home,
     pageOf: (s, c, k) => 0,
@@ -224,6 +253,7 @@ part 'spec.nav.dart';
 @screens
 enum _Screens with ScreenNode<Object?, _Screens> {
   home(0),
+  profile(0),
   account(0, Codec.string);
 
   const _Screens(this.widget, [this.id]);
@@ -232,7 +262,42 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 
   static final graph = NavGraph<_Screens>(
     {
-      home({account(), account.link({slot(Codec.string)})}),
+      // `account` is link-only under home (a widgetless branch point — its id is
+      // ignored), and a real screen under profile (so it has a nav placement).
+      home({account.link({slot(Codec.string)})}),
+      profile({account}),
+    },
+    initial: home,
+    pageOf: (s, c, k) => 0,
+  );
+}
+''';
+
+// The SAME leaf screen linked under two parents → its minimal address (`account`)
+// is ambiguous, so the WidgetlessLink chain keeps the disambiguating full path.
+const _ambiguousLinkSpec = '''
+import 'package:canon/canon.dart';
+
+part 'spec.nav.dart';
+
+@screens
+enum _Screens with ScreenNode<Object?, _Screens> {
+  home(0),
+  profile(0),
+  settings(0),
+  account(0, Codec.string);
+
+  const _Screens(this.widget, [this.id]);
+  final Object widget;
+  final Codec? id;
+
+  static final graph = NavGraph<_Screens>(
+    {
+      // `account` is link-only under BOTH home and profile (two endpoints with
+      // the same leaf → ambiguous minimal address), plus a screen under settings.
+      home({account.link({slot(Codec.string)})}),
+      profile({account.link({slot(Codec.uuid)})}),
+      settings({account}),
     },
     initial: home,
     pageOf: (s, c, k) => 0,
@@ -261,8 +326,115 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 
   static final graph = NavGraph<_Screens>(
     {
-      home({item().query({_Keys.tag(Codec.string)})}),
-      feed({item()}),
+      home({item.query({_Keys.tag(Codec.string)})}),
+      feed({item}),
+    },
+    initial: home,
+    pageOf: (s, c, k) => 0,
+  );
+}
+''';
+
+// An empty call `user()` for a childless leaf — needless; the bare `user` says
+// it. The call form's set is required and must be non-empty → throw.
+const _emptyCallSpec = '''
+import 'package:canon/canon.dart';
+
+part 'spec.nav.dart';
+
+@screens
+enum _Screens with ScreenNode<Object?, _Screens> {
+  home(0),
+  user(0);
+
+  const _Screens(this.widget, [this.id]);
+  final Object widget;
+  final Codec? id;
+
+  static final graph = NavGraph<_Screens>(
+    {
+      home({user()}),
+    },
+    initial: home,
+    pageOf: (s, c, k) => 0,
+  );
+}
+''';
+
+// `account` beside `account.link(...)` in one set — the widget form written
+// the long way (a node is a screen XOR a link branch at one position) → throw.
+const _redundantLinkSpec = '''
+import 'package:canon/canon.dart';
+
+part 'spec.nav.dart';
+
+@screens
+enum _Screens with ScreenNode<Object?, _Screens> {
+  home(0),
+  account(0, Codec.string);
+
+  const _Screens(this.widget, [this.id]);
+  final Object widget;
+  final Codec? id;
+
+  static final graph = NavGraph<_Screens>(
+    {
+      home({account, account.link({slot(Codec.string)})}),
+    },
+    initial: home,
+    pageOf: (s, c, k) => 0,
+  );
+}
+''';
+
+// An empty `slots({})` widget form — redundant (the screen is already
+// deep-linkable by its id) → generation must throw.
+const _emptySlotsSpec = '''
+import 'package:canon/canon.dart';
+
+part 'spec.nav.dart';
+
+@screens
+enum _Screens with ScreenNode<Object?, _Screens> {
+  home(0),
+  detail(0, Codec.uuid);
+
+  const _Screens(this.widget, [this.id]);
+  final Object widget;
+  final Codec? id;
+
+  static final graph = NavGraph<_Screens>(
+    {
+      home({detail({slots({})})}),
+    },
+    initial: home,
+    pageOf: (s, c, k) => 0,
+  );
+}
+''';
+
+// home/account/* is a widgetless-only `.link`; settings/detail/* a mixed widget
+// form (renderable id + a username resolver). Exercises WidgetLink subtree prune.
+const _probeSpec = '''
+import 'package:canon/canon.dart';
+
+part 'spec.nav.dart';
+
+@screens
+enum _Screens with ScreenNode<Object?, _Screens> {
+  home(0),
+  account(0, Codec.string),
+  settings(0),
+  detail(0, Codec.uuid);
+
+  const _Screens(this.widget, [this.id]);
+  final Object widget;
+  final Codec? id;
+
+  static final graph = NavGraph<_Screens>(
+    {
+      home({account({slot(Codec.string)})}),
+      settings({detail({slots({Codec.username})})}),
     },
     initial: home,
     pageOf: (s, c, k) => 0,
@@ -299,7 +471,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
   final Codec? id;
 
   static final graph = NavGraph<_Screens>(
-    {home(), feed()},
+    {home, feed},
     initial: home,
     pageOf: (s, c, k) => 0,
   );
@@ -719,12 +891,195 @@ void main() {
           contains('final class UserMeLink extends WidgetlessLink'),
           contains('class UserByNameLink'),
           contains('final String username;'),
-          // order: literals → id → values  ⇒  me=0, uuid=1, username=2
-          contains('0 => UserMeLink()'),
-          contains('1 => UserByIdLink(m.path[0] as String)'),
+          // order: the canonical id leads, declared resolvers follow ⇒
+          // userId=0, me=1, username=2
+          contains('0 => UserByIdLink(m.path[0] as String)'),
+          contains('1 => UserMeLink()'),
           contains('2 => UserByNameLink(m.path[0] as String)'),
         ]),
         spec: _widgetFormSpec,
+      ));
+
+  test('Link.<route> is the superset; a name clash resolves to the nav target',
+      () => _expectGenerated(
+            allOf([
+              // Link carries the nav-tree roots…
+              contains('static _WLHome get home =>'),
+              // …and `user` (a nav root with widget-form resolvers) clashes with
+              // its own widgetless leaf — the nav-target METHOD wins on Link
+              contains('static _WLUser user(String id) =>'),
+              // the widgetless resolvers stay reachable via WidgetlessLink.user
+              contains('static _LXUser get user =>'),
+              contains("me() => _LXUserSlot([..._p, 'me'], [..._b, 1]);"),
+              contains('byName(String username) =>'),
+              // the leaf step builds its URL off the accumulators
+              contains("_Screens.graph.encodeLink(domain, 'user/*', _p, _b)"),
+            ]),
+            spec: _widgetFormSpec,
+          ));
+
+  test('the WidgetLink surface emits even with no `.link` declared', () =>
+      _expectGenerated(
+        allOf([
+          // `_spec` declares no link at all, yet every screen is a deep link
+          contains('sealed class WidgetLink extends Link'),
+          contains('static _WLHome get home =>'),
+          contains('_WLHomeItem item(String id) =>'),
+          contains('_Screens.graph.encodeNavUrl('),
+          // `item` sits under home alone → a direct kick-start static jumps to it
+          contains('static _WLHomeItem item(String id) =>\n'
+              '      _WLHomeItem._([_Screens.home, _Screens.item], [null, id]);'),
+        ]),
+        spec: _spec,
+      ));
+
+  test('a view-state screen exposes a fluent .query setter chain on its link',
+      () => _expectGenerated(
+            allOf([
+              // `.query` opens the query STAGE; no generated type is named at a
+              // call site — each key autocompletes off the chain
+              contains('_WLFeedQ get query =>'),
+              contains('class _WLFeedQ {'),
+              // one chainable setter per key, returning the stage
+              contains("_WLFeedQ category(String v) => "
+                  "_WLFeedQ(_s, _i, {..._q, 'category': v}, _f);"),
+              contains("_WLFeedQ radius(int v) =>"),
+              // terminal builds the URL with the accumulated query/fragment maps
+              contains('encodeNavUrl(domain, _s, _i, _q, _f)'),
+            ]),
+            spec: _viewSpec,
+          ));
+
+  test('query and fragment are staged: query→fragment, fragment is terminal', () =>
+      _expectGenerated(
+        allOf([
+          // the screen step opens either stage (fragment without a query first)
+          contains('_WLFeedQ get query =>'),
+          contains('_WLFeedF get fragment =>'),
+          // the query stage transitions INTO fragment…
+          contains('class _WLFeedQ {'),
+          contains('  _WLFeedF get fragment => _WLFeedF(_s, _i, _q, _f);'),
+          // …and the fragment stage is terminal — setters + toUri, no way back
+          contains('class _WLFeedF {'),
+          contains('_WLFeedF tab(String v) =>'),
+          // (the only `get query` is on the screen step, never inside _WLFeedF)
+        ]),
+        spec: _viewBothSpec,
+      ));
+
+  test('WidgetLink mirrors the nav tree root-down (id screens are methods)',
+      () => _expectGenerated(
+            allOf([
+              contains('sealed class WidgetLink extends Link'),
+              // id-free root → a getter; id-bearing root → a method (id mandatory
+              // before `.toUri()`, no bare `.user`)
+              contains('static _WLHome get home => _WLHome._([_Screens.home]'),
+              contains('static _WLUser user(String id) =>'),
+              isNot(contains('static _WLUser get user')),
+              contains('class _WLUser {'),
+              // every nav-target node prints its full path via the nav-mirror
+              contains('_Screens.graph.encodeNavUrl('),
+              // the widgetless resolver branches (me/username) live on the
+              // SEPARATE WidgetlessLink surface, not the WidgetLink nav tree
+              contains('static _LXUser get user =>'),
+              contains("me() => _LXUserSlot([..._p, 'me']"),
+              isNot(contains('me() => _WL')),
+            ]),
+            spec: _widgetFormSpec,
+          ));
+
+  test('an empty `slots({})` is rejected (a screen is already deep-linkable)',
+      () async {
+    final logs = <String>[];
+    await testBuilder(
+      navBuilder(BuilderOptions.empty),
+      {
+        'canon|lib/src/screens_annotation.dart': _annotation,
+        'canon|lib/canon.dart': _canonStub,
+        'pkg|lib/spec.dart': _emptySlotsSpec,
+      },
+      rootPackage: 'pkg',
+      generateFor: {'pkg|lib/spec.dart'},
+      onLog: (r) => logs.add(r.message),
+    );
+    expect(logs.join('\n'), contains('empty `slots({})`'));
+  });
+
+  test('an empty call `user()` is rejected (write the bare leaf)', () async {
+    final logs = <String>[];
+    await testBuilder(
+      navBuilder(BuilderOptions.empty),
+      {
+        'canon|lib/src/screens_annotation.dart': _annotation,
+        'canon|lib/canon.dart': _canonStub,
+        'pkg|lib/spec.dart': _emptyCallSpec,
+      },
+      rootPackage: 'pkg',
+      generateFor: {'pkg|lib/spec.dart'},
+      onLog: (r) => logs.add(r.message),
+    );
+    expect(logs.join('\n'), contains('has an empty call'));
+  });
+
+  test('`X()` beside `X.link(...)` in one set is rejected (redundant)', () async {
+    final logs = <String>[];
+    await testBuilder(
+      navBuilder(BuilderOptions.empty),
+      {
+        'canon|lib/src/screens_annotation.dart': _annotation,
+        'canon|lib/canon.dart': _canonStub,
+        'pkg|lib/spec.dart': _redundantLinkSpec,
+      },
+      rootPackage: 'pkg',
+      generateFor: {'pkg|lib/spec.dart'},
+      onLog: (r) => logs.add(r.message),
+    );
+    expect(logs.join('\n'),
+        contains('both as a placement and a `.link` branch in the same set'));
+  });
+
+  test('WidgetLink nav tree spans nav screens; link branches stay widgetless',
+      () => _expectGenerated(
+        allOf([
+          // the nav tree, root-down: a nested id-bearing screen is a method
+          contains('static _WLHome get home =>'),
+          contains('_WLHomeAccount account(String id) =>'),
+          contains('static _WLSettings get settings =>'),
+          contains('_WLSettingsDetail detail(String id) =>'),
+          // `account.link` is a link branch, NOT a nav child → its widgetless
+          // resolver stays on the WidgetlessLink surface, off the nav tree, and
+          // smart-addressed by its leaf (the redundant `home` parent dropped)
+          contains('static _LXAccount get account =>'),
+          isNot(contains('static _LXHome get home =>')),
+          isNot(contains('account(String id) => _LX')),
+        ]),
+        spec: _probeSpec,
+      ));
+
+  test('WidgetlessLink drops a redundant static parent (smart minimal address)',
+      () => _expectGenerated(
+            allOf([
+              // `home/account/*` resolve-link is reachable as `.account`, the
+              // redundant `home` parent dropped; the URL still uses the full path
+              contains('static _LXAccount get account =>'),
+              isNot(contains('static _LXHome get home =>')),
+              contains("encodeLink(domain, 'home/account/*'"),
+            ]),
+            spec: _nestedLinkSpec,
+          ));
+
+  test('WidgetlessLink keeps the full path when the leaf is ambiguous', () =>
+      _expectGenerated(
+        allOf([
+          // `account` is linked under home AND profile → minimal address clashes,
+          // so both keep their disambiguating parent
+          contains('static _LXHome get home =>'),
+          contains('static _LXProfile get profile =>'),
+          contains('class _LXHomeAccount {'),
+          contains('class _LXProfileAccount {'),
+          isNot(contains('static _LXAccount get account =>')),
+        ]),
+        spec: _ambiguousLinkSpec,
       ));
 
   test('a nested link is named by its leaf screen, path stays in the template',

@@ -44,8 +44,9 @@ enum _Screens with ScreenNode<_Screens> {
       // a historyless URL mirror. Set it via `Screen.feedView.category = ...`.
       feed.keep({
         item({editItem.inherit(item)}).query({_ItemKeys.sort(Codec.string)}),
-      }).query(
-          {_FeedKeys.category(Codec.string), _FeedKeys.radius(Codec.integer)}),
+      })
+          .query({_FeedKeys.category(Codec.string), _FeedKeys.radius(Codec.integer)})
+          .fragment({_FeedFrag.tab(Codec.string), _FeedFrag.pinned}),
       // account (under profile) has a child editAccount that inherits its id →
       // reachable by global kick-start: Screen.goEditAccount(id) fills account
       // AND editAccount with the one id (the inherit kick-start rescue).
@@ -63,6 +64,9 @@ enum _Screens with ScreenNode<_Screens> {
 
 // feed's view-state keys (a QueryKeyBase enum): `key(codec)` = value key.
 enum _FeedKeys with QueryKeyBase { category, radius }
+
+// feed's fragment keys: a value key (`tab`) + a bare flag (`pinned`).
+enum _FeedFrag with QueryKeyBase { tab, pinned }
 
 // item's view-state key — shared across both of item's placements.
 enum _ItemKeys with QueryKeyBase { sort }

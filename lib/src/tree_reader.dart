@@ -181,17 +181,31 @@ Future<TreeModel> readTree(EnumElement root, BuildStep buildStep) async {
           [for (final a in ancestors) a.screen, name], ancestors.lastOrNull)
         ..keep = keep
         ..forget = forget;
+      // The call form is for a node WITH children — its set is required and must
+      // be non-empty. A childless leaf is written bare (`account`), never as an
+      // empty call (`account()`) or empty set (`account({})`).
       final children = args.arguments.firstOrNull;
-      if (children is SetOrMapLiteral) {
-        for (final child in children.elements) {
-          if (child is! Expression) {
-            throw InvalidGenerationSourceError(
-                'unsupported element in the tree literal: $child', element: root);
-          }
-          final node = await place(child, [...ancestors, placed], frame);
-          (node.isLink ? links : placed.children).add(node);
+      if (children is! SetOrMapLiteral || children.elements.isEmpty) {
+        throw InvalidGenerationSourceError(
+            'screen "$name" has an empty call — write a bare `$name` for a leaf, '
+            'or `$name({...})` to give it children.',
+            element: root);
+      }
+      final linkSiblings = <PlacementNode>[];
+      for (final child in children.elements) {
+        if (child is! Expression) {
+          throw InvalidGenerationSourceError(
+              'unsupported element in the tree literal: $child', element: root);
+        }
+        final node = await place(child, [...ancestors, placed], frame);
+        if (node.isLink) {
+          links.add(node);
+          linkSiblings.add(node);
+        } else {
+          placed.children.add(node);
         }
       }
+      _rejectScreenLinkClash(placed.children, linkSiblings, root);
       return placed;
     }
 
@@ -332,9 +346,34 @@ Future<TreeModel> readTree(EnumElement root, BuildStep buildStep) async {
         element: root);
   }
   final tree = <PlacementNode>[];
+  final rootLinks = <PlacementNode>[];
   for (final r in treeLit.elements) {
     final node = await place(r as Expression, [], rootFrame);
-    (node.isLink ? links : tree).add(node);
+    if (node.isLink) {
+      links.add(node);
+      rootLinks.add(node);
+    } else {
+      tree.add(node);
+    }
   }
+  _rejectScreenLinkClash(tree, rootLinks, root);
   return TreeModel(tree, enums, links);
+}
+
+// A node at one position is EITHER a navigable screen OR a `.link`-only branch,
+// never both — `X()` beside `X.link(...)` in one set is the widget form written
+// the long way. Reject it: put the link's branches inside the screen instead,
+// `X({slot(...)})`.
+void _rejectScreenLinkClash(
+    List<PlacementNode> navSiblings, List<PlacementNode> linkSiblings, Element root) {
+  final navNames = {for (final n in navSiblings) n.screen};
+  for (final l in linkSiblings) {
+    if (navNames.contains(l.screen)) {
+      throw InvalidGenerationSourceError(
+          'screen "${l.screen}" is declared both as a placement and a `.link` '
+          'branch in the same set — that is the widget form written redundantly. '
+          'Declare its link branches inside it instead: `${l.screen}({slot(...)})`.',
+          element: root);
+    }
+  }
 }

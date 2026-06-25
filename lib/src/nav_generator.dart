@@ -87,6 +87,35 @@ int? _unionSlot(Endpoint e) {
   return null;
 }
 
+// ---- link builder chain (trie of segments) -----------------------------
+// `Link.<route>` fluent path → URL, mirroring canon_link. A node is one URL
+// segment; its `_LN…` step class accumulates path/branch values until a
+// terminal endpoint exposes `toUri()`. At a union `*` slot, canon's sibling
+// model means one BRANCH METHOD per case (`.me()`/`.byId(id)`) instead of
+// canon_link's single typed `call`.
+class _ChainNode {
+  _ChainNode(this.seg, this.path);
+  final String seg; // this node's segment (`*` for a slot)
+  final List<String> path; // segments from the root, inclusive
+  final Map<String, _ChainNode> kids = {};
+  Endpoint? refEp; // first endpoint passing through (for slot lookup)
+  Endpoint? endpoint; // an endpoint terminates here
+  bool terminalOk = false; // reachable terminal for the current family
+  int slotOrdinal = -1; // for a `*` node: its index among the endpoint's slots
+  final Set<int> okBranches = {}; // for a union `*` node: allowed case indices
+}
+
+String _pascalSeg(String s) => s.split('-').map(_cap).join();
+// Step-class name from a path: `item/*` → `_LNItemSlot`. The [prefix] differs
+// per family so the three tries never share a step class (sharing would let a
+// family cross into another's continuation).
+String _chainStep(String prefix, List<String> path) =>
+    '$prefix${path.map((s) => s == '*' ? 'Slot' : _pascalSeg(s)).join()}';
+String _chainSeg(String seg) {
+  final p = seg.split('-');
+  return p.first + p.skip(1).map(_cap).join();
+}
+
 class NavGenerator extends GeneratorForAnnotation<Screens> {
   @override
   Future<String> generateForAnnotatedElement(
@@ -1289,6 +1318,21 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
             : 'null';
         stepBuf.writeln('  $ret get ${e.key} => $ctor._([...specs, ${sv(e.key)}], [...ids, null], $cArg);');
       }
+      // Inherit kick-start shortcut: an inheriting leaf grandchild (`editItem`
+      // inherits `item`) is offered directly here, skipping the redundant
+      // parent — `on(.home.editItem(id))` == `on(.home.item(id).editItem)`. The
+      // one id pins the source segment (the inheriting segment is a wildcard).
+      for (final c in fwd(ms)) {
+        if (idOf[c.screen] == null) continue;
+        for (final gc in c.children) {
+          if (gc.inheritSource?.screen != c.screen || fwd([gc]).isNotEmpty) {
+            continue;
+          }
+          final gcNav = placementName(gc);
+          stepBuf.writeln('  ${onOf(gcNav, gc.screen)} ${gc.screen}(${idOf[c.screen]} id) =>'
+              ' On._([...specs, ${sv(c.screen)}, ${sv(gc.screen)}], [...ids, id, null], const $gcNav._());');
+        }
+      }
       if (idOf[sc] != null) {
         stepBuf.writeln('  $name call(${idOf[sc]} id) => $name._(specs, [...ids.sublist(0, ids.length - 1), id], nav);');
       }
@@ -1803,11 +1847,14 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       b.writeln('}');
     }
 
-    // ── Link surface — typed `Link` classes from the tree's `.links` branches.
-    // Domain-agnostic; parse (C3b) is path-only — the platform verifies the host.
+    // ── Link surface. Always emitted: EVERY screen is a deep link, so the
+    // WidgetLink nav tree + the `Link` superset stand on their own. The flat
+    // parse classes / `parseLink` / WidgetlessLink resolve-branches come from
+    // the declared `.link` endpoints (empty when none). Domain-agnostic; parse
+    // is path-only — the platform verifies the host.
     final endpoints =
         linkEndpoints(model.links, element, {for (final r in rows) r.name}, idOf);
-    if (endpoints.isNotEmpty) {
+    {
       b.writeln('');
       // One concrete `Link` class per case (k = a union branch, or null for a
       // single-slot endpoint). Phase A: a `.link` branch seeds no widget, so every
@@ -1841,7 +1888,9 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
           }
         }
         // The injected screen-id branch is renderable from the URL → WidgetLink;
-        // every other branch needs resolution → WidgetlessLink.
+        // every other branch needs resolution → WidgetlessLink. The id always
+        // rides the union slot (a widget form has ≥1 declared resolver beside
+        // it; an empty `slots({})` is rejected at read time).
         final widget = k != null && e.slots[ui!].codecs[k].isWidgetId;
         return (
           name: k == null ? e.className : _siblingName(entity, e.slots[ui!].codecs[k]),
@@ -1872,11 +1921,310 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       final linkDomain = annotation.peek('domain')?.stringValue;
       final domainSig = linkDomain != null ? '[String? domain]' : 'String domain';
       final domainArg = linkDomain != null ? "domain ?? '$linkDomain'" : 'domain';
-      b.writeln('/// A strict URL -> typed Link, from the tree\'s `.link` branches.');
-      b.writeln('/// Build a URL from any link with `link.toUri([domain])`.');
-      b.writeln('sealed class Link { const Link(); Uri toUri($domainSig); }');
-      b.writeln('sealed class WidgetLink extends Link { const WidgetLink(); }');
-      b.writeln('sealed class WidgetlessLink extends Link { const WidgetlessLink(); }');
+      // ── Builder chain — `Link.<route>` / `WidgetLink.<route>` /
+      // `WidgetlessLink.<route>` fluent path to a URL. Each root owns its OWN
+      // family-filtered trie + prefixed step classes, so a `WidgetLink` chain
+      // can never offer a widgetless continuation (family-closed, canon-style).
+      final chainBuf = StringBuffer(); // step classes, appended after parse
+      // Emits one family's trie: returns the static-getter lines to inject into
+      // its sealed root, and writes the family's step classes into [chainBuf].
+      Map<String, String> emitFamily(
+          String prefix, bool Function(Endpoint, int?) keep,
+          {List<String> Function(Endpoint)? pathOf}) {
+        final root = _ChainNode('', const []);
+        for (final e in endpoints) {
+          final ui = _unionSlot(e);
+          final ks = ui == null
+              ? <int?>[null]
+              : [for (var k = 0; k < e.slots[ui].codecs.length; k++) k];
+          for (final k in ks) {
+            if (!keep(e, k)) continue;
+            final segs = pathOf != null
+                ? pathOf(e)
+                : (e.template.isEmpty ? const <String>[] : e.template.split('/'));
+            var node = root;
+            var ord = -1;
+            for (final s in segs) {
+              node = node.kids.putIfAbsent(s, () => _ChainNode(s, [...node.path, s]));
+              node.refEp ??= e;
+              if (s == '*') {
+                node.slotOrdinal = ++ord;
+                if (node.slotOrdinal == ui && k != null) node.okBranches.add(k);
+              }
+            }
+            node.endpoint = e;
+            node.terminalOk = true;
+          }
+        }
+        // The lower-camel branch method for a union case (`ItemByIdLink` →
+        // `byId`); for a single non-union slot it's canon_link's `call`.
+        String branchMethod(String entity, CodecSpec c) {
+          final s = _siblingName(entity, c);
+          return _lcFirst(s.substring(entity.length, s.length - 4));
+        }
+        void writeStep(_ChainNode n) {
+          final name = _chainStep(prefix, n.path);
+          chainBuf.writeln('class $name {');
+          chainBuf.writeln('  $name(this._p, this._b);');
+          chainBuf.writeln('  final List<Object?> _p;');
+          chainBuf.writeln('  final List<int> _b;');
+          for (final k in n.kids.values) {
+            final child = _chainStep(prefix, k.path);
+            if (k.seg == '*') {
+              final e = k.refEp!;
+              final slot = e.slots[k.slotOrdinal];
+              if (slot.isUnion) {
+                final entity = _linkBase(e.className);
+                for (final br in n.kids['*']!.okBranches.toList()..sort()) {
+                  final c = slot.codecs[br];
+                  final m = branchMethod(entity, c);
+                  if (c.isLiteral) {
+                    chainBuf.writeln('  $child $m() => '
+                        "$child([..._p, '${c.literal}'], [..._b, $br]);");
+                  } else {
+                    final f = _branchField(c);
+                    chainBuf.writeln('  $child $m(${c.type} $f) => '
+                        '$child([..._p, $f], [..._b, $br]);');
+                  }
+                }
+              } else {
+                final t = slot.codecs.first.type;
+                final f = _slotFieldName(e, k.slotOrdinal);
+                chainBuf.writeln('  $child call($t $f) => '
+                    '$child([..._p, $f], [..._b, 0]);');
+              }
+            } else {
+              chainBuf.writeln('  $child get ${_chainSeg(k.seg)} => $child(_p, _b);');
+            }
+          }
+          if (n.terminalOk) {
+            chainBuf.writeln('  Uri toUri($domainSig) => Uri.parse('
+                "$spec.graph.encodeLink($domainArg, '${n.endpoint!.template}', "
+                '_p, _b));');
+          }
+          chainBuf.writeln('}');
+        }
+
+        void walk(_ChainNode n) {
+          for (final k in n.kids.values) {
+            writeStep(k);
+            walk(k);
+          }
+        }
+
+        walk(root);
+        final statics = <String, String>{}; // getter name → static line
+        for (final k in root.kids.values) {
+          if (k.seg == '*') continue; // a top-level slot has no static name
+          final step = _chainStep(prefix, k.path);
+          statics[_chainSeg(k.seg)] = '  static $step get ${_chainSeg(k.seg)} => '
+              '$step(const <Object?>[], const <int>[]);';
+        }
+        return statics;
+      }
+
+      familyOf(Endpoint e, int? k) => caseOf(e, k).family;
+
+      // WidgetlessLink is SMART minimal-parent: a resolve-branch is addressed
+      // from the nearest unambiguous ancestor — drop leading STATIC ancestor
+      // segments (a slot-bearing ancestor can't be dropped, its value is needed),
+      // keep the leaf screen segment for naming, and fall back to the full path
+      // only to disambiguate. The URL still uses the endpoint's full template.
+      List<String> minimalSegs(Endpoint e) {
+        final segs = e.template.split('/');
+        final leaf = segs.lastIndexWhere((s) => s != '*');
+        if (leaf <= 0) return segs; // already leaf-rooted
+        return segs.sublist(0, leaf).contains('*') ? segs : segs.sublist(leaf);
+      }
+
+      final wlessEndpoints = [
+        for (final e in endpoints)
+          if (_unionSlot(e) == null
+              ? familyOf(e, null) == 'WidgetlessLink'
+              : [for (var k = 0; k < e.slots[_unionSlot(e)!].codecs.length; k++) k]
+                  .any((k) => familyOf(e, k) == 'WidgetlessLink'))
+            e
+      ];
+      final minCount = <String, int>{};
+      for (final e in wlessEndpoints) {
+        minCount[minimalSegs(e).join('/')] =
+            (minCount[minimalSegs(e).join('/')] ?? 0) + 1;
+      }
+      // A minimal path shared by 2+ endpoints is ambiguous → those use the full
+      // path; the rest drop their redundant parents.
+      List<String> wxPath(Endpoint e) {
+        final min = minimalSegs(e);
+        return (minCount[min.join('/')] ?? 0) > 1 ? e.template.split('/') : min;
+      }
+
+      final widgetlessStatics = emitFamily(
+          '_LX', (e, k) => familyOf(e, k) == 'WidgetlessLink',
+          pathOf: wxPath);
+
+      // ── WidgetLink = the WHOLE nav tree. Every screen that can sit on the
+      // stack IS a deep link, so the WidgetLink chain mirrors the nav grammar
+      // ROOT-DOWN (`WidgetLink.home.item(id)`), accumulating the full canonical
+      // path, and `.toUri()` prints it via `encodeNavUrl` (no navigation). An
+      // id-bearing screen is a METHOD (its id is mandatory before you proceed —
+      // `.user(id)`, never bare `.user`); an inherited segment is bare (id rides
+      // its source) so it stays a getter. TODO(widgetless-rework): the smart
+      // minimal-parent WidgetlessLink chain + Link superset still use the old
+      // declared-endpoint trie below; reshape next.
+      final wlEmitted = <String>{};
+      String wlName(PlacementNode n) => '_WL${n.path.map(_cap).join()}';
+      List<PlacementNode> wlKids(PlacementNode n) =>
+          [for (final c in n.children) if (!c.isLink && c.again == null) c];
+      String wlAccessor(PlacementNode c, {required bool static}) {
+        final cn = wlName(c);
+        final pre = static ? 'static ' : '';
+        final push = static
+            ? '[${sv(c.screen)}], [${idOf[c.screen] != null && c.inheritSource == null ? 'id' : 'null'}]'
+            : '[..._s, ${sv(c.screen)}], [..._i, '
+                '${idOf[c.screen] != null && c.inheritSource == null ? 'id' : 'null'}]';
+        // id-bearing (non-inherited) → method taking the id; else a getter.
+        return idOf[c.screen] != null && c.inheritSource == null
+            ? '  $pre$cn ${c.screen}(${idOf[c.screen]} id) => $cn._($push);'
+            : '  $pre$cn get ${c.screen} => $cn._($push);';
+      }
+
+      // Direct kick-start static: a single-placement screen (`globalSafe`) is
+      // addressable straight from its name — `Link.editItem(id)` jumps over its
+      // unambiguous ancestors, the one id back-filling the inherit anchor (every
+      // other segment is bare). The URL twin of `Screen.goEditItem`.
+      String wlDirect(PlacementNode node) {
+        final s = node.screen;
+        final idT = idOf[s];
+        // The lone id-bearing segment: the inherit source, or the screen itself.
+        final anchor = node.inheritSource?.screen ?? (idT != null ? s : null);
+        final pathEnums = [for (final p in node.path) sv(p)].join(', ');
+        final ids = [for (final p in node.path) p == anchor ? 'id' : 'null'].join(', ');
+        final step = wlName(node);
+        return idT == null
+            ? '  static $step get $s => $step._([$pathEnums], [$ids]);'
+            : '  static $step $s($idT id) => $step._([$pathEnums], [$ids]);';
+      }
+
+      void emitWlStep(PlacementNode n) {
+        final name = wlName(n);
+        if (!wlEmitted.add(name)) return;
+        final kids = wlKids(n);
+        chainBuf.writeln('class $name {');
+        chainBuf.writeln('  const $name._(this._s, this._i);');
+        chainBuf.writeln('  final List<Enum> _s;');
+        chainBuf.writeln('  final List<Object?> _i;');
+        for (final c in kids) {
+          chainBuf.writeln(wlAccessor(c, static: false));
+          // Inherit kick-start shortcut: an inheriting grandchild (`editItem`
+          // inherits `item`) is offered DIRECTLY here, skipping the redundant
+          // parent — `home.editItem(id)` == `home.item(id).editItem`. The one id
+          // back-fills the source segment; the inheriting segment is bare.
+          if (idOf[c.screen] != null) {
+            for (final gc in c.children) {
+              if (gc.isLink ||
+                  gc.again != null ||
+                  gc.inheritSource?.screen != c.screen) continue;
+              final gn = wlName(gc);
+              chainBuf.writeln('  $gn ${gc.screen}(${idOf[c.screen]} id) => '
+                  '$gn._([..._s, ${sv(c.screen)}, ${sv(gc.screen)}], '
+                  '[..._i, id, null]);');
+            }
+          }
+        }
+        // View-state: a screen that declares `.query`/`.fragment` exposes a
+        // FLUENT setter chain (`feed.query.category('books').fragment.tab('x')`),
+        // so the consumer never names a generated type — each key autocompletes
+        // off the chain. Query and fragment are SEPARATE stages, mirroring the
+        // URL's `?…#…` split: `.query` opens the query stage (which has a
+        // `.fragment` transition); `.fragment` opens the fragment stage (terminal).
+        final vs = viewScreens[n.screen];
+        final qName = '${name}Q';
+        final fName = '${name}F';
+        final hasQ = vs != null && vs.query.isNotEmpty;
+        final hasF = vs != null && vs.fragment.isNotEmpty;
+        if (hasQ) {
+          chainBuf.writeln('  $qName get query => '
+              '$qName(_s, _i, const {}, const {});');
+        }
+        if (hasF) {
+          chainBuf.writeln('  $fName get fragment => '
+              '$fName(_s, _i, const {}, const {});');
+        }
+        chainBuf.writeln('  Uri toUri($domainSig) => '
+            'Uri.parse($spec.graph.encodeNavUrl($domainArg, _s, _i));');
+        chainBuf.writeln('}');
+        // A view-stage builder: a chainable setter per key (a flag takes no arg,
+        // presence ⟹ true; a value key takes its typed value), then `.toUri()`.
+        void viewStage(String cls, List<ViewKey> keys, String part,
+            {String? transition}) {
+          chainBuf.writeln('class $cls {');
+          chainBuf.writeln('  $cls(this._s, this._i, this._q, this._f);');
+          chainBuf.writeln('  final List<Enum> _s;');
+          chainBuf.writeln('  final List<Object?> _i;');
+          chainBuf.writeln('  final Map<String, Object?> _q;');
+          chainBuf.writeln('  final Map<String, Object?> _f;');
+          for (final k in keys) {
+            final sig = k.flag ? '${k.name}()' : '${k.name}(${k.type} v)';
+            final val = k.flag ? 'true' : 'v';
+            final maps = part == 'q'
+                ? "{..._q, '${k.name}': $val}, _f"
+                : "_q, {..._f, '${k.name}': $val}";
+            chainBuf.writeln('  $cls $sig => $cls(_s, _i, $maps);');
+          }
+          if (transition != null) {
+            chainBuf.writeln('  $transition get fragment => '
+                '$transition(_s, _i, _q, _f);');
+          }
+          chainBuf.writeln('  Uri toUri($domainSig) => Uri.parse('
+              '$spec.graph.encodeNavUrl($domainArg, _s, _i, _q, _f));');
+          chainBuf.writeln('}');
+        }
+
+        if (hasQ) viewStage(qName, vs.query, 'q', transition: hasF ? fName : null);
+        if (hasF) viewStage(fName, vs.fragment, 'f');
+        for (final c in kids) {
+          emitWlStep(c);
+        }
+      }
+
+      final wlRoots = [for (final n in tree) if (!n.isLink && n.again == null) n];
+      for (final n in wlRoots) {
+        emitWlStep(n);
+      }
+      // A globalSafe (single-placement) screen gets a direct shortcut static;
+      // every root is a chain entry point (a multi-placement root isn't
+      // globalSafe, so it falls back to the plain root accessor).
+      final widgetStatics = <String, String>{
+        for (final r in rows)
+          if (globalSafe(r.name)) r.name: wlDirect(placements[r.name]!.single),
+      };
+      for (final n in wlRoots) {
+        widgetStatics.putIfAbsent(n.screen, () => wlAccessor(n, static: true));
+      }
+
+      // `Link.<route>` is the unrestricted SUPERSET — both the WidgetLink nav
+      // tree and the smart WidgetlessLink leaves under one root, delegating to
+      // the same step classes. A name carried by both families resolves to the
+      // nav-target (WidgetLink) form.
+      final linkStatics = {
+        ...widgetStatics,
+        for (final e in widgetlessStatics.entries)
+          if (!widgetStatics.containsKey(e.key)) e.key: e.value,
+      };
+
+      b.writeln('/// A typed deep link. `Link.<route>….toUri([domain])` builds a');
+      b.writeln('/// URL (the nav-target tree + the resolve-branch leaves); a parsed');
+      b.writeln('/// link round-trips with `link.toUri([domain])`.');
+      b.writeln('sealed class Link { const Link(); Uri toUri($domainSig);');
+      linkStatics.values.forEach(b.writeln);
+      b.writeln('}');
+      b.writeln('/// Nav targets — every screen reachable on the stack, root-down.');
+      b.writeln('sealed class WidgetLink extends Link { const WidgetLink();');
+      widgetStatics.values.forEach(b.writeln);
+      b.writeln('}');
+      b.writeln('/// Resolve branches — addressed from the nearest unambiguous parent.');
+      b.writeln('sealed class WidgetlessLink extends Link { const WidgetlessLink();');
+      widgetlessStatics.values.forEach(b.writeln);
+      b.writeln('}');
       // per-entity marker (rule 14): the union cases IMPLEMENT it, cross-cutting
       // the widget families, so `case UserLink()` catches any branch of that entity.
       for (final e in endpoints) {
@@ -1941,6 +2289,8 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       b.writeln('  return ParsedLink(link, \'\${uri.scheme}://\${uri.host}\');');
       b.writeln('}');
       // encode is the instance `link.toUri([domain])` emitted on each class above.
+      b.writeln('');
+      b.write(chainBuf); // the `Link.<route>` builder step classes
     }
 
     // ── View-state data types: `<Screen>Query` (read getters) + `<Screen>QueryMut`

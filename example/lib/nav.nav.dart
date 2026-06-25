@@ -496,6 +496,10 @@ final class On<N extends AnyNav, V> {
   static On<AnyPlacement, AnyView> query(Set<QueryCond> cs) =>
       On._(const [], const [], null, [...cs]);
 
+  /// GLOBAL fragment conditions, unbound to a screen.
+  static On<AnyPlacement, AnyView> fragment(Set<FragmentCond> cs) =>
+      On._(const [], const [], null, [...cs]);
+
   /// Disambiguating push onto the current scope when a screen has
   /// 2+ parents: `Screen.on(.parentOf.x)?.goX(...)`. A namespace —
   /// `.parentOf` alone is not an `On`, so the bare form will not compile.
@@ -547,6 +551,11 @@ final class OnHome extends On<HomeNav, AnyView> {
     [...ids, null],
     const HomeSettingsNav._(),
   );
+  On<HomeItemEditItemNav, AnyView> editItem(String id) => On._(
+    [...specs, _Screens.item, _Screens.editItem],
+    [...ids, id, null],
+    const HomeItemEditItemNav._(),
+  );
 }
 
 final class OnHomeItem extends On<HomeItemNav, ItemView> {
@@ -572,10 +581,17 @@ final class OnFeed extends On<FeedNav, FeedView> {
   const OnFeed._(super.specs, super.ids, super.nav, [super.conds]) : super._();
   OnFeed query(Set<FeedQueryCond> cs) =>
       OnFeed._(specs, ids, nav, [...conds, ...cs]);
+  OnFeed fragment(Set<FeedFragmentCond> cs) =>
+      OnFeed._(specs, ids, nav, [...conds, ...cs]);
   OnFeedItem get item => OnFeedItem._(
     [...specs, _Screens.item],
     [...ids, null],
     const FeedItemNav._(),
+  );
+  On<FeedItemEditItemNav, AnyView> editItem(String id) => On._(
+    [...specs, _Screens.item, _Screens.editItem],
+    [...ids, id, null],
+    const FeedItemEditItemNav._(),
   );
 }
 
@@ -600,6 +616,11 @@ final class OnProfile extends On<ProfileNav, AnyView> {
     [...specs, _Screens.account],
     [...ids, null],
     const AccountNav._(),
+  );
+  On<EditAccountNav, AnyView> editAccount(String id) => On._(
+    [...specs, _Screens.account, _Screens.editAccount],
+    [...ids, id, null],
+    const EditAccountNav._(),
   );
 }
 
@@ -791,6 +812,7 @@ final class FeedNav extends AnyPlacement
   }
 
   FeedQueryMut get query => const FeedQueryMut._();
+  FeedFragmentMut get fragment => const FeedFragmentMut._();
   FeedNav get at => this;
   FeedItemNav goItem(String id) {
     _Screens.graph.popTo(_Screens.feed);
@@ -1260,19 +1282,48 @@ void verifyScreens() {
   }());
 }
 
-/// A strict URL -> typed Link, from the tree's `.link` branches.
-/// Build a URL from any link with `link.toUri([domain])`.
+/// A typed deep link. `Link.<route>….toUri([domain])` builds a
+/// URL (the nav-target tree + the resolve-branch leaves); a parsed
+/// link round-trips with `link.toUri([domain])`.
 sealed class Link {
   const Link();
   Uri toUri([String? domain]);
+  static _WLSplash get splash => _WLSplash._([_Screens.splash], [null]);
+  static _WLSignIn get signIn => _WLSignIn._([_Screens.signIn], [null]);
+  static _WLHome get home => _WLHome._([_Screens.home], [null]);
+  static _WLFeed get feed => _WLFeed._([_Screens.feed], [null]);
+  static _WLProfile get profile => _WLProfile._([_Screens.profile], [null]);
+  static _WLProfileAccount account(String id) =>
+      _WLProfileAccount._([_Screens.profile, _Screens.account], [null, id]);
+  static _WLProfileAccountEditAccount editAccount(String id) =>
+      _WLProfileAccountEditAccount._(
+        [_Screens.profile, _Screens.account, _Screens.editAccount],
+        [null, id, null],
+      );
+  static _LXItem get item => _LXItem(const <Object?>[], const <int>[]);
 }
 
+/// Nav targets — every screen reachable on the stack, root-down.
 sealed class WidgetLink extends Link {
   const WidgetLink();
+  static _WLSplash get splash => _WLSplash._([_Screens.splash], [null]);
+  static _WLSignIn get signIn => _WLSignIn._([_Screens.signIn], [null]);
+  static _WLHome get home => _WLHome._([_Screens.home], [null]);
+  static _WLFeed get feed => _WLFeed._([_Screens.feed], [null]);
+  static _WLProfile get profile => _WLProfile._([_Screens.profile], [null]);
+  static _WLProfileAccount account(String id) =>
+      _WLProfileAccount._([_Screens.profile, _Screens.account], [null, id]);
+  static _WLProfileAccountEditAccount editAccount(String id) =>
+      _WLProfileAccountEditAccount._(
+        [_Screens.profile, _Screens.account, _Screens.editAccount],
+        [null, id, null],
+      );
 }
 
+/// Resolve branches — addressed from the nearest unambiguous parent.
 sealed class WidgetlessLink extends Link {
   const WidgetlessLink();
+  static _LXItem get item => _LXItem(const <Object?>[], const <int>[]);
 }
 
 sealed class ItemLink implements Link {}
@@ -1344,6 +1395,280 @@ ParsedLink? parseLink(String url) {
   return ParsedLink(link, '${uri.scheme}://${uri.host}');
 }
 
+class _LXItem {
+  _LXItem(this._p, this._b);
+  final List<Object?> _p;
+  final List<int> _b;
+  _LXItemSlot me() => _LXItemSlot([..._p, 'me'], [..._b, 0]);
+  _LXItemSlot byId(String itemId) => _LXItemSlot([..._p, itemId], [..._b, 1]);
+  _LXItemSlot byUsername(String username) =>
+      _LXItemSlot([..._p, username], [..._b, 2]);
+}
+
+class _LXItemSlot {
+  _LXItemSlot(this._p, this._b);
+  final List<Object?> _p;
+  final List<int> _b;
+  Uri toUri([String? domain]) => Uri.parse(
+    _Screens.graph.encodeLink(
+      domain ?? 'https://canon.example',
+      'item/*',
+      _p,
+      _b,
+    ),
+  );
+}
+
+class _WLSplash {
+  const _WLSplash._(this._s, this._i);
+  final List<Enum> _s;
+  final List<Object?> _i;
+  Uri toUri([String? domain]) => Uri.parse(
+    _Screens.graph.encodeNavUrl(domain ?? 'https://canon.example', _s, _i),
+  );
+}
+
+class _WLSignIn {
+  const _WLSignIn._(this._s, this._i);
+  final List<Enum> _s;
+  final List<Object?> _i;
+  Uri toUri([String? domain]) => Uri.parse(
+    _Screens.graph.encodeNavUrl(domain ?? 'https://canon.example', _s, _i),
+  );
+}
+
+class _WLHome {
+  const _WLHome._(this._s, this._i);
+  final List<Enum> _s;
+  final List<Object?> _i;
+  _WLHomeItem item(String id) =>
+      _WLHomeItem._([..._s, _Screens.item], [..._i, id]);
+  _WLHomeItemEditItem editItem(String id) => _WLHomeItemEditItem._(
+    [..._s, _Screens.item, _Screens.editItem],
+    [..._i, id, null],
+  );
+  _WLHomeSettings get settings =>
+      _WLHomeSettings._([..._s, _Screens.settings], [..._i, null]);
+  Uri toUri([String? domain]) => Uri.parse(
+    _Screens.graph.encodeNavUrl(domain ?? 'https://canon.example', _s, _i),
+  );
+}
+
+class _WLHomeItem {
+  const _WLHomeItem._(this._s, this._i);
+  final List<Enum> _s;
+  final List<Object?> _i;
+  _WLHomeItemEditItem get editItem =>
+      _WLHomeItemEditItem._([..._s, _Screens.editItem], [..._i, null]);
+  _WLHomeItemQ get query => _WLHomeItemQ(_s, _i, const {}, const {});
+  Uri toUri([String? domain]) => Uri.parse(
+    _Screens.graph.encodeNavUrl(domain ?? 'https://canon.example', _s, _i),
+  );
+}
+
+class _WLHomeItemQ {
+  _WLHomeItemQ(this._s, this._i, this._q, this._f);
+  final List<Enum> _s;
+  final List<Object?> _i;
+  final Map<String, Object?> _q;
+  final Map<String, Object?> _f;
+  _WLHomeItemQ sort(String v) => _WLHomeItemQ(_s, _i, {..._q, 'sort': v}, _f);
+  Uri toUri([String? domain]) => Uri.parse(
+    _Screens.graph.encodeNavUrl(
+      domain ?? 'https://canon.example',
+      _s,
+      _i,
+      _q,
+      _f,
+    ),
+  );
+}
+
+class _WLHomeItemEditItem {
+  const _WLHomeItemEditItem._(this._s, this._i);
+  final List<Enum> _s;
+  final List<Object?> _i;
+  Uri toUri([String? domain]) => Uri.parse(
+    _Screens.graph.encodeNavUrl(domain ?? 'https://canon.example', _s, _i),
+  );
+}
+
+class _WLHomeSettings {
+  const _WLHomeSettings._(this._s, this._i);
+  final List<Enum> _s;
+  final List<Object?> _i;
+  _WLHomeSettingsAbout get about =>
+      _WLHomeSettingsAbout._([..._s, _Screens.about], [..._i, null]);
+  Uri toUri([String? domain]) => Uri.parse(
+    _Screens.graph.encodeNavUrl(domain ?? 'https://canon.example', _s, _i),
+  );
+}
+
+class _WLHomeSettingsAbout {
+  const _WLHomeSettingsAbout._(this._s, this._i);
+  final List<Enum> _s;
+  final List<Object?> _i;
+  Uri toUri([String? domain]) => Uri.parse(
+    _Screens.graph.encodeNavUrl(domain ?? 'https://canon.example', _s, _i),
+  );
+}
+
+class _WLFeed {
+  const _WLFeed._(this._s, this._i);
+  final List<Enum> _s;
+  final List<Object?> _i;
+  _WLFeedItem item(String id) =>
+      _WLFeedItem._([..._s, _Screens.item], [..._i, id]);
+  _WLFeedItemEditItem editItem(String id) => _WLFeedItemEditItem._(
+    [..._s, _Screens.item, _Screens.editItem],
+    [..._i, id, null],
+  );
+  _WLFeedQ get query => _WLFeedQ(_s, _i, const {}, const {});
+  _WLFeedF get fragment => _WLFeedF(_s, _i, const {}, const {});
+  Uri toUri([String? domain]) => Uri.parse(
+    _Screens.graph.encodeNavUrl(domain ?? 'https://canon.example', _s, _i),
+  );
+}
+
+class _WLFeedQ {
+  _WLFeedQ(this._s, this._i, this._q, this._f);
+  final List<Enum> _s;
+  final List<Object?> _i;
+  final Map<String, Object?> _q;
+  final Map<String, Object?> _f;
+  _WLFeedQ category(String v) => _WLFeedQ(_s, _i, {..._q, 'category': v}, _f);
+  _WLFeedQ radius(int v) => _WLFeedQ(_s, _i, {..._q, 'radius': v}, _f);
+  _WLFeedF get fragment => _WLFeedF(_s, _i, _q, _f);
+  Uri toUri([String? domain]) => Uri.parse(
+    _Screens.graph.encodeNavUrl(
+      domain ?? 'https://canon.example',
+      _s,
+      _i,
+      _q,
+      _f,
+    ),
+  );
+}
+
+class _WLFeedF {
+  _WLFeedF(this._s, this._i, this._q, this._f);
+  final List<Enum> _s;
+  final List<Object?> _i;
+  final Map<String, Object?> _q;
+  final Map<String, Object?> _f;
+  _WLFeedF tab(String v) => _WLFeedF(_s, _i, _q, {..._f, 'tab': v});
+  _WLFeedF pinned() => _WLFeedF(_s, _i, _q, {..._f, 'pinned': true});
+  Uri toUri([String? domain]) => Uri.parse(
+    _Screens.graph.encodeNavUrl(
+      domain ?? 'https://canon.example',
+      _s,
+      _i,
+      _q,
+      _f,
+    ),
+  );
+}
+
+class _WLFeedItem {
+  const _WLFeedItem._(this._s, this._i);
+  final List<Enum> _s;
+  final List<Object?> _i;
+  _WLFeedItemEditItem get editItem =>
+      _WLFeedItemEditItem._([..._s, _Screens.editItem], [..._i, null]);
+  _WLFeedItemQ get query => _WLFeedItemQ(_s, _i, const {}, const {});
+  Uri toUri([String? domain]) => Uri.parse(
+    _Screens.graph.encodeNavUrl(domain ?? 'https://canon.example', _s, _i),
+  );
+}
+
+class _WLFeedItemQ {
+  _WLFeedItemQ(this._s, this._i, this._q, this._f);
+  final List<Enum> _s;
+  final List<Object?> _i;
+  final Map<String, Object?> _q;
+  final Map<String, Object?> _f;
+  _WLFeedItemQ sort(String v) => _WLFeedItemQ(_s, _i, {..._q, 'sort': v}, _f);
+  Uri toUri([String? domain]) => Uri.parse(
+    _Screens.graph.encodeNavUrl(
+      domain ?? 'https://canon.example',
+      _s,
+      _i,
+      _q,
+      _f,
+    ),
+  );
+}
+
+class _WLFeedItemEditItem {
+  const _WLFeedItemEditItem._(this._s, this._i);
+  final List<Enum> _s;
+  final List<Object?> _i;
+  Uri toUri([String? domain]) => Uri.parse(
+    _Screens.graph.encodeNavUrl(domain ?? 'https://canon.example', _s, _i),
+  );
+}
+
+class _WLProfile {
+  const _WLProfile._(this._s, this._i);
+  final List<Enum> _s;
+  final List<Object?> _i;
+  _WLProfileSettings get settings =>
+      _WLProfileSettings._([..._s, _Screens.settings], [..._i, null]);
+  _WLProfileAccount account(String id) =>
+      _WLProfileAccount._([..._s, _Screens.account], [..._i, id]);
+  _WLProfileAccountEditAccount editAccount(String id) =>
+      _WLProfileAccountEditAccount._(
+        [..._s, _Screens.account, _Screens.editAccount],
+        [..._i, id, null],
+      );
+  Uri toUri([String? domain]) => Uri.parse(
+    _Screens.graph.encodeNavUrl(domain ?? 'https://canon.example', _s, _i),
+  );
+}
+
+class _WLProfileSettings {
+  const _WLProfileSettings._(this._s, this._i);
+  final List<Enum> _s;
+  final List<Object?> _i;
+  _WLProfileSettingsAbout get about =>
+      _WLProfileSettingsAbout._([..._s, _Screens.about], [..._i, null]);
+  Uri toUri([String? domain]) => Uri.parse(
+    _Screens.graph.encodeNavUrl(domain ?? 'https://canon.example', _s, _i),
+  );
+}
+
+class _WLProfileSettingsAbout {
+  const _WLProfileSettingsAbout._(this._s, this._i);
+  final List<Enum> _s;
+  final List<Object?> _i;
+  Uri toUri([String? domain]) => Uri.parse(
+    _Screens.graph.encodeNavUrl(domain ?? 'https://canon.example', _s, _i),
+  );
+}
+
+class _WLProfileAccount {
+  const _WLProfileAccount._(this._s, this._i);
+  final List<Enum> _s;
+  final List<Object?> _i;
+  _WLProfileAccountEditAccount get editAccount =>
+      _WLProfileAccountEditAccount._(
+        [..._s, _Screens.editAccount],
+        [..._i, null],
+      );
+  Uri toUri([String? domain]) => Uri.parse(
+    _Screens.graph.encodeNavUrl(domain ?? 'https://canon.example', _s, _i),
+  );
+}
+
+class _WLProfileAccountEditAccount {
+  const _WLProfileAccountEditAccount._(this._s, this._i);
+  final List<Enum> _s;
+  final List<Object?> _i;
+  Uri toUri([String? domain]) => Uri.parse(
+    _Screens.graph.encodeNavUrl(domain ?? 'https://canon.example', _s, _i),
+  );
+}
+
 /// Read-only placement view — the reactive reads return these.
 sealed class AnyView {}
 
@@ -1386,6 +1711,41 @@ final class QueryNot {
       const QueryCond._('category', null, presence: true, negate: true);
   QueryCond<int> get radius =>
       const QueryCond._('radius', null, presence: true, negate: true);
+}
+
+/// GLOBAL fragment condition terms — `.key` present / `.key(v)` equals / `.flag` true; `.not.…` negates (`.not.key` = absent).
+final class FragmentCond<T> implements ViewCond {
+  const FragmentCond._(
+    this.key,
+    this.expected, {
+    this.negate = false,
+    this.presence = false,
+  });
+  @override
+  final String key;
+  final Object? expected;
+  final bool negate;
+  final bool presence;
+
+  /// `.key(v)` — narrow a present term to an equals term, keeping any negation.
+  FragmentCond<T> call(T v) => FragmentCond<T>._(key, v, negate: negate);
+  @override
+  bool test(Object? v) {
+    final m = presence ? v != null : v == expected;
+    return negate ? !m : m;
+  }
+
+  static FragmentCond<String> get tab =>
+      const FragmentCond._('tab', null, presence: true);
+  static const FragmentCond pinned = FragmentCond._('pinned', true);
+  static const FragmentNot not = FragmentNot._();
+}
+
+final class FragmentNot {
+  const FragmentNot._();
+  FragmentCond<String> get tab =>
+      const FragmentCond._('tab', null, presence: true, negate: true);
+  FragmentCond get pinned => const FragmentCond._('pinned', true, negate: true);
 }
 
 /// Screen-local query view-state for `item` (read-only).
@@ -1456,6 +1816,21 @@ final class FeedQueryMut extends FeedQuery {
   set radius(int? v) => _Screens.graph.viewSet(_Screens.feed, 'radius', v);
 }
 
+/// Screen-local fragment view-state for `feed` (read-only).
+class FeedFragment {
+  const FeedFragment._();
+  String? get tab => _Screens.graph.viewGet(_Screens.feed, 'tab') as String?;
+  bool get pinned => _Screens.graph.viewGet(_Screens.feed, 'pinned') == true;
+}
+
+/// Mutable [FeedFragment] — a setter per key (null clears / removes from URL).
+final class FeedFragmentMut extends FeedFragment {
+  const FeedFragmentMut._() : super._();
+  set tab(String? v) => _Screens.graph.viewSet(_Screens.feed, 'tab', v);
+  set pinned(bool v) =>
+      _Screens.graph.viewSet(_Screens.feed, 'pinned', v ? true : null);
+}
+
 /// `Feed` query condition terms — `.key` present / `.key(v)` equals / `.flag` true; `.not.…` negates (`.not.key` = absent).
 final class FeedQueryCond<T> implements ViewCond {
   const FeedQueryCond._(
@@ -1493,10 +1868,48 @@ final class FeedQueryNot {
       const FeedQueryCond._('radius', null, presence: true, negate: true);
 }
 
+/// `Feed` fragment condition terms — `.key` present / `.key(v)` equals / `.flag` true; `.not.…` negates (`.not.key` = absent).
+final class FeedFragmentCond<T> implements ViewCond {
+  const FeedFragmentCond._(
+    this.key,
+    this.expected, {
+    this.negate = false,
+    this.presence = false,
+  });
+  @override
+  final String key;
+  final Object? expected;
+  final bool negate;
+  final bool presence;
+
+  /// `.key(v)` — narrow a present term to an equals term, keeping any negation.
+  FeedFragmentCond<T> call(T v) =>
+      FeedFragmentCond<T>._(key, v, negate: negate);
+  @override
+  bool test(Object? v) {
+    final m = presence ? v != null : v == expected;
+    return negate ? !m : m;
+  }
+
+  static FeedFragmentCond<String> get tab =>
+      const FeedFragmentCond._('tab', null, presence: true);
+  static const FeedFragmentCond pinned = FeedFragmentCond._('pinned', true);
+  static const FeedFragmentNot not = FeedFragmentNot._();
+}
+
+final class FeedFragmentNot {
+  const FeedFragmentNot._();
+  FeedFragmentCond<String> get tab =>
+      const FeedFragmentCond._('tab', null, presence: true, negate: true);
+  FeedFragmentCond get pinned =>
+      const FeedFragmentCond._('pinned', true, negate: true);
+}
+
 /// Read-only view-state of `feed` — the reactive reads return
 /// this; the navigable `FeedNav` adds the setters.
 abstract interface class FeedView implements AnyView {
   FeedQuery get query;
+  FeedFragment get fragment;
   FeedNav get at;
 }
 

@@ -143,11 +143,23 @@ List<Endpoint> linkEndpoints(List<PlacementNode> branches, EnumElement element,
       // WidgetLink branch (after any leading literals — matches the runtime order).
       final slotNode = _peel(branch.linkChildren.single, element, rows);
       final declared = slotNode.slot?.codecs ?? const <CodecSpec>[];
+      // The widget form exists to add WIDGETLESS resolver alternatives (`me`,
+      // `username`) beside the screen's automatic id link. Declaring none is
+      // redundant — the screen is already deep-linkable by its id.
+      if (declared.isEmpty) {
+        throw InvalidGenerationSourceError(
+            'screen "${branch.screen}" declares an empty `slots({})` link — a '
+            'screen is already deep-linkable by its id, so this adds nothing. '
+            'Either remove it, or declare the resolver alternatives it should '
+            'accept (e.g. `slots({Codec.literal(\'me\'), Codec.username})`).',
+            element: element);
+      }
       final entity = _pascal(branch.screen);
       final idSpec = CodecSpec(idOf[branch.screen] ?? 'Object', 'Id',
           fieldName: '${_lcFirst(entity)}Id', isWidgetId: true);
-      final at = declared.indexWhere((c) => !c.isLiteral);
-      final codecs = [...declared]..insert(at < 0 ? declared.length : at, idSpec);
+      // The screen's own id is its canonical, renderable WidgetLink branch → it
+      // leads; the declared resolvers follow. `[id, …declared]`.
+      final codecs = [idSpec, ...declared];
       walk(
           [...prefix, seg, '*'],
           [SlotSpec(codecs)],
