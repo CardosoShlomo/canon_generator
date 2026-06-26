@@ -1614,24 +1614,13 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       // implemented, never extended) are the switch targets; every nav carries
       // its FULL level actions (re-providing the shared ones for completeness).
 
-      // Shared (intersection) forward children over a placement group. Includes
-      // inherited edges — they get a named no-id verb just like single
-      // placements; only the ternary go(Hop) form (sharedEdges) drops them.
+      // Shared (intersection) forward children over a placement group — used for
+      // the bare shared-verb SIGNATURES the sealed placement declares.
       Set<String> sharedFwd(List<PlacementNode> group) => [
             for (final n in group) {for (final c in n.children) c.screen}
           ].reduce((a, b) => a.intersection(b));
-      List<String> sharedVerbs(List<PlacementNode> group, List<String> path) {
-        final fwdShared = sharedFwd(group);
-        final seen = <String>{};
-        return [
-          for (final n in group)
-            for (final c in n.children)
-              if (fwdShared.contains(c.screen) && seen.add(c.screen))
-                goVerb(c.screen, unionName(c.screen), path, c.inheritSource?.screen)
-        ];
-      }
-      // The bare SIGNATURES of [sharedVerbs] — declared on the sealed placement so
-      // a `Screen.on(.x)` result can call them before any narrowing; each leaf
+      // The bare shared-verb SIGNATURES — declared on the sealed placement so a
+      // `Screen.on(.x)` result can call them before any narrowing; each leaf
       // supplies the body (the real, placement-specific return).
       List<String> sharedVerbSigs(List<PlacementNode> group) {
         final fwdShared = sharedFwd(group);
@@ -1650,38 +1639,6 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
                 })()
         ];
       }
-      // Edge-gated go over the group's shared forward edges, excluding inherited
-      // ones (their id can't be supplied statically through a Hop).
-      Map<String, String> sharedEdges(List<PlacementNode> group) {
-        final inh = {
-          for (final n in group)
-            for (final c in n.children)
-              if (c.inheritSource != null) c.screen
-        };
-        return {
-          for (final s in sharedFwd(group))
-            if (!inh.contains(s)) s: unionName(s)
-        };
-      }
-      // Guaranteed pops common to the whole group: a screen that's an ancestor
-      // of every placement is always in the live chain regardless of which one
-      // you're at. Union-typed where the ancestor itself is multi-placement.
-      Map<String, String> sharedPops(List<PlacementNode> group) {
-        final per = [for (final n in group) ancestorsOf(n)];
-        final common =
-            per.map((m) => m.keys.toSet()).reduce((a, b) => a.intersection(b));
-        final pops = <String, String>{};
-        for (final m in per) {
-          for (final e in m.entries) {
-            if (!common.contains(e.key)) continue;
-            final prev = pops[e.key];
-            pops[e.key] =
-                (prev == null || prev == e.value) ? e.value : unionName(e.key);
-          }
-        }
-        return pops;
-      }
-
       final leafMarkers = {for (final n in nodes) n: <String>{}};
       final markersToEmit = <String>{};
       // Per placement marker: the shared-verb SIGNATURES (+ view/depth) it declares,
