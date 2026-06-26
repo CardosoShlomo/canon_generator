@@ -56,7 +56,7 @@ String _lcFirst(String s) => s[0].toLowerCase() + s.substring(1);
 
 // ---- link surface helpers (sibling-class naming, field names) ----------
 // A union slot becomes sibling `Link` classes (rule 14), one per branch, split
-// across the `WidgetLink`/`WidgetlessLink` families and IMPLEMENTing a per-entity
+// across the `Place`/`Link` families and IMPLEMENTing a per-entity
 // marker. A non-union endpoint is a single concrete class.
 String _linkBase(String className) =>
     className.substring(0, className.length - 4); // drop the "Link" suffix
@@ -1086,17 +1086,17 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       b.writeln('  /// `initial` boot UI to vary the loading screen by destination. Eager:');
       b.writeln('  /// available from the first build, independent of the Router callback.');
       b.writeln("  /// Null when the launch URL isn't a representable link.");
-      b.writeln('  static Link? get initialUrl {');
+      b.writeln('  static Url? get initialUrl {');
       b.writeln('    final u = $spec.graph.bootUrl ??');
       b.writeln('        WidgetsBinding.instance.platformDispatcher.defaultRouteName;');
-      b.writeln('    return parseLink(u)?.link;');
+      b.writeln('    return parseUrl(u)?.link;');
       b.writeln('  }');
       b.writeln('  /// THE navigation resolver — assign once (ideally in `main` before');
       b.writeln('  /// `runApp`). Fires with the cold-start link (or null), then on every');
       b.writeln('  /// deep link — web URL + mobile app-link, one channel. Write plain');
       b.writeln('  /// `Screen.goX()` / `Screen.replace`. Single, last-wins, never disposed.');
-      b.writeln('  static set resolver(void Function(Link? link) fn) =>');
-      b.writeln('      $spec.graph.setResolver((url) => fn(parseLink(url)?.link));');
+      b.writeln('  static set resolver(void Function(Url? url) fn) =>');
+      b.writeln('      $spec.graph.setResolver((url) => fn(parseUrl(url)?.link));');
     }
     if (hasCanPop) {
       b.writeln('  /// The poppable handle if the active top is a non-root placement,');
@@ -1238,7 +1238,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       b.writeln('  final Object? id;');
       b.writeln('  final N nav;');
       b.writeln('  /// The root-down chain this hop replays. A single kick-start is one');
-      b.writeln('  /// segment; a navigable `Place` (a `WidgetLink`) overrides it with its');
+      b.writeln('  /// segment; a navigable `Place` (a `Place`) overrides it with its');
       b.writeln('  /// full path, so `Screen.go` lands the whole placement.');
       b.writeln('  List<(Enum, Object?)> get chain => [(spec, id)];');
       for (final r in rows) {
@@ -1813,8 +1813,8 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     }
 
     // ── Link surface. Always emitted: EVERY screen is a deep link, so the
-    // WidgetLink nav tree + the `Link` superset stand on their own. The flat
-    // parse classes / `parseLink` / WidgetlessLink resolve-branches come from
+    // Place nav tree + the `Link` superset stand on their own. The flat
+    // parse classes / `parseUrl` / Link resolve-branches come from
     // the declared `.link` endpoints (empty when none). Domain-agnostic; parse
     // is path-only — the platform verifies the host.
     final endpoints =
@@ -1823,7 +1823,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       b.writeln('');
       // One concrete `Link` class per case (k = a union branch, or null for a
       // single-slot endpoint). Phase A: a `.link` branch seeds no widget, so every
-      // case is `WidgetlessLink`; the `WidgetLink` family rides the placement form.
+      // case is `Link`; the `Place` family rides the placement form.
       caseOf(Endpoint e, int? k) {
         final ui = _unionSlot(e);
         final entity = _linkBase(e.className);
@@ -1852,15 +1852,15 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
             branchVals.add('0');
           }
         }
-        // The injected screen-id branch is renderable from the URL → WidgetLink;
-        // every other branch needs resolution → WidgetlessLink. The id always
+        // The injected screen-id branch is renderable from the URL → Place;
+        // every other branch needs resolution → Link. The id always
         // rides the union slot (a widget form has ≥1 declared resolver beside
         // it; an empty `slots({})` is rejected at read time).
         final widget = k != null && e.slots[ui!].codecs[k].isWidgetId;
         return (
           name: k == null ? e.className : _siblingName(entity, e.slots[ui!].codecs[k]),
           marker: ui == null ? null : e.className,
-          family: widget ? 'WidgetLink' : 'WidgetlessLink',
+          family: widget ? 'Place' : 'Link',
           fields: fields,
           ctorArgs: ctorArgs,
           pathVals: pathVals,
@@ -1886,9 +1886,9 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       final linkDomain = annotation.peek('domain')?.stringValue;
       final domainSig = linkDomain != null ? '[String? domain]' : 'String domain';
       final domainArg = linkDomain != null ? "domain ?? '$linkDomain'" : 'domain';
-      // ── Builder chain — `Link.<route>` / `WidgetLink.<route>` /
-      // `WidgetlessLink.<route>` fluent path to a URL. Each root owns its OWN
-      // family-filtered trie + prefixed step classes, so a `WidgetLink` chain
+      // ── Builder chain — `Link.<route>` / `Place.<route>` /
+      // `Link.<route>` fluent path to a URL. Each root owns its OWN
+      // family-filtered trie + prefixed step classes, so a `Place` chain
       // can never offer a widgetless continuation (family-closed, canon-style).
       final chainBuf = StringBuffer(); // step classes, appended after parse
       // Emits one family's trie: returns the static-getter lines to inject into
@@ -1990,7 +1990,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
 
       familyOf(Endpoint e, int? k) => caseOf(e, k).family;
 
-      // WidgetlessLink is SMART minimal-parent: a resolve-branch is addressed
+      // Link is SMART minimal-parent: a resolve-branch is addressed
       // from the nearest unambiguous ancestor — drop leading STATIC ancestor
       // segments (a slot-bearing ancestor can't be dropped, its value is needed),
       // keep the leaf screen segment for naming, and fall back to the full path
@@ -2005,9 +2005,9 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       final wlessEndpoints = [
         for (final e in endpoints)
           if (_unionSlot(e) == null
-              ? familyOf(e, null) == 'WidgetlessLink'
+              ? familyOf(e, null) == 'Link'
               : [for (var k = 0; k < e.slots[_unionSlot(e)!].codecs.length; k++) k]
-                  .any((k) => familyOf(e, k) == 'WidgetlessLink'))
+                  .any((k) => familyOf(e, k) == 'Link'))
             e
       ];
       final minCount = <String, int>{};
@@ -2023,17 +2023,17 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       }
 
       final widgetlessStatics = emitFamily(
-          '_LX', (e, k) => familyOf(e, k) == 'WidgetlessLink',
+          '_LX', (e, k) => familyOf(e, k) == 'Link',
           pathOf: wxPath);
 
-      // ── WidgetLink = the WHOLE nav tree. Every screen that can sit on the
-      // stack IS a deep link, so the WidgetLink chain mirrors the nav grammar
-      // ROOT-DOWN (`WidgetLink.home.item(id)`), accumulating the full canonical
+      // ── Place = the WHOLE nav tree. Every screen that can sit on the
+      // stack IS a deep link, so the Place chain mirrors the nav grammar
+      // ROOT-DOWN (`Place.home.item(id)`), accumulating the full canonical
       // path, and `.toUri()` prints it via `encodeNavUrl` (no navigation). An
       // id-bearing screen is a METHOD (its id is mandatory before you proceed —
       // `.user(id)`, never bare `.user`); an inherited segment is bare (id rides
       // its source) so it stays a getter. TODO(widgetless-rework): the smart
-      // minimal-parent WidgetlessLink chain + Link superset still use the old
+      // minimal-parent Link chain + Link superset still use the old
       // declared-endpoint trie below; reshape next.
       final wlEmitted = <String>{};
       String wlName(PlacementNode n) => '_WL${n.path.map(_cap).join()}';
@@ -2074,7 +2074,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
         if (!wlEmitted.add(name)) return;
         final kids = wlKids(n);
         final navT = placementName(n);
-        // A WidgetLink step is a complete root-down placement → a navigable Hop,
+        // A Place step is a complete root-down placement → a navigable Hop,
         // so `Screen.go(Place.x())` lands the whole chain and returns its nav.
         chainBuf.writeln(hasKickstart
             ? 'final class $name implements Hop<$navT> {'
@@ -2178,10 +2178,10 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
         widgetStatics.putIfAbsent(n.screen, () => wlAccessor(n, static: true));
       }
 
-      // `Link.<route>` is the unrestricted SUPERSET — both the WidgetLink nav
-      // tree and the smart WidgetlessLink leaves under one root, delegating to
+      // `Link.<route>` is the unrestricted SUPERSET — both the Place nav
+      // tree and the smart Link leaves under one root, delegating to
       // the same step classes. A name carried by both families resolves to the
-      // nav-target (WidgetLink) form.
+      // nav-target (Place) form.
       final linkStatics = {
         ...widgetStatics,
         for (final e in widgetlessStatics.entries)
@@ -2191,22 +2191,22 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       b.writeln('/// A typed deep link. `Link.<route>….toUri([domain])` builds a');
       b.writeln('/// URL (the nav-target tree + the resolve-branch leaves); a parsed');
       b.writeln('/// link round-trips with `link.toUri([domain])`.');
-      b.writeln('sealed class Link { const Link(); Uri toUri($domainSig);');
+      b.writeln('sealed class Url { const Url(); Uri toUri($domainSig);');
       linkStatics.values.forEach(b.writeln);
       b.writeln('}');
       b.writeln('/// Nav targets — every screen reachable on the stack, root-down.');
-      b.writeln('sealed class WidgetLink extends Link { const WidgetLink();');
+      b.writeln('sealed class Place extends Url { const Place();');
       widgetStatics.values.forEach(b.writeln);
       b.writeln('}');
       b.writeln('/// Resolve branches — addressed from the nearest unambiguous parent.');
-      b.writeln('sealed class WidgetlessLink extends Link { const WidgetlessLink();');
+      b.writeln('sealed class Link extends Url { const Link();');
       widgetlessStatics.values.forEach(b.writeln);
       b.writeln('}');
       // per-entity marker (rule 14): the union cases IMPLEMENT it, cross-cutting
       // the widget families, so `case UserLink()` catches any branch of that entity.
       for (final e in endpoints) {
         if (_unionSlot(e) != null) {
-          b.writeln('sealed class ${e.className} implements Link {}');
+          b.writeln('sealed class ${e.className} implements Url {}');
         }
       }
       for (final c in cases) {
@@ -2231,14 +2231,14 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       b.writeln('');
       b.writeln('/// A parsed [Link] plus the URL\'s origin (the host is reported,');
       b.writeln('/// not matched — the platform already verified it is ours).');
-      b.writeln('final class ParsedLink {');
-      b.writeln('  const ParsedLink(this.link, this.domain);');
-      b.writeln('  final Link link;');
+      b.writeln('final class ParsedUrl {');
+      b.writeln('  const ParsedUrl(this.link, this.domain);');
+      b.writeln('  final Url link;');
       b.writeln('  final String domain;');
       b.writeln('}');
       b.writeln('');
       b.writeln('/// Parses [url] into a typed [Link] + origin, or null if not a link.');
-      b.writeln('ParsedLink? parseLink(String url) {');
+      b.writeln('ParsedUrl? parseUrl(String url) {');
       b.writeln('  final m = $spec.graph.parseLink(url);');
       b.writeln('  if (m == null) return null;');
       b.writeln('  final uri = Uri.parse(url);');
@@ -2263,7 +2263,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       b.writeln('    _ => null,');
       b.writeln('  };');
       b.writeln('  if (link == null) return null;');
-      b.writeln('  return ParsedLink(link, \'\${uri.scheme}://\${uri.host}\');');
+      b.writeln('  return ParsedUrl(link, \'\${uri.scheme}://\${uri.host}\');');
       b.writeln('}');
       // encode is the instance `link.toUri([domain])` emitted on each class above.
       b.writeln('');

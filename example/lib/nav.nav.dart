@@ -228,19 +228,19 @@ final class Screen<I> {
   /// `initial` boot UI to vary the loading screen by destination. Eager:
   /// available from the first build, independent of the Router callback.
   /// Null when the launch URL isn't a representable link.
-  static Link? get initialUrl {
+  static Url? get initialUrl {
     final u =
         _Screens.graph.bootUrl ??
         WidgetsBinding.instance.platformDispatcher.defaultRouteName;
-    return parseLink(u)?.link;
+    return parseUrl(u)?.link;
   }
 
   /// THE navigation resolver — assign once (ideally in `main` before
   /// `runApp`). Fires with the cold-start link (or null), then on every
   /// deep link — web URL + mobile app-link, one channel. Write plain
   /// `Screen.goX()` / `Screen.replace`. Single, last-wins, never disposed.
-  static set resolver(void Function(Link? link) fn) =>
-      _Screens.graph.setResolver((url) => fn(parseLink(url)?.link));
+  static set resolver(void Function(Url? url) fn) =>
+      _Screens.graph.setResolver((url) => fn(parseUrl(url)?.link));
 
   /// The poppable handle if the active top is a non-root placement,
   /// else null (at a scope root). `.at` = current placement; `.pop()`
@@ -445,7 +445,7 @@ final class Hop<N extends AnyNav> {
   final N nav;
 
   /// The root-down chain this hop replays. A single kick-start is one
-  /// segment; a navigable `Place` (a `WidgetLink`) overrides it with its
+  /// segment; a navigable `Place` (a `Place`) overrides it with its
   /// full path, so `Screen.go` lands the whole placement.
   List<(Enum, Object?)> get chain => [(spec, id)];
   static const splash = Hop<SplashNav>._(_Screens.splash, null, SplashNav._());
@@ -1276,8 +1276,8 @@ void verifyScreens() {
 /// A typed deep link. `Link.<route>….toUri([domain])` builds a
 /// URL (the nav-target tree + the resolve-branch leaves); a parsed
 /// link round-trips with `link.toUri([domain])`.
-sealed class Link {
-  const Link();
+sealed class Url {
+  const Url();
   Uri toUri([String? domain]);
   static _WLSplash get splash => _WLSplash._([_Screens.splash], [null]);
   static _WLSignIn get signIn => _WLSignIn._([_Screens.signIn], [null]);
@@ -1295,8 +1295,8 @@ sealed class Link {
 }
 
 /// Nav targets — every screen reachable on the stack, root-down.
-sealed class WidgetLink extends Link {
-  const WidgetLink();
+sealed class Place extends Url {
+  const Place();
   static _WLSplash get splash => _WLSplash._([_Screens.splash], [null]);
   static _WLSignIn get signIn => _WLSignIn._([_Screens.signIn], [null]);
   static _WLHome get home => _WLHome._([_Screens.home], [null]);
@@ -1312,14 +1312,14 @@ sealed class WidgetLink extends Link {
 }
 
 /// Resolve branches — addressed from the nearest unambiguous parent.
-sealed class WidgetlessLink extends Link {
-  const WidgetlessLink();
+sealed class Link extends Url {
+  const Link();
   static _LXItem get item => _LXItem(const <Object?>[], const <int>[]);
 }
 
-sealed class ItemLink implements Link {}
+sealed class ItemLink implements Url {}
 
-final class ItemMeLink extends WidgetlessLink implements ItemLink {
+final class ItemMeLink extends Link implements ItemLink {
   const ItemMeLink();
   @override
   Uri toUri([String? domain]) => Uri.parse(
@@ -1332,7 +1332,7 @@ final class ItemMeLink extends WidgetlessLink implements ItemLink {
   );
 }
 
-final class ItemByIdLink extends WidgetlessLink implements ItemLink {
+final class ItemByIdLink extends Link implements ItemLink {
   const ItemByIdLink(this.itemId);
   final String itemId;
   @override
@@ -1346,7 +1346,7 @@ final class ItemByIdLink extends WidgetlessLink implements ItemLink {
   );
 }
 
-final class ItemByUsernameLink extends WidgetlessLink implements ItemLink {
+final class ItemByUsernameLink extends Link implements ItemLink {
   const ItemByUsernameLink(this.username);
   final String username;
   @override
@@ -1362,14 +1362,14 @@ final class ItemByUsernameLink extends WidgetlessLink implements ItemLink {
 
 /// A parsed [Link] plus the URL's origin (the host is reported,
 /// not matched — the platform already verified it is ours).
-final class ParsedLink {
-  const ParsedLink(this.link, this.domain);
-  final Link link;
+final class ParsedUrl {
+  const ParsedUrl(this.link, this.domain);
+  final Url link;
   final String domain;
 }
 
 /// Parses [url] into a typed [Link] + origin, or null if not a link.
-ParsedLink? parseLink(String url) {
+ParsedUrl? parseUrl(String url) {
   final m = _Screens.graph.parseLink(url);
   if (m == null) return null;
   final uri = Uri.parse(url);
@@ -1383,7 +1383,7 @@ ParsedLink? parseLink(String url) {
     _ => null,
   };
   if (link == null) return null;
-  return ParsedLink(link, '${uri.scheme}://${uri.host}');
+  return ParsedUrl(link, '${uri.scheme}://${uri.host}');
 }
 
 class _LXItem {

@@ -353,7 +353,7 @@ final class Hop<N extends AnyNav> {
   final N nav;
 
   /// The root-down chain this hop replays. A single kick-start is one
-  /// segment; a navigable `Place` (a `WidgetLink`) overrides it with its
+  /// segment; a navigable `Place` (a `Place`) overrides it with its
   /// full path, so `Screen.go` lands the whole placement.
   List<(Enum, Object?)> get chain => [(spec, id)];
   static const home = Hop<HomeNav>._(_Shell.home, null, HomeNav._());
@@ -797,8 +797,8 @@ void verifyScreens() {
 /// A typed deep link. `Link.<route>….toUri([domain])` builds a
 /// URL (the nav-target tree + the resolve-branch leaves); a parsed
 /// link round-trips with `link.toUri([domain])`.
-sealed class Link {
-  const Link();
+sealed class Url {
+  const Url();
   Uri toUri(String domain);
   static _WLHome get home => _WLHome._([_Shell.home], [null]);
   static _WLHomeSettings get settings =>
@@ -814,8 +814,8 @@ sealed class Link {
 }
 
 /// Nav targets — every screen reachable on the stack, root-down.
-sealed class WidgetLink extends Link {
-  const WidgetLink();
+sealed class Place extends Url {
+  const Place();
   static _WLHome get home => _WLHome._([_Shell.home], [null]);
   static _WLHomeSettings get settings =>
       _WLHomeSettings._([_Shell.home, _Shell.settings], [null, null]);
@@ -830,20 +830,20 @@ sealed class WidgetLink extends Link {
 }
 
 /// Resolve branches — addressed from the nearest unambiguous parent.
-sealed class WidgetlessLink extends Link {
-  const WidgetlessLink();
+sealed class Link extends Url {
+  const Link();
 }
 
 /// A parsed [Link] plus the URL's origin (the host is reported,
 /// not matched — the platform already verified it is ours).
-final class ParsedLink {
-  const ParsedLink(this.link, this.domain);
-  final Link link;
+final class ParsedUrl {
+  const ParsedUrl(this.link, this.domain);
+  final Url link;
   final String domain;
 }
 
 /// Parses [url] into a typed [Link] + origin, or null if not a link.
-ParsedLink? parseLink(String url) {
+ParsedUrl? parseUrl(String url) {
   final m = _Shell.graph.parseLink(url);
   if (m == null) return null;
   final uri = Uri.parse(url);
@@ -851,7 +851,7 @@ ParsedLink? parseLink(String url) {
     _ => null,
   };
   if (link == null) return null;
-  return ParsedLink(link, '${uri.scheme}://${uri.host}');
+  return ParsedUrl(link, '${uri.scheme}://${uri.host}');
 }
 
 final class _WLHome implements Hop<HomeNav> {

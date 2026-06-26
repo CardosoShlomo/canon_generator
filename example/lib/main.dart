@@ -10,8 +10,8 @@ void main() {
   // cold-start link (or null) and on every deep link after: web address bar +
   // mobile app-links, one channel. It just writes Screen.goX(); the engine
   // leaves the Initial boot UI on the first commit. URLs never drive the stack.
-  Screen.resolver = (Link? link) {
-    switch (link) {
+  Screen.resolver = (Url? url) {
+    switch (url) {
       case ItemMeLink():
         Screen.goHome().goItem('me');
       case ItemByIdLink(:final itemId):

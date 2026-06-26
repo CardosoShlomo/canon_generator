@@ -161,7 +161,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 ''';
 
 // The WIDGET form: a bare `slots` directly in a real placement's children. The
-// screen's own id (uuid) is injected as a WidgetLink branch; me/username resolve.
+// screen's own id (uuid) is injected as a Place branch; me/username resolve.
 const _widgetFormSpec = '''
 import 'package:canon/canon.dart';
 
@@ -274,7 +274,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 ''';
 
 // The SAME leaf screen linked under two parents → its minimal address (`account`)
-// is ambiguous, so the WidgetlessLink chain keeps the disambiguating full path.
+// is ambiguous, so the Link chain keeps the disambiguating full path.
 const _ambiguousLinkSpec = '''
 import 'package:canon/canon.dart';
 
@@ -414,7 +414,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 ''';
 
 // home/account/* is a widgetless-only `.link`; settings/detail/* a mixed widget
-// form (renderable id + a username resolver). Exercises WidgetLink subtree prune.
+// form (renderable id + a username resolver). Exercises Place subtree prune.
 const _probeSpec = '''
 import 'package:canon/canon.dart';
 
@@ -684,7 +684,7 @@ void main() {
           contains('_Screens.graph.go(_Screens.ad, id);'), // stamp the source
           contains('_Screens.graph.go(_Screens.editAd, id, true)'), // ...then target
           // Not in the single-go Hop KICK-START class (needs the multi-step chain);
-          // it IS navigable as a chain-carrying WidgetLink Hop, which is fine.
+          // it IS navigable as a chain-carrying Place Hop, which is fine.
           isNot(contains('Hop<EditAdNav>._(')),
         ]),
         spec: _inheritSpec,
@@ -830,13 +830,13 @@ void main() {
           contains('HomeEntry'), // home + user nav generation succeeded…
           contains('UserEntry'),
           isNot(contains('LinksEntry')), // …and .links added no phantom screen
-          contains('sealed class Link'), // …and emitted the typed Link surface
-          contains('sealed class WidgetlessLink extends Link'), // the families
+          contains('sealed class Url'), // …and emitted the typed Link surface
+          contains('sealed class Link extends Url'), // the families
           // single-slot endpoint → one concrete widgetless class, no marker
-          contains('final class UserLink extends WidgetlessLink'),
+          contains('final class UserLink extends Link'),
           contains('final String value0'), // the slot's typed field
-          contains('final class ParsedLink'), // …and the parse surface
-          contains('ParsedLink? parseLink(String url)'),
+          contains('final class ParsedUrl'), // …and the parse surface
+          contains('ParsedUrl? parseUrl(String url)'),
           contains("'user/*' => UserLink(m.path[0] as String)"), // the typed map
           // …and an instance toUri per class (no @Screens domain → domain required)
           contains('Uri toUri(String domain);'), // base declares it abstract
@@ -852,9 +852,9 @@ void main() {
   test('a union slot generates sibling Link classes under a per-entity marker', () =>
       _expectGenerated(
         allOf([
-          contains('sealed class UserLink implements Link'), // the per-entity marker
+          contains('sealed class UserLink implements Url'), // the per-entity marker
           contains(
-              'final class UserByUuidLink extends WidgetlessLink implements UserLink'),
+              'final class UserByUuidLink extends Link implements UserLink'),
           contains('class UserByNameLink'), // username → entity-prefix stripped → ByName
           contains('final String uuid;'), // semantic codec → field name
           contains('final String username;'),
@@ -870,27 +870,27 @@ void main() {
   test('a literal in a union slot becomes a payload-less widgetless sibling', () =>
       _expectGenerated(
         allOf([
-          contains('sealed class UserLink implements Link'),
+          contains('sealed class UserLink implements Url'),
           contains(
-              'final class UserMeLink extends WidgetlessLink implements UserLink'),
+              'final class UserMeLink extends Link implements UserLink'),
           contains('const UserMeLink();'), // payload-less, no field
           contains(
-              'final class UserByUuidLink extends WidgetlessLink implements UserLink'),
+              'final class UserByUuidLink extends Link implements UserLink'),
           contains('0 => UserMeLink()'), // parse: branch 0 reads no path token
           contains("<Object?>['me']"), // encode threads the literal back in toUri
         ]),
         spec: _literalUnionSpec,
       ));
 
-  test('the widget form injects the screen id as a WidgetLink sibling', () =>
+  test('the widget form injects the screen id as a Place sibling', () =>
       _expectGenerated(
         allOf([
-          contains('sealed class UserLink implements Link'),
-          // injected id branch → WidgetLink, field `<screen>Id`, class `…ByIdLink`
-          contains('final class UserByIdLink extends WidgetLink'),
+          contains('sealed class UserLink implements Url'),
+          // injected id branch → Place, field `<screen>Id`, class `…ByIdLink`
+          contains('final class UserByIdLink extends Place'),
           contains('final String userId;'),
           // declared branches stay widgetless
-          contains('final class UserMeLink extends WidgetlessLink'),
+          contains('final class UserMeLink extends Link'),
           contains('class UserByNameLink'),
           contains('final String username;'),
           // order: the canonical id leads, declared resolvers follow ⇒
@@ -910,7 +910,7 @@ void main() {
               // …and `user` (a nav root with widget-form resolvers) clashes with
               // its own widgetless leaf — the nav-target METHOD wins on Link
               contains('static _WLUser user(String id) =>'),
-              // the widgetless resolvers stay reachable via WidgetlessLink.user
+              // the widgetless resolvers stay reachable via Link.user
               contains('static _LXUser get user =>'),
               contains("me() => _LXUserSlot([..._p, 'me'], [..._b, 1]);"),
               contains('byName(String username) =>'),
@@ -920,11 +920,11 @@ void main() {
             spec: _widgetFormSpec,
           ));
 
-  test('the WidgetLink surface emits even with no `.link` declared', () =>
+  test('the Place surface emits even with no `.link` declared', () =>
       _expectGenerated(
         allOf([
           // `_spec` declares no link at all, yet every screen is a deep link
-          contains('sealed class WidgetLink extends Link'),
+          contains('sealed class Place extends Url'),
           contains('static _WLHome get home =>'),
           contains('_WLHomeItem item(String id) =>'),
           contains('_Screens.graph.encodeNavUrl('),
@@ -969,10 +969,10 @@ void main() {
         spec: _viewBothSpec,
       ));
 
-  test('WidgetLink mirrors the nav tree root-down (id screens are methods)',
+  test('Place mirrors the nav tree root-down (id screens are methods)',
       () => _expectGenerated(
             allOf([
-              contains('sealed class WidgetLink extends Link'),
+              contains('sealed class Place extends Url'),
               // id-free root → a getter; id-bearing root → a method (id mandatory
               // before `.toUri()`, no bare `.user`)
               contains('static _WLHome get home => _WLHome._([_Screens.home]'),
@@ -982,7 +982,7 @@ void main() {
               // every nav-target node prints its full path via the nav-mirror
               contains('_Screens.graph.encodeNavUrl('),
               // the widgetless resolver branches (me/username) live on the
-              // SEPARATE WidgetlessLink surface, not the WidgetLink nav tree
+              // SEPARATE Link surface, not the Place nav tree
               contains('static _LXUser get user =>'),
               contains("me() => _LXUserSlot([..._p, 'me']"),
               isNot(contains('me() => _WL')),
@@ -1040,7 +1040,7 @@ void main() {
         contains('both as a placement and a `.link` branch in the same set'));
   });
 
-  test('WidgetLink nav tree spans nav screens; link branches stay widgetless',
+  test('Place nav tree spans nav screens; link branches stay widgetless',
       () => _expectGenerated(
         allOf([
           // the nav tree, root-down: a nested id-bearing screen is a method
@@ -1049,7 +1049,7 @@ void main() {
           contains('static _WLSettings get settings =>'),
           contains('_WLSettingsDetail detail(String id) =>'),
           // `account.link` is a link branch, NOT a nav child → its widgetless
-          // resolver stays on the WidgetlessLink surface, off the nav tree, and
+          // resolver stays on the Link surface, off the nav tree, and
           // smart-addressed by its leaf (the redundant `home` parent dropped)
           contains('static _LXAccount get account =>'),
           isNot(contains('static _LXHome get home =>')),
@@ -1058,7 +1058,7 @@ void main() {
         spec: _probeSpec,
       ));
 
-  test('WidgetlessLink drops a redundant static parent (smart minimal address)',
+  test('Link drops a redundant static parent (smart minimal address)',
       () => _expectGenerated(
             allOf([
               // `home/account/*` resolve-link is reachable as `.account`, the
@@ -1070,7 +1070,7 @@ void main() {
             spec: _nestedLinkSpec,
           ));
 
-  test('WidgetlessLink keeps the full path when the leaf is ambiguous', () =>
+  test('Link keeps the full path when the leaf is ambiguous', () =>
       _expectGenerated(
         allOf([
           // `account` is linked under home AND profile → minimal address clashes,
@@ -1217,8 +1217,8 @@ void main() {
   test('emits the Screen.resolver setter + eager initialUrl (links present)',
       () => _expectGenerated(
             allOf(
-              contains('static set resolver(void Function(Link? link) fn) =>'),
-              contains('graph.setResolver((url) => fn(parseLink(url)?.link))'),
+              contains('static set resolver(void Function(Url? url) fn) =>'),
+              contains('graph.setResolver((url) => fn(parseUrl(url)?.link))'),
               contains('get initialUrl'),
               contains('platformDispatcher.defaultRouteName'),
             ),

@@ -1,3 +1,7 @@
+## 0.23.0
+
+- Rename the link surface: `Link` → `Url` (base), `WidgetLink` → `Place` (the navigable `Hop`), `WidgetlessLink` → `Link` (resolver data); `parseLink`/`ParsedLink` → `parseUrl`/`ParsedUrl`; the resolver takes `(Url? url)`. Per-entity markers keep their `…Link` names. **Breaking (rename only).**
+
 ## 0.22.0
 
 - `Screen.resolver` — a single, lifetime navigation resolver (`Screen.resolver = (Link? link) {…}`) for every external URL / deep-link plus the cold-start link; `Screen.initialUrl` now reads eagerly for the boot UI. Removes `Screen.observe` (use `Screen.navigations`). **Breaking.**
