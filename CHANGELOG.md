@@ -1,3 +1,11 @@
+## 0.20.0
+
+- Typed deep-link builders: `Link` / `WidgetLink` / `WidgetlessLink` with `.toUri()`, root-down + kick-start + smart minimal-parent addressing.
+- View-state URL chains: `.query({…})` / `.fragment({…})` (On-shape term set) + reactive typed `context.on` / `context.at` reads.
+- Placement selectors reworked: `Screen.current` / `on` / `at` / `surface()` over a sealed `AnyPlacement` (exhaustive switching); `Screen.replace.at`, instance `Link.toUri()`.
+- Grammar guards: position-specific `.link`, empty `slots({})` and empty `X()` calls rejected; widget-form id leads its union.
+- Requires `canon ^0.16.0`.
+
 ## 0.19.1
 
 - Widen the canon constraint to `^0.15.0` (matches the 0.19.0 surface).
