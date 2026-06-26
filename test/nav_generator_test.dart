@@ -683,7 +683,9 @@ void main() {
           contains('static EditAdNav goEditAd(String id)'), // global kick-start
           contains('_Screens.graph.go(_Screens.ad, id);'), // stamp the source
           contains('_Screens.graph.go(_Screens.editAd, id, true)'), // ...then target
-          isNot(contains('Hop<EditAdNav>')), // rescued kick-start is not a Hop
+          // Not in the single-go Hop KICK-START class (needs the multi-step chain);
+          // it IS navigable as a chain-carrying WidgetLink Hop, which is fine.
+          isNot(contains('Hop<EditAdNav>._(')),
         ]),
         spec: _inheritSpec,
       ));
@@ -976,7 +978,7 @@ void main() {
               contains('static _WLHome get home => _WLHome._([_Screens.home]'),
               contains('static _WLUser user(String id) =>'),
               isNot(contains('static _WLUser get user')),
-              contains('class _WLUser {'),
+              contains('final class _WLUser implements Hop<'),
               // every nav-target node prints its full path via the nav-mirror
               contains('_Screens.graph.encodeNavUrl('),
               // the widgetless resolver branches (me/username) live on the
@@ -1183,15 +1185,13 @@ void main() {
         isNot(contains('enum Pop')), // its token is gone too
       )));
 
-  test('Screen.go(Hop) returns a KickstartNav union narrowable via .at', () =>
+  test('Screen.go(Hop) returns the Hop\'s typed nav (N), not a union', () =>
       _expectGenerated(allOf([
-        contains('sealed class KickstartPlacement {}'),
-        contains('final class KickstartNav extends AnyNav'),
-        contains('static KickstartNav go<N extends AnyNav>(Hop<N> hop)'),
-        contains('return const KickstartNav._();'),
-        contains('KickstartPlacement get at => Screen.current as KickstartPlacement'),
-        // kick-startable navs implement the marker
-        matches(RegExp(r'implements[\s\S]*?KickstartPlacement')),
+        contains('static N go<N extends AnyNav>(Hop<N> hop)'),
+        contains('return hop.nav;'),
+        // the old KickstartNav narrowing surface is gone
+        isNot(contains('KickstartNav')),
+        isNot(contains('KickstartPlacement')),
       ])));
 
   test('emits the global canPop / Screen.pop sugar surface', () =>
@@ -1208,10 +1208,22 @@ void main() {
         contains('CanPopPlacement'),
       ])));
 
-  test('emits the commit-phase observe() forwarder', () => _expectGenerated(allOf(
-        contains('static void Function() observe('),
-        contains('_Screens.graph.observe((f, t) => fn(forSpec(f), forSpec(t)))'),
+  test('drops the old observe() forwarder — navigations replaces it', () =>
+      _expectGenerated(allOf(
+        isNot(contains('static void Function() observe(')),
+        contains('static Stream<ScreenNavigation> get navigations'),
       )));
+
+  test('emits the Screen.resolver setter + eager initialUrl (links present)',
+      () => _expectGenerated(
+            allOf(
+              contains('static set resolver(void Function(Link? link) fn) =>'),
+              contains('graph.setResolver((url) => fn(parseLink(url)?.link))'),
+              contains('get initialUrl'),
+              contains('platformDispatcher.defaultRouteName'),
+            ),
+            spec: _linksSpec,
+          ));
 
   test('shared widget with distinct id types gets a sealed id union', () =>
       _expectGenerated(

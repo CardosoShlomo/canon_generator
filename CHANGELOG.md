@@ -1,3 +1,10 @@
+## 0.22.0
+
+- `Screen.resolver` — a single, lifetime navigation resolver (`Screen.resolver = (Link? link) {…}`) for every external URL / deep-link plus the cold-start link; `Screen.initialUrl` now reads eagerly for the boot UI. Removes `Screen.observe` (use `Screen.navigations`). **Breaking.**
+- `Screen.go(Hop)` / `Screen.replace.go(Hop)` return the Hop's typed nav (`N`), not `KickstartNav` (removed) — a known target stays typed and chains; a dynamic (ternary) Hop's LUB is `AnyNav`, switched exhaustively. **Breaking.**
+- A `WidgetLink` is a navigable `Hop`: `Screen.go(WidgetLink.x(id))` lands the full root-down chain and returns its nav (Hop carries a multi-segment `chain`).
+- Requires `canon ^0.17.0`.
+
 ## 0.21.0
 
 - View-state combinators are now typed: `oneOf({…})` emits a sealed exactly-one `<Screen>QueryChoice` (setter clears siblings); `allOf({…})` emits a co-present record getter (null unless all set) — previously both were flattened to independent keys.

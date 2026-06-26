@@ -131,9 +131,9 @@ final class Screen<I> {
   /// false on a stale/incompatible snapshot.
   static bool restore(Map<String, Object?> state) =>
       _Screens.graph.restore(state);
-  static KickstartNav go<N extends AnyNav>(Hop<N> hop) {
-    _Screens.graph.go(hop.spec, hop.id);
-    return const KickstartNav._();
+  static N go<N extends AnyNav>(Hop<N> hop) {
+    for (final (s, i) in hop.chain) _Screens.graph.go(s, i);
+    return hop.nav;
   }
 
   /// If the live stack ends with this selector path (every pinned id and,
@@ -224,12 +224,23 @@ final class Screen<I> {
   /// [AnyPlacement] — `switch (Screen.current) { … }` is exhaustive.
   static AnyPlacement get current => _atOf(_Screens.graph.current);
 
-  /// The cold-start link (already parsed), or null off the web,
-  /// warm, or when the URL is not a representable link.
+  /// The cold-start link, parsed from the launch URL — read it in the
+  /// `initial` boot UI to vary the loading screen by destination. Eager:
+  /// available from the first build, independent of the Router callback.
+  /// Null when the launch URL isn't a representable link.
   static Link? get initialUrl {
-    final u = _Screens.graph.bootUrl;
-    return u == null ? null : parseLink(u)?.link;
+    final u =
+        _Screens.graph.bootUrl ??
+        WidgetsBinding.instance.platformDispatcher.defaultRouteName;
+    return parseLink(u)?.link;
   }
+
+  /// THE navigation resolver — assign once (ideally in `main` before
+  /// `runApp`). Fires with the cold-start link (or null), then on every
+  /// deep link — web URL + mobile app-link, one channel. Write plain
+  /// `Screen.goX()` / `Screen.replace`. Single, last-wins, never disposed.
+  static set resolver(void Function(Link? link) fn) =>
+      _Screens.graph.setResolver((url) => fn(parseLink(url)?.link));
 
   /// The poppable handle if the active top is a non-root placement,
   /// else null (at a scope root). `.at` = current placement; `.pop()`
@@ -240,13 +251,6 @@ final class Screen<I> {
   /// Documented sugar for `canPop?.pop()` — pops the active top if any,
   /// returns where it landed, or null at a root. Never throws.
   static PopDestNav? pop() => canPop?.pop();
-
-  /// Side-effect listener fired after each navigation commits (new top
-  /// settled, before its transition animates). Wire it where state lives
-  /// (e.g. a provider); returns a disposer. Pure observation.
-  static void Function() observe(
-    void Function(Screen<Object?> from, Screen<Object?> to) fn,
-  ) => _Screens.graph.observe((f, t) => fn(forSpec(f), forSpec(t)));
 
   /// A broadcast stream of committed navigations as typed snapshots:
   /// `from`/`to` are ScreenEntry stacks; `switch (e.destination)` for
@@ -295,7 +299,7 @@ final class Screen<I> {
 /// but commits as a history REPLACE (web `replaceState`).
 final class Replace {
   const Replace._();
-  KickstartNav go<N extends AnyNav>(Hop<N> hop) {
+  N go<N extends AnyNav>(Hop<N> hop) {
     _Screens.graph.markReplace();
     return Screen.go(hop);
   }
@@ -439,6 +443,11 @@ final class Hop<N extends AnyNav> {
   final Enum spec;
   final Object? id;
   final N nav;
+
+  /// The root-down chain this hop replays. A single kick-start is one
+  /// segment; a navigable `Place` (a `WidgetLink`) overrides it with its
+  /// full path, so `Screen.go` lands the whole placement.
+  List<(Enum, Object?)> get chain => [(spec, id)];
   static const splash = Hop<SplashNav>._(_Screens.splash, null, SplashNav._());
   static const signIn = Hop<SignInNav>._(_Screens.signIn, null, SignInNav._());
   static const home = Hop<HomeNav>._(_Screens.home, null, HomeNav._());
@@ -725,13 +734,6 @@ final class PopDestNav extends AnyNav {
   }
 }
 
-sealed class KickstartPlacement {}
-
-final class KickstartNav extends AnyNav {
-  const KickstartNav._() : super._();
-  KickstartPlacement get at => Screen.current as KickstartPlacement;
-}
-
 final class Keep {
   const Keep._(this.spec);
   final Enum spec;
@@ -740,7 +742,7 @@ final class Keep {
   static const profile = Keep._(_Screens.profile);
 }
 
-final class SplashNav extends AnyPlacement implements KickstartPlacement {
+final class SplashNav extends AnyPlacement {
   const SplashNav._() : super._();
   SplashNav surface() {
     _Screens.graph.popTo(_Screens.splash);
@@ -748,7 +750,7 @@ final class SplashNav extends AnyPlacement implements KickstartPlacement {
   }
 }
 
-final class SignInNav extends AnyPlacement implements KickstartPlacement {
+final class SignInNav extends AnyPlacement {
   const SignInNav._() : super._();
   SignInNav surface() {
     _Screens.graph.popTo(_Screens.signIn);
@@ -756,8 +758,7 @@ final class SignInNav extends AnyPlacement implements KickstartPlacement {
   }
 }
 
-final class HomeNav extends AnyPlacement
-    implements PopDestPlacement, KickstartPlacement {
+final class HomeNav extends AnyPlacement implements PopDestPlacement {
   const HomeNav._() : super._();
   HomeNav surface() {
     _Screens.graph.popTo(_Screens.home);
@@ -796,8 +797,7 @@ final class HomeHop<N extends AnyNav> {
   );
 }
 
-final class FeedNav extends AnyPlacement
-    implements FeedView, PopDestPlacement, KickstartPlacement {
+final class FeedNav extends AnyPlacement implements FeedView, PopDestPlacement {
   const FeedNav._() : super._();
   FeedNav surface() {
     _Screens.graph.popTo(_Screens.feed);
@@ -814,8 +814,7 @@ final class FeedNav extends AnyPlacement
   }
 }
 
-final class ProfileNav extends AnyPlacement
-    implements PopDestPlacement, KickstartPlacement {
+final class ProfileNav extends AnyPlacement implements PopDestPlacement {
   const ProfileNav._() : super._();
   ProfileNav surface() {
     _Screens.graph.popTo(_Screens.profile);
@@ -1154,7 +1153,7 @@ final class ProfileSettingsAboutPop<N extends AnyNav> {
 }
 
 final class AccountNav extends AnyPlacement
-    implements CanPopPlacement, PopDestPlacement, KickstartPlacement {
+    implements CanPopPlacement, PopDestPlacement {
   const AccountNav._() : super._();
   AccountNav surface() {
     _Screens.graph.popTo(_Screens.account);
@@ -1173,8 +1172,7 @@ final class AccountNav extends AnyPlacement
   }
 }
 
-final class EditAccountNav extends AnyPlacement
-    implements CanPopPlacement, KickstartPlacement {
+final class EditAccountNav extends AnyPlacement implements CanPopPlacement {
   const EditAccountNav._() : super._();
   EditAccountNav surface() {
     _Screens.graph.popTo(_Screens.editAccount);
@@ -1412,28 +1410,58 @@ class _LXItemSlot {
   );
 }
 
-class _WLSplash {
+final class _WLSplash implements Hop<SplashNav> {
   const _WLSplash._(this._s, this._i);
   final List<Enum> _s;
   final List<Object?> _i;
+  @override
+  List<(Enum, Object?)> get chain => [
+    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
+  ];
+  @override
+  Enum get spec => _s.last;
+  @override
+  Object? get id => _i.last;
+  @override
+  SplashNav get nav => const SplashNav._();
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://canon.example', _s, _i),
   );
 }
 
-class _WLSignIn {
+final class _WLSignIn implements Hop<SignInNav> {
   const _WLSignIn._(this._s, this._i);
   final List<Enum> _s;
   final List<Object?> _i;
+  @override
+  List<(Enum, Object?)> get chain => [
+    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
+  ];
+  @override
+  Enum get spec => _s.last;
+  @override
+  Object? get id => _i.last;
+  @override
+  SignInNav get nav => const SignInNav._();
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://canon.example', _s, _i),
   );
 }
 
-class _WLHome {
+final class _WLHome implements Hop<HomeNav> {
   const _WLHome._(this._s, this._i);
   final List<Enum> _s;
   final List<Object?> _i;
+  @override
+  List<(Enum, Object?)> get chain => [
+    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
+  ];
+  @override
+  Enum get spec => _s.last;
+  @override
+  Object? get id => _i.last;
+  @override
+  HomeNav get nav => const HomeNav._();
   _WLHomeItem item(String id) =>
       _WLHomeItem._([..._s, _Screens.item], [..._i, id]);
   _WLHomeItemEditItem editItem(String id) => _WLHomeItemEditItem._(
@@ -1447,10 +1475,20 @@ class _WLHome {
   );
 }
 
-class _WLHomeItem {
+final class _WLHomeItem implements Hop<HomeItemNav> {
   const _WLHomeItem._(this._s, this._i);
   final List<Enum> _s;
   final List<Object?> _i;
+  @override
+  List<(Enum, Object?)> get chain => [
+    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
+  ];
+  @override
+  Enum get spec => _s.last;
+  @override
+  Object? get id => _i.last;
+  @override
+  HomeItemNav get nav => const HomeItemNav._();
   _WLHomeItemEditItem get editItem =>
       _WLHomeItemEditItem._([..._s, _Screens.editItem], [..._i, null]);
   _WLHomeItemQ query(Set<ItemQueryArg> q) =>
@@ -1477,19 +1515,39 @@ class _WLHomeItemQ {
   );
 }
 
-class _WLHomeItemEditItem {
+final class _WLHomeItemEditItem implements Hop<HomeItemEditItemNav> {
   const _WLHomeItemEditItem._(this._s, this._i);
   final List<Enum> _s;
   final List<Object?> _i;
+  @override
+  List<(Enum, Object?)> get chain => [
+    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
+  ];
+  @override
+  Enum get spec => _s.last;
+  @override
+  Object? get id => _i.last;
+  @override
+  HomeItemEditItemNav get nav => const HomeItemEditItemNav._();
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://canon.example', _s, _i),
   );
 }
 
-class _WLHomeSettings {
+final class _WLHomeSettings implements Hop<HomeSettingsNav> {
   const _WLHomeSettings._(this._s, this._i);
   final List<Enum> _s;
   final List<Object?> _i;
+  @override
+  List<(Enum, Object?)> get chain => [
+    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
+  ];
+  @override
+  Enum get spec => _s.last;
+  @override
+  Object? get id => _i.last;
+  @override
+  HomeSettingsNav get nav => const HomeSettingsNav._();
   _WLHomeSettingsAbout get about =>
       _WLHomeSettingsAbout._([..._s, _Screens.about], [..._i, null]);
   Uri toUri([String? domain]) => Uri.parse(
@@ -1497,19 +1555,39 @@ class _WLHomeSettings {
   );
 }
 
-class _WLHomeSettingsAbout {
+final class _WLHomeSettingsAbout implements Hop<HomeSettingsAboutNav> {
   const _WLHomeSettingsAbout._(this._s, this._i);
   final List<Enum> _s;
   final List<Object?> _i;
+  @override
+  List<(Enum, Object?)> get chain => [
+    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
+  ];
+  @override
+  Enum get spec => _s.last;
+  @override
+  Object? get id => _i.last;
+  @override
+  HomeSettingsAboutNav get nav => const HomeSettingsAboutNav._();
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://canon.example', _s, _i),
   );
 }
 
-class _WLFeed {
+final class _WLFeed implements Hop<FeedNav> {
   const _WLFeed._(this._s, this._i);
   final List<Enum> _s;
   final List<Object?> _i;
+  @override
+  List<(Enum, Object?)> get chain => [
+    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
+  ];
+  @override
+  Enum get spec => _s.last;
+  @override
+  Object? get id => _i.last;
+  @override
+  FeedNav get nav => const FeedNav._();
   _WLFeedItem item(String id) =>
       _WLFeedItem._([..._s, _Screens.item], [..._i, id]);
   _WLFeedItemEditItem editItem(String id) => _WLFeedItemEditItem._(
@@ -1561,10 +1639,20 @@ class _WLFeedF {
   );
 }
 
-class _WLFeedItem {
+final class _WLFeedItem implements Hop<FeedItemNav> {
   const _WLFeedItem._(this._s, this._i);
   final List<Enum> _s;
   final List<Object?> _i;
+  @override
+  List<(Enum, Object?)> get chain => [
+    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
+  ];
+  @override
+  Enum get spec => _s.last;
+  @override
+  Object? get id => _i.last;
+  @override
+  FeedItemNav get nav => const FeedItemNav._();
   _WLFeedItemEditItem get editItem =>
       _WLFeedItemEditItem._([..._s, _Screens.editItem], [..._i, null]);
   _WLFeedItemQ query(Set<ItemQueryArg> q) =>
@@ -1591,19 +1679,39 @@ class _WLFeedItemQ {
   );
 }
 
-class _WLFeedItemEditItem {
+final class _WLFeedItemEditItem implements Hop<FeedItemEditItemNav> {
   const _WLFeedItemEditItem._(this._s, this._i);
   final List<Enum> _s;
   final List<Object?> _i;
+  @override
+  List<(Enum, Object?)> get chain => [
+    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
+  ];
+  @override
+  Enum get spec => _s.last;
+  @override
+  Object? get id => _i.last;
+  @override
+  FeedItemEditItemNav get nav => const FeedItemEditItemNav._();
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://canon.example', _s, _i),
   );
 }
 
-class _WLProfile {
+final class _WLProfile implements Hop<ProfileNav> {
   const _WLProfile._(this._s, this._i);
   final List<Enum> _s;
   final List<Object?> _i;
+  @override
+  List<(Enum, Object?)> get chain => [
+    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
+  ];
+  @override
+  Enum get spec => _s.last;
+  @override
+  Object? get id => _i.last;
+  @override
+  ProfileNav get nav => const ProfileNav._();
   _WLProfileSettings get settings =>
       _WLProfileSettings._([..._s, _Screens.settings], [..._i, null]);
   _WLProfileAccount account(String id) =>
@@ -1618,10 +1726,20 @@ class _WLProfile {
   );
 }
 
-class _WLProfileSettings {
+final class _WLProfileSettings implements Hop<ProfileSettingsNav> {
   const _WLProfileSettings._(this._s, this._i);
   final List<Enum> _s;
   final List<Object?> _i;
+  @override
+  List<(Enum, Object?)> get chain => [
+    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
+  ];
+  @override
+  Enum get spec => _s.last;
+  @override
+  Object? get id => _i.last;
+  @override
+  ProfileSettingsNav get nav => const ProfileSettingsNav._();
   _WLProfileSettingsAbout get about =>
       _WLProfileSettingsAbout._([..._s, _Screens.about], [..._i, null]);
   Uri toUri([String? domain]) => Uri.parse(
@@ -1629,19 +1747,39 @@ class _WLProfileSettings {
   );
 }
 
-class _WLProfileSettingsAbout {
+final class _WLProfileSettingsAbout implements Hop<ProfileSettingsAboutNav> {
   const _WLProfileSettingsAbout._(this._s, this._i);
   final List<Enum> _s;
   final List<Object?> _i;
+  @override
+  List<(Enum, Object?)> get chain => [
+    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
+  ];
+  @override
+  Enum get spec => _s.last;
+  @override
+  Object? get id => _i.last;
+  @override
+  ProfileSettingsAboutNav get nav => const ProfileSettingsAboutNav._();
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://canon.example', _s, _i),
   );
 }
 
-class _WLProfileAccount {
+final class _WLProfileAccount implements Hop<AccountNav> {
   const _WLProfileAccount._(this._s, this._i);
   final List<Enum> _s;
   final List<Object?> _i;
+  @override
+  List<(Enum, Object?)> get chain => [
+    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
+  ];
+  @override
+  Enum get spec => _s.last;
+  @override
+  Object? get id => _i.last;
+  @override
+  AccountNav get nav => const AccountNav._();
   _WLProfileAccountEditAccount get editAccount =>
       _WLProfileAccountEditAccount._(
         [..._s, _Screens.editAccount],
@@ -1652,10 +1790,20 @@ class _WLProfileAccount {
   );
 }
 
-class _WLProfileAccountEditAccount {
+final class _WLProfileAccountEditAccount implements Hop<EditAccountNav> {
   const _WLProfileAccountEditAccount._(this._s, this._i);
   final List<Enum> _s;
   final List<Object?> _i;
+  @override
+  List<(Enum, Object?)> get chain => [
+    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
+  ];
+  @override
+  Enum get spec => _s.last;
+  @override
+  Object? get id => _i.last;
+  @override
+  EditAccountNav get nav => const EditAccountNav._();
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://canon.example', _s, _i),
   );

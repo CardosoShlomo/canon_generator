@@ -561,17 +561,15 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
           '  }';
     }
 
-    // Kick-start union: every globally reachable (single-placement) screen's nav
-    // implements `KickstartPlacement`, so `Screen.go(Hop)` returns a `KickstartNav`
-    // whose `.at` narrows to the exact target it landed on.
+    // Kick-start targets: every globally reachable (single-placement) screen.
+    // `Screen.go(Hop)` returns the Hop's exact typed nav (`hop.nav`) — a known
+    // target is statically typed; a dynamic (ternary) Hop's LUB is `AnyNav`,
+    // switched exhaustively.
     final kickstartNavs = [
       for (final r in rows)
         if (globalSafe(r.name)) unionName(r.name)
     ];
     final hasKickstart = kickstartNavs.isNotEmpty;
-    for (final nav in kickstartNavs) {
-      (crossImpl[nav] ??= {}).add('KickstartPlacement');
-    }
 
     // parentOf exists only to DISAMBIGUATE: it offers a screen X iff X has 2+
     // distinct parent placements (with one parent you'd just name it, e.g.
@@ -977,9 +975,9 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln('  static bool restore(Map<String, Object?> state) =>');
     b.writeln('      $spec.graph.restore(state);');
     if (hasKickstart) {
-      b.writeln('  static KickstartNav go<N extends AnyNav>(Hop<N> hop) {');
-      b.writeln('    $spec.graph.go(hop.spec, hop.id);');
-      b.writeln('    return const KickstartNav._();');
+      b.writeln('  static N go<N extends AnyNav>(Hop<N> hop) {');
+      b.writeln('    for (final (s, i) in hop.chain) $spec.graph.go(s, i);');
+      b.writeln('    return hop.nav;');
       b.writeln('  }');
     }
     b.writeln('  /// If the live stack ends with this selector path (every pinned id and,');
@@ -1084,12 +1082,21 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln('  /// [AnyPlacement] — `switch (Screen.current) { … }` is exhaustive.');
     b.writeln('  static AnyPlacement get current => _atOf($spec.graph.current);');
     if (model.links.isNotEmpty) {
-      b.writeln('  /// The cold-start link (already parsed), or null off the web,');
-      b.writeln('  /// warm, or when the URL is not a representable link.');
+      b.writeln('  /// The cold-start link, parsed from the launch URL — read it in the');
+      b.writeln('  /// `initial` boot UI to vary the loading screen by destination. Eager:');
+      b.writeln('  /// available from the first build, independent of the Router callback.');
+      b.writeln("  /// Null when the launch URL isn't a representable link.");
       b.writeln('  static Link? get initialUrl {');
-      b.writeln('    final u = $spec.graph.bootUrl;');
-      b.writeln('    return u == null ? null : parseLink(u)?.link;');
+      b.writeln('    final u = $spec.graph.bootUrl ??');
+      b.writeln('        WidgetsBinding.instance.platformDispatcher.defaultRouteName;');
+      b.writeln('    return parseLink(u)?.link;');
       b.writeln('  }');
+      b.writeln('  /// THE navigation resolver — assign once (ideally in `main` before');
+      b.writeln('  /// `runApp`). Fires with the cold-start link (or null), then on every');
+      b.writeln('  /// deep link — web URL + mobile app-link, one channel. Write plain');
+      b.writeln('  /// `Screen.goX()` / `Screen.replace`. Single, last-wins, never disposed.');
+      b.writeln('  static set resolver(void Function(Link? link) fn) =>');
+      b.writeln('      $spec.graph.setResolver((url) => fn(parseLink(url)?.link));');
     }
     if (hasCanPop) {
       b.writeln('  /// The poppable handle if the active top is a non-root placement,');
@@ -1101,12 +1108,6 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       b.writeln('  /// returns where it landed, or null at a root. Never throws.');
       b.writeln('  static PopDestNav? pop() => canPop?.pop();');
     }
-    b.writeln('  /// Side-effect listener fired after each navigation commits (new top');
-    b.writeln('  /// settled, before its transition animates). Wire it where state lives');
-    b.writeln('  /// (e.g. a provider); returns a disposer. Pure observation.');
-    b.writeln('  static void Function() observe(');
-    b.writeln('          void Function(Screen<Object?> from, Screen<Object?> to) fn) =>');
-    b.writeln('      $spec.graph.observe((f, t) => fn(forSpec(f), forSpec(t)));');
     b.writeln('  /// A broadcast stream of committed navigations as typed snapshots:');
     b.writeln('  /// `from`/`to` are ScreenEntry stacks; `switch (e.destination)` for');
     b.writeln('  /// the landed screen + its typed id. Filter with `.where`.');
@@ -1150,7 +1151,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln('final class Replace {');
     b.writeln('  const Replace._();');
     if (hasKickstart) {
-      b.writeln('  KickstartNav go<N extends AnyNav>(Hop<N> hop) {');
+      b.writeln('  N go<N extends AnyNav>(Hop<N> hop) {');
       b.writeln('    $spec.graph.markReplace();');
       b.writeln('    return Screen.go(hop);');
       b.writeln('  }');
@@ -1236,6 +1237,10 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       b.writeln('  final Enum spec;');
       b.writeln('  final Object? id;');
       b.writeln('  final N nav;');
+      b.writeln('  /// The root-down chain this hop replays. A single kick-start is one');
+      b.writeln('  /// segment; a navigable `Place` (a `WidgetLink`) overrides it with its');
+      b.writeln('  /// full path, so `Screen.go` lands the whole placement.');
+      b.writeln('  List<(Enum, Object?)> get chain => [(spec, id)];');
       for (final r in rows) {
         if (!globalSafe(r.name)) continue; // id-behind targets: reach via chaining
         // Inherit-rescued kick-starts need a multi-step chain; a Hop is one go, so
@@ -1545,17 +1550,6 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       }
       b.writeln("    throw StateError('unresolved PopDestNav: \$c');");
       b.writeln('  }');
-      b.writeln('}');
-    }
-
-    // Kick-start union: `Screen.go(Hop)` returns this; `.at` narrows to the exact
-    // single-placement target it landed on (every kick-startable nav implements
-    // KickstartPlacement). Switch it exhaustively.
-    if (hasKickstart) {
-      b.writeln('sealed class KickstartPlacement {}');
-      b.writeln('final class KickstartNav extends AnyNav {');
-      b.writeln('  const KickstartNav._() : super._();');
-      b.writeln('  KickstartPlacement get at => Screen.current as KickstartPlacement;');
       b.writeln('}');
     }
 
@@ -2079,10 +2073,26 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
         final name = wlName(n);
         if (!wlEmitted.add(name)) return;
         final kids = wlKids(n);
-        chainBuf.writeln('class $name {');
+        final navT = placementName(n);
+        // A WidgetLink step is a complete root-down placement → a navigable Hop,
+        // so `Screen.go(Place.x())` lands the whole chain and returns its nav.
+        chainBuf.writeln(hasKickstart
+            ? 'final class $name implements Hop<$navT> {'
+            : 'class $name {');
         chainBuf.writeln('  const $name._(this._s, this._i);');
         chainBuf.writeln('  final List<Enum> _s;');
         chainBuf.writeln('  final List<Object?> _i;');
+        if (hasKickstart) {
+          chainBuf.writeln('  @override');
+          chainBuf.writeln('  List<(Enum, Object?)> get chain =>');
+          chainBuf.writeln('      [for (var k = 0; k < _s.length; k++) (_s[k], _i[k])];');
+          chainBuf.writeln('  @override');
+          chainBuf.writeln('  Enum get spec => _s.last;');
+          chainBuf.writeln('  @override');
+          chainBuf.writeln('  Object? get id => _i.last;');
+          chainBuf.writeln('  @override');
+          chainBuf.writeln('  $navT get nav => const $navT._();');
+        }
         for (final c in kids) {
           chainBuf.writeln(wlAccessor(c, static: false));
           // Inherit kick-start shortcut: an inheriting grandchild (`editItem`

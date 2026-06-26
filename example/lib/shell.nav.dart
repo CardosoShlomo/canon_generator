@@ -113,9 +113,9 @@ final class Screen<I> {
   /// false on a stale/incompatible snapshot.
   static bool restore(Map<String, Object?> state) =>
       _Shell.graph.restore(state);
-  static KickstartNav go<N extends AnyNav>(Hop<N> hop) {
-    _Shell.graph.go(hop.spec, hop.id);
-    return const KickstartNav._();
+  static N go<N extends AnyNav>(Hop<N> hop) {
+    for (final (s, i) in hop.chain) _Shell.graph.go(s, i);
+    return hop.nav;
   }
 
   /// If the live stack ends with this selector path (every pinned id and,
@@ -209,13 +209,6 @@ final class Screen<I> {
   /// returns where it landed, or null at a root. Never throws.
   static PopDestNav? pop() => canPop?.pop();
 
-  /// Side-effect listener fired after each navigation commits (new top
-  /// settled, before its transition animates). Wire it where state lives
-  /// (e.g. a provider); returns a disposer. Pure observation.
-  static void Function() observe(
-    void Function(Screen<Object?> from, Screen<Object?> to) fn,
-  ) => _Shell.graph.observe((f, t) => fn(forSpec(f), forSpec(t)));
-
   /// A broadcast stream of committed navigations as typed snapshots:
   /// `from`/`to` are ScreenEntry stacks; `switch (e.destination)` for
   /// the landed screen + its typed id. Filter with `.where`.
@@ -252,7 +245,7 @@ final class Screen<I> {
 /// but commits as a history REPLACE (web `replaceState`).
 final class Replace {
   const Replace._();
-  KickstartNav go<N extends AnyNav>(Hop<N> hop) {
+  N go<N extends AnyNav>(Hop<N> hop) {
     _Shell.graph.markReplace();
     return Screen.go(hop);
   }
@@ -358,6 +351,11 @@ final class Hop<N extends AnyNav> {
   final Enum spec;
   final Object? id;
   final N nav;
+
+  /// The root-down chain this hop replays. A single kick-start is one
+  /// segment; a navigable `Place` (a `WidgetLink`) overrides it with its
+  /// full path, so `Screen.go` lands the whole placement.
+  List<(Enum, Object?)> get chain => [(spec, id)];
   static const home = Hop<HomeNav>._(_Shell.home, null, HomeNav._());
   static const settings = Hop<SettingsNav>._(
     _Shell.settings,
@@ -537,15 +535,7 @@ final class PopDestNav extends AnyNav {
   }
 }
 
-sealed class KickstartPlacement {}
-
-final class KickstartNav extends AnyNav {
-  const KickstartNav._() : super._();
-  KickstartPlacement get at => Screen.current as KickstartPlacement;
-}
-
-final class HomeNav extends AnyPlacement
-    implements PopDestPlacement, KickstartPlacement {
+final class HomeNav extends AnyPlacement implements PopDestPlacement {
   const HomeNav._() : super._();
   HomeNav surface() {
     _Shell.graph.popTo(_Shell.home);
@@ -590,8 +580,7 @@ final class HomeHop<N extends AnyNav> {
   static const saved = HomeHop<SavedNav>._(Wishlist.saved, null, SavedNav._());
 }
 
-final class SettingsNav extends AnyPlacement
-    implements CanPopPlacement, KickstartPlacement {
+final class SettingsNav extends AnyPlacement implements CanPopPlacement {
   const SettingsNav._() : super._();
   SettingsNav surface() {
     _Shell.graph.popTo(_Shell.settings);
@@ -605,7 +594,7 @@ final class SettingsNav extends AnyPlacement
 }
 
 final class ShopNav extends AnyPlacement
-    implements CanPopPlacement, PopDestPlacement, KickstartPlacement {
+    implements CanPopPlacement, PopDestPlacement {
   const ShopNav._() : super._();
   ShopNav surface() {
     _Shell.graph.popTo(Shop.shop);
@@ -625,7 +614,7 @@ final class ShopNav extends AnyPlacement
 }
 
 final class CatalogNav extends AnyPlacement
-    implements CanPopPlacement, PopDestPlacement, KickstartPlacement {
+    implements CanPopPlacement, PopDestPlacement {
   const CatalogNav._() : super._();
   CatalogNav surface() {
     _Shell.graph.popTo(Shop.catalog);
@@ -757,7 +746,7 @@ final class HomeSavedProductPop<N extends AnyNav> {
 }
 
 final class SavedNav extends AnyPlacement
-    implements CanPopPlacement, PopDestPlacement, KickstartPlacement {
+    implements CanPopPlacement, PopDestPlacement {
   const SavedNav._() : super._();
   SavedNav surface() {
     _Shell.graph.popTo(Wishlist.saved);
@@ -865,10 +854,20 @@ ParsedLink? parseLink(String url) {
   return ParsedLink(link, '${uri.scheme}://${uri.host}');
 }
 
-class _WLHome {
+final class _WLHome implements Hop<HomeNav> {
   const _WLHome._(this._s, this._i);
   final List<Enum> _s;
   final List<Object?> _i;
+  @override
+  List<(Enum, Object?)> get chain => [
+    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
+  ];
+  @override
+  Enum get spec => _s.last;
+  @override
+  Object? get id => _i.last;
+  @override
+  HomeNav get nav => const HomeNav._();
   _WLHomeSettings get settings =>
       _WLHomeSettings._([..._s, _Shell.settings], [..._i, null]);
   _WLHomeShop get shop => _WLHomeShop._([..._s, Shop.shop], [..._i, null]);
@@ -878,56 +877,117 @@ class _WLHome {
       Uri.parse(_Shell.graph.encodeNavUrl(domain, _s, _i));
 }
 
-class _WLHomeSettings {
+final class _WLHomeSettings implements Hop<SettingsNav> {
   const _WLHomeSettings._(this._s, this._i);
   final List<Enum> _s;
   final List<Object?> _i;
+  @override
+  List<(Enum, Object?)> get chain => [
+    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
+  ];
+  @override
+  Enum get spec => _s.last;
+  @override
+  Object? get id => _i.last;
+  @override
+  SettingsNav get nav => const SettingsNav._();
   Uri toUri(String domain) =>
       Uri.parse(_Shell.graph.encodeNavUrl(domain, _s, _i));
 }
 
-class _WLHomeShop {
+final class _WLHomeShop implements Hop<ShopNav> {
   const _WLHomeShop._(this._s, this._i);
   final List<Enum> _s;
   final List<Object?> _i;
+  @override
+  List<(Enum, Object?)> get chain => [
+    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
+  ];
+  @override
+  Enum get spec => _s.last;
+  @override
+  Object? get id => _i.last;
+  @override
+  ShopNav get nav => const ShopNav._();
   _WLHomeShopCatalog get catalog =>
       _WLHomeShopCatalog._([..._s, Shop.catalog], [..._i, null]);
   Uri toUri(String domain) =>
       Uri.parse(_Shell.graph.encodeNavUrl(domain, _s, _i));
 }
 
-class _WLHomeShopCatalog {
+final class _WLHomeShopCatalog implements Hop<CatalogNav> {
   const _WLHomeShopCatalog._(this._s, this._i);
   final List<Enum> _s;
   final List<Object?> _i;
+  @override
+  List<(Enum, Object?)> get chain => [
+    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
+  ];
+  @override
+  Enum get spec => _s.last;
+  @override
+  Object? get id => _i.last;
+  @override
+  CatalogNav get nav => const CatalogNav._();
   _WLHomeShopCatalogProduct product(String id) =>
       _WLHomeShopCatalogProduct._([..._s, Shop.product], [..._i, id]);
   Uri toUri(String domain) =>
       Uri.parse(_Shell.graph.encodeNavUrl(domain, _s, _i));
 }
 
-class _WLHomeShopCatalogProduct {
+final class _WLHomeShopCatalogProduct
+    implements Hop<HomeShopCatalogProductNav> {
   const _WLHomeShopCatalogProduct._(this._s, this._i);
   final List<Enum> _s;
   final List<Object?> _i;
+  @override
+  List<(Enum, Object?)> get chain => [
+    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
+  ];
+  @override
+  Enum get spec => _s.last;
+  @override
+  Object? get id => _i.last;
+  @override
+  HomeShopCatalogProductNav get nav => const HomeShopCatalogProductNav._();
   Uri toUri(String domain) =>
       Uri.parse(_Shell.graph.encodeNavUrl(domain, _s, _i));
 }
 
-class _WLHomeSaved {
+final class _WLHomeSaved implements Hop<SavedNav> {
   const _WLHomeSaved._(this._s, this._i);
   final List<Enum> _s;
   final List<Object?> _i;
+  @override
+  List<(Enum, Object?)> get chain => [
+    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
+  ];
+  @override
+  Enum get spec => _s.last;
+  @override
+  Object? get id => _i.last;
+  @override
+  SavedNav get nav => const SavedNav._();
   _WLHomeSavedProduct product(String id) =>
       _WLHomeSavedProduct._([..._s, Shop.product], [..._i, id]);
   Uri toUri(String domain) =>
       Uri.parse(_Shell.graph.encodeNavUrl(domain, _s, _i));
 }
 
-class _WLHomeSavedProduct {
+final class _WLHomeSavedProduct implements Hop<HomeSavedProductNav> {
   const _WLHomeSavedProduct._(this._s, this._i);
   final List<Enum> _s;
   final List<Object?> _i;
+  @override
+  List<(Enum, Object?)> get chain => [
+    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
+  ];
+  @override
+  Enum get spec => _s.last;
+  @override
+  Object? get id => _i.last;
+  @override
+  HomeSavedProductNav get nav => const HomeSavedProductNav._();
   Uri toUri(String domain) =>
       Uri.parse(_Shell.graph.encodeNavUrl(domain, _s, _i));
 }
