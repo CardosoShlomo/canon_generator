@@ -1309,8 +1309,8 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
           ? '  const $name._(super.specs, super.ids, super.nav, [super.conds]) : super._();'
           : '  const $name._(super.specs, super.ids, super.nav) : super._();');
       // View-state conditions narrow the match: `.query({.category('x')})`.
-      if (hasView) {
-        if (vs!.query.isNotEmpty) {
+      if (vs != null) {
+        if (vs.query.isNotEmpty) {
           stepBuf.writeln('  $name query(Set<${_cap(sc)}QueryCond> cs) =>'
               ' $name._(specs, ids, nav, [...conds, ...cs]);');
         }
