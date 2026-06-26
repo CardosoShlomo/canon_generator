@@ -540,7 +540,7 @@ final class SettingsNavParent extends AnyNav {
 }
 
 final class OnHome extends On<HomeNav, AnyView> {
-  const OnHome._(super.specs, super.ids, super.nav, [super.conds]) : super._();
+  const OnHome._(super.specs, super.ids, super.nav) : super._();
   OnHomeItem get item => OnHomeItem._(
     [...specs, _Screens.item],
     [...ids, null],
@@ -568,8 +568,7 @@ final class OnHomeItem extends On<HomeItemNav, ItemView> {
 }
 
 final class OnHomeSettings extends On<HomeSettingsNav, AnyView> {
-  const OnHomeSettings._(super.specs, super.ids, super.nav, [super.conds])
-    : super._();
+  const OnHomeSettings._(super.specs, super.ids, super.nav) : super._();
   On<HomeSettingsAboutNav, AnyView> get about => On._(
     [...specs, _Screens.about],
     [...ids, null],
@@ -605,8 +604,7 @@ final class OnFeedItem extends On<FeedItemNav, ItemView> {
 }
 
 final class OnProfile extends On<ProfileNav, AnyView> {
-  const OnProfile._(super.specs, super.ids, super.nav, [super.conds])
-    : super._();
+  const OnProfile._(super.specs, super.ids, super.nav) : super._();
   OnProfileSettings get settings => OnProfileSettings._(
     [...specs, _Screens.settings],
     [...ids, null],
@@ -625,8 +623,7 @@ final class OnProfile extends On<ProfileNav, AnyView> {
 }
 
 final class OnProfileSettings extends On<ProfileSettingsNav, AnyView> {
-  const OnProfileSettings._(super.specs, super.ids, super.nav, [super.conds])
-    : super._();
+  const OnProfileSettings._(super.specs, super.ids, super.nav) : super._();
   On<ProfileSettingsAboutNav, AnyView> get about => On._(
     [...specs, _Screens.about],
     [...ids, null],
@@ -635,8 +632,7 @@ final class OnProfileSettings extends On<ProfileSettingsNav, AnyView> {
 }
 
 final class OnAccount extends On<AccountNav, AnyView> {
-  const OnAccount._(super.specs, super.ids, super.nav, [super.conds])
-    : super._();
+  const OnAccount._(super.specs, super.ids, super.nav) : super._();
   OnAccount call(String id) =>
       OnAccount._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
@@ -650,22 +646,19 @@ final class OnItem extends On<ItemPlacement, ItemView> {
 }
 
 final class OnEditItem extends On<EditItemPlacement, AnyView> {
-  const OnEditItem._(super.specs, super.ids, super.nav, [super.conds])
-    : super._();
+  const OnEditItem._(super.specs, super.ids, super.nav) : super._();
   OnEditItem call(String id) =>
       OnEditItem._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class OnSettings extends On<SettingsPlacement, AnyView> {
-  const OnSettings._(super.specs, super.ids, super.nav, [super.conds])
-    : super._();
+  const OnSettings._(super.specs, super.ids, super.nav) : super._();
   On<AboutPlacement, AnyView> get about =>
       On._([...specs, _Screens.about], [...ids, null], null);
 }
 
 final class OnEditAccount extends On<EditAccountNav, AnyView> {
-  const OnEditAccount._(super.specs, super.ids, super.nav, [super.conds])
-    : super._();
+  const OnEditAccount._(super.specs, super.ids, super.nav) : super._();
   OnEditAccount call(String id) =>
       OnEditAccount._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
@@ -1753,7 +1746,7 @@ class ItemQuery {
   String? get sort => _Screens.graph.viewGet(_Screens.item, 'sort') as String?;
 }
 
-/// Mutable [ItemQuery] — a setter per key (null clears / removes from URL).
+/// Mutable [ItemQuery] — set a key (null clears / removes from URL).
 final class ItemQueryMut extends ItemQuery {
   const ItemQueryMut._() : super._();
   set sort(String? v) => _Screens.graph.viewSet(_Screens.item, 'sort', v);
@@ -1815,7 +1808,7 @@ class FeedQuery {
   int? get radius => _Screens.graph.viewGet(_Screens.feed, 'radius') as int?;
 }
 
-/// Mutable [FeedQuery] — a setter per key (null clears / removes from URL).
+/// Mutable [FeedQuery] — set a key (null clears / removes from URL).
 final class FeedQueryMut extends FeedQuery {
   const FeedQueryMut._() : super._();
   set category(String? v) =>
@@ -1830,7 +1823,7 @@ class FeedFragment {
   bool get pinned => _Screens.graph.viewGet(_Screens.feed, 'pinned') == true;
 }
 
-/// Mutable [FeedFragment] — a setter per key (null clears / removes from URL).
+/// Mutable [FeedFragment] — set a key (null clears / removes from URL).
 final class FeedFragmentMut extends FeedFragment {
   const FeedFragmentMut._() : super._();
   set tab(String? v) => _Screens.graph.viewSet(_Screens.feed, 'tab', v);

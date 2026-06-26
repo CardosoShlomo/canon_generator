@@ -2,3 +2,7 @@
 build/
 pubspec.lock
 pubspec_overrides.yaml
+
+# Local large-grammar stress-test fixture (kept on disk, never published).
+example/lib/mega.dart
+example/lib/mega.nav.dart

@@ -253,6 +253,9 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     // / `<Screen>Fragment` read models + their `…Mut` setter subtypes.
     final viewScreens =
         <String, ({List<ViewKey> query, List<ViewKey> fragment})>{};
+    // Parallel grouped view (preserves allOf/oneOf) for the typed value model.
+    final viewGroupsByScreen =
+        <String, ({List<ViewGroup> query, List<ViewGroup> fragment})>{};
     void collectView(PlacementNode n) {
       if (n.viewQuery.isNotEmpty || n.viewFragment.isNotEmpty) {
         viewScreens.putIfAbsent(
@@ -260,6 +263,12 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
             () => (
                   query: viewKeys(n.viewQuery, element),
                   fragment: viewKeys(n.viewFragment, element),
+                ));
+        viewGroupsByScreen.putIfAbsent(
+            n.screen,
+            () => (
+                  query: viewGroups(n.viewQuery, element),
+                  fragment: viewGroups(n.viewFragment, element),
                 ));
       }
       n.children.forEach(collectView);
@@ -1291,12 +1300,17 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
         if (c.inheritSource != null) continue;
         (groups[c.screen] ??= []).add(c);
       }
+      // Only a view-bearing step ever receives `conds` (via its `.query`/
+      // `.fragment` below); without view-state the forwarded param is dead.
+      final vs = viewScreens[sc];
+      final hasView = vs != null && (vs.query.isNotEmpty || vs.fragment.isNotEmpty);
       stepBuf.writeln('final class $name extends ${onOf(nav, sc)} {');
-      stepBuf.writeln('  const $name._(super.specs, super.ids, super.nav, [super.conds]) : super._();');
+      stepBuf.writeln(hasView
+          ? '  const $name._(super.specs, super.ids, super.nav, [super.conds]) : super._();'
+          : '  const $name._(super.specs, super.ids, super.nav) : super._();');
       // View-state conditions narrow the match: `.query({.category('x')})`.
-      if (viewScreens.containsKey(sc)) {
-        final vs = viewScreens[sc]!;
-        if (vs.query.isNotEmpty) {
+      if (hasView) {
+        if (vs!.query.isNotEmpty) {
           stepBuf.writeln('  $name query(Set<${_cap(sc)}QueryCond> cs) =>'
               ' $name._(specs, ids, nav, [...conds, ...cs]);');
         }
@@ -2249,32 +2263,94 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     // ── View-state data types: `<Screen>Query` (read getters) + `<Screen>QueryMut`
     // (adds setters), same for fragment. Everything nullable; a flag is `bool`
     // (set false ⟹ cleared). Backed by the runtime's view store.
-    void emitViewType(String screen, String part, List<ViewKey> keys) {
-      if (keys.isEmpty) return;
+    // Singles stay flat/nullable; an `allOf` becomes a co-present record getter
+    // (null unless ALL members set); a `oneOf` becomes a sealed exactly-one
+    // choice (the setter clears siblings) — all over the same flat view store.
+    void emitViewType(String screen, String part, List<ViewGroup> groups) {
+      if (groups.isEmpty) return;
       final base = '${_cap(screen)}${part == 'f' ? 'Fragment' : 'Query'}';
-      String getOf(ViewKey k) => k.flag
-          ? "$spec.graph.viewGet(${sv(screen)}, '${k.name}') == true"
-          : "$spec.graph.viewGet(${sv(screen)}, '${k.name}') as ${k.type}?";
-      b.writeln('/// Screen-local ${part == 'f' ? 'fragment' : 'query'} '
-          'view-state for `$screen` (read-only).');
+      final scv = sv(screen);
+      final label = part == 'f' ? 'fragment' : 'query';
+      String nget(ViewKey k) => k.flag
+          ? "($spec.graph.viewGet($scv, '${k.name}') == true ? true : null)"
+          : "$spec.graph.viewGet($scv, '${k.name}') as ${k.type}?";
+      String recType(List<ViewKey> ks) =>
+          '({${[for (final k in ks) '${k.flag ? 'bool' : k.type} ${k.name}'].join(', ')}})';
+
+      // oneOf → sealed choice type, one branch per member (value branches carry it).
+      for (final g in groups) {
+        if (g is! ViewOneOf) continue;
+        final choice = '${base}Choice';
+        b.writeln('/// Exactly-one `oneOf` choice for `$screen` $label view-state.');
+        b.writeln('sealed class $choice { const $choice(); }');
+        for (final k in g.keys) {
+          final cls = '$base${_cap(k.name)}';
+          b.writeln(k.flag
+              ? 'final class $cls extends $choice { const $cls(); }'
+              : 'final class $cls extends $choice { const $cls(this.value); final ${k.type} value; }');
+        }
+        b.writeln('');
+      }
+
+      b.writeln('/// Screen-local $label view-state for `$screen` (read-only).');
       b.writeln('class $base {');
       b.writeln('  const $base._();');
-      for (final k in keys) {
-        final t = k.flag ? 'bool' : '${k.type}?';
-        b.writeln('  $t get ${k.name} => ${getOf(k)};');
+      for (final g in groups) {
+        switch (g) {
+          case ViewSingle(:final key):
+            final t = key.flag ? 'bool' : '${key.type}?';
+            final getExpr = key.flag
+                ? "$spec.graph.viewGet($scv, '${key.name}') == true"
+                : "$spec.graph.viewGet($scv, '${key.name}') as ${key.type}?";
+            b.writeln('  $t get ${key.name} => $getExpr;');
+          case ViewAllOf(:final keys):
+            final guard = [for (final k in keys) '${k.name} != null'].join(' && ');
+            final rec = '(${[for (final k in keys) '${k.name}: ${k.name}'].join(', ')})';
+            b.writeln('  ${recType(keys)}? get group {');
+            for (final k in keys) {
+              b.writeln('    final ${k.name} = ${nget(k)};');
+            }
+            b.writeln('    return ($guard) ? $rec : null;');
+            b.writeln('  }');
+          case ViewOneOf(:final keys):
+            b.writeln('  ${base}Choice? get choice {');
+            for (final k in keys) {
+              final cls = '$base${_cap(k.name)}';
+              b.writeln(k.flag
+                  ? "    if ($spec.graph.viewGet($scv, '${k.name}') == true) return const $cls();"
+                  : "    { final v = $spec.graph.viewGet($scv, '${k.name}') as ${k.type}?; if (v != null) return $cls(v); }");
+            }
+            b.writeln('    return null;');
+            b.writeln('  }');
+        }
       }
       b.writeln('}');
       b.writeln('');
-      b.writeln('/// Mutable [$base] — a setter per key (null clears / removes from URL).');
+
+      b.writeln('/// Mutable [$base] — set a key (null clears / removes from URL).');
       b.writeln('final class ${base}Mut extends $base {');
       b.writeln('  const ${base}Mut._() : super._();');
-      for (final k in keys) {
-        if (k.flag) {
-          b.writeln('  set ${k.name}(bool v) => '
-              "$spec.graph.viewSet(${sv(screen)}, '${k.name}', v ? true : null);");
-        } else {
-          b.writeln('  set ${k.name}(${k.type}? v) => '
-              "$spec.graph.viewSet(${sv(screen)}, '${k.name}', v);");
+      for (final g in groups) {
+        switch (g) {
+          case ViewSingle(:final key):
+            b.writeln(key.flag
+                ? "  set ${key.name}(bool v) => $spec.graph.viewSet($scv, '${key.name}', v ? true : null);"
+                : "  set ${key.name}(${key.type}? v) => $spec.graph.viewSet($scv, '${key.name}', v);");
+          case ViewAllOf(:final keys):
+            b.writeln('  set group(${recType(keys)}? v) {');
+            for (final k in keys) {
+              final val = k.flag ? '(v?.${k.name} ?? false) ? true : null' : 'v?.${k.name}';
+              b.writeln("    $spec.graph.viewSet($scv, '${k.name}', $val);");
+            }
+            b.writeln('  }');
+          case ViewOneOf(:final keys):
+            b.writeln('  set choice(${base}Choice? v) {');
+            for (final k in keys) {
+              final cls = '$base${_cap(k.name)}';
+              final val = k.flag ? 'v is $cls ? true : null' : 'v is $cls ? v.value : null';
+              b.writeln("    $spec.graph.viewSet($scv, '${k.name}', $val);");
+            }
+            b.writeln('  }');
         }
       }
       b.writeln('}');
@@ -2376,8 +2452,8 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     emitCondWith('', 'f', [...globalFragment.values]);
 
     for (final e in viewScreens.entries) {
-      emitViewType(e.key, 'q', e.value.query);
-      emitViewType(e.key, 'f', e.value.fragment);
+      emitViewType(e.key, 'q', viewGroupsByScreen[e.key]!.query);
+      emitViewType(e.key, 'f', viewGroupsByScreen[e.key]!.fragment);
       emitCondWith(_cap(e.key), 'q', e.value.query);
       emitCondWith(_cap(e.key), 'f', e.value.fragment);
       emitSetWith(_cap(e.key), 'q', e.value.query);

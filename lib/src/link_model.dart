@@ -289,6 +289,63 @@ List<ViewKey> viewKeys(List<Expression> exprs, EnumElement element) {
   return out;
 }
 
+/// A view-state term group: a lone key (independent/nullable), an `allOf` (all
+/// members co-present — a record), or a `oneOf` (exactly one member — a sealed
+/// type). Plain keys keep today's flat surface; combinators add a grouped typed
+/// surface over the same flat store. At most one `allOf` / one `oneOf` per set.
+sealed class ViewGroup {}
+
+class ViewSingle extends ViewGroup {
+  ViewSingle(this.key);
+  final ViewKey key;
+}
+
+class ViewAllOf extends ViewGroup {
+  ViewAllOf(this.keys);
+  final List<ViewKey> keys;
+}
+
+class ViewOneOf extends ViewGroup {
+  ViewOneOf(this.keys);
+  final List<ViewKey> keys;
+}
+
+/// Like [viewKeys] but PRESERVES `allOf`/`oneOf` grouping for the typed value
+/// model. Nested combinators inside a group are flattened into that group.
+List<ViewGroup> viewGroups(List<Expression> exprs, EnumElement element) {
+  ViewKey key(KeyTerm t) =>
+      (name: t.name, type: t.type, flag: t.kind == ParamKind.flag);
+  List<ViewKey> flat(List<Term> members) {
+    final out = <ViewKey>[];
+    void add(Term t) {
+      switch (t) {
+        case KeyTerm():
+          out.add(key(t));
+        case AllOfTerm():
+          t.members.forEach(add);
+        case OneOfTerm():
+          t.members.forEach(add);
+      }
+    }
+
+    members.forEach(add);
+    return out;
+  }
+
+  final out = <ViewGroup>[];
+  for (final e in exprs) {
+    switch (_term(e, element)) {
+      case KeyTerm t:
+        out.add(ViewSingle(key(t)));
+      case AllOfTerm t:
+        out.add(ViewAllOf(flat(t.members)));
+      case OneOfTerm t:
+        out.add(ViewOneOf(flat(t.members)));
+    }
+  }
+  return out;
+}
+
 Term _term(Expression e, EnumElement element) {
   switch (e) {
     case MethodInvocation(

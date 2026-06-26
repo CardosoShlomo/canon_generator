@@ -1,3 +1,9 @@
+## 0.21.0
+
+- View-state combinators are now typed: `oneOf({…})` emits a sealed exactly-one `<Screen>QueryChoice` (setter clears siblings); `allOf({…})` emits a co-present record getter (null unless all set) — previously both were flattened to independent keys.
+- Drop the unused `conds` parameter from non-view selector steps, clearing `unused_element_parameter` warnings on large grammars.
+- Requires `canon ^0.16.0`.
+
 ## 0.20.0
 
 - Typed deep-link builders: `Link` / `WidgetLink` / `WidgetlessLink` with `.toUri()`, root-down + kick-start + smart minimal-parent addressing.

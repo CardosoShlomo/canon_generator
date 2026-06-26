@@ -429,7 +429,7 @@ final class ProductNavParent extends AnyNav {
 }
 
 final class OnHome extends On<HomeNav> {
-  const OnHome._(super.specs, super.ids, super.nav, [super.conds]) : super._();
+  const OnHome._(super.specs, super.ids, super.nav) : super._();
   On<SettingsNav> get settings =>
       On._([...specs, _Shell.settings], [...ids, null], const SettingsNav._());
   OnShop get shop =>
@@ -439,7 +439,7 @@ final class OnHome extends On<HomeNav> {
 }
 
 final class OnShop extends On<ShopNav> {
-  const OnShop._(super.specs, super.ids, super.nav, [super.conds]) : super._();
+  const OnShop._(super.specs, super.ids, super.nav) : super._();
   OnCatalog get catalog => OnCatalog._(
     [...specs, Shop.catalog],
     [...ids, null],
@@ -448,8 +448,7 @@ final class OnShop extends On<ShopNav> {
 }
 
 final class OnCatalog extends On<CatalogNav> {
-  const OnCatalog._(super.specs, super.ids, super.nav, [super.conds])
-    : super._();
+  const OnCatalog._(super.specs, super.ids, super.nav) : super._();
   OnHomeShopCatalogProduct get product => OnHomeShopCatalogProduct._(
     [...specs, Shop.product],
     [...ids, null],
@@ -458,12 +457,8 @@ final class OnCatalog extends On<CatalogNav> {
 }
 
 final class OnHomeShopCatalogProduct extends On<HomeShopCatalogProductNav> {
-  const OnHomeShopCatalogProduct._(
-    super.specs,
-    super.ids,
-    super.nav, [
-    super.conds,
-  ]) : super._();
+  const OnHomeShopCatalogProduct._(super.specs, super.ids, super.nav)
+    : super._();
   OnHomeShopCatalogProduct call(String id) => OnHomeShopCatalogProduct._(
     specs,
     [...ids.sublist(0, ids.length - 1), id],
@@ -472,7 +467,7 @@ final class OnHomeShopCatalogProduct extends On<HomeShopCatalogProductNav> {
 }
 
 final class OnSaved extends On<SavedNav> {
-  const OnSaved._(super.specs, super.ids, super.nav, [super.conds]) : super._();
+  const OnSaved._(super.specs, super.ids, super.nav) : super._();
   OnHomeSavedProduct get product => OnHomeSavedProduct._(
     [...specs, Shop.product],
     [...ids, null],
@@ -481,15 +476,13 @@ final class OnSaved extends On<SavedNav> {
 }
 
 final class OnHomeSavedProduct extends On<HomeSavedProductNav> {
-  const OnHomeSavedProduct._(super.specs, super.ids, super.nav, [super.conds])
-    : super._();
+  const OnHomeSavedProduct._(super.specs, super.ids, super.nav) : super._();
   OnHomeSavedProduct call(String id) =>
       OnHomeSavedProduct._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class OnProduct extends On<ProductPlacement> {
-  const OnProduct._(super.specs, super.ids, super.nav, [super.conds])
-    : super._();
+  const OnProduct._(super.specs, super.ids, super.nav) : super._();
   OnProduct call(String id) =>
       OnProduct._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
