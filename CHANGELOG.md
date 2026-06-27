@@ -1,3 +1,7 @@
+## 0.24.1
+
+- Example: restore the full-feature demo tree (parentOf / inherit / view-state / links) and align its tests to the current `Place` / `Link` / `Url` surface.
+
 ## 0.24.0
 
 - Parse nav-mirror paths to a go-able `Place`; `parseUrl` returns `Url?` carrying `url.domain` (the inbound origin), and `Screen.go(place)` replays it. Drop `ParsedUrl`. Breaking.
