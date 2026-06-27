@@ -835,9 +835,10 @@ void main() {
           // single-slot endpoint → one concrete widgetless class, no marker
           contains('final class UserLink extends Link'),
           contains('final String value0'), // the slot's typed field
-          contains('final class ParsedUrl'), // …and the parse surface
-          contains('ParsedUrl? parseUrl(String url)'),
-          contains("'user/*' => UserLink(m.path[0] as String)"), // the typed map
+          isNot(contains('class ParsedUrl')), // parse returns a Url directly now
+          contains('Url? parseUrl(String url)'),
+          contains('final String? domain;'), // the inbound origin rides on Url
+          contains("'user/*' => UserLink(m.path[0] as String, origin)"), // typed map + origin
           // …and an instance toUri per class (no @Screens domain → domain required)
           contains('Uri toUri(String domain);'), // base declares it abstract
           contains('Uri toUri(String domain) => Uri.parse('), // each class implements
@@ -859,8 +860,8 @@ void main() {
           contains('final String uuid;'), // semantic codec → field name
           contains('final String username;'),
           contains('switch (m.branches[0])'), // parse picks the branch…
-          contains('0 => UserByUuidLink(m.path[0] as String)'),
-          contains('1 => UserByNameLink(m.path[0] as String)'),
+          contains('0 => UserByUuidLink(m.path[0] as String, origin)'),
+          contains('1 => UserByNameLink(m.path[0] as String, origin)'),
           contains('Uri toUri(String domain) =>'), // …an instance toUri per sibling
           contains('<Object?>[uuid]'),
         ]),
@@ -873,10 +874,10 @@ void main() {
           contains('sealed class UserLink implements Url'),
           contains(
               'final class UserMeLink extends Link implements UserLink'),
-          contains('const UserMeLink();'), // payload-less, no field
+          contains('const UserMeLink([super.domain]);'), // payload-less, no field
           contains(
               'final class UserByUuidLink extends Link implements UserLink'),
-          contains('0 => UserMeLink()'), // parse: branch 0 reads no path token
+          contains('0 => UserMeLink(origin)'), // parse: branch 0 reads no path token
           contains("<Object?>['me']"), // encode threads the literal back in toUri
         ]),
         spec: _literalUnionSpec,
@@ -895,9 +896,9 @@ void main() {
           contains('final String username;'),
           // order: the canonical id leads, declared resolvers follow ⇒
           // userId=0, me=1, username=2
-          contains('0 => UserByIdLink(m.path[0] as String)'),
-          contains('1 => UserMeLink()'),
-          contains('2 => UserByNameLink(m.path[0] as String)'),
+          contains('0 => UserByIdLink(m.path[0] as String, origin)'),
+          contains('1 => UserMeLink(origin)'),
+          contains('2 => UserByNameLink(m.path[0] as String, origin)'),
         ]),
         spec: _widgetFormSpec,
       ));
@@ -1142,11 +1143,13 @@ void main() {
         spec: _multiViewSpec,
       ));
 
-  test('emits the URL-driven routerConfig host', () => _expectGenerated(allOf([
-        contains('static RouterConfig<Object> get routerConfig'),
-        contains('routeInformationParser: const CanonRouteParser()'),
-        contains('routerDelegate: _Screens.graph.delegate'),
-      ])));
+  test('emits the single RouterDelegate host as Screen.manager',
+      () => _expectGenerated(allOf([
+            contains('static NavDelegate get manager'),
+            contains('return _Screens.graph.delegate;'),
+            isNot(contains('get routerConfig')),
+            isNot(contains('static Widget manager(')),
+          ])));
 
   test('emits the Screen.replace redirect facade', () => _expectGenerated(allOf([
         contains('static const replace = Replace._();'),
@@ -1218,7 +1221,7 @@ void main() {
       () => _expectGenerated(
             allOf(
               contains('static set resolver(void Function(Url? url) fn) =>'),
-              contains('graph.setResolver((url) => fn(parseUrl(url)?.link))'),
+              contains('graph.setResolver((url) => fn(parseUrl(url)))'),
               contains('get rootUrl'),
               contains('platformDispatcher.defaultRouteName'),
             ),

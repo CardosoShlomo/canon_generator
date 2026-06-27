@@ -27,7 +27,7 @@ final class Screen<I> {
   static const catalog = Screen<Never>._(Shop.catalog);
   static const product = Screen<String>._(Shop.product);
   static const saved = Screen<Never>._(Wishlist.saved);
-  static Screen<Object?> forSpec(Enum spec) => _bySpec[spec]!;
+  static Screen<Object?> _forSpec(Enum spec) => _bySpec[spec]!;
 
   /// Reactive: is the screen THIS context is under the current foreground
   /// top? Rebuilds only when that flips. The self-vs-current gate —
@@ -47,7 +47,7 @@ final class Screen<I> {
   /// The live active stack as wrappers: .current/.currentId/.tab/
   /// .screens/.reachable, extensible without touching Screen.
   static NavStack<Screen<Object?>> get stack => NavStack([
-    for (final e in _Shell.graph.stack) NavEntry(forSpec(e.screen), e.id),
+    for (final e in _Shell.graph.stack) NavEntry(_forSpec(e.screen), e.id),
   ]);
 
   /// The active top screen's QUERY view-state, read-only and
@@ -72,37 +72,15 @@ final class Screen<I> {
     );
     return true;
   }();
-  static NavDelegate get delegate {
+
+  /// THE app host — a `RouterDelegate`. Wire it once:
+  /// `MaterialApp.router(routerDelegate: Screen.manager)`. It owns the
+  /// in-memory stack, drives browser back/forward + the URL channel on
+  /// web, and system back on mobile. (The placement may change; the name
+  /// stays — always pass it where a `RouterDelegate` goes.)
+  static NavDelegate get manager {
     assert(_fresh);
     return _Shell.graph.delegate;
-  }
-
-  /// The URL-driven host for `MaterialApp.router(routerConfig:
-  /// Screen.routerConfig)` — browser history + cold-start links via
-  /// the nav-mirror. Use [manager] instead for a Router-less
-  /// `MaterialApp(home: ...)` (no URL channel).
-  static RouterConfig<Object> get routerConfig {
-    assert(_fresh);
-    return RouterConfig(
-      routerDelegate: _Shell.graph.delegate,
-      routeInformationParser: const CanonRouteParser(),
-      routeInformationProvider: PlatformRouteInformationProvider(
-        initialRouteInformation: RouteInformation(
-          uri: Uri.parse(
-            WidgetsBinding.instance.platformDispatcher.defaultRouteName,
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// A standalone nav host for `MaterialApp(home: ...)` — no Router,
-  /// no URL/deep-link channel. Owns system back and snapshot
-  /// restoration (always on; override [restorationId] only to avoid a
-  /// storage-key collision).
-  static Widget manager({String restorationId = 'nav'}) {
-    assert(_fresh);
-    return _Shell.graph.manager(restorationId: restorationId);
   }
 
   /// A restoration-serializable snapshot of the whole nav state
@@ -212,7 +190,7 @@ final class Screen<I> {
     final u =
         _Shell.graph.bootUrl ??
         WidgetsBinding.instance.platformDispatcher.defaultRouteName;
-    return parseUrl(u)?.link;
+    return parseUrl(u);
   }
 
   /// THE navigation resolver — assign once (ideally in `main` before
@@ -220,7 +198,7 @@ final class Screen<I> {
   /// deep link — web URL + mobile app-link, one channel. Write plain
   /// `Screen.goX()` / `Screen.replace`. Single, last-wins, never disposed.
   static set resolver(void Function(Url? url) fn) =>
-      _Shell.graph.setResolver((url) => fn(parseUrl(url)?.link));
+      _Shell.graph.setResolver((url) => fn(parseUrl(url)));
 
   /// The poppable handle if the active top is a non-root placement,
   /// else null (at a scope root). `.at` = current placement; `.pop()`
@@ -818,7 +796,7 @@ extension ScreenIdOf on BuildContext {
   I idOf<I>(ScreenId<I> screen) => ScreenScope.idOf<I>(this, screen.spec);
 
   /// The screen this widget belongs to (its enclosing scope).
-  Screen<Object?> get screen => Screen.forSpec(ScreenScope.of(this));
+  Screen<Object?> get screen => Screen._forSpec(ScreenScope.of(this));
 }
 
 void verifyScreens() {
@@ -842,8 +820,12 @@ void verifyScreens() {
 /// A URL the app understands: a [Place] or a [Link]. Build one with
 /// `Url.<route>…` and `.toUri([domain])`; `parseUrl` returns one.
 sealed class Url {
-  const Url();
+  const Url([this.domain]);
   Uri toUri(String domain);
+
+  /// The inbound origin (`scheme://host[:port]`) when this came from
+  /// `parseUrl` (read it in `Screen.resolver`); null when built locally.
+  final String? domain;
   static _WLHome get home => _WLHome._([_Shell.home], [null]);
   static _WLHomeSettings get settings =>
       _WLHomeSettings._([_Shell.home, _Shell.settings], [null, null]);
@@ -862,7 +844,7 @@ sealed class Url {
 /// replays its root-down chain and lands the placement. Built root-down
 /// (`Place.home.item(id)`); a parsed nav-mirror URL is one.
 sealed class Place extends Url implements Hop<AnyNav> {
-  const Place();
+  const Place([super.domain]);
   @override
   List<(Enum, Object?)> get chain;
   @override
@@ -888,12 +870,12 @@ sealed class Place extends Url implements Hop<AnyNav> {
 /// the resolver interprets. NOT a position — no widget, never navigable.
 /// Shareable via `Link.<route>.toUri()`; read its fields in `Screen.resolver`.
 sealed class Link extends Url {
-  const Link();
+  const Link([super.domain]);
 }
 
 /// The bare root `/` — a plain app-open (no specific destination).
 final class RootUrl extends Url {
-  const RootUrl();
+  const RootUrl([super.domain]);
   @override
   Uri toUri(String domain) => Uri.parse((domain) + '/');
 }
@@ -901,7 +883,7 @@ final class RootUrl extends Url {
 /// A nav-mirror `Place` parsed from a URL (e.g. `/home/item/42`); carries
 /// the root-down chain so `Screen.go` lands it.
 final class _NavPlace extends Place {
-  const _NavPlace(this.chain);
+  const _NavPlace(this.chain, [super.domain]);
   @override
   final List<(Enum, Object?)> chain;
   @override
@@ -914,33 +896,26 @@ final class _NavPlace extends Place {
   );
 }
 
-/// A parsed [Link] plus the URL's origin (the host is reported,
-/// not matched — the platform already verified it is ours).
-final class ParsedUrl {
-  const ParsedUrl(this.link, this.domain);
-  final Url link;
-  final String domain;
-}
-
 /// Parses [url] into a [Url]: a declared [Link], a nav-mirror [Place]
 /// (go-able), [RootUrl] for bare `/`, or null if it resolves to nothing.
-ParsedUrl? parseUrl(String url) {
+/// The result carries the inbound origin in [Url.domain].
+Url? parseUrl(String url) {
   final uri = Uri.parse(url);
-  final origin = '${uri.scheme}://${uri.host}';
+  final origin = uri.hasAuthority ? '${uri.scheme}://${uri.authority}' : null;
   final m = _Shell.graph.parseLink(url);
   if (m != null) {
     final link = switch (m.template) {
       _ => null,
     };
-    if (link != null) return ParsedUrl(link, origin);
+    if (link != null) return link;
   }
   // Bare root → a plain app-open.
   if (uri.pathSegments.where((s) => s.isNotEmpty).isEmpty) {
-    return ParsedUrl(const RootUrl(), origin);
+    return RootUrl(origin);
   }
   // Nav-mirror path → a go-able Place.
   final chain = _Shell.graph.parsePath(url);
-  if (chain != null) return ParsedUrl(_NavPlace(chain), origin);
+  if (chain != null) return _NavPlace(chain, origin);
   return null;
 }
 

@@ -1,3 +1,9 @@
+## 0.24.0
+
+- Parse nav-mirror paths to a go-able `Place`; `parseUrl` returns `Url?` carrying `url.domain` (the inbound origin), and `Screen.go(place)` replays it. Drop `ParsedUrl`. Breaking.
+- Single host `Screen.manager` (a `RouterDelegate`); drop `Screen.delegate`, `routerConfig`, and the `MaterialApp(home:)` form. Breaking.
+- `Initial`/`base` surface → `Root` (`Screen.root` controls, `Screen.rootUrl`, `BootScreen.root`); grammar `root` → `trunk`. Breaking.
+
 ## 0.23.0
 
 - Rename the link surface: `Link` → `Url` (base), `WidgetLink` → `Place` (the navigable `Hop`), `WidgetlessLink` → `Link` (resolver data); `parseLink`/`ParsedLink` → `parseUrl`/`ParsedUrl`; the resolver takes `(Url? url)`. Per-entity markers keep their `…Link` names. **Breaking (rename only).**

@@ -4,7 +4,7 @@ import 'package:canon_example/shell.dart';
 
 void main() {
   testWidgets('grafted sub-enum drives one unified surface', (tester) async {
-    await tester.pumpWidget(MaterialApp.router(routerDelegate: Screen.delegate));
+    await tester.pumpWidget(MaterialApp.router(routerDelegate: Screen.manager));
 
     // The generated _treeSignature is built from the VIRTUAL tree (graft
     // followed into Shop); it must match the runtime's spliced spec.
@@ -25,7 +25,7 @@ void main() {
 
   testWidgets('a ref collapses to its owner — one screen, reached from each '
       'placement', (tester) async {
-    await tester.pumpWidget(MaterialApp.router(routerDelegate: Screen.delegate));
+    await tester.pumpWidget(MaterialApp.router(routerDelegate: Screen.manager));
 
     // product is OWNED by Shop, under catalog:
     Screen.goShop().goCatalog().goProduct('p1');

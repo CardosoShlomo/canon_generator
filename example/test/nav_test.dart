@@ -15,7 +15,7 @@ FeedView? _typecheck(BuildContext c) {
 void main() {
   testWidgets('grammar validates, renders, and navigates', (tester) async {
     verifyScreens();
-    await tester.pumpWidget(MaterialApp.router(routerDelegate: Screen.delegate));
+    await tester.pumpWidget(MaterialApp.router(routerDelegate: Screen.manager));
     // boots to Initial (the _Loading widget); don't settle — its spinner never
     // does. The resolver drives the first nav out of boot.
     expect(Screen.current, isA<Initial>());
@@ -68,7 +68,7 @@ void main() {
   });
 
   testWidgets('view-state: write off the nav + conditioned Screen.on', (tester) async {
-    await tester.pumpWidget(MaterialApp.router(routerDelegate: Screen.delegate));
+    await tester.pumpWidget(MaterialApp.router(routerDelegate: Screen.manager));
     Screen.goFeed(); // out of boot; feed declares `.query({category, radius})`
     await tester.pumpAndSettle();
     expect(Screen.stack.current.name, 'feed');
@@ -102,7 +102,7 @@ void main() {
   });
 
   testWidgets('multi-parent view-state: .at resolves the live placement', (tester) async {
-    await tester.pumpWidget(MaterialApp.router(routerDelegate: Screen.delegate));
+    await tester.pumpWidget(MaterialApp.router(routerDelegate: Screen.manager));
 
     // tests share the one static graph; collapse home's kept stack to its root
     // so this starts from a known place.
@@ -140,7 +140,7 @@ void main() {
   });
 
   testWidgets('Screen.at reaches a buried placement; surface() brings it up', (tester) async {
-    await tester.pumpWidget(MaterialApp.router(routerDelegate: Screen.delegate));
+    await tester.pumpWidget(MaterialApp.router(routerDelegate: Screen.manager));
     Screen.goFeed().goItem('7').goEditItem(); // feed → item → editItem (front)
     await tester.pumpAndSettle();
     expect(Screen.current, isA<FeedItemEditItemNav>());
@@ -160,7 +160,7 @@ void main() {
   });
 
   testWidgets('placement-less On.query: global view-state, on=foreground/at=anywhere', (tester) async {
-    await tester.pumpWidget(MaterialApp.router(routerDelegate: Screen.delegate));
+    await tester.pumpWidget(MaterialApp.router(routerDelegate: Screen.manager));
     Screen.goFeed();
     await tester.pumpAndSettle();
     Screen.on(.feed)!.query.category = 'books'; // feed's category (a global key)
@@ -262,7 +262,7 @@ void main() {
   });
 
   testWidgets('at(chain).goXx() is a smart jump (pop-to-self then go)', (tester) async {
-    await tester.pumpWidget(MaterialApp.router(routerDelegate: Screen.delegate));
+    await tester.pumpWidget(MaterialApp.router(routerDelegate: Screen.manager));
     Screen.goFeed().goItem('3').goEditItem(); // feed → item → editItem
     await tester.pumpAndSettle();
     expect(Screen.stack.current.name, 'editItem');

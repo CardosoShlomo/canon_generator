@@ -896,7 +896,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     for (final r in rows) {
       b.writeln('  static const ${r.name} = Screen<${r.idType ?? 'Never'}>._(${sv(r.name)});');
     }
-    b.writeln('  static Screen<Object?> forSpec(Enum spec) => _bySpec[spec]!;');
+    b.writeln('  static Screen<Object?> _forSpec(Enum spec) => _bySpec[spec]!;');
     if (viewScreens.isNotEmpty) {
       b.writeln('  /// The current foreground as a read-only view, reactively — switch');
       b.writeln('  /// it to render per screen. Null when the current screen has no');
@@ -919,7 +919,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln('  /// The live active stack as wrappers: .current/.currentId/.tab/');
     b.writeln('  /// .screens/.reachable, extensible without touching Screen.');
     b.writeln('  static NavStack<Screen<Object?>> get stack => NavStack([');
-    b.writeln('    for (final e in $spec.graph.stack) NavEntry(forSpec(e.screen), e.id),');
+    b.writeln('    for (final e in $spec.graph.stack) NavEntry(_forSpec(e.screen), e.id),');
     b.writeln('  ]);');
     b.writeln('  /// The active top screen\'s QUERY view-state, read-only and');
     b.writeln('  /// context-free (the headless peer of `Query.of(context, ...)`).');
@@ -938,34 +938,14 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln("        'canon: the navigation tree changed but generated code is stale — run build_runner.');");
     b.writeln('    return true;');
     b.writeln('  }();');
-    b.writeln('  static NavDelegate get delegate {');
+    b.writeln('  /// THE app host — a `RouterDelegate`. Wire it once:');
+    b.writeln('  /// `MaterialApp.router(routerDelegate: Screen.manager)`. It owns the');
+    b.writeln('  /// in-memory stack, drives browser back/forward + the URL channel on');
+    b.writeln('  /// web, and system back on mobile. (The placement may change; the name');
+    b.writeln('  /// stays — always pass it where a `RouterDelegate` goes.)');
+    b.writeln('  static NavDelegate get manager {');
     b.writeln('    assert(_fresh);');
     b.writeln('    return $spec.graph.delegate;');
-    b.writeln('  }');
-    b.writeln('  /// The URL-driven host for `MaterialApp.router(routerConfig:');
-    b.writeln('  /// Screen.routerConfig)` — browser history + cold-start links via');
-    b.writeln('  /// the nav-mirror. Use [manager] instead for a Router-less');
-    b.writeln('  /// `MaterialApp(home: ...)` (no URL channel).');
-    b.writeln('  static RouterConfig<Object> get routerConfig {');
-    b.writeln('    assert(_fresh);');
-    b.writeln('    return RouterConfig(');
-    b.writeln('      routerDelegate: $spec.graph.delegate,');
-    b.writeln('      routeInformationParser: const CanonRouteParser(),');
-    b.writeln('      routeInformationProvider: PlatformRouteInformationProvider(');
-    b.writeln('        initialRouteInformation: RouteInformation(');
-    b.writeln('          uri: Uri.parse(');
-    b.writeln('              WidgetsBinding.instance.platformDispatcher.defaultRouteName),');
-    b.writeln('        ),');
-    b.writeln('      ),');
-    b.writeln('    );');
-    b.writeln('  }');
-    b.writeln('  /// A standalone nav host for `MaterialApp(home: ...)` — no Router,');
-    b.writeln('  /// no URL/deep-link channel. Owns system back and snapshot');
-    b.writeln('  /// restoration (always on; override [restorationId] only to avoid a');
-    b.writeln('  /// storage-key collision).');
-    b.writeln("  static Widget manager({String restorationId = 'nav'}) {");
-    b.writeln('    assert(_fresh);');
-    b.writeln('    return $spec.graph.manager(restorationId: restorationId);');
     b.writeln('  }');
     b.writeln('  /// A restoration-serializable snapshot of the whole nav state');
     b.writeln('  /// (no URLs; ids via each screen codec). Persist + [restore] it.');
@@ -1096,14 +1076,14 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       b.writeln('  static Url? get rootUrl {');
       b.writeln('    final u = $spec.graph.bootUrl ??');
       b.writeln('        WidgetsBinding.instance.platformDispatcher.defaultRouteName;');
-      b.writeln('    return parseUrl(u)?.link;');
+      b.writeln('    return parseUrl(u);');
       b.writeln('  }');
       b.writeln('  /// THE navigation resolver — assign once (ideally in `main` before');
       b.writeln('  /// `runApp`). Fires with the cold-start link (or null), then on every');
       b.writeln('  /// deep link — web URL + mobile app-link, one channel. Write plain');
       b.writeln('  /// `Screen.goX()` / `Screen.replace`. Single, last-wins, never disposed.');
       b.writeln('  static set resolver(void Function(Url? url) fn) =>');
-      b.writeln('      $spec.graph.setResolver((url) => fn(parseUrl(url)?.link));');
+      b.writeln('      $spec.graph.setResolver((url) => fn(parseUrl(url)));');
     }
     if (hasCanPop) {
       b.writeln('  /// The poppable handle if the active top is a non-root placement,');
@@ -1808,7 +1788,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
           '  I idOf<I>(ScreenId<I> screen) => ScreenScope.idOf<I>(this, screen.spec);');
     }
     b.writeln('  /// The screen this widget belongs to (its enclosing scope).');
-    b.writeln('  Screen<Object?> get screen => Screen.forSpec(ScreenScope.of(this));');
+    b.writeln('  Screen<Object?> get screen => Screen._forSpec(ScreenScope.of(this));');
     b.writeln('}');
 
     b.writeln('void verifyScreens() {');
@@ -2218,7 +2198,12 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
 
       b.writeln('/// A URL the app understands: a [Place] or a [Link]. Build one with');
       b.writeln('/// `Url.<route>…` and `.toUri([domain])`; `parseUrl` returns one.');
-      b.writeln('sealed class Url { const Url(); Uri toUri($domainSig);');
+      b.writeln('sealed class Url {');
+      b.writeln('  const Url([this.domain]);');
+      b.writeln('  Uri toUri($domainSig);');
+      b.writeln('  /// The inbound origin (`scheme://host[:port]`) when this came from');
+      b.writeln('  /// `parseUrl` (read it in `Screen.resolver`); null when built locally.');
+      b.writeln('  final String? domain;');
       linkStatics.values.forEach(b.writeln);
       b.writeln('}');
       b.writeln('/// A POSITION in the tree — a screen with a widget to present and a nav');
@@ -2226,7 +2211,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       b.writeln('/// replays its root-down chain and lands the placement. Built root-down');
       b.writeln('/// (`Place.home.item(id)`); a parsed nav-mirror URL is one.');
       b.writeln('sealed class Place extends Url implements Hop<AnyNav> {');
-      b.writeln('  const Place();');
+      b.writeln('  const Place([super.domain]);');
       b.writeln('  @override');
       b.writeln('  List<(Enum, Object?)> get chain;');
       b.writeln('  @override');
@@ -2240,19 +2225,19 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       b.writeln('/// A resolve-only branch (declared via `.link`/`slots`): URL-shaped DATA');
       b.writeln('/// the resolver interprets. NOT a position — no widget, never navigable.');
       b.writeln('/// Shareable via `Link.<route>.toUri()`; read its fields in `Screen.resolver`.');
-      b.writeln('sealed class Link extends Url { const Link();');
+      b.writeln('sealed class Link extends Url { const Link([super.domain]);');
       widgetlessStatics.values.forEach(b.writeln);
       b.writeln('}');
       b.writeln('/// The bare root `/` — a plain app-open (no specific destination).');
       b.writeln('final class RootUrl extends Url {');
-      b.writeln('  const RootUrl();');
+      b.writeln('  const RootUrl([super.domain]);');
       b.writeln('  @override');
       b.writeln('  Uri toUri($domainSig) => Uri.parse(($domainArg) + \'/\');');
       b.writeln('}');
       b.writeln('/// A nav-mirror `Place` parsed from a URL (e.g. `/home/item/42`); carries');
       b.writeln('/// the root-down chain so `Screen.go` lands it.');
       b.writeln('final class _NavPlace extends Place {');
-      b.writeln('  const _NavPlace(this.chain);');
+      b.writeln('  const _NavPlace(this.chain, [super.domain]);');
       b.writeln('  @override');
       b.writeln('  final List<(Enum, Object?)> chain;');
       b.writeln('  @override');
@@ -2272,8 +2257,8 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
         final params = [for (final f in d.fields) 'this.${f.$1}'];
         b.writeln('final class ${d.name} extends ${d.family}$impl {');
         b.writeln(params.isEmpty
-            ? '  const ${d.name}();'
-            : '  const ${d.name}(${params.join(', ')});');
+            ? '  const ${d.name}([super.domain]);'
+            : '  const ${d.name}(${params.join(', ')}, [super.domain]);');
         for (final f in d.fields) {
           b.writeln('  final ${f.$2} ${f.$1};');
         }
@@ -2291,21 +2276,15 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
         b.writeln('}');
       }
 
-      // parse: runtime path match (host-agnostic) → typed Link + the URL's origin.
-      b.writeln('');
-      b.writeln('/// A parsed [Link] plus the URL\'s origin (the host is reported,');
-      b.writeln('/// not matched — the platform already verified it is ours).');
-      b.writeln('final class ParsedUrl {');
-      b.writeln('  const ParsedUrl(this.link, this.domain);');
-      b.writeln('  final Url link;');
-      b.writeln('  final String domain;');
-      b.writeln('}');
+      // parse: runtime path match (host-agnostic) → typed Url carrying the origin
+      // (the host is reported, not matched — the platform verified it is ours).
       b.writeln('');
       b.writeln('/// Parses [url] into a [Url]: a declared [Link], a nav-mirror [Place]');
       b.writeln('/// (go-able), [RootUrl] for bare `/`, or null if it resolves to nothing.');
-      b.writeln('ParsedUrl? parseUrl(String url) {');
+      b.writeln('/// The result carries the inbound origin in [Url.domain].');
+      b.writeln('Url? parseUrl(String url) {');
       b.writeln('  final uri = Uri.parse(url);');
-      b.writeln('  final origin = \'\${uri.scheme}://\${uri.host}\';');
+      b.writeln("  final origin = uri.hasAuthority ? '\${uri.scheme}://\${uri.authority}' : null;");
       b.writeln('  final m = $spec.graph.parseLink(url);');
       b.writeln('  if (m != null) {');
       b.writeln('  final link = switch (m.template) {');
@@ -2313,13 +2292,13 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
         final ui = _unionSlot(e);
         if (ui == null) {
           final d = caseOf(e, null);
-          b.writeln("    '${e.template}' => ${d.name}(${d.ctorArgs.join(', ')}),");
+          b.writeln("    '${e.template}' => ${d.name}(${[...d.ctorArgs, 'origin'].join(', ')}),");
         } else {
           final arms = [
             for (var k = 0; k < e.slots[ui].codecs.length; k++)
               '$k => ${() {
                 final d = caseOf(e, k);
-                return '${d.name}(${d.ctorArgs.join(', ')})';
+                return '${d.name}(${[...d.ctorArgs, 'origin'].join(', ')})';
               }()}'
           ];
           b.writeln("    '${e.template}' => switch (m.branches[$ui]) "
@@ -2328,15 +2307,15 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       }
       b.writeln('    _ => null,');
       b.writeln('  };');
-      b.writeln('    if (link != null) return ParsedUrl(link, origin);');
+      b.writeln('    if (link != null) return link;');
       b.writeln('  }');
       b.writeln('  // Bare root → a plain app-open.');
       b.writeln('  if (uri.pathSegments.where((s) => s.isNotEmpty).isEmpty) {');
-      b.writeln('    return ParsedUrl(const RootUrl(), origin);');
+      b.writeln('    return RootUrl(origin);');
       b.writeln('  }');
       b.writeln('  // Nav-mirror path → a go-able Place.');
       b.writeln('  final chain = $spec.graph.parsePath(url);');
-      b.writeln('  if (chain != null) return ParsedUrl(_NavPlace(chain), origin);');
+      b.writeln('  if (chain != null) return _NavPlace(chain, origin);');
       b.writeln('  return null;');
       b.writeln('}');
       // encode is the instance `link.toUri([domain])` emitted on each class above.
