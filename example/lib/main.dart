@@ -1,27 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_web_plugins/url_strategy.dart';
+import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 
 import 'nav.dart';
 
 void main() {
-  usePathUrlStrategy(); // /home instead of /#/home (web path URLs)
+  // Path URLs (/home not /#/home).
+  usePathUrlStrategy();
 
-  // THE navigation resolver — set once, before runApp. canon fires it with the
-  // cold-start link (or null) and on every deep link after: web address bar +
-  // mobile app-links, one channel. It just writes Screen.goX(); the engine
-  // leaves the Initial boot UI on the first commit. URLs never drive the stack.
-  Screen.resolver = (Url? url) {
-    switch (url) {
-      case ItemMeLink():
-        Screen.goHome().goItem('me');
-      case ItemByIdLink(:final itemId):
-        Screen.goHome().goItem(itemId);
-      case ItemByUsernameLink(:final username):
-        Screen.goHome().goItem(username);
-      case _:
-        Screen.goHome(); // no cold-start link (plain "/") → default landing
-    }
-  };
+  // Resolver: a nav-mirror Place (e.g. pasted /b/c/d) → go straight there; a bare
+  // root / link / unparseable → land on `a`. Places are go-able Hops.
+  Screen.resolver = (Url? url) => switch (url) {
+        Place p => Screen.go(p),
+        _ => Screen.goA(),
+      };
 
   runApp(const _App());
 }
@@ -31,8 +22,6 @@ class _App extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // routerConfig wires the URL channel (browser history + the deep-link
-    // ingress that feeds the resolver).
-    return MaterialApp.router(routerConfig: Screen.routerConfig);
+    return MaterialApp.router(routerDelegate: Screen.delegate);
   }
 }

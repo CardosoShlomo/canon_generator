@@ -114,7 +114,7 @@ final class Screen<I> {
   static bool restore(Map<String, Object?> state) =>
       _Shell.graph.restore(state);
   static N go<N extends AnyNav>(Hop<N> hop) {
-    for (final (s, i) in hop.chain) _Shell.graph.go(s, i);
+    for (final (s, i) in hop.chain) _Shell.graph.go<Object?>(s, i);
     return hop.nav;
   }
 
@@ -195,9 +195,32 @@ final class Screen<I> {
   /// `Screen.replace.goHome()`, `Screen.replace.on(.user)?.goChat(id)`.
   static const replace = Replace._();
 
+  /// The base/floor (history bottom) controls: `Screen.base.anchor()`
+  /// keeps the launch position returnable; `Screen.base.passthrough()`
+  /// makes it a throwaway that exits on back.
+  static const base = Base._();
+
   /// The current foreground placement (the front), as the sealed
   /// [AnyPlacement] — `switch (Screen.current) { … }` is exhaustive.
   static AnyPlacement get current => _atOf(_Shell.graph.current);
+
+  /// The cold-start link, parsed from the launch URL — read it in the
+  /// `initial` boot UI to vary the loading screen by destination. Eager:
+  /// available from the first build, independent of the Router callback.
+  /// Null when the launch URL isn't a representable link.
+  static Url? get initialUrl {
+    final u =
+        _Shell.graph.bootUrl ??
+        WidgetsBinding.instance.platformDispatcher.defaultRouteName;
+    return parseUrl(u)?.link;
+  }
+
+  /// THE navigation resolver — assign once (ideally in `main` before
+  /// `runApp`). Fires with the cold-start link (or null), then on every
+  /// deep link — web URL + mobile app-link, one channel. Write plain
+  /// `Screen.goX()` / `Screen.replace`. Single, last-wins, never disposed.
+  static set resolver(void Function(Url? url) fn) =>
+      _Shell.graph.setResolver((url) => fn(parseUrl(url)?.link));
 
   /// The poppable handle if the active top is a non-root placement,
   /// else null (at a scope root). `.at` = current placement; `.pop()`
@@ -239,6 +262,28 @@ final class Screen<I> {
     _Shell.graph.go(Wishlist.saved);
     return const SavedNav._();
   }
+}
+
+/// The `Screen.base` facade — controls for the base/floor (the history
+/// bottom): whether the launch position is a returnable base or a
+/// throwaway that exits on back.
+final class Base {
+  const Base._();
+
+  /// Persist the launch/base position as a returnable floor — back
+  /// returns to it (then exits), and root-switches stack above it.
+  void anchor() => _Shell.graph.anchor();
+
+  /// Make the launch/base a throwaway that exits on back (the default).
+  void passthrough() => _Shell.graph.passthrough();
+
+  /// On a BARE floor the `initial` widget renders — read this to branch
+  /// (a `sentinel`/`fallthrough` kind), or null while boot-loading.
+  FloorKind? get kind => _Shell.graph.baseKind;
+
+  /// The current front screen's widget — `return Screen.base.front` from
+  /// the `initial` widget to keep showing it on a bare floor.
+  Widget? get front => _Shell.graph.frontWidget;
 }
 
 /// The `Screen.replace` redirect facade — every verb mirrors `Screen`
@@ -794,9 +839,8 @@ void verifyScreens() {
   }());
 }
 
-/// A typed deep link. `Link.<route>….toUri([domain])` builds a
-/// URL (the nav-target tree + the resolve-branch leaves); a parsed
-/// link round-trips with `link.toUri([domain])`.
+/// A URL the app understands: a [Place] or a [Link]. Build one with
+/// `Url.<route>…` and `.toUri([domain])`; `parseUrl` returns one.
 sealed class Url {
   const Url();
   Uri toUri(String domain);
@@ -813,9 +857,20 @@ sealed class Url {
       _WLHomeSaved._([_Shell.home, Wishlist.saved], [null, null]);
 }
 
-/// Nav targets — every screen reachable on the stack, root-down.
-sealed class Place extends Url {
+/// A POSITION in the tree — a screen with a widget to present and a nav
+/// destination. Go-able: every `Place` is a [Hop], so `Screen.go(place)`
+/// replays its root-down chain and lands the placement. Built root-down
+/// (`Place.home.item(id)`); a parsed nav-mirror URL is one.
+sealed class Place extends Url implements Hop<AnyNav> {
   const Place();
+  @override
+  List<(Enum, Object?)> get chain;
+  @override
+  Enum get spec => chain.last.$1;
+  @override
+  Object? get id => chain.last.$2;
+  @override
+  AnyNav get nav => _atOf(_Shell.graph.current);
   static _WLHome get home => _WLHome._([_Shell.home], [null]);
   static _WLHomeSettings get settings =>
       _WLHomeSettings._([_Shell.home, _Shell.settings], [null, null]);
@@ -829,9 +884,34 @@ sealed class Place extends Url {
       _WLHomeSaved._([_Shell.home, Wishlist.saved], [null, null]);
 }
 
-/// Resolve branches — addressed from the nearest unambiguous parent.
+/// A resolve-only branch (declared via `.link`/`slots`): URL-shaped DATA
+/// the resolver interprets. NOT a position — no widget, never navigable.
+/// Shareable via `Link.<route>.toUri()`; read its fields in `Screen.resolver`.
 sealed class Link extends Url {
   const Link();
+}
+
+/// The bare root `/` — a plain app-open (no specific destination).
+final class RootUrl extends Url {
+  const RootUrl();
+  @override
+  Uri toUri(String domain) => Uri.parse((domain) + '/');
+}
+
+/// A nav-mirror `Place` parsed from a URL (e.g. `/home/item/42`); carries
+/// the root-down chain so `Screen.go` lands it.
+final class _NavPlace extends Place {
+  const _NavPlace(this.chain);
+  @override
+  final List<(Enum, Object?)> chain;
+  @override
+  Uri toUri(String domain) => Uri.parse(
+    _Shell.graph.encodeNavUrl(
+      domain,
+      [for (final c in chain) c.$1],
+      [for (final c in chain) c.$2],
+    ),
+  );
 }
 
 /// A parsed [Link] plus the URL's origin (the host is reported,
@@ -842,16 +922,26 @@ final class ParsedUrl {
   final String domain;
 }
 
-/// Parses [url] into a typed [Link] + origin, or null if not a link.
+/// Parses [url] into a [Url]: a declared [Link], a nav-mirror [Place]
+/// (go-able), [RootUrl] for bare `/`, or null if it resolves to nothing.
 ParsedUrl? parseUrl(String url) {
-  final m = _Shell.graph.parseLink(url);
-  if (m == null) return null;
   final uri = Uri.parse(url);
-  final link = switch (m.template) {
-    _ => null,
-  };
-  if (link == null) return null;
-  return ParsedUrl(link, '${uri.scheme}://${uri.host}');
+  final origin = '${uri.scheme}://${uri.host}';
+  final m = _Shell.graph.parseLink(url);
+  if (m != null) {
+    final link = switch (m.template) {
+      _ => null,
+    };
+    if (link != null) return ParsedUrl(link, origin);
+  }
+  // Bare root → a plain app-open.
+  if (uri.pathSegments.where((s) => s.isNotEmpty).isEmpty) {
+    return ParsedUrl(const RootUrl(), origin);
+  }
+  // Nav-mirror path → a go-able Place.
+  final chain = _Shell.graph.parsePath(url);
+  if (chain != null) return ParsedUrl(_NavPlace(chain), origin);
+  return null;
 }
 
 final class _WLHome implements Hop<HomeNav> {

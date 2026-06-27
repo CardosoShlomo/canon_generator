@@ -976,7 +976,10 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln('      $spec.graph.restore(state);');
     if (hasKickstart) {
       b.writeln('  static N go<N extends AnyNav>(Hop<N> hop) {');
-      b.writeln('    for (final (s, i) in hop.chain) $spec.graph.go(s, i);');
+      // Explicit `<Object?>` — a chain id is statically `Object?`, which would
+      // otherwise infer `T = Object` and trip go's "requires an id" assert on a
+      // null-id (id-free) segment. The chain is pre-validated, so replay freely.
+      b.writeln('    for (final (s, i) in hop.chain) $spec.graph.go<Object?>(s, i);');
       b.writeln('    return hop.nav;');
       b.writeln('  }');
     }
@@ -1078,10 +1081,14 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln('  /// entry instead of pushing. Decide it at the start —');
     b.writeln('  /// `Screen.replace.goHome()`, `Screen.replace.on(.user)?.goChat(id)`.');
     b.writeln('  static const replace = Replace._();');
+    b.writeln('  /// The base/floor (history bottom) controls: `Screen.base.anchor()`');
+    b.writeln('  /// keeps the launch position returnable; `Screen.base.passthrough()`');
+    b.writeln('  /// makes it a throwaway that exits on back.');
+    b.writeln('  static const base = Base._();');
     b.writeln('  /// The current foreground placement (the front), as the sealed');
     b.writeln('  /// [AnyPlacement] — `switch (Screen.current) { … }` is exhaustive.');
     b.writeln('  static AnyPlacement get current => _atOf($spec.graph.current);');
-    if (model.links.isNotEmpty) {
+    {
       b.writeln('  /// The cold-start link, parsed from the launch URL — read it in the');
       b.writeln('  /// `initial` boot UI to vary the loading screen by destination. Eager:');
       b.writeln('  /// available from the first build, independent of the Router callback.');
@@ -1146,6 +1153,23 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     // here, never on a Nav — so `Screen.replace.replace`/`nav.replace` are
     // un-writable). Each verb flags the batch replace, then delegates to Screen;
     // if `on(...)` misses, no commit runs and the engine drops the pending flag.
+    b.writeln('/// The `Screen.base` facade — controls for the base/floor (the history');
+    b.writeln('/// bottom): whether the launch position is a returnable base or a');
+    b.writeln('/// throwaway that exits on back.');
+    b.writeln('final class Base {');
+    b.writeln('  const Base._();');
+    b.writeln('  /// Persist the launch/base position as a returnable floor — back');
+    b.writeln('  /// returns to it (then exits), and root-switches stack above it.');
+    b.writeln('  void anchor() => $spec.graph.anchor();');
+    b.writeln('  /// Make the launch/base a throwaway that exits on back (the default).');
+    b.writeln('  void passthrough() => $spec.graph.passthrough();');
+    b.writeln('  /// On a BARE floor the `initial` widget renders — read this to branch');
+    b.writeln('  /// (a `sentinel`/`fallthrough` kind), or null while boot-loading.');
+    b.writeln('  FloorKind? get kind => $spec.graph.baseKind;');
+    b.writeln('  /// The current front screen\'s widget — `return Screen.base.front` from');
+    b.writeln('  /// the `initial` widget to keep showing it on a bare floor.');
+    b.writeln('  Widget? get front => $spec.graph.frontWidget;');
+    b.writeln('}');
     b.writeln('/// The `Screen.replace` redirect facade — every verb mirrors `Screen`');
     b.writeln('/// but commits as a history REPLACE (web `replaceState`).');
     b.writeln('final class Replace {');
@@ -1465,8 +1489,12 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     // truncated at that screen (so it resolves an ancestor as well as the top).
     // `Screen.at`, `Screen.on`, and every `pop()` route through here.
     b.writeln('AnyPlacement _atOf(Enum s) {');
-    b.writeln('  final c = $spec.graph.currentChain;');
-    b.writeln('  final p = c.sublist(0, c.lastIndexOf(s) + 1);');
+    // Only multi-placement screens resolve via the live chain; an all-single
+    // graph needs neither `c` nor `p` (else they'd be unused).
+    if (rows.any((r) => !isSingle(r.name))) {
+      b.writeln('  final c = $spec.graph.currentChain;');
+      b.writeln('  final p = c.sublist(0, c.lastIndexOf(s) + 1);');
+    }
     b.writeln('  return switch (s) {');
     for (final r in rows) {
       b.writeln(isSingle(r.name)
@@ -2188,19 +2216,48 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
           if (!widgetStatics.containsKey(e.key)) e.key: e.value,
       };
 
-      b.writeln('/// A typed deep link. `Link.<route>….toUri([domain])` builds a');
-      b.writeln('/// URL (the nav-target tree + the resolve-branch leaves); a parsed');
-      b.writeln('/// link round-trips with `link.toUri([domain])`.');
+      b.writeln('/// A URL the app understands: a [Place] or a [Link]. Build one with');
+      b.writeln('/// `Url.<route>…` and `.toUri([domain])`; `parseUrl` returns one.');
       b.writeln('sealed class Url { const Url(); Uri toUri($domainSig);');
       linkStatics.values.forEach(b.writeln);
       b.writeln('}');
-      b.writeln('/// Nav targets — every screen reachable on the stack, root-down.');
-      b.writeln('sealed class Place extends Url { const Place();');
+      b.writeln('/// A POSITION in the tree — a screen with a widget to present and a nav');
+      b.writeln('/// destination. Go-able: every `Place` is a [Hop], so `Screen.go(place)`');
+      b.writeln('/// replays its root-down chain and lands the placement. Built root-down');
+      b.writeln('/// (`Place.home.item(id)`); a parsed nav-mirror URL is one.');
+      b.writeln('sealed class Place extends Url implements Hop<AnyNav> {');
+      b.writeln('  const Place();');
+      b.writeln('  @override');
+      b.writeln('  List<(Enum, Object?)> get chain;');
+      b.writeln('  @override');
+      b.writeln('  Enum get spec => chain.last.\$1;');
+      b.writeln('  @override');
+      b.writeln('  Object? get id => chain.last.\$2;');
+      b.writeln('  @override');
+      b.writeln('  AnyNav get nav => _atOf($spec.graph.current);');
       widgetStatics.values.forEach(b.writeln);
       b.writeln('}');
-      b.writeln('/// Resolve branches — addressed from the nearest unambiguous parent.');
+      b.writeln('/// A resolve-only branch (declared via `.link`/`slots`): URL-shaped DATA');
+      b.writeln('/// the resolver interprets. NOT a position — no widget, never navigable.');
+      b.writeln('/// Shareable via `Link.<route>.toUri()`; read its fields in `Screen.resolver`.');
       b.writeln('sealed class Link extends Url { const Link();');
       widgetlessStatics.values.forEach(b.writeln);
+      b.writeln('}');
+      b.writeln('/// The bare root `/` — a plain app-open (no specific destination).');
+      b.writeln('final class RootUrl extends Url {');
+      b.writeln('  const RootUrl();');
+      b.writeln('  @override');
+      b.writeln('  Uri toUri($domainSig) => Uri.parse(($domainArg) + \'/\');');
+      b.writeln('}');
+      b.writeln('/// A nav-mirror `Place` parsed from a URL (e.g. `/home/item/42`); carries');
+      b.writeln('/// the root-down chain so `Screen.go` lands it.');
+      b.writeln('final class _NavPlace extends Place {');
+      b.writeln('  const _NavPlace(this.chain);');
+      b.writeln('  @override');
+      b.writeln('  final List<(Enum, Object?)> chain;');
+      b.writeln('  @override');
+      b.writeln('  Uri toUri($domainSig) => Uri.parse($spec.graph.encodeNavUrl(');
+      b.writeln('      $domainArg, [for (final c in chain) c.\$1], [for (final c in chain) c.\$2]));');
       b.writeln('}');
       // per-entity marker (rule 14): the union cases IMPLEMENT it, cross-cutting
       // the widget families, so `case UserLink()` catches any branch of that entity.
@@ -2224,6 +2281,13 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
         b.writeln('  Uri toUri($domainSig) => Uri.parse($spec.graph.encodeLink('
             "$domainArg, '${c.e.template}', "
             '<Object?>[${d.pathVals.join(', ')}], <int>[${d.branchVals.join(', ')}]));');
+        // A Place case is a go-able nav target: its chain is the nav path it
+        // encodes to (Link cases extend Link, not Place — pure data, no chain).
+        if (d.family == 'Place') {
+          b.writeln('  @override');
+          b.writeln('  List<(Enum, Object?)> get chain => '
+              '$spec.graph.parsePath(toUri().path) ?? const [];');
+        }
         b.writeln('}');
       }
 
@@ -2237,11 +2301,13 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       b.writeln('  final String domain;');
       b.writeln('}');
       b.writeln('');
-      b.writeln('/// Parses [url] into a typed [Link] + origin, or null if not a link.');
+      b.writeln('/// Parses [url] into a [Url]: a declared [Link], a nav-mirror [Place]');
+      b.writeln('/// (go-able), [RootUrl] for bare `/`, or null if it resolves to nothing.');
       b.writeln('ParsedUrl? parseUrl(String url) {');
-      b.writeln('  final m = $spec.graph.parseLink(url);');
-      b.writeln('  if (m == null) return null;');
       b.writeln('  final uri = Uri.parse(url);');
+      b.writeln('  final origin = \'\${uri.scheme}://\${uri.host}\';');
+      b.writeln('  final m = $spec.graph.parseLink(url);');
+      b.writeln('  if (m != null) {');
       b.writeln('  final link = switch (m.template) {');
       for (final e in endpoints) {
         final ui = _unionSlot(e);
@@ -2262,8 +2328,16 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       }
       b.writeln('    _ => null,');
       b.writeln('  };');
-      b.writeln('  if (link == null) return null;');
-      b.writeln('  return ParsedUrl(link, \'\${uri.scheme}://\${uri.host}\');');
+      b.writeln('    if (link != null) return ParsedUrl(link, origin);');
+      b.writeln('  }');
+      b.writeln('  // Bare root → a plain app-open.');
+      b.writeln('  if (uri.pathSegments.where((s) => s.isNotEmpty).isEmpty) {');
+      b.writeln('    return ParsedUrl(const RootUrl(), origin);');
+      b.writeln('  }');
+      b.writeln('  // Nav-mirror path → a go-able Place.');
+      b.writeln('  final chain = $spec.graph.parsePath(url);');
+      b.writeln('  if (chain != null) return ParsedUrl(_NavPlace(chain), origin);');
+      b.writeln('  return null;');
       b.writeln('}');
       // encode is the instance `link.toUri([domain])` emitted on each class above.
       b.writeln('');
