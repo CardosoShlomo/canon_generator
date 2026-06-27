@@ -23,7 +23,7 @@ enum _Shell with ScreenNode<_Shell> {
         graft(Wishlist.subtree),
       }),
     },
-    initial: const _Boot(),
+    root: const _Boot(),
     pageOf: (widget, ctx, key) => MaterialPage(key: key, child: widget),
   );
 }

@@ -36,7 +36,7 @@ final class Screen<I> {
   static bool isCurrentOf(BuildContext context) =>
       Placement.isCurrent(context, ScreenScope.of(context));
   static const _bySpec = <Enum, Screen<Object?>>{
-    BootScreen.initial: Screen<Never>._(BootScreen.initial),
+    BootScreen.root: Screen<Never>._(BootScreen.root),
     _Screens.a: a,
     _Screens.b: b,
     _Screens.c: c,
@@ -190,20 +190,20 @@ final class Screen<I> {
   /// `Screen.replace.goHome()`, `Screen.replace.on(.user)?.goChat(id)`.
   static const replace = Replace._();
 
-  /// The base/floor (history bottom) controls: `Screen.base.anchor()`
-  /// keeps the launch position returnable; `Screen.base.passthrough()`
-  /// makes it a throwaway that exits on back.
-  static const base = Base._();
+  /// The root (history bottom) controls: `Screen.root.anchor()` keeps the
+  /// launch position returnable; `Screen.root.passthrough()` makes it a
+  /// throwaway that exits on back.
+  static const root = RootControls._();
 
   /// The current foreground placement (the front), as the sealed
   /// [AnyPlacement] — `switch (Screen.current) { … }` is exhaustive.
   static AnyPlacement get current => _atOf(_Screens.graph.current);
 
   /// The cold-start link, parsed from the launch URL — read it in the
-  /// `initial` boot UI to vary the loading screen by destination. Eager:
+  /// `root` boot UI to vary the loading screen by destination. Eager:
   /// available from the first build, independent of the Router callback.
   /// Null when the launch URL isn't a representable link.
-  static Url? get initialUrl {
+  static Url? get rootUrl {
     final u =
         _Screens.graph.bootUrl ??
         WidgetsBinding.instance.platformDispatcher.defaultRouteName;
@@ -268,25 +268,25 @@ final class Screen<I> {
   }
 }
 
-/// The `Screen.base` facade — controls for the base/floor (the history
-/// bottom): whether the launch position is a returnable base or a
-/// throwaway that exits on back.
-final class Base {
-  const Base._();
+/// The `Screen.root` facade — controls for the root (the history bottom):
+/// whether the launch position is a returnable root or a throwaway that
+/// exits on back.
+final class RootControls {
+  const RootControls._();
 
-  /// Persist the launch/base position as a returnable floor — back
-  /// returns to it (then exits), and root-switches stack above it.
+  /// Persist the launch/root position as returnable — back returns to it
+  /// (then exits), and trunk-switches stack above it.
   void anchor() => _Screens.graph.anchor();
 
-  /// Make the launch/base a throwaway that exits on back (the default).
+  /// Make the launch/root a throwaway that exits on back (the default).
   void passthrough() => _Screens.graph.passthrough();
 
-  /// On a BARE floor the `initial` widget renders — read this to branch
+  /// On a BARE root the `root` widget renders — read this to branch
   /// (a `sentinel`/`fallthrough` kind), or null while boot-loading.
-  FloorKind? get kind => _Screens.graph.baseKind;
+  FloorKind? get kind => _Screens.graph.rootKind;
 
-  /// The current front screen's widget — `return Screen.base.front` from
-  /// the `initial` widget to keep showing it on a bare floor.
+  /// The current front screen's widget — `return Screen.root.front` from
+  /// the `root` widget to keep showing it on a bare root.
   Widget? get front => _Screens.graph.frontWidget;
 }
 
@@ -428,10 +428,10 @@ final class Hop<N extends AnyNav> {
   static const g = Hop<GNav>._(_Screens.g, null, GNav._());
 }
 
-/// The boot placement: `Screen.current` returns it until the first commit.
-/// `if (Screen.current case Initial()) ...` gates blob-null cold-boot UI.
-final class Initial extends AnyPlacement {
-  const Initial._() : super._();
+/// The root/boot placement: `Screen.current` returns it until the first
+/// commit. `if (Screen.current case Root()) ...` gates blob-null cold-boot UI.
+final class Root extends AnyPlacement {
+  const Root._() : super._();
 }
 
 final class On<N extends AnyNav> {
@@ -491,7 +491,7 @@ AnyPlacement _atOf(Enum s) {
     _Screens.e => const ENav._(),
     _Screens.f => const FNav._(),
     _Screens.g => const GNav._(),
-    BootScreen.initial => const Initial._(),
+    BootScreen.root => const Root._(),
     _ => throw StateError('not a _Screens screen'),
   };
 }

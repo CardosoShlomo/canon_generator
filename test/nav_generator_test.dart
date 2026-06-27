@@ -766,16 +766,16 @@ void main() {
         ]),
       ));
 
-  test('emits the Initial boot placement (no chain surface, no goInitial)', () =>
+  test('emits the Initial boot placement (no chain surface, no goRoot)', () =>
       _expectGenerated(
         allOf([
           // the boot placement, matched via `Screen.current case Initial()`
-          contains('final class Initial extends AnyPlacement'),
-          contains('BootScreen.initial => const Initial._()'), // _atOf maps it
-          contains('BootScreen.initial: Screen<Never>._(BootScreen.initial)'), // of() safe
+          contains('final class Root extends AnyPlacement'),
+          contains('BootScreen.root => const Root._()'), // _atOf maps it
+          contains('BootScreen.root: Screen<Never>._(BootScreen.root)'), // of() safe
           // the old InitialScreen-chain mechanism is gone (name freed for the consumer)
-          isNot(contains('sealed class InitialScreen')),
-          isNot(contains('goInitial')),
+          isNot(contains('sealed class RootScreen')),
+          isNot(contains('goRoot')),
         ]),
         spec: _inheritSpec,
       ));
@@ -1219,7 +1219,7 @@ void main() {
             allOf(
               contains('static set resolver(void Function(Url? url) fn) =>'),
               contains('graph.setResolver((url) => fn(parseUrl(url)?.link))'),
-              contains('get initialUrl'),
+              contains('get rootUrl'),
               contains('platformDispatcher.defaultRouteName'),
             ),
             spec: _linksSpec,

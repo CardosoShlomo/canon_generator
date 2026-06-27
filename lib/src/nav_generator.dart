@@ -911,7 +911,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln('      Placement.isCurrent(context, ScreenScope.of(context));');
     b.writeln('  static const _bySpec = <Enum, Screen<Object?>>{');
     // the boot sentinel maps to a placeholder Screen so stack/observe stay safe.
-    b.writeln('    BootScreen.initial: Screen<Never>._(BootScreen.initial),');
+    b.writeln('    BootScreen.root: Screen<Never>._(BootScreen.root),');
     for (final r in rows) {
       b.writeln('    ${sv(r.name)}: ${r.name},');
     }
@@ -1081,19 +1081,19 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln('  /// entry instead of pushing. Decide it at the start —');
     b.writeln('  /// `Screen.replace.goHome()`, `Screen.replace.on(.user)?.goChat(id)`.');
     b.writeln('  static const replace = Replace._();');
-    b.writeln('  /// The base/floor (history bottom) controls: `Screen.base.anchor()`');
-    b.writeln('  /// keeps the launch position returnable; `Screen.base.passthrough()`');
-    b.writeln('  /// makes it a throwaway that exits on back.');
-    b.writeln('  static const base = Base._();');
+    b.writeln('  /// The root (history bottom) controls: `Screen.root.anchor()` keeps the');
+    b.writeln('  /// launch position returnable; `Screen.root.passthrough()` makes it a');
+    b.writeln('  /// throwaway that exits on back.');
+    b.writeln('  static const root = RootControls._();');
     b.writeln('  /// The current foreground placement (the front), as the sealed');
     b.writeln('  /// [AnyPlacement] — `switch (Screen.current) { … }` is exhaustive.');
     b.writeln('  static AnyPlacement get current => _atOf($spec.graph.current);');
     {
       b.writeln('  /// The cold-start link, parsed from the launch URL — read it in the');
-      b.writeln('  /// `initial` boot UI to vary the loading screen by destination. Eager:');
+      b.writeln('  /// `root` boot UI to vary the loading screen by destination. Eager:');
       b.writeln('  /// available from the first build, independent of the Router callback.');
       b.writeln("  /// Null when the launch URL isn't a representable link.");
-      b.writeln('  static Url? get initialUrl {');
+      b.writeln('  static Url? get rootUrl {');
       b.writeln('    final u = $spec.graph.bootUrl ??');
       b.writeln('        WidgetsBinding.instance.platformDispatcher.defaultRouteName;');
       b.writeln('    return parseUrl(u)?.link;');
@@ -1153,21 +1153,21 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     // here, never on a Nav — so `Screen.replace.replace`/`nav.replace` are
     // un-writable). Each verb flags the batch replace, then delegates to Screen;
     // if `on(...)` misses, no commit runs and the engine drops the pending flag.
-    b.writeln('/// The `Screen.base` facade — controls for the base/floor (the history');
-    b.writeln('/// bottom): whether the launch position is a returnable base or a');
-    b.writeln('/// throwaway that exits on back.');
-    b.writeln('final class Base {');
-    b.writeln('  const Base._();');
-    b.writeln('  /// Persist the launch/base position as a returnable floor — back');
-    b.writeln('  /// returns to it (then exits), and root-switches stack above it.');
+    b.writeln('/// The `Screen.root` facade — controls for the root (the history bottom):');
+    b.writeln('/// whether the launch position is a returnable root or a throwaway that');
+    b.writeln('/// exits on back.');
+    b.writeln('final class RootControls {');
+    b.writeln('  const RootControls._();');
+    b.writeln('  /// Persist the launch/root position as returnable — back returns to it');
+    b.writeln('  /// (then exits), and trunk-switches stack above it.');
     b.writeln('  void anchor() => $spec.graph.anchor();');
-    b.writeln('  /// Make the launch/base a throwaway that exits on back (the default).');
+    b.writeln('  /// Make the launch/root a throwaway that exits on back (the default).');
     b.writeln('  void passthrough() => $spec.graph.passthrough();');
-    b.writeln('  /// On a BARE floor the `initial` widget renders — read this to branch');
+    b.writeln('  /// On a BARE root the `root` widget renders — read this to branch');
     b.writeln('  /// (a `sentinel`/`fallthrough` kind), or null while boot-loading.');
-    b.writeln('  FloorKind? get kind => $spec.graph.baseKind;');
-    b.writeln('  /// The current front screen\'s widget — `return Screen.base.front` from');
-    b.writeln('  /// the `initial` widget to keep showing it on a bare floor.');
+    b.writeln('  FloorKind? get kind => $spec.graph.rootKind;');
+    b.writeln('  /// The current front screen\'s widget — `return Screen.root.front` from');
+    b.writeln('  /// the `root` widget to keep showing it on a bare root.');
     b.writeln('  Widget? get front => $spec.graph.frontWidget;');
     b.writeln('}');
     b.writeln('/// The `Screen.replace` redirect facade — every verb mirrors `Screen`');
@@ -1391,11 +1391,11 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     // The synthetic boot placement (rule 2): `Screen.current` returns it while
     // booting (blob-null cold-boot, before the resolver commits). No `Nav` suffix
     // (so it can't collide with a `<screen>Nav`), no `goInitial` (unreachable by
-    // navigation) — pattern-match `Screen.current case Initial()`. The first commit
+    // navigation) — pattern-match `Screen.current case Root()`. The first commit
     // out of boot auto-replaces, so the loading screen leaves no history.
-    b.writeln('/// The boot placement: `Screen.current` returns it until the first commit.');
-    b.writeln('/// `if (Screen.current case Initial()) ...` gates blob-null cold-boot UI.');
-    b.writeln('final class Initial extends AnyPlacement { const Initial._() : super._(); }');
+    b.writeln('/// The root/boot placement: `Screen.current` returns it until the first');
+    b.writeln('/// commit. `if (Screen.current case Root()) ...` gates blob-null cold-boot UI.');
+    b.writeln('final class Root extends AnyPlacement { const Root._() : super._(); }');
 
     b.writeln('final class On<${onDecl()}> {');
     b.writeln('  const On._(this.specs, this.ids, this.nav, [this.conds = const []]);');
@@ -1501,7 +1501,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
           ? '    ${sv(r.name)} => const ${unionName(r.name)}._(),'
           : '    ${sv(r.name)} => _resolve${_cap(r.name)}Placement(p),');
     }
-    b.writeln('    BootScreen.initial => const Initial._(),');
+    b.writeln('    BootScreen.root => const Root._(),');
     b.writeln("    _ => throw StateError('not a $spec screen'),");
     b.writeln('  };');
     b.writeln('}');

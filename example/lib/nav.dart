@@ -29,21 +29,21 @@ enum _Screens with ScreenNode<_Screens> {
         f({g}),
       }),
     },
-    initial: const _Loading(),
+    root: const _Loading(),
     pageOf: (widget, ctx, key) => MaterialPage(key: key, child: widget),
   );
 }
 
 // The base/initial widget: a spinner while booting, and the face of a bare floor.
-// On a bare floor (`Screen.base.kind != null`) we keep showing the current front
+// On a bare floor (`Screen.root.kind != null`) we keep showing the current front
 // screen; the consumer could instead return a home or anything here.
 class _Loading extends StatelessWidget {
   const _Loading();
 
   @override
   Widget build(BuildContext context) {
-    if (Screen.base.kind != null) {
-      return Screen.base.front ?? const Scaffold(backgroundColor: Colors.black);
+    if (Screen.root.kind != null) {
+      return Screen.root.front ?? const Scaffold(backgroundColor: Colors.black);
     }
     return const Scaffold(body: Center(child: CircularProgressIndicator()));
   }
