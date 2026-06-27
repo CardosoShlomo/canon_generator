@@ -7,7 +7,7 @@ environment:
   sdk: ^3.12.0
 
 dependencies:
-  canon: ^0.17.0 # re-exports Codec — no separate canon_codec dep needed
+  canon: ^0.18.0 # re-exports Codec — no separate canon_codec dep needed
   flutter:
     sdk: flutter
   flutter_web_plugins:
