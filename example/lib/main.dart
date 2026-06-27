@@ -11,7 +11,7 @@ void main() {
   // root / link / unparseable → land on `a`. Places are go-able Hops.
   Screen.resolver = (Url? url) => switch (url) {
         Place p => Screen.go(p),
-        _ => Screen.goA(),
+        _ => Screen.goHome(),
       };
 
   runApp(const _App());

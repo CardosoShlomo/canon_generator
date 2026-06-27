@@ -16,9 +16,9 @@ void main() {
   testWidgets('grammar validates, renders, and navigates', (tester) async {
     verifyScreens();
     await tester.pumpWidget(MaterialApp.router(routerDelegate: Screen.manager));
-    // boots to Initial (the _Loading widget); don't settle — its spinner never
+    // boots to Root (the _Loading widget); don't settle — its spinner never
     // does. The resolver drives the first nav out of boot.
-    expect(Screen.current, isA<Initial>());
+    expect(Screen.current, isA<Root>());
     Screen.goHome().goSettings().goAbout(); // seed home → settings → about
     await tester.pumpAndSettle();
     expect(Screen.stack.current.name, 'about');
@@ -184,53 +184,53 @@ void main() {
     expect(Screen.at(.query({.sort('missing')})), isNull);
   });
 
-  test('WidgetLink.<route> mirrors the nav tree → a resolving URL', () {
+  test('Place.<route> mirrors the nav tree → a resolving URL', () {
     // every screen on the stack is a deep link; the chain walks the nav tree
     // root-down, an id-bearing screen takes its id (`.item(id)`), an inherited
     // segment is bare (`.editItem`), and `.toUri()` prints the full path.
-    expect(WidgetLink.home.toUri().toString(), 'https://canon.example/home');
-    expect(WidgetLink.home.settings.about.toUri().toString(),
+    expect(Place.home.toUri().toString(), 'https://canon.example/home');
+    expect(Place.home.settings.about.toUri().toString(),
         'https://canon.example/home/settings/about');
-    expect(WidgetLink.home.item('42').toUri().toString(),
+    expect(Place.home.item('42').toUri().toString(),
         'https://canon.example/home/item/42');
     // inherited editItem rides item's id → bare segment, no extra token
-    expect(WidgetLink.home.item('42').editItem.toUri().toString(),
+    expect(Place.home.item('42').editItem.toUri().toString(),
         'https://canon.example/home/item/42/edit-item');
     // kick-start shortcut: address editItem directly, the id back-fills item
-    expect(WidgetLink.home.editItem('42').toUri().toString(),
+    expect(Place.home.editItem('42').toUri().toString(),
         'https://canon.example/home/item/42/edit-item');
     // the SAME screen under a different parent → a different resolving path
-    expect(WidgetLink.feed.item('42').toUri('https://x.io').toString(),
+    expect(Place.feed.item('42').toUri('https://x.io').toString(),
         'https://x.io/feed/item/42');
 
     // kick-start jump-over: account/editAccount sit under ONE parent (profile),
     // so they're addressable straight from the name — the id back-fills the path.
-    expect(WidgetLink.account('u1').toUri().toString(),
+    expect(Place.account('u1').toUri().toString(),
         'https://canon.example/profile/account/u1');
-    expect(WidgetLink.editAccount('u1').toUri().toString(),
+    expect(Place.editAccount('u1').toUri().toString(),
         'https://canon.example/profile/account/u1/edit-account');
-    expect(Link.editAccount('u1').toUri().toString(), // also on the superset
+    expect(Url.editAccount('u1').toUri().toString(), // also on the Url superset
         'https://canon.example/profile/account/u1/edit-account');
   });
 
-  test('WidgetLink view-state: an On-shape term set mirrors into the URL', () {
+  test('Place view-state: an On-shape term set mirrors into the URL', () {
     // a dot-shorthand term SET, exactly like `Screen.on(.feed.query({…}))` but
     // ASSIGNING (no `.not`) — no generated type named at the build site.
-    expect(WidgetLink.feed.query({.category('books'), .radius(7)}).toUri().toString(),
+    expect(Place.feed.query({.category('books'), .radius(7)}).toUri().toString(),
         'https://canon.example/feed?category=books&radius=7');
     // unset keys are simply absent
-    expect(WidgetLink.feed.query({.category('books')}).toUri().toString(),
+    expect(Place.feed.query({.category('books')}).toUri().toString(),
         'https://canon.example/feed?category=books');
     // item carries its own view-state (sort), under its full nav path
-    expect(WidgetLink.home.item('42').query({.sort('name')}).toUri().toString(),
+    expect(Place.home.item('42').query({.sort('name')}).toUri().toString(),
         'https://canon.example/home/item/42?sort=name');
 
     // fragments too: `.fragment({…})` is its own stage; a flag is a bare term
-    expect(WidgetLink.feed.fragment({.tab('chat')}).toUri().toString(),
+    expect(Place.feed.fragment({.tab('chat')}).toUri().toString(),
         'https://canon.example/feed#tab=chat');
     // query then fragment → ?…#… ; fragment is terminal (no query after it)
     expect(
-        WidgetLink.feed
+        Place.feed
             .query({.category('books')})
             .fragment({.tab('chat'), .pinned})
             .toUri()
@@ -248,17 +248,17 @@ void main() {
     expect(Link.item.byUsername('ann').toUri('https://x.io').toString(),
         const ItemByUsernameLink('ann').toUri('https://x.io').toString());
 
-    // family-filtered roots: every item branch is widgetless, so it lives on
-    // WidgetlessLink, never WidgetLink (family-closed).
-    expect(WidgetlessLink.item.byId('550e8400-e29b-41d4-a716-446655440001').toUri().toString(),
+    // family-filtered roots: every item branch is widgetless, so it lives on the
+    // resolve-only `Link`, never `Place` (family-closed); `Url` is the superset.
+    expect(Url.item.byId('550e8400-e29b-41d4-a716-446655440001').toUri().toString(),
         Link.item.byId('550e8400-e29b-41d4-a716-446655440001').toUri().toString());
 
-    // `Link.<route>` is the superset: the nav tree (WidgetLink) AND the resolve
-    // leaves (WidgetlessLink) under one root.
-    expect(Link.home.item('42').toUri().toString(), // nav-target path
-        WidgetLink.home.item('42').toUri().toString());
-    expect(Link.item.me().toUri().toString(), // resolve-branch leaf
-        WidgetlessLink.item.me().toUri().toString());
+    // `Url.<route>` is the superset: the nav tree (Place) AND the resolve
+    // leaves (Link) under one root.
+    expect(Url.home.item('42').toUri().toString(), // nav-target path
+        Place.home.item('42').toUri().toString());
+    expect(Url.item.me().toUri().toString(), // resolve-branch leaf
+        Link.item.me().toUri().toString());
   });
 
   testWidgets('at(chain).goXx() is a smart jump (pop-to-self then go)', (tester) async {
