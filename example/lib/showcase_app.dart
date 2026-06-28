@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 
-import 'welcome.dart';
+import 'showcase.dart';
 
 void main() {
-  Screen.resolver = (_) => Screen.goHome();
+  usePathUrlStrategy();
+  Screen.resolver = (Url? url) => switch (url) {
+        Place p => Screen.go(p),
+        _ => Screen.goSplash(),
+      };
   runApp(const _App());
 }
 
