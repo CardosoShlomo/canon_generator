@@ -233,7 +233,7 @@ final class Screen<I> {
 
   /// Documented sugar for `canPop?.pop()` — pops the active top if any,
   /// returns where it landed, or null at a root. Never throws.
-  static PopDestNav? pop() => canPop?.pop();
+  static PopDestPlacement? pop() => canPop?.pop();
 
   /// A broadcast stream of committed navigations as typed snapshots:
   /// `from`/`to` are ScreenEntry stacks; `switch (e.destination)` for
@@ -705,38 +705,32 @@ abstract base class AnyNav {
   const AnyNav._();
 }
 
-sealed class CanPopPlacement {}
-
 sealed class PopDestPlacement {}
 
 final class CanPopNav extends AnyNav {
   const CanPopNav._() : super._();
-  CanPopPlacement get at => Screen.current as CanPopPlacement;
-  PopDestNav pop() {
+  PopDestPlacement pop() {
     _Screens.graph.pop();
-    return const PopDestNav._();
+    return _resolvePopDest();
   }
 }
 
-final class PopDestNav extends AnyNav {
-  const PopDestNav._() : super._();
-  PopDestPlacement get at {
-    final c = _Screens.graph.currentChain;
-    if (_chainIs(c, const [_Screens.home, _Screens.item]))
-      return const HomeItemNav._();
-    if (_chainIs(c, const [_Screens.feed, _Screens.item]))
-      return const FeedItemNav._();
-    if (_chainIs(c, const [_Screens.home, _Screens.settings]))
-      return const HomeSettingsNav._();
-    if (_chainIs(c, const [_Screens.profile, _Screens.settings]))
-      return const ProfileSettingsNav._();
-    if (_chainIs(c, const [_Screens.profile, _Screens.account]))
-      return const AccountNav._();
-    if (_chainIs(c, const [_Screens.home])) return const HomeNav._();
-    if (_chainIs(c, const [_Screens.feed])) return const FeedNav._();
-    if (_chainIs(c, const [_Screens.profile])) return const ProfileNav._();
-    throw StateError('unresolved PopDestNav: $c');
-  }
+PopDestPlacement _resolvePopDest() {
+  final c = _Screens.graph.currentChain;
+  if (_chainIs(c, const [_Screens.home, _Screens.item]))
+    return const HomeItemNav._();
+  if (_chainIs(c, const [_Screens.feed, _Screens.item]))
+    return const FeedItemNav._();
+  if (_chainIs(c, const [_Screens.home, _Screens.settings]))
+    return const HomeSettingsNav._();
+  if (_chainIs(c, const [_Screens.profile, _Screens.settings]))
+    return const ProfileSettingsNav._();
+  if (_chainIs(c, const [_Screens.profile, _Screens.account]))
+    return const AccountNav._();
+  if (_chainIs(c, const [_Screens.home])) return const HomeNav._();
+  if (_chainIs(c, const [_Screens.feed])) return const FeedNav._();
+  if (_chainIs(c, const [_Screens.profile])) return const ProfileNav._();
+  throw StateError('unresolved pop destination: $c');
 }
 
 final class Keep {
@@ -811,7 +805,6 @@ final class FeedNav extends AnyPlacement implements FeedView, PopDestPlacement {
 
   FeedQueryMut get query => const FeedQueryMut._();
   FeedFragmentMut get fragment => const FeedFragmentMut._();
-  FeedNav get at => this;
   FeedItemNav goItem(String id) {
     _Screens.graph.popTo(_Screens.feed);
     _Screens.graph.go(_Screens.item, id, true);
@@ -879,7 +872,7 @@ sealed class ItemPlacement implements AnyPlacement {
 }
 
 final class HomeItemNav extends AnyPlacement
-    implements ItemPlacement, ItemView, CanPopPlacement, PopDestPlacement {
+    implements ItemPlacement, ItemView, PopDestPlacement {
   const HomeItemNav._() : super._();
   HomeItemNav surface() {
     _Screens.graph.popTo(_Screens.item);
@@ -887,7 +880,6 @@ final class HomeItemNav extends AnyPlacement
   }
 
   ItemQueryMut get query => const ItemQueryMut._();
-  ItemPlacement get at => this;
   HomeItemEditItemNav goEditItem() {
     _Screens.graph.popTo(_Screens.item);
     _Screens.graph.go(_Screens.editItem, _idOf(_Screens.item), true);
@@ -901,7 +893,7 @@ final class HomeItemNav extends AnyPlacement
 }
 
 final class FeedItemNav extends AnyPlacement
-    implements ItemPlacement, ItemView, CanPopPlacement, PopDestPlacement {
+    implements ItemPlacement, ItemView, PopDestPlacement {
   const FeedItemNav._() : super._();
   FeedItemNav surface() {
     _Screens.graph.popTo(_Screens.item);
@@ -909,7 +901,6 @@ final class FeedItemNav extends AnyPlacement
   }
 
   ItemQueryMut get query => const ItemQueryMut._();
-  ItemPlacement get at => this;
   FeedItemEditItemNav goEditItem() {
     _Screens.graph.popTo(_Screens.item);
     _Screens.graph.go(_Screens.editItem, _idOf(_Screens.item), true);
@@ -941,7 +932,7 @@ sealed class ItemEditItemPlacement implements AnyPlacement {
 }
 
 final class HomeItemEditItemNav extends AnyPlacement
-    implements EditItemPlacement, ItemEditItemPlacement, CanPopPlacement {
+    implements EditItemPlacement, ItemEditItemPlacement {
   const HomeItemEditItemNav._() : super._();
   HomeItemEditItemNav surface() {
     _Screens.graph.popTo(_Screens.editItem);
@@ -976,7 +967,7 @@ final class HomeItemEditItemPop<N extends AnyNav> {
 }
 
 final class FeedItemEditItemNav extends AnyPlacement
-    implements EditItemPlacement, ItemEditItemPlacement, CanPopPlacement {
+    implements EditItemPlacement, ItemEditItemPlacement {
   const FeedItemEditItemNav._() : super._();
   FeedItemEditItemNav surface() {
     _Screens.graph.popTo(_Screens.editItem);
@@ -1024,7 +1015,7 @@ sealed class SettingsPlacement implements AnyPlacement {
 }
 
 final class HomeSettingsNav extends AnyPlacement
-    implements SettingsPlacement, CanPopPlacement, PopDestPlacement {
+    implements SettingsPlacement, PopDestPlacement {
   const HomeSettingsNav._() : super._();
   HomeSettingsNav surface() {
     _Screens.graph.popTo(_Screens.settings);
@@ -1044,7 +1035,7 @@ final class HomeSettingsNav extends AnyPlacement
 }
 
 final class ProfileSettingsNav extends AnyPlacement
-    implements SettingsPlacement, CanPopPlacement, PopDestPlacement {
+    implements SettingsPlacement, PopDestPlacement {
   const ProfileSettingsNav._() : super._();
   ProfileSettingsNav surface() {
     _Screens.graph.popTo(_Screens.settings);
@@ -1082,7 +1073,7 @@ sealed class SettingsAboutPlacement implements AnyPlacement {
 }
 
 final class HomeSettingsAboutNav extends AnyPlacement
-    implements AboutPlacement, SettingsAboutPlacement, CanPopPlacement {
+    implements AboutPlacement, SettingsAboutPlacement {
   const HomeSettingsAboutNav._() : super._();
   HomeSettingsAboutNav surface() {
     _Screens.graph.popTo(_Screens.about);
@@ -1120,7 +1111,7 @@ final class HomeSettingsAboutPop<N extends AnyNav> {
 }
 
 final class ProfileSettingsAboutNav extends AnyPlacement
-    implements AboutPlacement, SettingsAboutPlacement, CanPopPlacement {
+    implements AboutPlacement, SettingsAboutPlacement {
   const ProfileSettingsAboutNav._() : super._();
   ProfileSettingsAboutNav surface() {
     _Screens.graph.popTo(_Screens.about);
@@ -1157,8 +1148,7 @@ final class ProfileSettingsAboutPop<N extends AnyNav> {
   );
 }
 
-final class AccountNav extends AnyPlacement
-    implements CanPopPlacement, PopDestPlacement {
+final class AccountNav extends AnyPlacement implements PopDestPlacement {
   const AccountNav._() : super._();
   AccountNav surface() {
     _Screens.graph.popTo(_Screens.account);
@@ -1177,7 +1167,7 @@ final class AccountNav extends AnyPlacement
   }
 }
 
-final class EditAccountNav extends AnyPlacement implements CanPopPlacement {
+final class EditAccountNav extends AnyPlacement {
   const EditAccountNav._() : super._();
   EditAccountNav surface() {
     _Screens.graph.popTo(_Screens.editAccount);
@@ -1993,7 +1983,6 @@ final class ItemQueryArg {
 /// this; the navigable `ItemNav` adds the setters.
 abstract interface class ItemView implements AnyView {
   ItemQuery get query;
-  ItemPlacement get at;
 }
 
 /// Screen-local query view-state for `feed` (read-only).
@@ -2124,7 +2113,6 @@ final class FeedFragmentArg {
 abstract interface class FeedView implements AnyView {
   FeedQuery get query;
   FeedFragment get fragment;
-  FeedNav get at;
 }
 
 AnyView? _viewOf(Enum? screen) => switch (screen) {

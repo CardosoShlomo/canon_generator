@@ -1122,8 +1122,6 @@ void main() {
           // the selector carries the typed read-only view, so context.on returns it
           contains('OnFeed extends On<FeedNav, FeedView>'),
           contains('V? on<N extends AnyNav, V>(On<N, V> sel)'), // typed reactive read
-          contains('FeedNav get at;'), // the read→act hop on the View
-          contains('FeedNav get at => this;'), // single-parent: the view's `.at` is itself
         ]),
         spec: _viewSpec,
       ));
@@ -1136,8 +1134,6 @@ void main() {
           contains('String? get tag =>'),
           matches(RegExp(r'implements[^{]*ItemView')), // placement navs implement it
           contains('ItemQueryMut get query'), // …with the mutable getter
-          contains('ItemPlacement get at;'), // the view's `.at` is the sealed placement
-          contains('ItemPlacement get at => this;'), // a resolved leaf IS its placement
           contains('OnItem extends On<ItemPlacement, ItemView>'), // typed selector
         ]),
         spec: _multiViewSpec,
@@ -1199,16 +1195,14 @@ void main() {
 
   test('emits the global canPop / Screen.pop sugar surface', () =>
       _expectGenerated(allOf([
-        contains('sealed class CanPopPlacement {}'),
         contains('sealed class PopDestPlacement {}'),
         contains('final class CanPopNav extends AnyNav'),
-        contains('final class PopDestNav extends AnyNav'),
         contains('static CanPopNav? get canPop'),
         contains('currentChain.length > 1'), // null at root
-        contains('static PopDestNav? pop() => canPop?.pop()'), // documented sugar
-        contains('PopDestNav pop()'), // CanPopNav executes the guaranteed pop
-        // non-root placements implement the poppable marker
-        contains('CanPopPlacement'),
+        // pop() returns the sealed destination placement
+        contains('static PopDestPlacement? pop() => canPop?.pop()'),
+        contains('PopDestPlacement pop()'), // CanPopNav executes the guaranteed pop
+        contains('PopDestPlacement _resolvePopDest()'),
       ])));
 
   test('drops the old observe() forwarder — navigations replaces it', () =>
@@ -1262,13 +1256,13 @@ void main() {
         spec: _flatSpec,
       ));
 
-  test('cycle bare-pop returns a predecessor union with .at', () =>
+  test('cycle bare-pop returns the sealed predecessor placement directly', () =>
       _expectGenerated(allOf(
         contains('sealed class AboutHomePopPlacement {}'),
-        contains('final class AboutHomePopNav extends AnyNav'),
-        contains('AboutHomePopPlacement get at'),
-        contains('AboutHomePopNav pop()'), // item pops into the union
-        // predecessors implement the marker -> exhaustive switch(x.pop().at)
+        // pop() returns the resolved sealed predecessor placement
+        contains('AboutHomePopPlacement _resolveAboutHomePopPlacement()'),
+        contains('AboutHomePopPlacement pop()'), // item pops into the sealed union
+        // predecessors implement the marker -> exhaustive switch(x.pop())
         matches(RegExp(r'class HomeNav extends AnyPlacement\s+implements[^{]*AboutHomePopPlacement')),
         matches(RegExp(r'class AboutNav extends AnyPlacement\s+implements[^{]*AboutHomePopPlacement')),
       )));

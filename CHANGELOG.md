@@ -1,3 +1,7 @@
+## 0.25.1
+
+- `pop()` returns the sealed `…Placement`/`PopDestPlacement` directly (resolved internally) — drop the `…PopNav`/`PopDestNav` wrappers and `.at`. Remove the view `.at` accessor too; `Screen.at`/`context.at` are the placement-reach API.
+
 ## 0.25.0
 
 - Read `requireAllOf`/`requireOneOf` link query/fragment groups; reject them on screen view-state with a build error (they gate route matching — link branches only). Requires canon ^0.19.0.

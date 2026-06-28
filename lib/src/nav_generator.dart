@@ -436,11 +436,6 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
 
     bool isSingle(String screen) => placements[screen]!.length <= 1;
     String unionName(String s) => '${_cap(s)}Nav';
-    // What a view's `.at` resolves to: the lone nav for a single-parent screen,
-    // else the sealed `…Placement` covering its several parents.
-    String viewAtTypeOf(String s) => isSingle(s)
-        ? unionName(s)
-        : '${unionName(s).substring(0, unionName(s).length - 3)}Placement';
     String placementName(PlacementNode n) =>
         isSingle(n.screen) ? unionName(n.screen) : '${n.path.map(_cap).join()}Nav';
     String childType(PlacementNode c) =>
@@ -449,8 +444,8 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     // Pop-union registry: a placement with >1 possible predecessor pops into a
     // union nav whose `.at` narrows to the actual parent (exhaustive switch). A
     // screen's own union is reused when the predecessors are just its placements.
-    final unions = <String, ({String nav, String marker, List<PlacementNode> members})>{};
-    final popReturnOf = <String, String>{}; // cyclic placement nav -> pop() return type
+    final unions = <String, ({String marker, List<PlacementNode> members})>{};
+    final popReturnOf = <String, String>{}; // cyclic placement -> pop() sealed return marker
     final crossImpl = <String, Set<String>>{}; // nav -> pop-placement markers it implements
     String stemOf(PlacementNode m) {
       final pn = placementName(m);
@@ -467,9 +462,9 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
             for (final m in ms) {
               (crossImpl[placementName(m)] ??= {}).add(marker);
             }
-            return (nav: '${base}PopNav', marker: marker, members: ms);
+            return (marker: marker, members: ms);
           })
-          .nav;
+          .marker;
     }
     for (final r in rows) {
       for (final n in placements[r.name]!) {
@@ -498,9 +493,6 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     }
     final hasCanPop = canPopMembers.isNotEmpty;
     if (hasCanPop) {
-      for (final n in canPopMembers) {
-        (crossImpl[placementName(n)] ??= {}).add('CanPopPlacement');
-      }
       for (final p in destMembers) {
         (crossImpl[placementName(p)] ??= {}).add('PopDestPlacement');
       }
@@ -783,10 +775,11 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       }
       final popUnion = popReturnOf[className];
       if (popUnion != null) {
-        // Cycle: pop() returns the predecessor-union nav; narrow via its `.at`.
+        // Cycle: pop() lands on one of several predecessors — resolve the actual
+        // one off the post-pop chain and return its sealed placement.
         b.writeln('  $popUnion pop() {');
         b.writeln('    $spec.graph.pop();');
-        b.writeln('    return const $popUnion._();');
+        b.writeln('    return _resolve$popUnion();');
         b.writeln('  }');
       } else if (parentScreen != null) {
         // Single ancestor → its lone nav; multi-placement ancestor → resolve it
@@ -1093,7 +1086,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       b.writeln('      $spec.graph.currentChain.length > 1 ? const CanPopNav._() : null;');
       b.writeln('  /// Documented sugar for `canPop?.pop()` — pops the active top if any,');
       b.writeln('  /// returns where it landed, or null at a root. Never throws.');
-      b.writeln('  static PopDestNav? pop() => canPop?.pop();');
+      b.writeln('  static PopDestPlacement? pop() => canPop?.pop();');
     }
     b.writeln('  /// A broadcast stream of committed navigations as typed snapshots:');
     b.writeln('  /// `from`/`to` are ScreenEntry stacks; `switch (e.destination)` for');
@@ -1444,7 +1437,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
         }
         // pop() is the parent-level pop; legal only if every parent is non-root.
         if (hasCanPop && allParentsNonRoot(parents)) {
-          b.writeln('  PopDestNav pop() { $spec.graph.pop(); return const PopDestNav._(); }');
+          b.writeln('  PopDestPlacement pop() { $spec.graph.pop(); return _resolvePopDest(); }');
         }
         b.writeln('}');
       }
@@ -1498,66 +1491,38 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     // grandparents resolve unambiguously, so `.pop().pop()` chains.
     for (final u in unions.values) {
       b.writeln('sealed class ${u.marker} {}');
-      b.writeln('final class ${u.nav} extends AnyNav {');
-      b.writeln('  const ${u.nav}._() : super._();');
-      final parents = [for (final m in u.members) if (m.parent != null) m.parent!];
-      if (parents.length == u.members.length) {
-        String? gp;
-        if (parents.length == 1) {
-          gp = placementName(parents.single);
-        } else if (parents.map((p) => p.screen).toSet().length == 1) {
-          gp = unionName(parents.first.screen);
-        }
-        if (gp != null) {
-          b.writeln('  $gp pop() { $spec.graph.pop(); return const $gp._(); }');
-        }
-      }
       usesEndsWith = true;
-      b.writeln('  ${u.marker} get at {');
-      b.writeln('    final c = $spec.graph.currentChain;');
+      // Resolve the predecessor a cycle pop() landed on, off the post-pop chain.
+      b.writeln('${u.marker} _resolve${u.marker}() {');
+      b.writeln('  final c = $spec.graph.currentChain;');
       final sorted = [...u.members]..sort((a, b) => b.path.length.compareTo(a.path.length));
       for (final m in sorted) {
         final lits = m.path.map((s) => '${sv(s)}').join(', ');
-        b.writeln('    if (_endsWith(c, const [$lits])) return const ${placementName(m)}._();');
+        b.writeln('  if (_endsWith(c, const [$lits])) return const ${placementName(m)}._();');
       }
-      b.writeln("    throw StateError('unresolved ${u.nav}: \$c');");
-      b.writeln('  }');
+      b.writeln("  throw StateError('unresolved ${u.marker}: \$c');");
       b.writeln('}');
     }
 
-    // Global pop surface. CanPopNav: the union of poppable (non-root) placements
-    // — Screen.canPop returns it iff the active top is non-root. PopDestNav: where
-    // a pop lands, resolved from the post-pop chain; shared forward verbs appear
-    // only for children common to EVERY destination (an app-wide screen).
+    // Global pop surface. CanPopNav is the canPop handle (Screen.canPop returns it
+    // iff the active top is non-root); its pop() resolves the landing off the
+    // post-pop chain and returns the sealed PopDestPlacement.
     if (hasCanPop) {
-      b.writeln('sealed class CanPopPlacement {}');
       b.writeln('sealed class PopDestPlacement {}');
       b.writeln('final class CanPopNav extends AnyNav {');
       b.writeln('  const CanPopNav._() : super._();');
-      b.writeln('  CanPopPlacement get at => Screen.current as CanPopPlacement;');
-      b.writeln('  PopDestNav pop() { $spec.graph.pop(); return const PopDestNav._(); }');
+      b.writeln('  PopDestPlacement pop() { $spec.graph.pop(); return _resolvePopDest(); }');
       b.writeln('}');
-      b.writeln('final class PopDestNav extends AnyNav {');
-      b.writeln('  const PopDestNav._() : super._();');
-      final destFwd = [
-        for (final p in destMembers)
-          {for (final c in p.children) if (c.again == null) c.screen}
-      ];
-      final destShared =
-          destFwd.isEmpty ? <String>{} : destFwd.reduce((a, b) => a.intersection(b));
-      for (final cs in destShared) {
-        b.writeln('  ${goVerb(cs, unionName(cs), const []).trim()}');
-      }
-      b.writeln('  PopDestPlacement get at {');
-      b.writeln('    final c = $spec.graph.currentChain;');
+      // Resolve where a global pop() landed, off the post-pop chain.
+      b.writeln('PopDestPlacement _resolvePopDest() {');
+      b.writeln('  final c = $spec.graph.currentChain;');
       final sorted = [...destMembers]
         ..sort((a, b) => b.path.length.compareTo(a.path.length));
       for (final m in sorted) {
         final lits = m.path.map((s) => '${sv(s)}').join(', ');
-        b.writeln('    if (_chainIs(c, const [$lits])) return const ${placementName(m)}._();');
+        b.writeln('  if (_chainIs(c, const [$lits])) return const ${placementName(m)}._();');
       }
-      b.writeln("    throw StateError('unresolved PopDestNav: \$c');");
-      b.writeln('  }');
+      b.writeln("  throw StateError('unresolved pop destination: \$c');");
       b.writeln('}');
     }
 
@@ -1611,9 +1576,6 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
           extra: () {
             final parts = [
               if (viewScreens.containsKey(r.name)) viewGetters(r.name),
-              // Single-parent screen: its view's `.at` is the lone nav itself.
-              if (viewScreens.containsKey(r.name))
-                '  ${unionName(r.name)} get at => this;',
               if (cyclic.contains(r.name))
                 '  int get depth => $spec.graph.countOf(${sv(r.name)});',
             ];
@@ -1758,9 +1720,6 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
           extra: () {
             final parts = [
               if (viewScreens.containsKey(n.screen)) viewGetters(n.screen),
-              // A resolved leaf IS its own placement → the view's `.at` is itself.
-              if (viewScreens.containsKey(n.screen))
-                '  ${viewAtTypeOf(n.screen)} get at => this;',
               if (cyclic.contains(n.screen))
                 '  int get depth => $spec.graph.countOf(${sv(n.screen)});',
             ];
@@ -2531,9 +2490,6 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       if (e.value.fragment.isNotEmpty) {
         b.writeln('  ${_cap(e.key)}Fragment get fragment;');
       }
-      // The read→act hop: the resolved placement handle (sealed when the screen
-      // has several parents) — `context.on(sel)?.at` then navigate / switch on it.
-      b.writeln('  ${viewAtTypeOf(e.key)} get at;');
       b.writeln('}');
       b.writeln('');
     }

@@ -208,7 +208,7 @@ final class Screen<I> {
 
   /// Documented sugar for `canPop?.pop()` — pops the active top if any,
   /// returns where it landed, or null at a root. Never throws.
-  static PopDestNav? pop() => canPop?.pop();
+  static PopDestPlacement? pop() => canPop?.pop();
 
   /// A broadcast stream of committed navigations as typed snapshots:
   /// `from`/`to` are ScreenEntry stacks; `switch (e.destination)` for
@@ -443,9 +443,9 @@ final class ProductNavParent extends AnyNav {
     return _atOf(Shop.product) as ProductPlacement;
   }
 
-  PopDestNav pop() {
+  PopDestPlacement pop() {
     _Shell.graph.pop();
-    return const PopDestNav._();
+    return _resolvePopDest();
   }
 }
 
@@ -531,31 +531,25 @@ abstract base class AnyNav {
   const AnyNav._();
 }
 
-sealed class CanPopPlacement {}
-
 sealed class PopDestPlacement {}
 
 final class CanPopNav extends AnyNav {
   const CanPopNav._() : super._();
-  CanPopPlacement get at => Screen.current as CanPopPlacement;
-  PopDestNav pop() {
+  PopDestPlacement pop() {
     _Shell.graph.pop();
-    return const PopDestNav._();
+    return _resolvePopDest();
   }
 }
 
-final class PopDestNav extends AnyNav {
-  const PopDestNav._() : super._();
-  PopDestPlacement get at {
-    final c = _Shell.graph.currentChain;
-    if (_chainIs(c, const [_Shell.home, Shop.shop, Shop.catalog]))
-      return const CatalogNav._();
-    if (_chainIs(c, const [_Shell.home, Shop.shop])) return const ShopNav._();
-    if (_chainIs(c, const [_Shell.home, Wishlist.saved]))
-      return const SavedNav._();
-    if (_chainIs(c, const [_Shell.home])) return const HomeNav._();
-    throw StateError('unresolved PopDestNav: $c');
-  }
+PopDestPlacement _resolvePopDest() {
+  final c = _Shell.graph.currentChain;
+  if (_chainIs(c, const [_Shell.home, Shop.shop, Shop.catalog]))
+    return const CatalogNav._();
+  if (_chainIs(c, const [_Shell.home, Shop.shop])) return const ShopNav._();
+  if (_chainIs(c, const [_Shell.home, Wishlist.saved]))
+    return const SavedNav._();
+  if (_chainIs(c, const [_Shell.home])) return const HomeNav._();
+  throw StateError('unresolved pop destination: $c');
 }
 
 final class HomeNav extends AnyPlacement implements PopDestPlacement {
@@ -603,7 +597,7 @@ final class HomeHop<N extends AnyNav> {
   static const saved = HomeHop<SavedNav>._(Wishlist.saved, null, SavedNav._());
 }
 
-final class SettingsNav extends AnyPlacement implements CanPopPlacement {
+final class SettingsNav extends AnyPlacement {
   const SettingsNav._() : super._();
   SettingsNav surface() {
     _Shell.graph.popTo(_Shell.settings);
@@ -616,8 +610,7 @@ final class SettingsNav extends AnyPlacement implements CanPopPlacement {
   }
 }
 
-final class ShopNav extends AnyPlacement
-    implements CanPopPlacement, PopDestPlacement {
+final class ShopNav extends AnyPlacement implements PopDestPlacement {
   const ShopNav._() : super._();
   ShopNav surface() {
     _Shell.graph.popTo(Shop.shop);
@@ -636,8 +629,7 @@ final class ShopNav extends AnyPlacement
   }
 }
 
-final class CatalogNav extends AnyPlacement
-    implements CanPopPlacement, PopDestPlacement {
+final class CatalogNav extends AnyPlacement implements PopDestPlacement {
   const CatalogNav._() : super._();
   CatalogNav surface() {
     _Shell.graph.popTo(Shop.catalog);
@@ -687,7 +679,7 @@ sealed class ProductPlacement implements AnyPlacement {
 }
 
 final class HomeShopCatalogProductNav extends AnyPlacement
-    implements ProductPlacement, CanPopPlacement {
+    implements ProductPlacement {
   const HomeShopCatalogProductNav._() : super._();
   HomeShopCatalogProductNav surface() {
     _Shell.graph.popTo(Shop.product);
@@ -734,7 +726,7 @@ final class HomeShopCatalogProductPop<N extends AnyNav> {
 }
 
 final class HomeSavedProductNav extends AnyPlacement
-    implements ProductPlacement, CanPopPlacement {
+    implements ProductPlacement {
   const HomeSavedProductNav._() : super._();
   HomeSavedProductNav surface() {
     _Shell.graph.popTo(Shop.product);
@@ -768,8 +760,7 @@ final class HomeSavedProductPop<N extends AnyNav> {
   static const home = HomeSavedProductPop<HomeNav>._(_Shell.home, HomeNav._());
 }
 
-final class SavedNav extends AnyPlacement
-    implements CanPopPlacement, PopDestPlacement {
+final class SavedNav extends AnyPlacement implements PopDestPlacement {
   const SavedNav._() : super._();
   SavedNav surface() {
     _Shell.graph.popTo(Wishlist.saved);
