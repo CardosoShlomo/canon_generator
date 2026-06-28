@@ -1,3 +1,7 @@
+## 0.25.0
+
+- Read `requireAllOf`/`requireOneOf` link query/fragment groups; reject them on screen view-state with a build error (they gate route matching — link branches only). Requires canon ^0.19.0.
+
 ## 0.24.1
 
 - Example: restore the full-feature demo tree (parentOf / inherit / view-state / links) and align its tests to the current `Place` / `Link` / `Url` surface.

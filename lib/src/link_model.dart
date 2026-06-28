@@ -52,13 +52,15 @@ class KeyTerm extends Term {
 }
 
 class AllOfTerm extends Term {
-  AllOfTerm(this.members);
+  AllOfTerm(this.members, {this.mandatory = false});
   final List<Term> members; // members may themselves be combinators (nestable)
+  final bool mandatory; // `requireAllOf` — link branches only
 }
 
 class OneOfTerm extends Term {
-  OneOfTerm(this.members);
+  OneOfTerm(this.members, {this.mandatory = false});
   final List<Term> members;
+  final bool mandatory; // `requireOneOf` — link branches only
 }
 
 /// One resolving node: structural [template], ordered path [slots], and the
@@ -284,7 +286,11 @@ List<ViewKey> viewKeys(List<Expression> exprs, EnumElement element) {
   }
 
   for (final e in exprs) {
-    add(_term(e, element));
+    final t = _term(e, element);
+    if (t case AllOfTerm(mandatory: true) || OneOfTerm(mandatory: true)) {
+      throw _mandatoryOnView(element);
+    }
+    add(t);
   }
   return out;
 }
@@ -338,13 +344,26 @@ List<ViewGroup> viewGroups(List<Expression> exprs, EnumElement element) {
       case KeyTerm t:
         out.add(ViewSingle(key(t)));
       case AllOfTerm t:
+        if (t.mandatory) throw _mandatoryOnView(element);
         out.add(ViewAllOf(flat(t.members)));
       case OneOfTerm t:
+        if (t.mandatory) throw _mandatoryOnView(element);
         out.add(ViewOneOf(flat(t.members)));
     }
   }
   return out;
 }
+
+/// `requireAllOf`/`requireOneOf` gate whether a URL MATCHES, so they only make
+/// sense on `.link`/`slots` branches — a screen's `.query`/`.fragment` is
+/// optional view-state, not part of the route's identity.
+InvalidGenerationSourceError _mandatoryOnView(EnumElement element) =>
+    InvalidGenerationSourceError(
+      'requireAllOf/requireOneOf are link-only — a screen view-state '
+      '`.query`/`.fragment` is optional decoration, not part of route identity. '
+      'Use allOf/oneOf here, or model the required query as a `.link` branch.',
+      element: element,
+    );
 
 Term _term(Expression e, EnumElement element) {
   switch (e) {
@@ -353,14 +372,21 @@ Term _term(Expression e, EnumElement element) {
         methodName: SimpleIdentifier(:final name),
         :final argumentList,
       )
-        when name == 'allOf' || name == 'oneOf':
+        when name == 'allOf' ||
+            name == 'oneOf' ||
+            name == 'requireAllOf' ||
+            name == 'requireOneOf':
       final inner = _first(argumentList);
       final members = <Term>[
         if (inner is SetOrMapLiteral)
           for (final m in inner.elements)
             if (m is Expression) _term(m, element),
       ];
-      return name == 'oneOf' ? OneOfTerm(members) : AllOfTerm(members);
+      final mandatory = name == 'requireAllOf' || name == 'requireOneOf';
+      final exclusive = name == 'oneOf' || name == 'requireOneOf';
+      return exclusive
+          ? OneOfTerm(members, mandatory: mandatory)
+          : AllOfTerm(members, mandatory: mandatory);
     // `.q(.string)` — dot-shorthand value/list key.
     case DotShorthandInvocation(
         memberName: SimpleIdentifier(:final name),
