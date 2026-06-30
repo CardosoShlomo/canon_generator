@@ -154,6 +154,12 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       throw InvalidGenerationSourceError('the @screens enum must be library-private', element: element);
     }
 
+    // If the library also declares a @registries enum, the generated `Data`
+    // surface exists — the manager binds it (idempotently), so the app needs no
+    // explicit Data.bind()/Ledger() wiring.
+    final hasData = element.library.enums.any((e) => e.metadata.annotations.any(
+        (a) => a.computeConstantValue()?.type?.element?.name == 'Registries'));
+
     // Read the VIRTUAL tree first (follows grafts into sub-enums), then build
     // rows from every enum it spans — each tagged with its home enum (`spec`).
     final model = await readTree(element, buildStep);
@@ -1083,6 +1089,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln('  /// stays — always pass it where a `RouterDelegate` goes.)');
     b.writeln('  static NavDelegate get manager {');
     b.writeln('    assert(_fresh);');
+    if (hasData) b.writeln('    ledger.bind();');
     b.writeln('    return $spec.graph.delegate;');
     b.writeln('  }');
     b.writeln('  /// A restoration-serializable snapshot of the whole nav state');

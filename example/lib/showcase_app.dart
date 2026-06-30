@@ -5,6 +5,7 @@ import 'showcase.dart';
 
 void main() {
   usePathUrlStrategy();
+  wireTransport(); // the only data wiring; Screen.manager binds Data on its own
   Screen.resolver = (Url? url) => switch (url) {
         Place p => Screen.go(p),
         _ => Screen.goSplash(),

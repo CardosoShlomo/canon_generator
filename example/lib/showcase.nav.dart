@@ -119,6 +119,7 @@ final class Screen<I> {
   /// stays — always pass it where a `RouterDelegate` goes.)
   static NavDelegate get manager {
     assert(_fresh);
+    ledger.bind();
     return _Screens.graph.delegate;
   }
 
@@ -4459,3 +4460,105 @@ extension ScreenStackContext on BuildContext {
 
 Enum _termOf(On sel) =>
     sel.specs.isEmpty ? _Screens.graph.current : sel.specs.last;
+
+// **************************************************************************
+// RegistryGenerator
+// **************************************************************************
+
+// ignore_for_file: unused_element
+/// The app-wide ledger — the single state + message api (from @registries).
+/// `Screen.manager` binds it; the typed reads inject by nav location:
+/// `ledger.products(key)` · `ledger.dispatch(msg)` · `ledger.on<…>(...)` ·
+/// `ledger.command(...)`. `Screen` is nav; `ledger` is state-and-messages.
+final ledger = Ledger();
+bool _bound = false;
+late final RegistryMemory<String, Product, ProductMsg> _products;
+late final ConnectionMemory<String, Review, String, int, ReviewMsg> _reviews;
+
+/// The generated data surface, hung on [Ledger] so `ledger.` is the one api.
+extension on Ledger {
+  /// Wire the stores + Door 2 to nav. Idempotent — `Screen.manager` calls it.
+  void bind() {
+    if (_bound) return;
+    _bound = true;
+    _products = registry(
+      _Registries.products.registry as Registry<String, Product, ProductMsg>,
+    );
+    _reviews = connection(
+      _Registries.reviews.registry
+          as ConnectionRegistry<String, Review, String, int, ReviewMsg>,
+    );
+    _Screens.graph.navigations.listen((_) => surfaceLive());
+    surfaceLive();
+  }
+
+  /// products — read the entry for [key].
+  Product? products(String key) => _products[key];
+
+  /// products on screen `product` — the entry at its live nav id.
+  Product? productsOnProduct() {
+    for (final e in _Screens.graph.stack) {
+      if (e.screen == _Screens.product) return _products[e.id as String];
+    }
+    return null;
+  }
+
+  /// Door 2: if `product`'s live products isn't fresh, emit a ProductSurfaceMsg demand.
+  void surfaceProductsOnProduct() {
+    for (final e in _Screens.graph.stack) {
+      if (e.screen == _Screens.product) {
+        final k = e.id as String;
+        if (_products.needs(k)) {
+          _products.markLoading(k);
+          dispatch(ProductSurfaceMsg(k));
+        }
+        return;
+      }
+    }
+  }
+
+  /// reviews — watch the connection at [key].
+  Stream<ConnectionView<Review, int>> reviews(String key) =>
+      _reviews.watch(key);
+
+  /// reviews on screen `product` — watch the connection at its live nav id.
+  Stream<ConnectionView<Review, int>>? reviewsOnProduct() {
+    for (final e in _Screens.graph.stack) {
+      if (e.screen == _Screens.product) return _reviews.watch(e.id as String);
+    }
+    return null;
+  }
+
+  /// Door 2: if `product`'s reviews page is unloaded, emit a ReviewSurfaceMsg demand.
+  void surfaceReviewsOnProduct() {
+    for (final e in _Screens.graph.stack) {
+      if (e.screen == _Screens.product) {
+        final k = e.id as String;
+        if (_reviews.needs(k)) {
+          _reviews.markSurfaced(k);
+          dispatch(ReviewSurfaceMsg(k));
+        }
+        return;
+      }
+    }
+  }
+
+  /// Fire every nav-keyed `surface` for the CURRENT stack. [bind]
+  /// subscribes this to each commit; call it manually for a one-off.
+  void surfaceLive() {
+    surfaceProductsOnProduct();
+    surfaceReviewsOnProduct();
+  }
+}
+
+class ProductSurfaceMsg extends SurfaceMsg {
+  ProductSurfaceMsg(this.key);
+  @override
+  final String key;
+}
+
+class ReviewSurfaceMsg extends SurfaceMsg {
+  ReviewSurfaceMsg(this.key);
+  @override
+  final String key;
+}

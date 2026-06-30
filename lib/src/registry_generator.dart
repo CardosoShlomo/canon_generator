@@ -30,6 +30,7 @@ class RegistryGenerator extends GeneratorForAnnotation<Registries> {
     final reads = <String>[]; // typed accessors
     final surfaceCalls = <String>[]; // nav-keyed surface triggers to fire live
     final screenEnums = <String>{}; // screen enums to subscribe for commits
+    final surfaceMsgs = <String, String>{}; // concrete SurfaceMsg class defs
 
     // The screen↔registry association is DERIVED, not declared: a screen and a
     // registry that bind the SAME @ids node are about the same identity, so the
@@ -55,7 +56,7 @@ class RegistryGenerator extends GeneratorForAnnotation<Registries> {
       // carries a codec, the value it decodes to MUST be the registry's key type
       // K. Read structurally (the id-node lives in the @ids enum, the K in the
       // held registry) so the two grammar trees can never silently disagree.
-      final keyType = s.element.name == 'Registry' ? args[2] : args[4];
+      final keyType = args[0]; // key is first in both Registry & ConnectionRegistry
       final idValueType = _idValueType(field.computeConstantValue());
       if (idValueType != null && idValueType != keyType) {
         throw InvalidGenerationSourceError(
@@ -70,17 +71,15 @@ class RegistryGenerator extends GeneratorForAnnotation<Registries> {
       final screens = screensByNode[keyNode] ?? const <(String, String)>[];
 
       if (s.element.name == 'Registry') {
-        // Registry<S, M, K> → a keyed, optimistic store; read is `S? name(K key)`.
-        final (state, key) = (args[0], args[2]);
-        fields.add('  static late final RegistryStore<${args.join(', ')}> _$name;');
-        binds.add('    _$name = ledger.registry($ref);');
+        // Registry<K, E, M> → a keyed, optimistic store; read is `E? name(K key)`.
+        final (state, key) = (args[1], args[0]);
+        fields.add('  static late final RegistryMemory<${args.join(', ')}> _$name;');
+        binds.add('    _$name = _ledger.registry($ref);');
         reads.add('  /// $name — read the entry for [key].');
         reads.add('  static $state? $name($key key) => _$name[key];');
-        reads.add('  /// Wire $name\'s transport (the Door 2 fetch); call once after [bind].');
-        reads.add('  static void onFetch${_cap(name)}(Fetch<$key> f) => _$name.onFetch(f);');
-        // Nav-keyed: read the entry at the screen's LIVE id off the nav stack,
-        // plus a Door 2 `surface` trigger fired automatically on every commit.
         for (final (scrEnum, scr) in screens) {
+          final msg = '${state}SurfaceMsg';
+          surfaceMsgs[msg] = _surfaceMsg(msg, key);
           reads.add('  /// $name on screen `$scr` — the entry at its live nav id.');
           reads.add('  static $state? ${name}On${_cap(scr)}() {');
           reads.add('    for (final e in $scrEnum.graph.stack) {');
@@ -89,27 +88,34 @@ class RegistryGenerator extends GeneratorForAnnotation<Registries> {
           reads.add('    return null;');
           reads.add('  }');
           final trig = 'surface${_cap(name)}On${_cap(scr)}';
-          reads.add('  /// surface $name for screen `$scr` — bring it up at the live nav id.');
+          reads.add('  /// Door 2: if `$scr`\'s live $name isn\'t fresh, emit a $msg demand.');
           reads.add('  static void $trig() {');
           reads.add('    for (final e in $scrEnum.graph.stack) {');
-          reads.add('      if (e.screen == $scrEnum.$scr) { _$name.surface(e.id as $key); return; }');
+          reads.add('      if (e.screen == $scrEnum.$scr) {');
+          reads.add('        final k = e.id as $key;');
+          reads.add('        if (_$name.needs(k)) {');
+          reads.add('          _$name.markLoading(k);');
+          reads.add('          dispatch($msg(k));');
+          reads.add('        }');
+          reads.add('        return;');
+          reads.add('      }');
           reads.add('    }');
           reads.add('  }');
           surfaceCalls.add('$trig()');
           screenEnums.add(scrEnum);
         }
       } else {
-        // ConnectionRegistry<T, I, SK, M, K> → a paginated connection family;
+        // ConnectionRegistry<K, T, I, SK, M> → a paginated connection family;
         // read is the reactive `(window, floating)` view per connection key.
-        final (entity, sortKey, key) = (args[0], args[2], args[4]);
-        fields.add('  static late final ConnectionStore<${args.join(', ')}> _$name;');
-        binds.add('    _$name = ledger.connection($ref);');
+        final (entity, sortKey, key) = (args[1], args[3], args[0]);
+        fields.add('  static late final ConnectionMemory<${args.join(', ')}> _$name;');
+        binds.add('    _$name = _ledger.connection($ref);');
         reads.add('  /// $name — watch the connection at [key].');
         reads.add(
             '  static Stream<ConnectionView<$entity, $sortKey>> $name($key key) => _$name.watch(key);');
-        reads.add('  /// Wire $name\'s transport (the Door 2 initial-page fetch); call once after [bind].');
-        reads.add('  static void onFetch${_cap(name)}(Fetch<$key> f) => _$name.onFetch(f);');
         for (final (scrEnum, scr) in screens) {
+          final msg = '${entity}SurfaceMsg';
+          surfaceMsgs[msg] = _surfaceMsg(msg, key);
           reads.add('  /// $name on screen `$scr` — watch the connection at its live nav id.');
           reads.add(
               '  static Stream<ConnectionView<$entity, $sortKey>>? ${name}On${_cap(scr)}() {');
@@ -119,10 +125,17 @@ class RegistryGenerator extends GeneratorForAnnotation<Registries> {
           reads.add('    return null;');
           reads.add('  }');
           final trig = 'surface${_cap(name)}On${_cap(scr)}';
-          reads.add('  /// surface $name for screen `$scr` — load its initial page at the live nav id.');
+          reads.add('  /// Door 2: if `$scr`\'s $name page is unloaded, emit a $msg demand.');
           reads.add('  static void $trig() {');
           reads.add('    for (final e in $scrEnum.graph.stack) {');
-          reads.add('      if (e.screen == $scrEnum.$scr) { _$name.surface(e.id as $key); return; }');
+          reads.add('      if (e.screen == $scrEnum.$scr) {');
+          reads.add('        final k = e.id as $key;');
+          reads.add('        if (_$name.needs(k)) {');
+          reads.add('          _$name.markSurfaced(k);');
+          reads.add('          dispatch($msg(k));');
+          reads.add('        }');
+          reads.add('        return;');
+          reads.add('      }');
           reads.add('    }');
           reads.add('  }');
           surfaceCalls.add('$trig()');
@@ -143,23 +156,53 @@ class RegistryGenerator extends GeneratorForAnnotation<Registries> {
     }
 
     final b = StringBuffer();
-    b.writeln('/// Generated data surface (from @registries). Call [Data.bind]');
-    b.writeln('/// once at startup with your ledger.');
-    b.writeln('abstract final class Data {');
-    fields.forEach(b.writeln);
-    b.writeln('  static void bind(Ledger ledger) {');
-    binds.forEach(b.writeln);
-    // Subscribe the Door 2 triggers to every nav commit, then surface the
-    // cold-start stack once.
+    // The generated reads are public api; a consumer needn't call every one.
+    b.writeln('// ignore_for_file: unused_element');
+    b.writeln('/// The app-wide ledger — the single state + message api (from @registries).');
+    b.writeln('/// `Screen.manager` binds it; the typed reads inject by nav location:');
+    b.writeln('/// `ledger.products(key)` · `ledger.dispatch(msg)` · `ledger.on<…>(...)` ·');
+    b.writeln('/// `ledger.command(...)`. `Screen` is nav; `ledger` is state-and-messages.');
+    b.writeln('final ledger = Ledger();');
+    b.writeln('bool _bound = false;');
+    // The live stores are top-level privates (an extension can hold no state).
+    for (final f in fields) {
+      b.writeln(f.replaceFirst('  static ', ''));
+    }
+    b.writeln();
+    b.writeln('/// The generated data surface, hung on [Ledger] so `ledger.` is the one api.');
+    b.writeln('extension on Ledger {');
+    b.writeln('  /// Wire the stores + Door 2 to nav. Idempotent — `Screen.manager` calls it.');
+    b.writeln('  void bind() {');
+    b.writeln('    if (_bound) return;');
+    b.writeln('    _bound = true;');
+    for (final bd in binds) {
+      b.writeln(bd.replaceAll('_ledger.', '')); // _x = registry(...) (this.registry)
+    }
     for (final se in screenEnums) {
       b.writeln('    $se.graph.navigations.listen((_) => surfaceLive());');
     }
     if (surfaceCalls.isNotEmpty) b.writeln('    surfaceLive();');
     b.writeln('  }');
-    reads.forEach(b.writeln);
+    for (final r in reads) {
+      b.writeln(r.replaceFirst('  static ', '  ')); // reads → instance methods
+    }
     b.writeln('}');
+    // The concrete Door 2 demand messages — one per associated store; a guard or
+    // `on<…>` listener fetches and dispatches the data back as a normal Msg.
+    for (final def in surfaceMsgs.values) {
+      b.writeln();
+      b.write(def);
+    }
     return b.toString();
   }
+
+  /// A concrete `SurfaceMsg` subclass for a store, carrying its typed [key].
+  String _surfaceMsg(String cls, String key) =>
+      'class $cls extends SurfaceMsg {\n'
+      '  $cls(this.key);\n'
+      '  @override\n'
+      '  final $key key;\n'
+      '}\n';
 
   String _cap(String s) => s[0].toUpperCase() + s.substring(1);
 

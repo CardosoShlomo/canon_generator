@@ -4,8 +4,8 @@ import 'package:canon_generator/canon_generator.dart';
 import 'package:source_gen/source_gen.dart';
 import 'package:test/test.dart';
 
-// Flutter-free stub of canon's registries annotation + the data-engine types the
-// generator recognises structurally (it never imports them).
+// Flutter-free stub of canon's @registries annotation + the data-engine descriptor
+// types the generator recognises structurally (it never imports them).
 const _registriesAnnotation = '''
 class Registries { const Registries(); }
 const registries = Registries();
@@ -17,8 +17,8 @@ mixin RegistryNode<Self extends RegistryNode<Self, Ids>, Ids> on Enum {
 const _canonStub = '''
 export 'src/registries_annotation.dart';
 
-abstract class Registry<S, M, K> { const Registry(); }
-abstract class ConnectionRegistry<T, I, SK, M, K> { const ConnectionRegistry(); }
+abstract class Registry<K, E, M> { const Registry(); }
+abstract class ConnectionRegistry<K, T, I, SK, M> { const ConnectionRegistry(); }
 
 abstract class Codec<T> { const Codec(); }
 class StringCodec extends Codec<String> { const StringCodec(); }
@@ -34,8 +34,8 @@ class NavGraph<S> {
 }
 ''';
 
-// An @ids enum (hand-written id-space) + registries keyed by its nodes. Each
-// node's codec value-type MATCHES the held registry's key type.
+// An @ids enum (hand-written id-space) + stores keyed by its nodes. Each node's
+// codec value-type MATCHES the held descriptor's key type.
 const _spec = '''
 import 'package:canon/canon.dart';
 
@@ -50,13 +50,13 @@ enum Ids {
 
 class InterestState {}
 class InterestMsg {}
-class Interest extends Registry<InterestState, InterestMsg, String> {
+class Interest extends Registry<String, InterestState, InterestMsg> {
   const Interest();
 }
 
 class ChatThread {}
 class ChatMsg {}
-class AdChat extends ConnectionRegistry<ChatThread, String, int, ChatMsg, (String, String)> {
+class AdChat extends ConnectionRegistry<(String, String), ChatThread, String, int, ChatMsg> {
   const AdChat();
 }
 
@@ -84,7 +84,7 @@ enum _Registries with RegistryNode<_Registries, Ids> {
 }
 ''';
 
-// Same shape but the registry key type (int) disagrees with the id-node's codec
+// Same shape but the key type (int) disagrees with the id-node's codec
 // value-type (String) — the cross-tree guard must reject it.
 const _mismatchSpec = '''
 import 'package:canon/canon.dart';
@@ -99,7 +99,7 @@ enum Ids {
 
 class InterestState {}
 class InterestMsg {}
-class Interest extends Registry<InterestState, InterestMsg, int> {
+class Interest extends Registry<int, InterestState, InterestMsg> {
   const Interest();
 }
 
@@ -127,39 +127,44 @@ void main() {
             generateFor: {'pkg|lib/spec.dart'},
             outputs: {
               'pkg|lib/spec.nav.dart': decodedMatches(allOf([
-                contains('abstract final class Data'),
-                contains('static void bind(Ledger ledger)'),
+                // one api: a global `ledger` + an extension on Ledger, no Data class
+                contains('final ledger = Ledger();'),
+                contains('extension on Ledger {'),
+                contains('void bind() {'),
+                isNot(contains('class Data')),
                 contains(
-                    'RegistryStore<InterestState, InterestMsg, String> _interest'),
-                contains('ledger.registry('),
+                    'RegistryMemory<String, InterestState, InterestMsg>'),
+                contains('_interest = registry('), // bind uses this.registry
                 contains(
-                    'static InterestState? interest(String key) => _interest[key];'),
-                // transport hook so the app can wire the Door 2 fetch
-                contains('static void onFetchInterest(Fetch<String> f) => _interest.onFetch(f);'),
-                contains('ledger.connection('),
+                    'InterestState? interest(String key) => _interest[key];'),
+                contains('_adChat = connection('),
                 contains('Stream<ConnectionView<ChatThread, int>>'),
                 contains('_adChat.watch(key)'),
-                // derived screen↔registry association: profile shares Ids.user
-                contains('static InterestState? interestOnProfile()'),
+                // derived screen↔store association: profile shares Ids.user
+                contains('InterestState? interestOnProfile()'),
                 contains('e.screen == _Screens.profile'),
                 contains('_interest[e.id as String]'),
-                // Door 2 trigger + aggregator + commit subscription
-                contains('static void surfaceInterestOnProfile()'),
-                contains('_interest.surface(e.id as String)'),
-                contains('static void surfaceLive()'),
+                // Door 2: needs-gated demand of a concrete SurfaceMsg + aggregator
+                contains('void surfaceInterestOnProfile()'),
+                contains('if (_interest.needs(k))'),
+                contains('dispatch(InterestStateSurfaceMsg(k))'),
+                contains('class InterestStateSurfaceMsg extends SurfaceMsg'),
+                contains('void surfaceLive()'),
                 contains('_Screens.graph.navigations.listen((_) => surfaceLive())'),
-                // connection association: chat shares Ids.adChat → watch read + surface
-                contains('Stream<ConnectionView<ChatThread, int>>? adChatOnChat()'),
-                contains('static void surfaceAdChatOnChat()'),
-                contains('_adChat.surface(e.id as (String, String))'),
+                // connection association: chat shares Ids.adChat → watch + demand
+                contains('adChatOnChat()'),
+                contains('void surfaceAdChatOnChat()'),
+                contains('dispatch(ChatThreadSurfaceMsg(k))'),
+                contains('class ChatThreadSurfaceMsg extends SurfaceMsg'),
+                // no transport hook on the surface — stores never fetch
+                isNot(contains('onFetch')),
                 // home has no id-node → no accessors at all
                 isNot(contains('OnHome')),
               ]))
             },
           ));
 
-  test('rejects a registry whose key type disagrees with its @ids node',
-      () async {
+  test('rejects a store whose key type disagrees with its @ids node', () async {
     final logs = <String>[];
     await testBuilder(
       navBuilder(BuilderOptions.empty),

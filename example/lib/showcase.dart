@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:canon/canon.dart';
+import 'package:ledger/ledger.dart';
 
 part 'showcase.nav.dart';
 
@@ -16,6 +19,110 @@ enum _PV with QueryKeyBase { variant }
 enum _Tab with QueryKeyBase { tab }
 
 enum Sort { relevance, priceLow, priceHigh, newest }
+
+// ── The IDENTITY space (@ids) ─────────────────────────────────────────────
+// Hand-written: the enum IS the id-holder. Each row carries its codec (how the
+// key serialises in a URL) and, because `IdNode implements Codec`, each node can
+// be bound directly as a screen `id` AND as a registry key — the SAME node
+// across the screens and registries trees, which is what lets data inject by nav.
+@IDs()
+enum Ids with IdNode {
+  product(Codec.uuid),
+  seller(Codec.username),
+  category(Codec.string),
+  order(Codec.uuid),
+  listing(Codec.uuid);
+
+  const Ids(this.codec);
+  @override
+  final Codec codec;
+}
+
+// ── The STORES (consumer-defined; pure `reduce` on the `ledger` engine) ──────────────
+class Product with Identifiable<String> {
+  Product(this.id, this.name, this.price);
+  @override
+  final String id;
+  final String name;
+  final int price;
+}
+
+sealed class ProductMsg extends Msg with Identifiable<String> {
+  ProductMsg(this.id);
+  @override
+  final String id;
+}
+
+class ProductLoaded extends ProductMsg {
+  ProductLoaded(super.id, this.name, this.price);
+  final String name;
+  final int price;
+}
+
+class Products extends Store<Product, ProductMsg> {
+  const Products();
+  @override
+  IdentifiableMap<Product, String> reduce(
+          IdentifiableMap<Product, String> entities, ProductMsg msg) =>
+      switch (msg) {
+        ProductLoaded(:final id, :final name, :final price) =>
+          entities.upsert(Product(id, name, price)),
+      };
+}
+
+class Review with Identifiable<String> {
+  Review(this.id, this.at, this.text);
+  @override
+  final String id;
+  final int at;
+  final String text;
+}
+
+class ReviewMsg extends Msg {
+  ReviewMsg(this.product, this.review);
+  final String product; // the connection key
+  final Review review;
+}
+
+class ReviewsConnection
+    extends ConnectionRegistry<String, Review, String, int, ReviewMsg> {
+  const ReviewsConnection();
+  @override
+  String keyOf(ReviewMsg msg) => msg.product;
+  @override
+  int sortKeyOf(Review entity) => entity.at;
+  @override
+  void apply(Connection<Review, String, int> connection, ReviewMsg msg) =>
+      connection.receive(msg.review);
+}
+
+// ── The DATA grammar (@registries) ────────────────────────────────────────
+// Each row holds a const registry/connection and the @ids node it is keyed by.
+// The generator hangs typed reads on `ledger`; because `product`/`order` screens
+// bind these SAME nodes, it also emits nav-keyed reads + Door 2 surface triggers.
+@registries
+enum _Registries with RegistryNode<_Registries, Ids> {
+  products(Products(), Ids.product),
+  reviews(ReviewsConnection(), Ids.product);
+
+  const _Registries(this.registry, this.key);
+  final Object registry;
+  @override
+  final Ids key;
+}
+
+// ── The ONLY data wiring: handle the demands ──────────────────────────────
+// `Screen.manager` binds `ledger` itself. Navigating
+// emits a `SurfaceMsg` demand when a key isn't fresh; the store never fetches —
+// these handlers do (the riverpod-`build` role) and dispatch the data back as a
+// normal Msg. The whole transport is two `on<…>` listeners + (real app) a socket.
+void wireTransport() {
+  ledger.on<ProductSurfaceMsg>((m, _) => scheduleMicrotask(() =>
+      ledger.dispatch(
+          ProductLoaded(m.key, 'Product ${m.key.substring(0, 4)}', 1999))));
+  ledger.on<ReviewSurfaceMsg>((m, _) => scheduleMicrotask(() =>
+      ledger.dispatch(ReviewMsg(m.key, Review('${m.key}-r1', 1, 'Great find.')))));
+}
 
 // A grafted subsystem: the whole checkout flow lives in its own enum and is
 // spliced into the main tree with `graft` — the generated surface is blind to
@@ -45,17 +152,17 @@ enum _Screens with ScreenNode<_Screens> {
   home(_S('Home', Color(0xFF00897B))),
   search(_S('Search', Color(0xFF00ACC1))),
   scan(_S('Scan', Color(0xFF039BE5))),
-  category(_S('Category', Color(0xFF43A047)), Codec.string),
-  product(_S('Product', Color(0xFFE53935)), Codec.uuid),
-  seller(_S('Seller', Color(0xFFD81B60)), Codec.username),
+  category(_S('Category', Color(0xFF43A047)), Ids.category),
+  product(_S('Product', Color(0xFFE53935)), Ids.product),
+  seller(_S('Seller', Color(0xFFD81B60)), Ids.seller),
 
   wishlist(_S('Wishlist', Color(0xFFF4511E))),
   account(_S('Account', Color(0xFF6D4C41))),
   orders(_S('Orders', Color(0xFF757575))),
-  order(_S('Order', Color(0xFF546E7A)), Codec.uuid),
+  order(_S('Order', Color(0xFF546E7A)), Ids.order),
   settings(_S('Settings', Color(0xFF7CB342))),
-  listing(_S('My listing', Color(0xFFFB8C00)), Codec.uuid),
-  editListing(_S('Edit listing', Color(0xFFFFB300)), Codec.uuid);
+  listing(_S('My listing', Color(0xFFFB8C00)), Ids.listing),
+  editListing(_S('Edit listing', Color(0xFFFFB300)), Ids.listing);
 
   const _Screens(this.widget, [this.id]);
   @override
