@@ -8,8 +8,14 @@ part 'showcase.nav.dart';
 
 // ── The SHOWCASE example ──────────────────────────────────────────────────
 // A compact e-commerce app whose single grammar tree exercises EVERY canon
-// capability. Screens are deliberately trivial (a color + a row of nav
-// buttons) so this doubles as the runnable app you test navigation on.
+// capability. Most screens are a color + a row of nav buttons; `product` is a
+// REAL consuming screen, so this doubles as the runnable app you test on.
+//
+// What only the running app shows (it's all runtime): every `Screen.goX`
+// round-trips to a clean URL and back; browser back/forward and refresh restore
+// the exact stack (refresh keeps state, a cold link rebuilds it); and
+// `ledger.command(...)` applies an optimistic write instantly, then confirms or
+// rolls back on the server's reply. Run `showcase_app.dart` on web to watch it.
 
 // Search view-state: `?q=&sort=&minPrice=&maxPrice=`.
 enum _Filter with QueryKeyBase { q, sort, minPrice, maxPrice }
@@ -38,7 +44,7 @@ enum Ids with IdNode {
   final Codec codec;
 }
 
-// ── The STORES (consumer-defined; pure `reduce` on the `ledger` engine) ──────────────
+// ── The STORES (consumer-defined; pure `reduce` on the `ledger` engine) ───
 class Product with Identifiable<String> {
   Product(this.id, this.name, this.price);
   @override
@@ -96,10 +102,10 @@ class ReviewsConnection
       connection.receive(msg.review);
 }
 
-// ── The DATA grammar (@registries) ────────────────────────────────────────
-// Each row holds a const registry/connection and the @ids node it is keyed by.
-// The generator hangs typed reads on `ledger`; because `product`/`order` screens
-// bind these SAME nodes, it also emits nav-keyed reads + Door 2 surface triggers.
+// ── The STORE grammar (@registries) ───────────────────────────────────────
+// Each row holds a const store/connection + the @ids node it is keyed by. The
+// generator hangs typed reads on `ledger`; because `product` screens bind the
+// SAME nodes, it also wires nav-keyed reads + Door 2 demand triggers.
 @registries
 enum _Registries with RegistryNode<_Registries, Ids> {
   products(Products(), Ids.product),
@@ -111,17 +117,15 @@ enum _Registries with RegistryNode<_Registries, Ids> {
   final Ids key;
 }
 
-// ── The ONLY data wiring: handle the demands ──────────────────────────────
-// `Screen.manager` binds `ledger` itself. Navigating
-// emits a `SurfaceMsg` demand when a key isn't fresh; the store never fetches —
-// these handlers do (the riverpod-`build` role) and dispatch the data back as a
-// normal Msg. The whole transport is two `on<…>` listeners + (real app) a socket.
-void wireTransport() {
-  ledger.on<ProductSurfaceMsg>((m, _) => scheduleMicrotask(() =>
-      ledger.dispatch(
-          ProductLoaded(m.key, 'Product ${m.key.substring(0, 4)}', 1999))));
+// The app's data SOURCE — faked for this runnable demo (the engine ships none;
+// the app owns transport). Navigating emits a `…SurfaceMsg` demand when a key
+// needs refreshing; each handler answers with canned data, dispatched back as a
+// normal Msg so the reactive reads light up. A real app pipes a socket here.
+void demoBackend() {
+  ledger.on<ProductSurfaceMsg>((m, _) => scheduleMicrotask(
+      () => ledger.dispatch(ProductLoaded(m.key, 'Product ${m.key}', 1999))));
   ledger.on<ReviewSurfaceMsg>((m, _) => scheduleMicrotask(() =>
-      ledger.dispatch(ReviewMsg(m.key, Review('${m.key}-r1', 1, 'Great find.')))));
+      ledger.dispatch(ReviewMsg(m.key, Review('${m.key}-r1', 5, 'Great find.')))));
 }
 
 // A grafted subsystem: the whole checkout flow lives in its own enum and is
@@ -153,7 +157,7 @@ enum _Screens with ScreenNode<_Screens> {
   search(_S('Search', Color(0xFF00ACC1))),
   scan(_S('Scan', Color(0xFF039BE5))),
   category(_S('Category', Color(0xFF43A047)), Ids.category),
-  product(_S('Product', Color(0xFFE53935)), Ids.product),
+  product(_Product(), Ids.product),
   seller(_S('Seller', Color(0xFFD81B60)), Ids.seller),
 
   wishlist(_S('Wishlist', Color(0xFFF4511E))),
@@ -245,11 +249,12 @@ final Map<String, VoidCallback> _nav = {
   'payment': Screen.goPayment,
 };
 
-// An extremely simple screen: a color, a title, and nav buttons.
+// An extremely simple screen: a color, a title, optional data rows, nav buttons.
 class _S extends StatelessWidget {
-  const _S(this.title, this.color);
+  const _S(this.title, this.color, {this.extra = const []});
   final String title;
   final Color color;
+  final List<Widget> extra;
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -268,21 +273,30 @@ class _S extends StatelessWidget {
                 const SizedBox(height: 12),
                 Expanded(
                   child: SingleChildScrollView(
-                    child: Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if (Screen.canPop != null)
-                          FilledButton.tonal(
-                              onPressed: Screen.pop, child: const Text('← back')),
-                        for (final e in _nav.entries)
-                          OutlinedButton(
-                            onPressed: e.value,
-                            style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.white,
-                                side: const BorderSide(color: Colors.white54)),
-                            child: Text(e.key),
-                          ),
+                        ...extra,
+                        if (extra.isNotEmpty)
+                          const Divider(color: Colors.white24, height: 32),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            if (Screen.canPop != null)
+                              FilledButton.tonal(
+                                  onPressed: Screen.pop,
+                                  child: const Text('← back')),
+                            for (final e in _nav.entries)
+                              OutlinedButton(
+                                onPressed: e.value,
+                                style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.white,
+                                    side: const BorderSide(color: Colors.white54)),
+                                child: Text(e.key),
+                              ),
+                          ],
+                        ),
                       ],
                     ),
                   ),
@@ -292,4 +306,40 @@ class _S extends StatelessWidget {
           ),
         ),
       );
+}
+
+// A REAL consuming screen — the payoff of sharing one @ids node across the
+// screens and registries trees. It takes NO id: `ledger.reviewsOnProduct()`
+// resolves the live `product` frame's id (that same node) and streams its
+// connection, and landing here fires the Door 2 demand so the data loads itself.
+// (`productsOnProduct` is a snapshot read; the StreamBuilder re-reads it as the
+// reviews arrive — `ledger.consume` is the value-stream when you want one.)
+class _Product extends StatelessWidget {
+  const _Product();
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<ConnectionView<Review, int>>(
+      stream: ledger.reviewsOnProduct(),
+      builder: (context, snap) {
+        final product = ledger.productsOnProduct();
+        final reviews = snap.data?.window ?? const <Review>[];
+        const style = TextStyle(color: Colors.white70, fontSize: 16);
+        return _S(
+          product?.name ?? 'Product',
+          const Color(0xFFE53935),
+          extra: [
+            Text('\$${((product?.price ?? 0) / 100).toStringAsFixed(2)}',
+                style: style),
+            const SizedBox(height: 8),
+            if (reviews.isEmpty)
+              const Text('loading reviews…', style: style)
+            else
+              for (final r in reviews)
+                Text('★ ${r.text}', style: style),
+          ],
+        );
+      },
+    );
+  }
 }
