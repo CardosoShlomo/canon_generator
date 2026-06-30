@@ -28,8 +28,15 @@ class PlacementNode {
   /// Set when this node IS a `.cycled`/`.stacked` back-edge.
   PlacementNode? again;
 
-  /// Set when declared with `.inherit(ancestor)`.
+  /// Set when declared with `.inherit(ancestor)` — the single-source form. Left
+  /// null for a COMPOSITE inherit (see [inheritSources]); the generator decides
+  /// compositeness from the screen's id (a record id has >1 component).
   PlacementNode? inheritSource;
+
+  /// Every ancestor named in `.inherit(a, [b, c])`, in declaration order. One
+  /// entry is the single-source form; two or three compose a record id. Empty
+  /// when this placement does not inherit.
+  List<PlacementNode> inheritSources = const [];
 
   /// True when this node is a `.links(...)` branch — a link-grammar root, NOT a
   /// nav placement. Collected into [TreeModel.links]; nav emission never sees it.
@@ -174,22 +181,16 @@ Future<TreeModel> readTree(EnumElement root, BuildStep buildStep) async {
     final spec = frame.spec;
     final rows = frame.rows;
 
-    Future<PlacementNode> placeCall(
-        String name, ArgumentList args, List<PlacementNode> ancestors,
-        {bool keep = false, bool forget = false}) async {
-      final placed = PlacementNode(name, spec,
-          [for (final a in ancestors) a.screen, name], ancestors.lastOrNull)
-        ..keep = keep
-        ..forget = forget;
-      // The call form is for a node WITH children — its set is required and must
-      // be non-empty. A childless leaf is written bare (`account`), never as an
-      // empty call (`account()`) or empty set (`account({})`).
+    // Place every child expression of a `{...}` set under [placed], routing link
+    // branches aside. Shared by the bare call form and the inherit-with-children
+    // form (`X.inherit(Y)({...})`), which attach the SAME children to an already-
+    // built node rather than constructing a fresh one.
+    Future<void> attachChildren(
+        PlacementNode placed, ArgumentList args, List<PlacementNode> ancestors,
+        {required String empty}) async {
       final children = args.arguments.firstOrNull;
       if (children is! SetOrMapLiteral || children.elements.isEmpty) {
-        throw InvalidGenerationSourceError(
-            'screen "$name" has an empty call — write a bare `$name` for a leaf, '
-            'or `$name({...})` to give it children.',
-            element: root);
+        throw InvalidGenerationSourceError(empty, element: root);
       }
       final linkSiblings = <PlacementNode>[];
       for (final child in children.elements) {
@@ -206,6 +207,21 @@ Future<TreeModel> readTree(EnumElement root, BuildStep buildStep) async {
         }
       }
       _rejectScreenLinkClash(placed.children, linkSiblings, root);
+    }
+
+    Future<PlacementNode> placeCall(
+        String name, ArgumentList args, List<PlacementNode> ancestors,
+        {bool keep = false, bool forget = false}) async {
+      final placed = PlacementNode(name, spec,
+          [for (final a in ancestors) a.screen, name], ancestors.lastOrNull)
+        ..keep = keep
+        ..forget = forget;
+      // The call form is for a node WITH children — its set is required and must
+      // be non-empty. A childless leaf is written bare (`account`), never as an
+      // empty call (`account()`) or empty set (`account({})`).
+      await attachChildren(placed, args, ancestors,
+          empty: 'screen "$name" has an empty call — write a bare `$name` for a '
+              'leaf, or `$name({...})` to give it children.');
       return placed;
     }
 
@@ -253,16 +269,57 @@ Future<TreeModel> readTree(EnumElement root, BuildStep buildStep) async {
           methodName: SimpleIdentifier(name: 'inherit'),
           :final argumentList,
         )
-          when argumentList.arguments.firstOrNull is SimpleIdentifier &&
-              rows.contains(
-                  (argumentList.arguments.first as SimpleIdentifier).name):
+          when argumentList.arguments.isNotEmpty &&
+              argumentList.arguments.every((a) =>
+                  a is SimpleIdentifier && rows.contains(a.name)):
         final placed = await place(inner, ancestors, frame);
-        final srcName = (argumentList.arguments.first as SimpleIdentifier).name;
-        final src = placed.ancestors.firstWhere((a) => a.screen == srcName,
+        final sources = <PlacementNode>[];
+        for (final arg in argumentList.arguments) {
+          final srcName = (arg as SimpleIdentifier).name;
+          final src = placed.ancestors.firstWhere((a) => a.screen == srcName,
+              orElse: () => throw InvalidGenerationSourceError(
+                  '"${placed.screen}.inherit($srcName)" — $srcName is not an ancestor',
+                  element: root));
+          sources.add(src.inheritSource ?? src);
+        }
+        placed.inheritSources = sources;
+        // The single-source form keeps the existing `inheritSource` wiring intact;
+        // a multi-source (composite) inherit is resolved by the generator from
+        // `inheritSources` (it leaves `inheritSource` null for record ids).
+        if (sources.length == 1) placed.inheritSource = sources.single;
+        return placed;
+      // `X.inherit(Y)({...})` — an inheriting node WITH children. The function
+      // is the `.inherit(...)` invocation; place it (binding the id source), then
+      // attach the call's children to the resulting node.
+      case FunctionExpressionInvocation(
+          function: MethodInvocation(
+            methodName: SimpleIdentifier(name: 'inherit'),
+          ) &&
+              final fn,
+          :final argumentList,
+        ):
+        final placed = await place(fn, ancestors, frame);
+        await attachChildren(placed, argumentList, ancestors,
+            empty: 'inherit on "${placed.screen}" has an empty call — write the '
+                'bare `${placed.screen}.inherit(...)` for a leaf, or give it '
+                '`(...){...}` children.');
+        return placed;
+      // `X.inherit(Y).cycled` / `.stacked` — a back-edge that ALSO binds its id
+      // via inherit. Place the inherit (sets the id source), then resolve the
+      // same-screen ancestor as the back-edge target.
+      case PropertyAccess(
+          target: MethodInvocation(
+            methodName: SimpleIdentifier(name: 'inherit'),
+          ) &&
+              final inheritCall,
+          propertyName: SimpleIdentifier(name: 'cycled' || 'stacked'),
+        ):
+        final placed = await place(inheritCall, ancestors, frame);
+        placed.again = ancestors.lastWhere((a) => a.screen == placed.screen,
             orElse: () => throw InvalidGenerationSourceError(
-                '"${placed.screen}.inherit($srcName)" — $srcName is not an ancestor',
+                '"${placed.screen}.inherit(...).${expr.propertyName.name}" has no '
+                'same-screen ancestor to cycle back to',
                 element: root));
-        placed.inheritSource = src.inheritSource ?? src;
         return placed;
       // `placement.query({...})` / `.fragment({...})` — view-state keys on a screen
       // placement (NOT a link branch). Attach the raw key set; the generator types it.
@@ -283,12 +340,12 @@ Future<TreeModel> readTree(EnumElement root, BuildStep buildStep) async {
           placed.viewFragment = terms;
         }
         return placed;
-      // A bare `slots({...})` / `slot(...)` in a placement's children — the WIDGET
-      // form: a link branch on the enclosing screen, whose id codec is injected as
-      // the WidgetLink branch. ("slot/slots are themselves a link declaration.")
+      // A bare `slot(...)` in a placement's children — the WIDGET form: a link
+      // branch on the enclosing screen, whose id codec is injected as the
+      // WidgetLink branch. ("slot is itself a link declaration.")
       case MethodInvocation(
           target: null,
-          methodName: SimpleIdentifier(name: 'slots' || 'slot'),
+          methodName: SimpleIdentifier(name: 'slot'),
         )
           when ancestors.isNotEmpty:
         final enclosing = ancestors.last;

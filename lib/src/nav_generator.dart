@@ -54,6 +54,32 @@ DartType? _codecArg(DartType? t) {
 }
 String _lcFirst(String s) => s[0].toLowerCase() + s.substring(1);
 
+// The components of a (possibly record) id type: `(A, B)` -> [A, B]; an atomic
+// type -> [it]; null -> []. Splits on TOP-LEVEL commas so nested records /
+// generics (`(A, (B, C))`, `List<A, B>`) stay whole.
+List<String> _idComponents(String? type) {
+  if (type == null) return const [];
+  final s = type.trim();
+  if (!(s.startsWith('(') && s.endsWith(')'))) return [s];
+  final inner = s.substring(1, s.length - 1);
+  final parts = <String>[];
+  var depth = 0, start = 0;
+  for (var i = 0; i < inner.length; i++) {
+    final ch = inner[i];
+    if (ch == '(' || ch == '<' || ch == '{' || ch == '[') {
+      depth++;
+    } else if (ch == ')' || ch == '>' || ch == '}' || ch == ']') {
+      depth--;
+    } else if (ch == ',' && depth == 0) {
+      parts.add(inner.substring(start, i).trim());
+      start = i + 1;
+    }
+  }
+  final last = inner.substring(start).trim();
+  if (last.isNotEmpty) parts.add(last);
+  return parts;
+}
+
 // ---- link surface helpers (sibling-class naming, field names) ----------
 // A union slot becomes sibling `Link` classes (rule 14), one per branch, split
 // across the `Place`/`Link` families and IMPLEMENTing a per-entity
@@ -147,7 +173,13 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       String? idStr;
       DartType? idDartType;
       if (idObj != null && !idObj.isNull) {
-        final ct = idObj.type;
+        // A screen may bind a Codec directly OR an @ids node that carries one in
+        // its `codec` field — the SAME node a registry keys by. Unwrap the node
+        // to recover the specific value type (the node erases to Codec<Object?>).
+        final codecObj = idObj.getField('codec');
+        final ct = (codecObj != null && !codecObj.isNull)
+            ? codecObj.type
+            : idObj.type;
         if (ct is InterfaceType && ct.element.name == 'ListCodec') {
           throw InvalidGenerationSourceError(
               'screen "${field.name}" uses Codec.list as its id — it carries '
@@ -229,10 +261,24 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       final w = widgetOf[r.name];
       if (w != null) (byWidget[w] ??= []).add(r);
     }
+    // The resolver method is `<widgetLcFirst>Id` — but a LIBRARY-PRIVATE widget
+    // type (`_S`) has no alpha first char to lower, so `_lcFirst` is a no-op and
+    // the method would collide with the sealed `<widget>Id` type. Lower the first
+    // alpha char instead so the two never clash.
+    String resolverName(String widget) {
+      final i = widget.indexOf(RegExp('[A-Za-z]'));
+      final lc = i < 0
+          ? widget
+          : widget.substring(0, i) +
+              widget[i].toLowerCase() +
+              widget.substring(i + 1);
+      return '${lc}Id';
+    }
+
     final widgetUnions = [
       for (final e in byWidget.entries)
         if (e.value.map((r) => r.idType).whereType<String>().toSet().length >= 2)
-          (sealed: '${e.key}Id', resolver: '${_lcFirst(e.key)}Id', members: e.value)
+          (sealed: '${e.key}Id', resolver: resolverName(e.key), members: e.value)
     ];
 
     final tree = model.tree;
@@ -303,6 +349,61 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
         if (v.fragment.isNotEmpty)
           '  ${_cap(screen)}FragmentMut get fragment => const ${_cap(screen)}FragmentMut._();',
       ].join('\n');
+    }
+
+    // A composite (record) id is sourced component-by-component from its inherit
+    // ancestors, so it does NOT route through the single-source `inheritSource`
+    // machinery (kick-start rescue, ancestor-reach, On chains). Detect it from
+    // the id (a record id has >1 component) and clear `inheritSource` so the
+    // single-source paths treat the screen as a plain atomic-record-id screen;
+    // the composite verb is emitted separately from `inheritSources`.
+    bool isComposite(String screen) =>
+        _idComponents(idOf[screen]).length > 1 &&
+        placements[screen]!.any((n) => n.inheritSources.isNotEmpty);
+    for (final ps in placements.values) {
+      for (final n in ps) {
+        if (n.inheritSources.length > 1 || isComposite(n.screen)) {
+          n.inheritSource = null;
+        }
+      }
+    }
+
+    // Validate composite inherit: arity within the id's component count, and each
+    // source id-bearing with a type matching an as-yet-unclaimed component.
+    for (final ps in placements.values) {
+      for (final n in ps) {
+        if (!isComposite(n.screen) && n.inheritSources.length <= 1) continue;
+        final comps = _idComponents(idOf[n.screen]);
+        if (n.inheritSources.length > comps.length) {
+          throw InvalidGenerationSourceError(
+              '"${n.screen}.inherit(${[for (final s in n.inheritSources) s.screen].join(', ')})": '
+              '${n.inheritSources.length} inherit sources but ${n.screen} has only '
+              '${comps.length} id component(s) — one source per component at most.',
+              element: element);
+        }
+        final claimed = List<bool>.filled(comps.length, false);
+        for (final src in n.inheritSources) {
+          final srcT = idOf[src.screen];
+          if (srcT == null) {
+            throw InvalidGenerationSourceError(
+                '"${n.screen}.inherit(${src.screen})": cannot inherit from '
+                '${src.screen} — it is id-free, so there is no id to inherit.',
+                element: element);
+          }
+          final idx = [
+            for (var i = 0; i < comps.length; i++)
+              if (!claimed[i] && comps[i] == srcT) i
+          ].firstOrNull;
+          if (idx == null) {
+            throw InvalidGenerationSourceError(
+                '"${n.screen}.inherit(${src.screen})": ${src.screen}\'s id is $srcT, '
+                'which matches no remaining component of ${n.screen}\'s id '
+                '(${comps.join(', ')}).',
+                element: element);
+          }
+          claimed[idx] = true;
+        }
+      }
     }
 
     // Flatten every inherit link to its ULTIMATE source, order-independently: a
@@ -630,12 +731,45 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
           '  }';
     }
 
+    // A composite-id placement assembled from its inherit ancestors: the record
+    // value to push and the params for the components NO ancestor supplies.
+    // Inherited components read the live ancestor id (`_idOf`); remaining ones
+    // are required args (each as its component type). Null when not composite.
+    ({String params, String record})? compositeVerb(PlacementNode n) {
+      if (n.inheritSources.isEmpty) return null;
+      final comps = _idComponents(idOf[n.screen]);
+      if (comps.length < 2) return null;
+      final filled = List<String?>.filled(comps.length, null);
+      for (final src in n.inheritSources) {
+        final srcT = idOf[src.screen];
+        final idx = [
+          for (var i = 0; i < comps.length; i++)
+            if (filled[i] == null && comps[i] == srcT) i
+        ].first;
+        filled[idx] = '_idOf(${sv(src.screen)})';
+      }
+      final missing = [for (var i = 0; i < comps.length; i++) if (filled[i] == null) i];
+      final names = <int, String>{};
+      if (missing.length == 1) {
+        names[missing.single] = 'id';
+      } else {
+        for (var k = 0; k < missing.length; k++) {
+          names[missing[k]] = 'id$k';
+        }
+      }
+      final params = [for (final i in missing) '${comps[i]} ${names[i]}'];
+      for (final i in missing) {
+        filled[i] = names[i];
+      }
+      return (params: params.join(', '), record: '(${filled.join(', ')})');
+    }
+
     // A position-anchored handle (non-null path) navigates edge-required: the
     // target must be a live edge from the current top or graph.go throws (a
     // stale handle), never a silent canonical teleport. Stale-but-still-legal
     // resolves. Entry-point navs (null path) stay total (canonical allowed).
     String goVerb(String child, String returns,
-        [List<String>? path, String? inheritSrc]) {
+        [List<String>? path, String? inheritSrc, PlacementNode? node]) {
       // A position-anchored verb first pops back to ITS placement (no-op when it's
       // already the front, the jump when it's buried) — so `at(.x)?.goChild()`
       // works from anywhere on the stack, and the forward `on`/chain case is
@@ -643,6 +777,15 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       final popSelf = (path != null && path.isNotEmpty)
           ? '$spec.graph.popTo(${sv(path.last)});\n    '
           : '';
+      // Composite-id edge (chained only): the id is a record assembled from the
+      // inherit ancestors; the verb shrinks to only the unsupplied components.
+      final comp = node == null ? null : compositeVerb(node);
+      if (comp != null && path != null) {
+        return '  $returns go${_cap(child)}(${comp.params}) {\n'
+            '    $popSelf$spec.graph.go(${sv(child)}, ${comp.record}, true);\n'
+            '    return const $returns._();\n'
+            '  }';
+      }
       // Inherited edge (chained only): id IS the ancestor's, read live from the
       // chain — no parameter to pass, none to get wrong.
       if (inheritSrc != null && path != null) {
@@ -672,7 +815,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       }
       return [
         for (final e in byChild.entries)
-          goVerb(e.key, type(e.value), path, e.value.inheritSource?.screen)
+          goVerb(e.key, type(e.value), path, e.value.inheritSource?.screen, e.value)
       ];
     }
 
@@ -857,8 +1000,8 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     }
 
     final hasMulti = rows.any((r) => !isSingle(r.name));
-    final hasInherit =
-        placements.values.any((ps) => ps.any((n) => n.inheritSource != null));
+    final hasInherit = placements.values.any((ps) =>
+        ps.any((n) => n.inheritSource != null || n.inheritSources.isNotEmpty));
     final hasParentOf = parentScreensOf.isNotEmpty;
 
     b.writeln('// ignore_for_file: library_private_types_in_public_api');
@@ -883,9 +1026,11 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     var usesEndsWith = false;
 
     b.writeln('final class Screen<I> {');
-    b.writeln('  const Screen._(this.spec);');
-    b.writeln('  final Enum spec;');
-    b.writeln('  String get name => spec.name;');
+    b.writeln('  const Screen._(this._spec);');
+    b.writeln('  final Enum _spec;');
+    b.writeln("  /// This screen's name, as written in the grammar enum — the");
+    b.writeln('  /// readable identity of a stack entry (`Screen.stack.current.name`).');
+    b.writeln('  String get name => _spec.name;');
     for (final r in rows) {
       b.writeln('  static const ${r.name} = Screen<${r.idType ?? 'Never'}>._(${sv(r.name)});');
     }
@@ -948,6 +1093,9 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln('  static bool restore(Map<String, Object?> state) =>');
     b.writeln('      $spec.graph.restore(state);');
     if (hasKickstart) {
+      b.writeln('  /// Executes a resolved [Hop] — the path a parsed [Place] carries.');
+      b.writeln('  /// This is how a resolver commits an inbound link:');
+      b.writeln('  /// `Screen.resolver = (url) { if (url case Place p) Screen.go(p); };`.');
       b.writeln('  static N go<N extends AnyNav>(Hop<N> hop) {');
       // Explicit `<Object?>` — a chain id is statically `Object?`, which would
       // otherwise infer `T = Object` and trip go's "requires an id" assert on a
@@ -1113,6 +1261,8 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       b.writeln('  static void forget${_cap(kept.single)}() => '
           '$spec.graph.forget(${sv(kept.single)});');
     } else if (kept.length >= 2) {
+      b.writeln('  /// Drops a kept subtree now, so its next visit rebuilds fresh —');
+      b.writeln('  /// the runtime counterpart to a `keep` branch in the grammar.');
       b.writeln('  static void forget(Keep keep) => $spec.graph.forget(keep.spec);');
     }
     for (final r in rows) {

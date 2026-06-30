@@ -18,9 +18,12 @@ bool _chainIs(List<Enum> a, List<Enum> b) {
 }
 
 final class Screen<I> {
-  const Screen._(this.spec);
-  final Enum spec;
-  String get name => spec.name;
+  const Screen._(this._spec);
+  final Enum _spec;
+
+  /// This screen's name, as written in the grammar enum — the
+  /// readable identity of a stack entry (`Screen.stack.current.name`).
+  String get name => _spec.name;
   static const home = Screen<Never>._(_Screens.home);
   static const item = Screen<String>._(_Screens.item);
   static const settings = Screen<Never>._(_Screens.settings);
@@ -84,6 +87,10 @@ final class Screen<I> {
   /// false on a stale/incompatible snapshot.
   static bool restore(Map<String, Object?> state) =>
       _Screens.graph.restore(state);
+
+  /// Executes a resolved [Hop] — the path a parsed [Place] carries.
+  /// This is how a resolver commits an inbound link:
+  /// `Screen.resolver = (url) { if (url case Place p) Screen.go(p); };`.
   static N go<N extends AnyNav>(Hop<N> hop) {
     for (final (s, i) in hop.chain) _Screens.graph.go<Object?>(s, i);
     return hop.nav;

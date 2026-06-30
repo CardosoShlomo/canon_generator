@@ -20,9 +20,12 @@ bool _chainIs(List<Enum> a, List<Enum> b) {
 }
 
 final class Screen<I> {
-  const Screen._(this.spec);
-  final Enum spec;
-  String get name => spec.name;
+  const Screen._(this._spec);
+  final Enum _spec;
+
+  /// This screen's name, as written in the grammar enum — the
+  /// readable identity of a stack entry (`Screen.stack.current.name`).
+  String get name => _spec.name;
   static const splash = Screen<Never>._(_Screens.splash);
   static const signIn = Screen<Never>._(_Screens.signIn);
   static const otp = Screen<String>._(_Screens.otp);
@@ -127,6 +130,10 @@ final class Screen<I> {
   /// false on a stale/incompatible snapshot.
   static bool restore(Map<String, Object?> state) =>
       _Screens.graph.restore(state);
+
+  /// Executes a resolved [Hop] — the path a parsed [Place] carries.
+  /// This is how a resolver commits an inbound link:
+  /// `Screen.resolver = (url) { if (url case Place p) Screen.go(p); };`.
   static N go<N extends AnyNav>(Hop<N> hop) {
     for (final (s, i) in hop.chain) _Screens.graph.go<Object?>(s, i);
     return hop.nav;
@@ -263,6 +270,9 @@ final class Screen<I> {
   /// the landed screen + its typed id. Filter with `.where`.
   static Stream<ScreenNavigation> get navigations =>
       _Screens.graph.navigations.map(ScreenNavigation._);
+
+  /// Drops a kept subtree now, so its next visit rebuilds fresh —
+  /// the runtime counterpart to a `keep` branch in the grammar.
   static void forget(Keep keep) => _Screens.graph.forget(keep.spec);
   static SplashNav goSplash() {
     _Screens.graph.go(_Screens.splash);
@@ -4216,28 +4226,11 @@ final class FragmentNot {
       const FragmentCond._('tab', null, presence: true, negate: true);
 }
 
-/// Exactly-one `oneOf` choice for `search` query view-state.
-sealed class SearchQueryChoice {
-  const SearchQueryChoice();
-}
-
-final class SearchQuerySort extends SearchQueryChoice {
-  const SearchQuerySort(this.value);
-  final Sort value;
-}
-
 /// Screen-local query view-state for `search` (read-only).
 class SearchQuery {
   const SearchQuery._();
   String? get q => _Screens.graph.viewGet(_Screens.search, 'q') as String?;
-  SearchQueryChoice? get choice {
-    {
-      final v = _Screens.graph.viewGet(_Screens.search, 'sort') as Sort?;
-      if (v != null) return SearchQuerySort(v);
-    }
-    return null;
-  }
-
+  Sort? get sort => _Screens.graph.viewGet(_Screens.search, 'sort') as Sort?;
   ({int minPrice, int maxPrice})? get group {
     final minPrice =
         _Screens.graph.viewGet(_Screens.search, 'minPrice') as int?;
@@ -4253,14 +4246,7 @@ class SearchQuery {
 final class SearchQueryMut extends SearchQuery {
   const SearchQueryMut._() : super._();
   set q(String? v) => _Screens.graph.viewSet(_Screens.search, 'q', v);
-  set choice(SearchQueryChoice? v) {
-    _Screens.graph.viewSet(
-      _Screens.search,
-      'sort',
-      v is SearchQuerySort ? v.value : null,
-    );
-  }
-
+  set sort(Sort? v) => _Screens.graph.viewSet(_Screens.search, 'sort', v);
   set group(({int minPrice, int maxPrice})? v) {
     _Screens.graph.viewSet(_Screens.search, 'minPrice', v?.minPrice);
     _Screens.graph.viewSet(_Screens.search, 'maxPrice', v?.maxPrice);

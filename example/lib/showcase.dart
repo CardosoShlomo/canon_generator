@@ -78,11 +78,13 @@ enum _Screens with ScreenNode<_Screens> {
 
       // `keep`: the shop's tab stack survives switching to another trunk.
       home.keep({
-        // `query` combinators: `oneOf` (one sort) + `allOf` (price range).
+        // `query` terms: independent keys stay comma-separated. `&` = allOf, the
+        // co-present price range (a record — both or neither). `q` and `sort` are
+        // their own optional keys.
         search({_product()}).query({
           _Filter.q(Codec.string),
-          oneOf({_Filter.sort(Codec.enumValues(Sort.values))}),
-          allOf({_Filter.minPrice(Codec.integer), _Filter.maxPrice(Codec.integer)}),
+          _Filter.sort(Codec.enumValues(Sort.values)),
+          _Filter.minPrice(Codec.integer) & _Filter.maxPrice(Codec.integer),
         }),
         // `stacked`: drill category → subcategory in fresh frames.
         category({category.stacked, _product()}),
@@ -100,8 +102,9 @@ enum _Screens with ScreenNode<_Screens> {
       }),
 
       // A resolve-only deep link: `/product/<uuid>` or `/product/@<handle>`.
+      // The union slot is a single `slot` whose `|` lists the branches.
       product.link({
-        slots({Codec.uuid, Codec.username})
+        slot(Codec.uuid | Codec.username),
       }),
     },
     root: const _Boot(),

@@ -17,7 +17,7 @@ mixin ScreenNode<I, S extends ScreenNode<Object?, S>> on Enum {
   S keep([Set<S> children = const {}]) => this as S;
   S get cycled => this as S;
   S get stacked => this as S;
-  S inherit(S ancestor) => this as S;
+  S inherit(S a, [S? b, S? c]) => this as S;
   S links([Set<Object?> children = const {}]) => this as S;
   S link([Set<Object?> children = const {}]) => this as S;
   S query(Set<Object?> terms) => this as S;
@@ -25,11 +25,20 @@ mixin ScreenNode<I, S extends ScreenNode<Object?, S>> on Enum {
 }
 
 mixin QueryKeyBase on Enum {
-  Object? call(Object? codec) => null;
+  QueryTerm call(Object? codec) => const QueryTerm();
+}
+
+class QueryTerm {
+  const QueryTerm();
+  QueryTerm operator &(QueryTerm other) => this;
+  QueryTerm operator |(QueryTerm other) => this;
+}
+
+extension CodecUnion<T> on Codec<T> {
+  Codec<T> operator |(Codec<T> other) => this;
 }
 
 Object? slot(Object? codec) => null;
-Object? slots(Set<Object?> codecs) => null;
 
 class NavGraph<S> {
   NavGraph(Set<S> roots,
@@ -39,19 +48,27 @@ class NavGraph<S> {
 
 class Codec<T> {
   const Codec();
+  T? decode(String token) => null;
+  String encode(T value) => '';
   static const Codec<String> string = _StrCodec();
   static const Codec<String> uuid = _StrCodec();
   static const Codec<String> username = _StrCodec();
   static const Codec<int> integer = _IntCodec();
   static Codec<String> literal(String value) => const _StrCodec();
 }
-class _StrCodec implements Codec<String> { const _StrCodec(); }
-class _IntCodec implements Codec<int> { const _IntCodec(); }
-class Record2Codec<A, B> implements Codec<(A, B)> {
+class _StrCodec extends Codec<String> { const _StrCodec(); }
+class _IntCodec extends Codec<int> { const _IntCodec(); }
+class Record2Codec<A, B> extends Codec<(A, B)> {
   const Record2Codec(this.a, this.b, [this.sep = '~']);
   final Codec<A> a;
   final Codec<B> b;
   final String sep;
+}
+
+mixin IdNode on Enum implements Codec<Object?> {
+  Codec get codec;
+  Object? decode(String token) => codec.decode(token);
+  String encode(Object? value) => codec.encode(value);
 }
 ''';
 
@@ -126,7 +143,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
   static final graph = NavGraph<_Screens>(
     {
       home({user}),
-      user.links({slots({Codec.uuid, Codec.username})}),
+      user.links({slot(Codec.uuid | Codec.username)}),
     },
     initial: home,
     pageOf: (s, c, k) => 0,
@@ -152,7 +169,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
   static final graph = NavGraph<_Screens>(
     {
       home({user}),
-      user.links({slots({Codec.literal('me'), Codec.uuid, Codec.username})}),
+      user.links({slot(Codec.literal('me') | Codec.uuid | Codec.username)}),
     },
     initial: home,
     pageOf: (s, c, k) => 0,
@@ -179,7 +196,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
   static final graph = NavGraph<_Screens>(
     {
       home,
-      user({slots({Codec.literal('me'), Codec.username})}),
+      user({slot(Codec.literal('me') | Codec.username)}),
     },
     initial: home,
     pageOf: (s, c, k) => 0,
@@ -207,6 +224,64 @@ enum _Screens with ScreenNode<Object?, _Screens> {
     {
       home,
       feed.query({_Keys.category(Codec.string), _Keys.radius(Codec.integer)}),
+    },
+    initial: home,
+    pageOf: (s, c, k) => 0,
+  );
+}
+''';
+
+// Same union as _unionSpec, but spelled with the `|` codec operator inside a
+// single `slot` — proving `slot(a | b)` collapses what `slots({a, b})` did.
+const _slotUnionOpSpec = '''
+import 'package:canon/canon.dart';
+
+part 'spec.nav.dart';
+
+@screens
+enum _Screens with ScreenNode<Object?, _Screens> {
+  home(0),
+  user(0, Codec.string);
+
+  const _Screens(this.widget, [this.id]);
+  final Object widget;
+  final Codec? id;
+
+  static final graph = NavGraph<_Screens>(
+    {
+      home({user}),
+      user.links({slot(Codec.uuid | Codec.username)}),
+    },
+    initial: home,
+    pageOf: (s, c, k) => 0,
+  );
+}
+''';
+
+// Query view-state in the codec algebra: `a & (b | c)`. `&`=allOf, `|`=oneOf,
+// the brackets override `&`-tighter-than-`|` precedence; the flattened view keys
+// are the same three regardless of grouping.
+const _viewOpSpec = '''
+import 'package:canon/canon.dart';
+
+part 'spec.nav.dart';
+
+enum _Keys with QueryKeyBase { category, radius, size }
+enum _Frag with QueryKeyBase { tab, pane }
+
+@screens
+enum _Screens with ScreenNode<Object?, _Screens> {
+  home(0),
+  feed(0);
+
+  const _Screens(this.widget);
+  final Object widget;
+
+  static final graph = NavGraph<_Screens>(
+    {
+      home,
+      feed.query({_Keys.category(Codec.string) & (_Keys.radius(Codec.integer) | _Keys.size(Codec.integer))})
+          .fragment({_Frag.tab(Codec.string) | _Frag.pane(Codec.string)}),
     },
     initial: home,
     pageOf: (s, c, k) => 0,
@@ -387,32 +462,6 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 }
 ''';
 
-// An empty `slots({})` widget form — redundant (the screen is already
-// deep-linkable by its id) → generation must throw.
-const _emptySlotsSpec = '''
-import 'package:canon/canon.dart';
-
-part 'spec.nav.dart';
-
-@screens
-enum _Screens with ScreenNode<Object?, _Screens> {
-  home(0),
-  detail(0, Codec.uuid);
-
-  const _Screens(this.widget, [this.id]);
-  final Object widget;
-  final Codec? id;
-
-  static final graph = NavGraph<_Screens>(
-    {
-      home({detail({slots({})})}),
-    },
-    initial: home,
-    pageOf: (s, c, k) => 0,
-  );
-}
-''';
-
 // home/account/* is a widgetless-only `.link`; settings/detail/* a mixed widget
 // form (renderable id + a username resolver). Exercises Place subtree prune.
 const _probeSpec = '''
@@ -434,7 +483,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
   static final graph = NavGraph<_Screens>(
     {
       home({account({slot(Codec.string)})}),
-      settings({detail({slots({Codec.username})})}),
+      settings({detail({slot(Codec.username)})}),
     },
     initial: home,
     pageOf: (s, c, k) => 0,
@@ -666,7 +715,221 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 }
 ''';
 
+// COMPOSITE inherit: chat's record id (String, int) is sourced component-by-
+// component from two ancestors — the String from ad, the int from user. Both
+// components inherited → the chained verb shrinks to no args.
+const _compositeSpec = '''
+import 'package:canon/canon.dart';
+
+part 'spec.nav.dart';
+
+@screens
+enum _Screens with ScreenNode<Object?, _Screens> {
+  home(0),
+  ad(0, Codec.string),
+  user(0, Codec.integer),
+  chat(0, Record2Codec(Codec.string, Codec.integer));
+
+  const _Screens(this.widget, [this.id]);
+  final Object widget;
+  final Codec? id;
+
+  static final graph = NavGraph<_Screens>(
+    {home({ad({user({chat.inherit(ad, user)})})})},
+    initial: home,
+    pageOf: (s, c, k) => 0,
+  );
+}
+''';
+
+// PARTIAL composite: only the String component is inherited (from ad); the int
+// component has no matching ancestor, so it stays a required arg on the verb.
+const _compositePartialSpec = '''
+import 'package:canon/canon.dart';
+
+part 'spec.nav.dart';
+
+@screens
+enum _Screens with ScreenNode<Object?, _Screens> {
+  home(0),
+  ad(0, Codec.string),
+  chat(0, Record2Codec(Codec.string, Codec.integer));
+
+  const _Screens(this.widget, [this.id]);
+  final Object widget;
+  final Codec? id;
+
+  static final graph = NavGraph<_Screens>(
+    {home({ad({chat.inherit(ad)})})},
+    initial: home,
+    pageOf: (s, c, k) => 0,
+  );
+}
+''';
+
+// A composite-id screen with NO inherit: the verb takes the ATOMIC record id,
+// never the destructured components.
+const _compositeNoneSpec = '''
+import 'package:canon/canon.dart';
+
+part 'spec.nav.dart';
+
+@screens
+enum _Screens with ScreenNode<Object?, _Screens> {
+  home(0),
+  chat(0, Record2Codec(Codec.string, Codec.integer));
+
+  const _Screens(this.widget, [this.id]);
+  final Object widget;
+  final Codec? id;
+
+  static final graph = NavGraph<_Screens>(
+    {home({chat})},
+    initial: home,
+    pageOf: (s, c, k) => 0,
+  );
+}
+''';
+
+// ARITY OVERFLOW: 3 inherit sources but a 2-component id → a build error.
+const _compositeOverflowSpec = '''
+import 'package:canon/canon.dart';
+
+part 'spec.nav.dart';
+
+@screens
+enum _Screens with ScreenNode<Object?, _Screens> {
+  home(0),
+  a(0, Codec.string),
+  b(0, Codec.integer),
+  c(0, Codec.string),
+  chat(0, Record2Codec(Codec.string, Codec.integer));
+
+  const _Screens(this.widget, [this.id]);
+  final Object widget;
+  final Codec? id;
+
+  static final graph = NavGraph<_Screens>(
+    {home({a({b({c({chat.inherit(a, b, c)})})})})},
+    initial: home,
+    pageOf: (s, c, k) => 0,
+  );
+}
+''';
+
+// A spec that must FAIL generation: source_gen logs the InvalidGenerationSource
+// error (severe) rather than rethrowing, so assert the captured log mentions
+// [needle] and that NO output file is written.
+Future<void> _expectBuildError(String spec, String needle) async {
+  final logs = <String>[];
+  await testBuilder(
+    navBuilder(BuilderOptions.empty),
+    {
+      'canon|lib/src/screens_annotation.dart': _annotation,
+      'canon|lib/canon.dart': _canonStub,
+      'pkg|lib/spec.dart': spec,
+    },
+    rootPackage: 'pkg',
+    generateFor: {'pkg|lib/spec.dart'},
+    outputs: const {},
+    onLog: (r) => logs.add('${r.message}${r.error ?? ''}'),
+  );
+  expect(logs.any((l) => l.contains(needle)), isTrue,
+      reason: 'no build error mentioning "$needle"; logs: $logs');
+}
+
+// A screen binds an @ids NODE (`id: .user`) instead of a Codec directly. The
+// node IS-A Codec (erased to Object?) but carries Codec.uuid (Codec<String>) in
+// its `codec` field — the generator must unwrap that to the SPECIFIC type.
+const _idsNodeSpec = '''
+import 'package:canon/canon.dart';
+
+part 'spec.nav.dart';
+
+enum Ids with IdNode {
+  user(Codec.uuid);
+  const Ids(this.codec);
+  @override
+  final Codec codec;
+}
+
+@screens
+enum _Screens with ScreenNode<Object?, _Screens> {
+  home(0),
+  profile(0, Ids.user);
+
+  const _Screens(this.widget, [this.id]);
+  final Object widget;
+  final Codec? id;
+
+  static final graph = NavGraph<_Screens>(
+    {
+      home({profile}),
+    },
+    initial: home,
+    pageOf: (s, c, k) => 0,
+  );
+}
+''';
+
 void main() {
+  test('screen bound to an @ids node uses the node codec specific id type',
+      () => _expectGenerated(
+            allOf([
+              // unwrapped Codec.uuid -> String, not the erased node Object?
+              contains('static const profile = Screen<String>._(_Screens.profile);'),
+              isNot(contains('profile = Screen<Object?>')),
+            ]),
+            spec: _idsNodeSpec,
+          ));
+
+  test('composite inherit: both components inherited -> no-arg verb', () =>
+      _expectGenerated(
+        allOf([
+          contains('ChatNav goChat() {'), // both components inherited -> no args
+          contains('_Screens.graph.go(_Screens.chat, ('),
+          contains('_idOf(_Screens.ad)'),
+          contains('_idOf(_Screens.user)'),
+          contains('Object? _idOf(Enum s)'),
+        ]),
+        spec: _compositeSpec,
+      ));
+
+  test('composite inherit: partial -> verb requires only the missing component',
+      () => _expectGenerated(
+            allOf([
+              contains('ChatNav goChat(int id) {'),
+              contains(
+                  '_Screens.graph.go(_Screens.chat, (_idOf(_Screens.ad), id), true)'),
+              isNot(contains('goChat((String, int) id)')),
+            ]),
+            spec: _compositePartialSpec,
+          ));
+
+  test('composite id with no inherit: verb takes the atomic record id', () =>
+      _expectGenerated(
+        allOf([
+          contains('goChat((String, int) id)'),
+          isNot(contains('goChat(String')), // never destructured
+        ]),
+        spec: _compositeNoneSpec,
+      ));
+
+  test('composite inherit: arity overflow is a build error', () =>
+      _expectBuildError(_compositeOverflowSpec, 'id component'));
+
+  test('single-arg inherit output is unchanged (regression)', () =>
+      _expectGenerated(
+        allOf([
+          contains('EditAdNav goEditAd() {'),
+          contains(
+              '_Screens.graph.go(_Screens.editAd, _idOf(_Screens.ad), true)'),
+          isNot(contains('goEditAd(String id) {\n'
+              '    _Screens.graph.go(_Screens.editAd')), // still the no-arg edge
+        ]),
+        spec: _inheritSpec,
+      ));
+
   test('inherited edge: no-arg chained verb reads the ancestor id', () =>
       _expectGenerated(
         allOf(
@@ -868,6 +1131,33 @@ void main() {
         spec: _unionSpec,
       ));
 
+  test('slot(a | b) is the same union as slots({a, b})', () =>
+      _expectGenerated(
+        allOf([
+          contains('sealed class UserLink implements Url'),
+          contains(
+              'final class UserByUuidLink extends Link implements UserLink'),
+          contains('class UserByNameLink'),
+          contains('0 => UserByUuidLink(m.path[0] as String, origin)'),
+          contains('1 => UserByNameLink(m.path[0] as String, origin)'),
+        ]),
+        spec: _slotUnionOpSpec,
+      ));
+
+  test('query & fragment use the same `&`/`|` algebra (brackets ok), keys flow',
+      () => _expectGenerated(
+            allOf([
+              contains('FeedQuery'), // the view model emitted — no parse error
+              contains('category'),
+              contains('radius'),
+              contains('size'), // the bracketed `(radius | size)` branch survived
+              contains('FeedFragment'), // fragment uses operators identically
+              contains('tab'),
+              contains('pane'), // the `tab | pane` oneOf fragment survived
+            ]),
+            spec: _viewOpSpec,
+          ));
+
   test('a literal in a union slot becomes a payload-less widgetless sibling', () =>
       _expectGenerated(
         allOf([
@@ -990,23 +1280,6 @@ void main() {
             ]),
             spec: _widgetFormSpec,
           ));
-
-  test('an empty `slots({})` is rejected (a screen is already deep-linkable)',
-      () async {
-    final logs = <String>[];
-    await testBuilder(
-      navBuilder(BuilderOptions.empty),
-      {
-        'canon|lib/src/screens_annotation.dart': _annotation,
-        'canon|lib/canon.dart': _canonStub,
-        'pkg|lib/spec.dart': _emptySlotsSpec,
-      },
-      rootPackage: 'pkg',
-      generateFor: {'pkg|lib/spec.dart'},
-      onLog: (r) => logs.add(r.message),
-    );
-    expect(logs.join('\n'), contains('empty `slots({})`'));
-  });
 
   test('an empty call `user()` is rejected (write the bare leaf)', () async {
     final logs = <String>[];

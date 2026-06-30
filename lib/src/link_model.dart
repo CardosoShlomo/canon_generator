@@ -1,4 +1,5 @@
 import 'package:analyzer/dart/ast/ast.dart';
+import 'package:analyzer/dart/ast/token.dart';
 import 'package:analyzer/dart/element/element.dart';
 import 'package:source_gen/source_gen.dart';
 
@@ -141,7 +142,7 @@ List<Endpoint> linkEndpoints(List<PlacementNode> branches, EnumElement element,
     ];
     final seg = _kebab(branch.screen);
     if (branch.isWidgetForm) {
-      // Widget form: one `slots`/`slot`, with the screen's id codec injected as a
+      // Widget form: one `slot`, with the screen's id codec injected as a
       // WidgetLink branch (after any leading literals — matches the runtime order).
       final slotNode = _peel(branch.linkChildren.single, element, rows);
       final declared = slotNode.slot?.codecs ?? const <CodecSpec>[];
@@ -150,10 +151,10 @@ List<Endpoint> linkEndpoints(List<PlacementNode> branches, EnumElement element,
       // redundant — the screen is already deep-linkable by its id.
       if (declared.isEmpty) {
         throw InvalidGenerationSourceError(
-            'screen "${branch.screen}" declares an empty `slots({})` link — a '
+            'screen "${branch.screen}" declares an empty `slot` link — a '
             'screen is already deep-linkable by its id, so this adds nothing. '
             'Either remove it, or declare the resolver alternatives it should '
-            'accept (e.g. `slots({Codec.literal(\'me\'), Codec.username})`).',
+            "accept (e.g. `slot(Codec.literal('me') | Codec.username)`).",
             element: element);
       }
       final entity = _pascal(branch.screen);
@@ -218,23 +219,9 @@ _Node _peel(Expression expr, EnumElement element, Set<String> rows) {
         methodName: SimpleIdentifier(name: 'slot'),
         :final argumentList,
       ):
-      return _Node()
-        ..slot = SlotSpec([_codecSpec(_first(argumentList)!, element)]);
-    case MethodInvocation(
-        target: null,
-        methodName: SimpleIdentifier(name: 'slots'),
-        :final argumentList,
-      ):
-      final set = _first(argumentList);
-      if (set is! SetOrMapLiteral) {
-        throw InvalidGenerationSourceError('`slots` takes a set of codecs',
-            element: element);
-      }
-      return _Node()
-        ..slot = SlotSpec([
-          for (final c in set.elements)
-            if (c is Expression) _codecSpec(c, element),
-        ]);
+      // `slot(a | b)` is a union slot — a single `slot` whose `|` expresses the
+      // branches (a bare codec stays one). The old plural `slots({...})` is gone.
+      return _Node()..slot = SlotSpec(_slotCodecs(_first(argumentList)!, element));
     // value({children}) — unqualified (in-enum) or `Seg.value` qualified.
     case MethodInvocation(
         target: SimpleIdentifier() || null,
@@ -372,21 +359,18 @@ Term _term(Expression e, EnumElement element) {
         methodName: SimpleIdentifier(:final name),
         :final argumentList,
       )
-        when name == 'allOf' ||
-            name == 'oneOf' ||
-            name == 'requireAllOf' ||
-            name == 'requireOneOf':
+        // `allOf`/`oneOf` are gone — use `&`/`|` (handled below). Only the
+        // REQUIRED link-gating variants remain as functions.
+        when name == 'requireAllOf' || name == 'requireOneOf':
       final inner = _first(argumentList);
       final members = <Term>[
         if (inner is SetOrMapLiteral)
           for (final m in inner.elements)
             if (m is Expression) _term(m, element),
       ];
-      final mandatory = name == 'requireAllOf' || name == 'requireOneOf';
-      final exclusive = name == 'oneOf' || name == 'requireOneOf';
-      return exclusive
-          ? OneOfTerm(members, mandatory: mandatory)
-          : AllOfTerm(members, mandatory: mandatory);
+      return name == 'requireOneOf'
+          ? OneOfTerm(members, mandatory: true)
+          : AllOfTerm(members, mandatory: true);
     // `.q(.string)` — dot-shorthand value/list key.
     case DotShorthandInvocation(
         memberName: SimpleIdentifier(:final name),
@@ -408,10 +392,42 @@ Term _term(Expression e, EnumElement element) {
     // `_Query.byDate` — qualified flag.
     case PrefixedIdentifier(identifier: SimpleIdentifier(:final name)):
       return KeyTerm(name, 'bool', ParamKind.flag);
+    // `a & b` (allOf) / `a | b` (oneOf) — the codec-algebra spelling of the
+    // combinators. Dart binds `&` tighter than `|`, so `a & b | c` already reads
+    // as `oneOf{ allOf{a,b}, c }`. Nested same-operator terms flatten downstream
+    // (viewKeys/viewGroups), so two members per node is enough. Operator form is
+    // always optional (non-mandatory); `requireAllOf`/`requireOneOf` stay functions.
+    case BinaryExpression(:final leftOperand, :final operator, :final rightOperand)
+        when operator.type == TokenType.AMPERSAND || operator.type == TokenType.BAR:
+      final members = [
+        _term(leftOperand, element),
+        _term(rightOperand, element),
+      ];
+      return operator.type == TokenType.BAR
+          ? OneOfTerm(members)
+          : AllOfTerm(members);
+    // Explicit grouping `(a | b) & c` to override the default `&`-tighter-than-`|`
+    // precedence — peel the parens and read the inner expression.
+    case ParenthesizedExpression(:final expression):
+      return _term(expression, element);
     default:
       throw InvalidGenerationSourceError('cannot read query term "$e"',
           element: element);
   }
+}
+
+/// A slot's codec expression flattened to its branches. `a | b` (oneOf) is a
+/// union of branches; a bare codec is a single branch. `&` (a composite token)
+/// is not a union — it stays one CodecSpec via [_codecSpec]'s default path.
+List<CodecSpec> _slotCodecs(Expression e, EnumElement element) {
+  if (e is ParenthesizedExpression) return _slotCodecs(e.expression, element);
+  if (e is BinaryExpression && e.operator.type == TokenType.BAR) {
+    return [
+      ..._slotCodecs(e.leftOperand, element),
+      ..._slotCodecs(e.rightOperand, element),
+    ];
+  }
+  return [_codecSpec(e, element)];
 }
 
 CodecSpec _codecSpec(Expression codec, EnumElement element) {
