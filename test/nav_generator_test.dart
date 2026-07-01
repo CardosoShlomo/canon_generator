@@ -538,27 +538,27 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 }
 ''';
 
-// Two screens share ChatScreen with DIFFERENT id types — the id-ambiguous case.
+// Two screens share DetailScreen with DIFFERENT id types — the id-ambiguous case.
 const _sharedSpec = '''
 import 'package:canon/canon.dart';
 
 part 'spec.nav.dart';
 
-class ChatScreen { const ChatScreen(); }
+class DetailScreen { const DetailScreen(); }
 class HomeScreen { const HomeScreen(); }
 
 @screens
 enum _Screens with ScreenNode<Object?, _Screens> {
   home(HomeScreen()),
-  adChat(ChatScreen(), Codec.string),
-  loopChat(ChatScreen(), Codec.integer);
+  product(DetailScreen(), Codec.string),
+  order(DetailScreen(), Codec.integer);
 
   const _Screens(this.widget, [this.id]);
   final Object widget;
   final Codec? id;
 
   static final graph = NavGraph<_Screens>(
-    {home({adChat, loopChat})},
+    {home({product, order})},
     initial: home,
     pageOf: (s, c, k) => 0,
   );
@@ -883,27 +883,28 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 }
 ''';
 
-// adChat is keyed by a COMPOSITE node (ad, user); `user` (keyed by the `user`
-// node) inherits ONE component out of it — matched by node identity, not type.
+// A `review` is keyed by a COMPOSITE node (product, author); `author` (keyed by
+// the `author` node) inherits ONE component out of it — matched by node identity,
+// not type (both components are String, so only the node disambiguates).
 const _projectionSpec = '''
 import 'package:canon/canon.dart';
 
 part 'spec.nav.dart';
 
 enum Ids with IdNode {
-  ad(Codec.uuid),
-  user(Codec.username);
+  product(Codec.uuid),
+  author(Codec.username);
   const Ids(this.codec);
   @override
   final Codec codec;
-  static const adChat = IdNode.compose([ad, user]);
+  static const review = IdNode.compose([product, author]);
 }
 
 @screens
 enum _Screens with ScreenNode<Object?, _Screens> {
   home(0),
-  user(0, Ids.user),
-  adChat(0, Ids.adChat);
+  author(0, Ids.author),
+  review(0, Ids.review);
 
   const _Screens(this.widget, [this.id]);
   final Object widget;
@@ -911,7 +912,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 
   static final graph = NavGraph<_Screens>(
     {
-      home({adChat({user.inherit(adChat)})}),
+      home({review({author.inherit(review)})}),
     },
     initial: home,
     pageOf: (s, c, k) => 0,
@@ -922,7 +923,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 void main() {
   test('inherit projects one composite component by node identity', () =>
       _expectGenerated(
-        // user's id is component 1 (userId) of adChat's (String, String) record.
+        // author's id is component 1 (author) of review's (String, String) record.
         contains('(String, String)).\$2'),
         spec: _projectionSpec,
       ));
@@ -1552,12 +1553,12 @@ void main() {
   test('shared widget with distinct id types gets a sealed id union', () =>
       _expectGenerated(
         allOf([
-          matches(RegExp(r'sealed class ChatScreenId \{\s*const ChatScreenId\(\);')),
-          contains('final class AdChatId extends ChatScreenId'),
-          contains('final class LoopChatId extends ChatScreenId'),
-          contains('static ChatScreenId chatScreenId(BuildContext context)'),
-          contains('ScreenScope.idOf<String>(context, _Screens.adChat)'),
-          contains('ScreenScope.idOf<int>(context, _Screens.loopChat)'),
+          matches(RegExp(r'sealed class DetailScreenId \{\s*const DetailScreenId\(\);')),
+          contains('final class ProductId extends DetailScreenId'),
+          contains('final class OrderId extends DetailScreenId'),
+          contains('static DetailScreenId detailScreenId(BuildContext context)'),
+          contains('ScreenScope.idOf<String>(context, _Screens.product)'),
+          contains('ScreenScope.idOf<int>(context, _Screens.order)'),
           isNot(contains('HomeScreenId')), // single-use widget: no union
         ]),
         spec: _sharedSpec,
