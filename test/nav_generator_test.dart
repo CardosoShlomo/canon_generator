@@ -65,10 +65,21 @@ class Record2Codec<A, B> extends Codec<(A, B)> {
   final String sep;
 }
 
-mixin IdNode on Enum implements Codec<Object?> {
+abstract mixin class IdNode implements Codec<Object?> {
+  const IdNode();
   Codec get codec;
+  List<IdNode> get components => [this];
+  IdNode operator [](int i) => components[i];
   Object? decode(String token) => codec.decode(token);
   String encode(Object? value) => codec.encode(value);
+  const factory IdNode.compose(List<IdNode> parts) = CompositeId;
+}
+class CompositeId with IdNode {
+  const CompositeId(this.components);
+  @override
+  final List<IdNode> components;
+  @override
+  Codec get codec => Record2Codec(components[0].codec, components[1].codec);
 }
 ''';
 
@@ -872,7 +883,54 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 }
 ''';
 
+// adChat is keyed by a COMPOSITE node (ad, user); `user` (keyed by the `user`
+// node) inherits ONE component out of it — matched by node identity, not type.
+const _projectionSpec = '''
+import 'package:canon/canon.dart';
+
+part 'spec.nav.dart';
+
+enum Ids with IdNode {
+  ad(Codec.uuid),
+  user(Codec.username);
+  const Ids(this.codec);
+  @override
+  final Codec codec;
+  static const adChat = IdNode.compose([ad, user]);
+}
+
+@screens
+enum _Screens with ScreenNode<Object?, _Screens> {
+  home(0),
+  user(0, Ids.user),
+  adChat(0, Ids.adChat);
+
+  const _Screens(this.widget, [this.id]);
+  final Object widget;
+  final Codec? id;
+
+  static final graph = NavGraph<_Screens>(
+    {
+      home({adChat({user.inherit(adChat)})}),
+    },
+    initial: home,
+    pageOf: (s, c, k) => 0,
+  );
+}
+''';
+
 void main() {
+  test('inherit projects one composite component by node identity', () =>
+      _expectGenerated(
+        // user's id is component 1 (userId) of adChat's (String, String) record.
+        contains('(String, String)).\$2'),
+        spec: _projectionSpec,
+      ),
+      // Node-matching DETECTS the projection (no id-type-mismatch error) and sets
+      // the component index; emitting the `.$N` projection across every goUser
+      // verb-path (no-arg / covered / pop) is the remaining piece.
+      skip: 'projection emission across verb-paths WIP');
+
   test('screen bound to an @ids node uses the node codec specific id type',
       () => _expectGenerated(
             allOf([

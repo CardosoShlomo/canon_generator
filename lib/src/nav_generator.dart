@@ -1,3 +1,4 @@
+import 'package:analyzer/dart/constant/value.dart';
 import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:build/build.dart';
@@ -12,10 +13,15 @@ import 'link_model.dart';
 import 'tree_reader.dart';
 
 class _Row {
-  _Row(this.name, this.idType, this.spec, {this.owner = true});
+  _Row(this.name, this.idType, this.spec, {this.owner = true, this.idNodes});
 
   final String name;
   final String? idType;
+
+  /// The `@ids` node identities this screen's id is made of (`Ids#1`), or null
+  /// when the id isn't node-based. One entry for an atomic node, N for a
+  /// composite — so `inherit` can match a source component by node, not type.
+  final List<String>? idNodes;
 
   /// The home enum's name — screens may come from grafted sub-enums.
   final String spec;
@@ -78,6 +84,31 @@ List<String> _idComponents(String? type) {
   final last = inner.substring(start).trim();
   if (last.isNotEmpty) parts.add(last);
   return parts;
+}
+
+// A stable identity for an `@ids` node value (`Ids.user`) — its enum type + the
+// ordinal — so two screens keyed by the SAME node compare equal. Null when the
+// value isn't an id-node (a plain codec has no ordinal).
+String? _nodeIdentity(DartObject? o) {
+  if (o == null || o.isNull) return null;
+  final t = o.type?.getDisplayString();
+  final i = o.getField('index')?.toIntValue();
+  return (t != null && i != null) ? '$t#$i' : null;
+}
+
+// The `@ids` component nodes an id value is made of: a `CompositeId` exposes a
+// `components` FIELD (atomic nodes carry it only as a getter, so it reads null) —
+// so a non-null list of length > 1 means composite. Null when the id isn't
+// node-based (a plain codec / record).
+List<String>? _idNodes(DartObject? idObj) {
+  if (idObj == null || idObj.isNull) return null;
+  final comps = idObj.getField('components')?.toListValue();
+  if (comps != null && comps.length > 1) {
+    final ids = [for (final c in comps) _nodeIdentity(c)];
+    return ids.contains(null) ? null : ids.cast<String>();
+  }
+  final self = _nodeIdentity(idObj);
+  return self == null ? null : [self];
 }
 
 // ---- link surface helpers (sibling-class naming, field names) ----------
@@ -195,6 +226,16 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
         }
         idDartType = _codecArg(ct);
         idStr = idDartType?.getDisplayString();
+        // A composite id-node's `codec` is a getter (not const-evaluable), so it
+        // erases to Object?. Rebuild its record type from the component codecs.
+        final compVals = idObj.getField('components')?.toListValue();
+        if (compVals != null && compVals.length > 1) {
+          final ts = [
+            for (final c in compVals)
+              _codecArg(c.getField('codec')?.type)?.getDisplayString() ?? 'Object?'
+          ];
+          idStr = '(${ts.join(', ')})';
+        }
       }
       if (idStr != null && idDartType != null && !_hasValueEquality(idDartType)) {
         log.warning(
@@ -203,7 +244,8 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
             'screen they apply to identical instances only; override == and hashCode '
             'for value semantics');
       }
-      rows.add(_Row(field.name!, idStr, e.name!, owner: owner));
+      rows.add(_Row(field.name!, idStr, e.name!,
+          owner: owner, idNodes: _idNodes(idObj)));
       }
     }
     // A screen name is ONE screen across the virtual tree. It may be declared
@@ -242,8 +284,11 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       }
       // The owner carries the surviving row, but adopt a ref-declared id type if
       // the owner left it off (any disagreement already rejected above).
+      final nodes =
+          e.value.map((r) => r.idNodes).whereType<List<String>>().toList();
       collapsed.add(_Row(e.key, idTypes.isEmpty ? null : idTypes.first,
-          owners.single.spec));
+          owners.single.spec,
+          idNodes: nodes.isEmpty ? null : nodes.first));
     }
     rows
       ..clear()
@@ -412,13 +457,36 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       }
     }
 
+    // A single-source inherit from a COMPOSITE source PROJECTS one component — the
+    // one whose `@ids` node matches this screen's node (by node identity, so two
+    // same-typed components stay distinct). Record the index; a projection is NOT
+    // flattened past its composite source (its id is one part of that record).
+    final nodesOf = {for (final r in rows) r.name: r.idNodes};    for (final ps in placements.values) {
+      for (final n in ps) {
+        final src = n.inheritSource;
+        if (src == null) continue;
+        final srcNodes = nodesOf[src.screen];
+        final childNodes = nodesOf[n.screen];        if (srcNodes != null &&
+            srcNodes.length > 1 &&
+            childNodes != null &&
+            childNodes.length == 1) {
+          final i = srcNodes.indexOf(childNodes.first);
+          if (i >= 0) n.inheritComponent = i;
+        }
+      }
+    }
+
     // Flatten every inherit link to its ULTIMATE source, order-independently: a
     // chain editItem→itemPreview→item resolves editItem's source to item (the id
-    // screen), so the shared id is detected no matter the declaration order.
+    // screen), so the shared id is detected no matter the declaration order. A
+    // projection stops at its composite source (and isn't flattened through).
     for (final ps in placements.values) {
       for (final n in ps) {
+        if (n.inheritComponent != null) continue;
         var s = n.inheritSource;
-        while (s != null && s.inheritSource != null) {
+        while (s != null &&
+            s.inheritSource != null &&
+            s.inheritComponent == null) {
           s = s.inheritSource;
         }
         n.inheritSource = s;
@@ -450,11 +518,25 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
               element: element);
         }
         if (childT != srcT) {
-          throw InvalidGenerationSourceError(
-              '"${n.screen}.inherit(${src.screen})": id type mismatch — '
-              '${n.screen} is $childT but ${src.screen} is $srcT. An inheriting '
-              'placement must declare the same id type as its source.',
-              element: element);
+          if (n.inheritComponent != null) {
+            // A projection: the child's id is ONE component of the composite
+            // source — that component's type must match the child's.
+            final comps = _idComponents(srcT);
+            final ci = n.inheritComponent!;
+            if (ci >= comps.length || comps[ci] != childT) {
+              throw InvalidGenerationSourceError(
+                  '"${n.screen}.inherit(${src.screen})": projects component $ci '
+                  '(${ci < comps.length ? comps[ci] : 'out of range'}) of '
+                  '${src.screen}\'s id $srcT, but ${n.screen} is $childT.',
+                  element: element);
+            }
+          } else {
+            throw InvalidGenerationSourceError(
+                '"${n.screen}.inherit(${src.screen})": id type mismatch — '
+                '${n.screen} is $childT but ${src.screen} is $srcT. An inheriting '
+                'placement must declare the same id type as its source.',
+                element: element);
+          }
         }
       }
     }
@@ -716,12 +798,21 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       final srcs = {for (final n in ns) n.inheritSource!.screen};
       return srcs.length == 1 ? srcs.single : null;
     }
+    // Uniform projected-component across X's placements (null = whole id).
+    int? inheritComponentUniform(String screen) {
+      final comps = {for (final n in placements[screen]!) n.inheritComponent};
+      return comps.length == 1 ? comps.single : null;
+    }
+    // Read a source's live id, projecting one record component for a projection.
+    String idRead(String src, int? comp) => comp == null
+        ? '_idOf(${sv(src)})'
+        : '(_idOf(${sv(src)}) as ${idOf[src]}).\$${comp + 1}';
     String parentPush(String x) {
       final src = inheritSrcUniform(x);
       final idT = idOf[x];
       final params = (src != null || idT == null) ? '' : '$idT id';
       final arg = src != null
-          ? '_idOf(${sv(src)})'
+          ? idRead(src, inheritComponentUniform(x))
           : (idT == null ? 'null' : 'id');
       // Single target → its lone nav const; multi target → resolve the just-pushed
       // placement off the live chain (`graph.go` updates it synchronously).

@@ -38,6 +38,11 @@ class PlacementNode {
   /// when this placement does not inherit.
   List<PlacementNode> inheritSources = const [];
 
+  /// Set when this single-source inherit PROJECTS one component out of a
+  /// COMPOSITE source's id — the index of the component whose `@ids` node matches
+  /// this screen's node. The inherited id read becomes `(_idOf(src) as R).$N`.
+  int? inheritComponent;
+
   /// True when this node is a `.links(...)` branch — a link-grammar root, NOT a
   /// nav placement. Collected into [TreeModel.links]; nav emission never sees it.
   bool isLink = false;
