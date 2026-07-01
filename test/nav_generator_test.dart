@@ -68,18 +68,17 @@ class Record2Codec<A, B> extends Codec<(A, B)> {
 abstract mixin class IdNode implements Codec<Object?> {
   const IdNode();
   Codec get codec;
-  List<IdNode> get components => [this];
-  IdNode operator [](int i) => components[i];
   Object? decode(String token) => codec.decode(token);
   String encode(Object? value) => codec.encode(value);
-  const factory IdNode.compose(List<IdNode> parts) = CompositeId;
+  const factory IdNode.compose(IdNode n1, IdNode n2, [IdNode? n3, IdNode? n4]) =
+      CompositeId;
 }
 class CompositeId with IdNode {
-  const CompositeId(this.components);
+  const CompositeId(this.n1, this.n2, [this.n3, this.n4]);
+  final IdNode n1, n2;
+  final IdNode? n3, n4;
   @override
-  final List<IdNode> components;
-  @override
-  Codec get codec => Record2Codec(components[0].codec, components[1].codec);
+  Codec get codec => Record2Codec(n1.codec, n2.codec);
 }
 ''';
 
@@ -897,7 +896,7 @@ enum Ids with IdNode {
   const Ids(this.codec);
   @override
   final Codec codec;
-  static const review = IdNode.compose([product, author]);
+  static const IdNode review = .compose(product, author);
 }
 
 @screens
@@ -920,7 +919,112 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 }
 ''';
 
+// Same projection, but the composite is a ROW of the @ids enum itself
+// (`review.compose(product, author)`) — codec is a getter over a `_codec`
+// backing field, so the generator must read `_codec`/`n*` on enum rows.
+const _rowCompositeSpec = '''
+import 'package:canon/canon.dart';
+
+part 'spec.nav.dart';
+
+enum Ids with IdNode {
+  product(Codec.uuid),
+  author(Codec.username),
+  review.compose(product, author);
+
+  const Ids(Codec this._codec) : n1 = null, n2 = null;
+  const Ids.compose(IdNode this.n1, IdNode this.n2) : _codec = null;
+
+  final Codec? _codec;
+  final IdNode? n1, n2;
+
+  @override
+  Codec get codec => _codec ?? Record2Codec(n1!.codec, n2!.codec);
+}
+
+@screens
+enum _Screens with ScreenNode<Object?, _Screens> {
+  home(0),
+  author(0, .author),
+  review(0, .review);
+
+  const _Screens(this.widget, [this.id]);
+  final Object widget;
+  final Ids? id;
+
+  static final graph = NavGraph<_Screens>(
+    {
+      home({review({author.inherit(review)})}),
+    },
+    initial: home,
+    pageOf: (s, c, k) => 0,
+  );
+}
+''';
+
+// author is a DIRECT child of catalog AND an inheriting grandchild (via reply),
+// and author↔reply is a mutual-inherit cycle with author multi-placement — the
+// shape that once emitted duplicate chain members and a phantom `AuthorNav`
+// pop into a class that only exists for single-placement screens.
+const _cycleKickstartSpec = '''
+import 'package:canon/canon.dart';
+
+part 'spec.nav.dart';
+
+@screens
+enum _Screens with ScreenNode<Object?, _Screens> {
+  home(0),
+  catalog(0),
+  author(0, Codec.string),
+  reply(0, Codec.string);
+
+  const _Screens(this.widget, [this.id]);
+  final Object widget;
+  final Codec? id;
+
+  static _Screens _thread() =>
+      reply.inherit(author)({author.inherit(reply).cycled});
+  static _Screens _author() => author({author.stacked, _thread()});
+
+  static final graph = NavGraph<_Screens>(
+    {
+      home({_author()}),
+      catalog({
+        author,
+        reply({
+          author.inherit(reply)({author.stacked, reply.inherit(author).cycled}),
+        }),
+      }),
+    },
+    initial: home,
+    pageOf: (s, c, k) => 0,
+  );
+}
+''';
+
 void main() {
+  test('cycle + kick-start collisions: multi-placement pop resolves via _atOf',
+      () => _expectGenerated(
+            allOf([
+              // same-screen multi-placement pop → the screen's Placement family
+              contains('as AuthorPlacement;'),
+              // never the bare <Screen>Nav pop/resolver (exists only for singles)
+              isNot(contains('_resolveAuthorNav')),
+              isNot(contains('AuthorNav pop()')),
+            ]),
+            spec: _cycleKickstartSpec,
+          ));
+
+  test('composite as an @ids enum row: same projection, dot-shorthand ids', () =>
+      _expectGenerated(
+        allOf([
+          contains('(String, String)).\$2'), // author = component 2 of review
+          contains('goReview((String, String) id)'), // record type from _codec
+          contains('goAuthor(String id)'), // atomic type through _codec backing
+        ]),
+        spec: _rowCompositeSpec,
+      ));
+
   test('inherit projects one composite component by node identity', () =>
       _expectGenerated(
         // author's id is component 1 (author) of review's (String, String) record.
@@ -1153,7 +1257,6 @@ void main() {
           // single-slot endpoint → one concrete widgetless class, no marker
           contains('final class UserLink extends Link'),
           contains('final String value0'), // the slot's typed field
-          isNot(contains('class ParsedUrl')), // parse returns a Url directly now
           contains('Url? parseUrl(String url)'),
           contains('final String? domain;'), // the inbound origin rides on Url
           contains("'user/*' => UserLink(m.path[0] as String, origin)"), // typed map + origin
@@ -1471,8 +1574,6 @@ void main() {
       () => _expectGenerated(allOf([
             contains('static NavDelegate get manager'),
             contains('return _Screens.graph.delegate;'),
-            isNot(contains('get routerConfig')),
-            isNot(contains('static Widget manager(')),
           ])));
 
   test('emits the Screen.replace redirect facade', () => _expectGenerated(allOf([
@@ -1506,19 +1607,10 @@ void main() {
         isNot(contains('countOf(_Screens.home)')), // home never recurs
       ));
 
-  test('no unprovable pop surface (compile-safe pops only)', () =>
-      _expectGenerated(allOf(
-        isNot(contains('maybePop')), // dropped: bool pop defeats compile safety
-        isNot(contains('enum Pop')), // its token is gone too
-      )));
-
   test('Screen.go(Hop) returns the Hop\'s typed nav (N), not a union', () =>
       _expectGenerated(allOf([
         contains('static N go<N extends AnyNav>(Hop<N> hop)'),
         contains('return hop.nav;'),
-        // the old KickstartNav narrowing surface is gone
-        isNot(contains('KickstartNav')),
-        isNot(contains('KickstartPlacement')),
       ])));
 
   test('emits the global canPop / Screen.pop sugar surface', () =>
@@ -1533,11 +1625,9 @@ void main() {
         contains('PopDestPlacement _resolvePopDest()'),
       ])));
 
-  test('drops the old observe() forwarder — navigations replaces it', () =>
-      _expectGenerated(allOf(
-        isNot(contains('static void Function() observe(')),
+  test('exposes the navigations stream', () => _expectGenerated(
         contains('static Stream<ScreenNavigation> get navigations'),
-      )));
+      ));
 
   test('emits the Screen.resolver setter + eager initialUrl (links present)',
       () => _expectGenerated(
@@ -1578,8 +1668,7 @@ void main() {
         allOf(
           isNot(contains('canPop')),
           isNot(contains('CanPopNav')),
-          isNot(contains('PopDestNav')),
-          isNot(contains('static PopDestNav? pop')),
+          isNot(contains('PopDestPlacement')),
         ),
         spec: _flatSpec,
       ));

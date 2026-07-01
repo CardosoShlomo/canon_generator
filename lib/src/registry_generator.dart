@@ -153,10 +153,15 @@ class RegistryGenerator extends GeneratorForAnnotation<Stores> {
   }
 
   /// The value type the row's `key` id-node decodes to: the `T` of the `Codec<T>`
-  /// its `codec` field implements. Null when the key is a plain value (no codec),
-  /// which simply skips the cross-tree check.
+  /// its `codec` (or `_codec` backing, when the @ids enum hosts composite rows)
+  /// field implements. Null when the key is a plain value (no codec), which
+  /// simply skips the cross-tree check.
   String? _idValueType(DartObject? row) {
-    final codecType = row?.getField('key')?.getField('codec')?.type;
+    final key = row?.getField('key');
+    var codecObj = key?.getField('codec');
+    if (codecObj == null || codecObj.isNull) codecObj = key?.getField('_codec');
+    final codecType =
+        (codecObj != null && !codecObj.isNull) ? codecObj.type : null;
     if (codecType is! InterfaceType) return null;
     for (final s in [codecType, ...codecType.allSupertypes]) {
       if (s.element.name == 'Codec' && s.typeArguments.length == 1) {

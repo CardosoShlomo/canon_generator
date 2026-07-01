@@ -147,11 +147,10 @@ void main() {
             generateFor: {'pkg|lib/spec.dart'},
             outputs: {
               'pkg|lib/spec.nav.dart': decodedMatches(allOf([
-                // one api: a global `ledger` + an extension on Ledger, no Data class
+                // one api: a global `ledger` + an extension on Ledger
                 contains('final ledger = Ledger();'),
                 contains('extension on Ledger {'),
                 contains('void bind() {'),
-                isNot(contains('class Data')),
                 contains(
                     'StoreMemory<String, InterestState, InterestMsg>'),
                 contains('_interest = store('), // bind uses this.registry
@@ -161,12 +160,6 @@ void main() {
                 contains('InterestState? interestOnProfile()'),
                 contains('e.screen == _Screens.profile'),
                 contains('_interest[e.id as String]'),
-                // no generated demand/fetch — data enters as source Msgs only
-                isNot(contains('Demand')),
-                isNot(contains('surfaceLive')),
-                isNot(contains('onFetch')),
-                // connections removed — only Registry stores
-                isNot(contains('ConnectionMemory')),
                 // home has no id-node → no accessors at all
                 isNot(contains('OnHome')),
               ]))

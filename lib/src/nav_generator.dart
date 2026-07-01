@@ -96,14 +96,39 @@ String? _nodeIdentity(DartObject? o) {
   return (t != null && i != null) ? '$t#$i' : null;
 }
 
-// The `@ids` component nodes an id value is made of: a `CompositeId` exposes a
-// `components` FIELD (atomic nodes carry it only as a getter, so it reads null) —
-// so a non-null list of length > 1 means composite. Null when the id isn't
+// An id-node's inner codec VALUE. `codec` when it's a plain field; `_codec`
+// when the @ids enum hosts composite rows (there `codec` is a getter over a
+// nullable `_codec` backing field, null on the composite rows themselves).
+DartObject? _nodeCodec(DartObject? o) {
+  final direct = o?.getField('codec');
+  if (direct != null && !direct.isNull) return direct;
+  final backing = o?.getField('_codec');
+  return (backing != null && !backing.isNull) ? backing : null;
+}
+
+// A composite id-node's component node values, in order — read from its
+// `n1`…`n16` fields (a const constructor can't build a list, so the parts are
+// individual fields; the trailing ones are null). Both composite forms carry
+// them: a `CompositeId` and a `.compose(...)` row of the @ids enum itself.
+// Null when the value isn't a composite.
+List<DartObject>? _compositeParts(DartObject? o) {
+  if (o == null || o.isNull) return null;
+  final n1 = o.getField('n1');
+  if (n1 == null || n1.isNull) return null;
+  return [
+    n1,
+    for (var i = 2; i <= 16; i++)
+      if (o.getField('n$i') case final n? when !n.isNull) n,
+  ];
+}
+
+// The `@ids` component nodes an id value is made of: a `CompositeId` carries its
+// parts as `n*` fields (atomic nodes have none). Null when the id isn't
 // node-based (a plain codec / record).
 List<String>? _idNodes(DartObject? idObj) {
   if (idObj == null || idObj.isNull) return null;
-  final comps = idObj.getField('components')?.toListValue();
-  if (comps != null && comps.length > 1) {
+  final comps = _compositeParts(idObj);
+  if (comps != null) {
     final ids = [for (final c in comps) _nodeIdentity(c)];
     return ids.contains(null) ? null : ids.cast<String>();
   }
@@ -211,12 +236,11 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       DartType? idDartType;
       if (idObj != null && !idObj.isNull) {
         // A screen may bind a Codec directly OR an @ids node that carries one in
-        // its `codec` field — the SAME node a registry keys by. Unwrap the node
-        // to recover the specific value type (the node erases to Codec<Object?>).
-        final codecObj = idObj.getField('codec');
-        final ct = (codecObj != null && !codecObj.isNull)
-            ? codecObj.type
-            : idObj.type;
+        // its `codec`/`_codec` field — the SAME node a registry keys by. Unwrap
+        // the node to recover the specific value type (the node erases to
+        // Codec<Object?>).
+        final codecObj = _nodeCodec(idObj);
+        final ct = codecObj != null ? codecObj.type : idObj.type;
         if (ct is InterfaceType && ct.element.name == 'ListCodec') {
           throw InvalidGenerationSourceError(
               'screen "${field.name}" uses Codec.list as its id — it carries '
@@ -228,11 +252,11 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
         idStr = idDartType?.getDisplayString();
         // A composite id-node's `codec` is a getter (not const-evaluable), so it
         // erases to Object?. Rebuild its record type from the component codecs.
-        final compVals = idObj.getField('components')?.toListValue();
-        if (compVals != null && compVals.length > 1) {
+        final compVals = _compositeParts(idObj);
+        if (compVals != null) {
           final ts = [
             for (final c in compVals)
-              _codecArg(c.getField('codec')?.type)?.getDisplayString() ?? 'Object?'
+              _codecArg(_nodeCodec(c)?.type)?.getDisplayString() ?? 'Object?'
           ];
           idStr = '(${ts.join(', ')})';
         }
@@ -635,6 +659,10 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     // screen's own union is reused when the predecessors are just its placements.
     final unions = <String, ({String marker, List<PlacementNode> members})>{};
     final popReturnOf = <String, String>{}; // cyclic placement -> pop() sealed return marker
+    // Cyclic placements whose pop-union is a multi-placement SCREEN's own
+    // `…Placement` family — resolved off the live chain (`_atOf`), since no
+    // bare `<Screen>Nav` class exists for a multi-placement screen.
+    final popViaAtOf = <String, String>{}; // placement nav -> the screen to _atOf
     final crossImpl = <String, Set<String>>{}; // nav -> pop-placement markers it implements
     String stemOf(PlacementNode m) {
       final pn = placementName(m);
@@ -643,7 +671,11 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     String? unionFor(List<PlacementNode> ms) {
       if (ms.isEmpty) return null;
       if (ms.length == 1) return placementName(ms.single);
-      if (ms.map((m) => m.screen).toSet().length == 1) return unionName(ms.first.screen);
+      if (ms.map((m) => m.screen).toSet().length == 1) {
+        final sc = ms.first.screen;
+        if (isSingle(sc)) return unionName(sc);
+        return '${_cap(sc)}Placement';
+      }
       final base = (ms.map(stemOf).toList()..sort()).join();
       return unions
           .putIfAbsent(base, () {
@@ -658,7 +690,13 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     for (final r in rows) {
       for (final n in placements[r.name]!) {
         final preds = predecessorsOf(n);
-        if (preds.length > 1) popReturnOf[placementName(n)] = unionFor(preds)!;
+        if (preds.length > 1) {
+          popReturnOf[placementName(n)] = unionFor(preds)!;
+          final scs = preds.map((m) => m.screen).toSet();
+          if (scs.length == 1 && !isSingle(scs.single)) {
+            popViaAtOf[placementName(n)] = scs.single;
+          }
+        }
       }
     }
 
@@ -1025,10 +1063,14 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       final popUnion = popReturnOf[className];
       if (popUnion != null) {
         // Cycle: pop() lands on one of several predecessors — resolve the actual
-        // one off the post-pop chain and return its sealed placement.
+        // one off the post-pop chain and return its sealed placement. Same-screen
+        // predecessors resolve through the screen's own `…Placement` (`_atOf`).
+        final atScreen = popViaAtOf[className];
         b.writeln('  $popUnion pop() {');
         b.writeln('    $spec.graph.pop();');
-        b.writeln('    return _resolve$popUnion();');
+        b.writeln(atScreen != null
+            ? '    return _atOf(${sv(atScreen)}) as $popUnion;'
+            : '    return _resolve$popUnion();');
         b.writeln('  }');
       } else if (parentScreen != null) {
         // Single ancestor → its lone nav; multi-placement ancestor → resolve it
@@ -1141,6 +1183,10 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       b.writeln('  static const ${r.name} = Screen<${r.idType ?? 'Never'}>._(${sv(r.name)});');
     }
     b.writeln('  static Screen<Object?> _forSpec(Enum spec) => _bySpec[spec]!;');
+    b.writeln('  /// The [Screen] constant for a grammar row — `pageOf`\'s bridge from');
+    b.writeln('  /// `PageCtx.screen` to the typed surface (per-screen meta extensions');
+    b.writeln('  /// switch on the constants).');
+    b.writeln('  static Screen<Object?> from(Enum spec) => _bySpec[spec]!;');
     if (viewScreens.isNotEmpty) {
       b.writeln('  /// The current foreground as a read-only view, reactively — switch');
       b.writeln('  /// it to render per screen. Null when the current screen has no');
@@ -1595,10 +1641,17 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       // inherits `item`) is offered directly here, skipping the redundant
       // parent — `on(.home.editItem(id))` == `on(.home.item(id).editItem)`. The
       // one id pins the source segment (the inheriting segment is a wildcard).
+      // Skipped when this step already offers the screen as a DIRECT child (the
+      // getter owns the name; the chained form stays available), and deduped
+      // when two children host same-screen grandchildren.
+      final shortcut = <String>{};
       for (final c in fwd(ms)) {
         if (idOf[c.screen] == null) continue;
         for (final gc in c.children) {
           if (gc.inheritSource?.screen != c.screen || fwd([gc]).isNotEmpty) {
+            continue;
+          }
+          if (groups.containsKey(gc.screen) || !shortcut.add(gc.screen)) {
             continue;
           }
           final gcNav = placementName(gc);
@@ -2317,6 +2370,11 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
           chainBuf.writeln('  @override');
           chainBuf.writeln('  $navT get nav => const $navT._();');
         }
+        // Kick-start shortcuts are skipped when the screen is already a DIRECT
+        // kid here (the accessor owns the name; the chained form remains), and
+        // deduped when two kids host same-screen grandchildren.
+        final kidNames = {for (final c in kids) c.screen};
+        final wlShortcut = <String>{};
         for (final c in kids) {
           chainBuf.writeln(wlAccessor(c, static: false));
           // Inherit kick-start shortcut: an inheriting grandchild (`editItem`
@@ -2328,6 +2386,9 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
               if (gc.isLink ||
                   gc.again != null ||
                   gc.inheritSource?.screen != c.screen) continue;
+              if (kidNames.contains(gc.screen) || !wlShortcut.add(gc.screen)) {
+                continue;
+              }
               final gn = wlName(gc);
               chainBuf.writeln('  $gn ${gc.screen}(${idOf[c.screen]} id) => '
                   '$gn._([..._s, ${sv(c.screen)}, ${sv(gc.screen)}], '

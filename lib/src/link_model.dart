@@ -179,7 +179,7 @@ List<Endpoint> linkEndpoints(List<PlacementNode> branches, EnumElement element,
 
 String _lcFirst(String s) => s.isEmpty ? s : s[0].toLowerCase() + s.substring(1);
 
-/// The `(#name)` field-name override riding a codec (`.uuid(#adId)`), if any.
+/// The `(#name)` field-name override riding a codec (`.uuid(#productId)`), if any.
 String? _symbolArg(ArgumentList args) {
   for (final a in args.arguments) {
     if (a is SymbolLiteral) return a.components.map((t) => t.lexeme).join('.');
