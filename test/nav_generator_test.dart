@@ -925,11 +925,7 @@ void main() {
         // user's id is component 1 (userId) of adChat's (String, String) record.
         contains('(String, String)).\$2'),
         spec: _projectionSpec,
-      ),
-      // Node-matching DETECTS the projection (no id-type-mismatch error) and sets
-      // the component index; emitting the `.$N` projection across every goUser
-      // verb-path (no-arg / covered / pop) is the remaining piece.
-      skip: 'projection emission across verb-paths WIP');
+      ));
 
   test('screen bound to an @ids node uses the node codec specific id type',
       () => _expectGenerated(

@@ -884,10 +884,15 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
             '  }';
       }
       // Inherited edge (chained only): id IS the ancestor's, read live from the
-      // chain — no parameter to pass, none to get wrong.
+      // chain — no parameter to pass, none to get wrong. A PROJECTION reads one
+      // record component of a composite source instead of the whole id.
       if (inheritSrc != null && path != null) {
+        final ci = node?.inheritComponent;
+        final read = ci == null
+            ? '_idOf(${sv(inheritSrc)})'
+            : '(_idOf(${sv(inheritSrc)}) as ${idOf[inheritSrc]}).\$${ci + 1}';
         return '  $returns go${_cap(child)}() {\n'
-            '    $popSelf$spec.graph.go(${sv(child)}, _idOf(${sv(inheritSrc)}), true);\n'
+            '    $popSelf$spec.graph.go(${sv(child)}, $read, true);\n'
             '    return const $returns._();\n'
             '  }';
       }
@@ -945,7 +950,11 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
           var ok = true;
           for (var i = aIdx + 1; i < nodes.length; i++) {
             final n = nodes[i];
-            final arg = covered(n) ? 'id' : (idOf[n.screen] == null ? 'null' : null);
+            // A projected node reads one component of the composite `id` param.
+            final covArg =
+                n.inheritComponent == null ? 'id' : 'id.\$${n.inheritComponent! + 1}';
+            final arg =
+                covered(n) ? covArg : (idOf[n.screen] == null ? 'null' : null);
             if (arg == null) {
               ok = false;
               break;
