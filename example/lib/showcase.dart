@@ -1,8 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:canon/canon.dart';
-import 'package:ledger/ledger.dart';
+import 'package:canon/canon.dart'; // the facade — nav, state (ledger), and identity
 
 part 'showcase.nav.dart';
 
@@ -65,67 +64,44 @@ class ProductLoaded extends ProductMsg {
   final int price;
 }
 
-class Products extends Store<Product, ProductMsg> {
+class Products extends Store<String, Product, ProductMsg> {
   const Products();
   @override
-  IdentifiableMap<Product, String> reduce(
-          IdentifiableMap<Product, String> entities, ProductMsg msg) =>
+  IdentifiableMap<String, Product> reduce(
+          IdentifiableMap<String, Product> entities, ProductMsg msg) =>
       switch (msg) {
         ProductLoaded(:final id, :final name, :final price) =>
           entities.upsert(Product(id, name, price)),
       };
 }
 
-class Review with Identifiable<String> {
-  Review(this.id, this.at, this.text);
-  @override
-  final String id;
-  final int at;
-  final String text;
-}
+// ── The STORE grammar (@stores) ───────────────────────────────────────
+// Each row holds a const store + the @ids node it is keyed by. The generator
+// hangs typed reads on `ledger`; because the `product` screen binds the SAME
+// node, those reads inject by nav location (`productsOnProduct()`).
+@stores
+enum _Stores with StoreNode<_Stores, Ids> {
+  products(Products(), Ids.product);
 
-class ReviewMsg extends Msg {
-  ReviewMsg(this.product, this.review);
-  final String product; // the connection key
-  final Review review;
-}
-
-class ReviewsConnection
-    extends ConnectionRegistry<String, Review, String, int, ReviewMsg> {
-  const ReviewsConnection();
-  @override
-  String keyOf(ReviewMsg msg) => msg.product;
-  @override
-  int sortKeyOf(Review entity) => entity.at;
-  @override
-  void apply(Connection<Review, String, int> connection, ReviewMsg msg) =>
-      connection.receive(msg.review);
-}
-
-// ── The STORE grammar (@registries) ───────────────────────────────────────
-// Each row holds a const store/connection + the @ids node it is keyed by. The
-// generator hangs typed reads on `ledger`; because `product` screens bind the
-// SAME nodes, it also wires nav-keyed reads + Door 2 demand triggers.
-@registries
-enum _Registries with RegistryNode<_Registries, Ids> {
-  products(Products(), Ids.product),
-  reviews(ReviewsConnection(), Ids.product);
-
-  const _Registries(this.registry, this.key);
-  final Object registry;
+  const _Stores(this.store, this.key);
+  final Object store;
   @override
   final Ids key;
 }
 
 // The app's data SOURCE — faked for this runnable demo (the engine ships none;
-// the app owns transport). Navigating emits a `…SurfaceMsg` demand when a key
-// needs refreshing; each handler answers with canned data, dispatched back as a
-// normal Msg so the reactive reads light up. A real app pipes a socket here.
+// the app owns transport). On each nav commit it loads the live product by
+// dispatching a SOURCE message (implements the sealed reduce family), which the
+// store reduces in. A real app pipes a socket through the same dispatch.
 void demoBackend() {
-  ledger.on<ProductSurfaceMsg>((m, _) => scheduleMicrotask(
-      () => ledger.dispatch(ProductLoaded(m.key, 'Product ${m.key}', 1999))));
-  ledger.on<ReviewSurfaceMsg>((m, _) => scheduleMicrotask(() =>
-      ledger.dispatch(ReviewMsg(m.key, Review('${m.key}-r1', 5, 'Great find.')))));
+  _Screens.graph.navigations.listen((_) {
+    for (final e in _Screens.graph.stack) {
+      if (e.screen == _Screens.product) {
+        final id = e.id as String;
+        ledger.dispatch(ProductLoaded(id, 'Product $id', 1999));
+      }
+    }
+  });
 }
 
 // A grafted subsystem: the whole checkout flow lives in its own enum and is
@@ -309,37 +285,39 @@ class _S extends StatelessWidget {
 }
 
 // A REAL consuming screen — the payoff of sharing one @ids node across the
-// screens and registries trees. It takes NO id: `ledger.reviewsOnProduct()`
-// resolves the live `product` frame's id (that same node) and streams its
-// connection, and landing here fires the Door 2 demand so the data loads itself.
-// (`productsOnProduct` is a snapshot read; the StreamBuilder re-reads it as the
-// reviews arrive — `ledger.consume` is the value-stream when you want one.)
-class _Product extends StatelessWidget {
+// screens and stores trees. It takes NO id: `ledger.productsOnProduct()` reads
+// the store at the live `product` frame's id (that same node). It rebuilds on
+// any `ProductMsg` so the value appears once the demo backend loads it.
+class _Product extends StatefulWidget {
   const _Product();
+  @override
+  State<_Product> createState() => _ProductState();
+}
+
+class _ProductState extends State<_Product> {
+  late final StreamSubscription<Envelope> _sub =
+      ledger.on<ProductMsg>((_, __) {
+    if (mounted) setState(() {});
+  });
+
+  @override
+  void dispose() {
+    _sub.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<ConnectionView<Review, int>>(
-      stream: ledger.reviewsOnProduct(),
-      builder: (context, snap) {
-        final product = ledger.productsOnProduct();
-        final reviews = snap.data?.window ?? const <Review>[];
-        const style = TextStyle(color: Colors.white70, fontSize: 16);
-        return _S(
-          product?.name ?? 'Product',
-          const Color(0xFFE53935),
-          extra: [
-            Text('\$${((product?.price ?? 0) / 100).toStringAsFixed(2)}',
-                style: style),
-            const SizedBox(height: 8),
-            if (reviews.isEmpty)
-              const Text('loading reviews…', style: style)
-            else
-              for (final r in reviews)
-                Text('★ ${r.text}', style: style),
-          ],
-        );
-      },
+    final product = ledger.productsOnProduct();
+    const style = TextStyle(color: Colors.white70, fontSize: 16);
+    return _S(
+      product?.name ?? 'Product',
+      const Color(0xFFE53935),
+      extra: [
+        Text(product == null
+            ? 'loading…'
+            : '\$${(product.price / 100).toStringAsFixed(2)}', style: style),
+      ],
     );
   }
 }

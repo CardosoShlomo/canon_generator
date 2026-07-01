@@ -4,25 +4,24 @@ import 'package:canon_generator/canon_generator.dart';
 import 'package:source_gen/source_gen.dart';
 import 'package:test/test.dart';
 
-// Flutter-free stub of canon's @registries annotation + the data-engine descriptor
-// types the generator recognises structurally (it never imports them).
-const _registriesAnnotation = '''
-class Registries { const Registries(); }
-const registries = Registries();
-mixin RegistryNode<Self extends RegistryNode<Self, Ids>, Ids> on Enum {
+// ledger owns the @stores grammar + the Store base the generator recognises.
+const _ledgerStub = '''
+class Stores { const Stores(); }
+const stores = Stores();
+mixin StoreNode<Self extends StoreNode<Self, Ids>, Ids> on Enum {
   Ids get key;
 }
+abstract class Store<K, E, M> { const Store(); }
 ''';
 
+// canon is the facade — re-exports ledger + identifiable, so the spec imports only
+// `package:canon/canon.dart` and gets the nav grammar, `@stores`, and the engines.
 const _canonStub = '''
-export 'src/registries_annotation.dart';
-
-abstract class Registry<K, E, M> { const Registry(); }
-abstract class ConnectionRegistry<K, T, I, SK, M> { const ConnectionRegistry(); }
+export 'package:ledger/ledger.dart';
+export 'package:identifiable/identifiable.dart';
 
 abstract class Codec<T> { const Codec(); }
 class StringCodec extends Codec<String> { const StringCodec(); }
-class PairCodec extends Codec<(String, String)> { const PairCodec(); }
 
 class Screens { const Screens(); }
 const screens = Screens();
@@ -42,29 +41,21 @@ import 'package:canon/canon.dart';
 part 'spec.nav.dart';
 
 enum Ids {
-  user(StringCodec()),
-  adChat(PairCodec());
+  user(StringCodec());
   const Ids(this.codec);
   final Codec codec;
 }
 
 class InterestState {}
-class InterestMsg {}
-class Interest extends Registry<String, InterestState, InterestMsg> {
+sealed class InterestMsg {}
+class Interest extends Store<String, InterestState, InterestMsg> {
   const Interest();
-}
-
-class ChatThread {}
-class ChatMsg {}
-class AdChat extends ConnectionRegistry<(String, String), ChatThread, String, int, ChatMsg> {
-  const AdChat();
 }
 
 @screens
 enum _Screens with ScreenNode<_Screens> {
   home(null),
-  profile(Ids.user),
-  chat(Ids.adChat);
+  profile(Ids.user);
 
   const _Screens(this.id);
   final Ids? id;
@@ -72,13 +63,12 @@ enum _Screens with ScreenNode<_Screens> {
   static final graph = NavGraph<_Screens>();
 }
 
-@registries
-enum _Registries with RegistryNode<_Registries, Ids> {
-  interest(Interest(), Ids.user),
-  adChat(AdChat(), Ids.adChat);
+@stores
+enum _Stores with StoreNode<_Stores, Ids> {
+  interest(Interest(), Ids.user);
 
-  const _Registries(this.registry, this.key);
-  final Object registry;
+  const _Stores(this.store, this.key);
+  final Object store;
   @override
   final Ids key;
 }
@@ -98,17 +88,47 @@ enum Ids {
 }
 
 class InterestState {}
-class InterestMsg {}
-class Interest extends Registry<int, InterestState, InterestMsg> {
+sealed class InterestMsg {}
+class Interest extends Store<int, InterestState, InterestMsg> {
   const Interest();
 }
 
-@registries
-enum _Registries with RegistryNode<_Registries, Ids> {
+@stores
+enum _Stores with StoreNode<_Stores, Ids> {
   interest(Interest(), Ids.user);
 
-  const _Registries(this.registry, this.key);
-  final Object registry;
+  const _Stores(this.store, this.key);
+  final Object store;
+  @override
+  final Ids key;
+}
+''';
+
+// A registry whose message type is NOT sealed — the reduce can't be exhaustive,
+// so the generator must reject it at build time.
+const _unsealedMsgSpec = '''
+import 'package:canon/canon.dart';
+
+part 'spec.nav.dart';
+
+enum Ids {
+  user(StringCodec());
+  const Ids(this.codec);
+  final Codec codec;
+}
+
+class InterestState {}
+class InterestMsg {}
+class Interest extends Store<String, InterestState, InterestMsg> {
+  const Interest();
+}
+
+@stores
+enum _Stores with StoreNode<_Stores, Ids> {
+  interest(Interest(), Ids.user);
+
+  const _Stores(this.store, this.key);
+  final Object store;
   @override
   final Ids key;
 }
@@ -119,7 +139,7 @@ void main() {
       () => testBuilder(
             PartBuilder([RegistryGenerator()], '.nav.dart'),
             {
-              'canon|lib/src/registries_annotation.dart': _registriesAnnotation,
+              'ledger|lib/ledger.dart': _ledgerStub,
               'canon|lib/canon.dart': _canonStub,
               'pkg|lib/spec.dart': _spec,
             },
@@ -133,31 +153,20 @@ void main() {
                 contains('void bind() {'),
                 isNot(contains('class Data')),
                 contains(
-                    'RegistryMemory<String, InterestState, InterestMsg>'),
-                contains('_interest = registry('), // bind uses this.registry
+                    'StoreMemory<String, InterestState, InterestMsg>'),
+                contains('_interest = store('), // bind uses this.registry
                 contains(
                     'InterestState? interest(String key) => _interest[key];'),
-                contains('_adChat = connection('),
-                contains('Stream<ConnectionView<ChatThread, int>>'),
-                contains('_adChat.watch(key)'),
                 // derived screen↔store association: profile shares Ids.user
                 contains('InterestState? interestOnProfile()'),
                 contains('e.screen == _Screens.profile'),
                 contains('_interest[e.id as String]'),
-                // Door 2: needs-gated demand of a concrete SurfaceMsg + aggregator
-                contains('void surfaceInterestOnProfile()'),
-                contains('if (_interest.needs(k))'),
-                contains('dispatch(InterestStateSurfaceMsg(k))'),
-                contains('class InterestStateSurfaceMsg extends SurfaceMsg'),
-                contains('void surfaceLive()'),
-                contains('_Screens.graph.navigations.listen((_) => surfaceLive())'),
-                // connection association: chat shares Ids.adChat → watch + demand
-                contains('adChatOnChat()'),
-                contains('void surfaceAdChatOnChat()'),
-                contains('dispatch(ChatThreadSurfaceMsg(k))'),
-                contains('class ChatThreadSurfaceMsg extends SurfaceMsg'),
-                // no transport hook on the surface — stores never fetch
+                // no generated demand/fetch — data enters as source Msgs only
+                isNot(contains('Demand')),
+                isNot(contains('surfaceLive')),
                 isNot(contains('onFetch')),
+                // connections removed — only Registry stores
+                isNot(contains('ConnectionMemory')),
                 // home has no id-node → no accessors at all
                 isNot(contains('OnHome')),
               ]))
@@ -169,7 +178,7 @@ void main() {
     await testBuilder(
       navBuilder(BuilderOptions.empty),
       {
-        'canon|lib/src/registries_annotation.dart': _registriesAnnotation,
+        'ledger|lib/ledger.dart': _ledgerStub,
         'canon|lib/canon.dart': _canonStub,
         'pkg|lib/spec.dart': _mismatchSpec,
       },
@@ -179,5 +188,22 @@ void main() {
     );
     expect(logs.join('\n'),
         allOf(contains('id-node and the'), contains('must agree')));
+  });
+
+  test('rejects a registry whose message type is not sealed', () async {
+    final logs = <String>[];
+    await testBuilder(
+      navBuilder(BuilderOptions.empty),
+      {
+        'ledger|lib/ledger.dart': _ledgerStub,
+        'canon|lib/canon.dart': _canonStub,
+        'pkg|lib/spec.dart': _unsealedMsgSpec,
+      },
+      rootPackage: 'pkg',
+      generateFor: {'pkg|lib/spec.dart'},
+      onLog: (r) => logs.add('${r.message}'),
+    );
+    expect(logs.join('\n'),
+        allOf(contains('InterestMsg'), contains('sealed')));
   });
 }

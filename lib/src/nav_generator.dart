@@ -158,7 +158,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     // surface exists — the manager binds it (idempotently), so the app needs no
     // explicit Data.bind()/Ledger() wiring.
     final hasData = element.library.enums.any((e) => e.metadata.annotations.any(
-        (a) => a.computeConstantValue()?.type?.element?.name == 'Registries'));
+        (a) => a.computeConstantValue()?.type?.element?.name == 'Stores'));
 
     // Read the VIRTUAL tree first (follows grafts into sub-enums), then build
     // rows from every enum it spans — each tagged with its home enum (`spec`).
