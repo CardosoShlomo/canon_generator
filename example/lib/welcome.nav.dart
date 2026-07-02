@@ -29,6 +29,11 @@ final class Screen<I> {
   static const settings = Screen<Never>._(_Screens.settings);
   static Screen<Object?> _forSpec(Enum spec) => _bySpec[spec]!;
 
+  /// The [Screen] constant for a grammar row — `pageOf`'s bridge from
+  /// `PageCtx.screen` to the typed surface (per-screen meta extensions
+  /// switch on the constants).
+  static Screen<Object?> from(Enum spec) => _bySpec[spec]!;
+
   /// Reactive: is the screen THIS context is under the current foreground
   /// top? Rebuilds only when that flips. The self-vs-current gate —
   /// `if (Screen.isCurrentOf(context)) …` to act only while visible.
