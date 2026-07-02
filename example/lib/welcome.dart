@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:canon/canon.dart';
+import 'package:canon_flutter/canon_flutter.dart';
 
 part 'welcome.canon.dart';
 

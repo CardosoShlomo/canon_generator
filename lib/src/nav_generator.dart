@@ -1483,7 +1483,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln('  FloorKind? get kind => $spec.graph.rootKind;');
     b.writeln('  /// The current front screen\'s widget — `return Screen.root.front` from');
     b.writeln('  /// the `root` widget to keep showing it on a bare root.');
-    b.writeln('  Widget? get front => $spec.graph.frontWidget;');
+    b.writeln('  Widget? get front => $spec.graph.frontWidget as Widget?;');
     b.writeln('}');
     b.writeln('/// The `Screen.replace` redirect facade — every verb mirrors `Screen`');
     b.writeln('/// but commits as a history REPLACE (web `replaceState`).');

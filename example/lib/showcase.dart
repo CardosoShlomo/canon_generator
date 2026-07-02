@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:canon/canon.dart'; // the facade — nav, state (ledger), and identity
+import 'package:canon_flutter/canon_flutter.dart'; // the facade — nav, state (ledger), and identity
 
 part 'showcase.canon.dart';
 

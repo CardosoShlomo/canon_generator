@@ -146,10 +146,11 @@ final class Screen<I> {
   /// in-memory stack, drives browser back/forward + the URL channel on
   /// web, and system back on mobile. (The placement may change; the name
   /// stays — always pass it where a `RouterDelegate` goes.)
+  static NavDelegate? _manager;
   static NavDelegate get manager {
     assert(_fresh);
     ledger.bind();
-    return _Screens.graph.delegate;
+    return _manager ??= NavDelegate(_Screens.graph);
   }
 
   /// A restoration-serializable snapshot of the whole nav state
@@ -481,7 +482,7 @@ final class RootControls {
 
   /// The current front screen's widget — `return Screen.root.front` from
   /// the `root` widget to keep showing it on a bare root.
-  Widget? get front => _Screens.graph.frontWidget;
+  Widget? get front => _Screens.graph.frontWidget as Widget?;
 }
 
 /// The `Screen.replace` redirect facade — every verb mirrors `Screen`
