@@ -306,59 +306,61 @@ final class Screen<I> {
   static _SId _sId(BuildContext context) {
     final s = ScreenScope.of(context);
     return switch (s) {
-      _Screens.splash => SplashId(
+      _Screens.splash => SplashScreenId(
         ScreenScope.idOf<Object?>(context, _Screens.splash),
       ),
-      _Screens.signIn => SignInId(
+      _Screens.signIn => SignInScreenId(
         ScreenScope.idOf<Object?>(context, _Screens.signIn),
       ),
-      _Screens.otp => OtpId(ScreenScope.idOf<String>(context, _Screens.otp)),
-      _Screens.home => HomeId(
+      _Screens.otp => OtpScreenId(
+        ScreenScope.idOf<String>(context, _Screens.otp),
+      ),
+      _Screens.home => HomeScreenId(
         ScreenScope.idOf<Object?>(context, _Screens.home),
       ),
-      _Screens.search => SearchId(
+      _Screens.search => SearchScreenId(
         ScreenScope.idOf<Object?>(context, _Screens.search),
       ),
-      _Screens.scan => ScanId(
+      _Screens.scan => ScanScreenId(
         ScreenScope.idOf<Object?>(context, _Screens.scan),
       ),
-      _Screens.category => CategoryId(
+      _Screens.category => CategoryScreenId(
         ScreenScope.idOf<CategoryId>(context, _Screens.category),
       ),
-      _Screens.seller => SellerId(
+      _Screens.seller => SellerScreenId(
         ScreenScope.idOf<SellerId>(context, _Screens.seller),
       ),
-      _Screens.wishlist => WishlistId(
+      _Screens.wishlist => WishlistScreenId(
         ScreenScope.idOf<Object?>(context, _Screens.wishlist),
       ),
-      _Screens.account => AccountId(
+      _Screens.account => AccountScreenId(
         ScreenScope.idOf<Object?>(context, _Screens.account),
       ),
-      _Screens.orders => OrdersId(
+      _Screens.orders => OrdersScreenId(
         ScreenScope.idOf<Object?>(context, _Screens.orders),
       ),
-      _Screens.order => OrderId(
+      _Screens.order => OrderScreenId(
         ScreenScope.idOf<OrderId>(context, _Screens.order),
       ),
-      _Screens.settings => SettingsId(
+      _Screens.settings => SettingsScreenId(
         ScreenScope.idOf<Object?>(context, _Screens.settings),
       ),
-      _Screens.listing => ListingId(
+      _Screens.listing => ListingScreenId(
         ScreenScope.idOf<ListingId>(context, _Screens.listing),
       ),
-      _Screens.editListing => EditListingId(
+      _Screens.editListing => EditListingScreenId(
         ScreenScope.idOf<ListingId>(context, _Screens.editListing),
       ),
-      _Checkout.cart => CartId(
+      _Checkout.cart => CartScreenId(
         ScreenScope.idOf<Object?>(context, _Checkout.cart),
       ),
-      _Checkout.checkout => CheckoutId(
+      _Checkout.checkout => CheckoutScreenId(
         ScreenScope.idOf<Object?>(context, _Checkout.checkout),
       ),
-      _Checkout.payment => PaymentId(
+      _Checkout.payment => PaymentScreenId(
         ScreenScope.idOf<Object?>(context, _Checkout.payment),
       ),
-      _Checkout.confirmation => ConfirmationId(
+      _Checkout.confirmation => ConfirmationScreenId(
         ScreenScope.idOf<String>(context, _Checkout.confirmation),
       ),
       _ => throw StateError('_sId() under ${s.name}'),
@@ -1654,98 +1656,117 @@ sealed class _SId {
   const _SId();
 }
 
-final class SplashId extends _SId {
-  const SplashId(this.id);
+final class SplashScreenId extends _SId with Identifiable<Object?> {
+  const SplashScreenId(this.id);
+  @override
   final Object? id;
 }
 
-final class SignInId extends _SId {
-  const SignInId(this.id);
+final class SignInScreenId extends _SId with Identifiable<Object?> {
+  const SignInScreenId(this.id);
+  @override
   final Object? id;
 }
 
-final class OtpId extends _SId {
-  const OtpId(this.id);
+final class OtpScreenId extends _SId with Identifiable<String> {
+  const OtpScreenId(this.id);
+  @override
   final String id;
 }
 
-final class HomeId extends _SId {
-  const HomeId(this.id);
+final class HomeScreenId extends _SId with Identifiable<Object?> {
+  const HomeScreenId(this.id);
+  @override
   final Object? id;
 }
 
-final class SearchId extends _SId {
-  const SearchId(this.id);
+final class SearchScreenId extends _SId with Identifiable<Object?> {
+  const SearchScreenId(this.id);
+  @override
   final Object? id;
 }
 
-final class ScanId extends _SId {
-  const ScanId(this.id);
+final class ScanScreenId extends _SId with Identifiable<Object?> {
+  const ScanScreenId(this.id);
+  @override
   final Object? id;
 }
 
-final class CategoryId extends _SId {
-  const CategoryId(this.id);
+final class CategoryScreenId extends _SId with Identifiable<CategoryId> {
+  const CategoryScreenId(this.id);
+  @override
   final CategoryId id;
 }
 
-final class SellerId extends _SId {
-  const SellerId(this.id);
+final class SellerScreenId extends _SId with Identifiable<SellerId> {
+  const SellerScreenId(this.id);
+  @override
   final SellerId id;
 }
 
-final class WishlistId extends _SId {
-  const WishlistId(this.id);
+final class WishlistScreenId extends _SId with Identifiable<Object?> {
+  const WishlistScreenId(this.id);
+  @override
   final Object? id;
 }
 
-final class AccountId extends _SId {
-  const AccountId(this.id);
+final class AccountScreenId extends _SId with Identifiable<Object?> {
+  const AccountScreenId(this.id);
+  @override
   final Object? id;
 }
 
-final class OrdersId extends _SId {
-  const OrdersId(this.id);
+final class OrdersScreenId extends _SId with Identifiable<Object?> {
+  const OrdersScreenId(this.id);
+  @override
   final Object? id;
 }
 
-final class OrderId extends _SId {
-  const OrderId(this.id);
+final class OrderScreenId extends _SId with Identifiable<OrderId> {
+  const OrderScreenId(this.id);
+  @override
   final OrderId id;
 }
 
-final class SettingsId extends _SId {
-  const SettingsId(this.id);
+final class SettingsScreenId extends _SId with Identifiable<Object?> {
+  const SettingsScreenId(this.id);
+  @override
   final Object? id;
 }
 
-final class ListingId extends _SId {
-  const ListingId(this.id);
+final class ListingScreenId extends _SId with Identifiable<ListingId> {
+  const ListingScreenId(this.id);
+  @override
   final ListingId id;
 }
 
-final class EditListingId extends _SId {
-  const EditListingId(this.id);
+final class EditListingScreenId extends _SId with Identifiable<ListingId> {
+  const EditListingScreenId(this.id);
+  @override
   final ListingId id;
 }
 
-final class CartId extends _SId {
-  const CartId(this.id);
+final class CartScreenId extends _SId with Identifiable<Object?> {
+  const CartScreenId(this.id);
+  @override
   final Object? id;
 }
 
-final class CheckoutId extends _SId {
-  const CheckoutId(this.id);
+final class CheckoutScreenId extends _SId with Identifiable<Object?> {
+  const CheckoutScreenId(this.id);
+  @override
   final Object? id;
 }
 
-final class PaymentId extends _SId {
-  const PaymentId(this.id);
+final class PaymentScreenId extends _SId with Identifiable<Object?> {
+  const PaymentScreenId(this.id);
+  @override
   final Object? id;
 }
 
-final class ConfirmationId extends _SId {
-  const ConfirmationId(this.id);
+final class ConfirmationScreenId extends _SId with Identifiable<String> {
+  const ConfirmationScreenId(this.id);
+  @override
   final String id;
 }
 

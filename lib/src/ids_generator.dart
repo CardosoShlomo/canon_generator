@@ -63,7 +63,7 @@ class IdsGenerator extends GeneratorForAnnotation<IDs> {
     b.writeln('// value type at runtime. `node` links back to the grammar');
     b.writeln('// (`${_idName('x')}.node.codec` reaches the codec).');
     for (final e in atomics.entries) {
-      b.writeln('extension type ${_idName(e.key)}(${e.value} _) '
+      b.writeln('extension type const ${_idName(e.key)}(${e.value} _) '
           'implements ${e.value} {');
       b.writeln('  static const $enumName node = $enumName.${e.key};');
       b.writeln('}');

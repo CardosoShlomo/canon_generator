@@ -1439,7 +1439,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       b.writeln('    final s = ScreenScope.of(context);');
       b.writeln('    return switch (s) {');
       for (final r in u.members) {
-        b.writeln('      ${sv(r.name)} => ${_cap(r.name)}Id('
+        b.writeln('      ${sv(r.name)} => ${_cap(r.name)}ScreenId('
             'ScreenScope.idOf<${r.idType ?? 'Object?'}>(context, ${sv(r.name)})),');
       }
       b.writeln("      _ => throw StateError('${u.resolver}() under \${s.name}'),");
@@ -1686,7 +1686,11 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       for (final c in fwd(ms)) {
         if (idOf[c.screen] == null) continue;
         for (final gc in c.children) {
-          if (gc.inheritSource?.screen != c.screen || fwd([gc]).isNotEmpty) {
+          // An `again` back-edge folds into its resolved ancestor — it has no
+          // placement class of its own, so it can't be a shortcut target.
+          if (gc.again != null ||
+              gc.inheritSource?.screen != c.screen ||
+              fwd([gc]).isNotEmpty) {
             continue;
           }
           if (groups.containsKey(gc.screen) || !shortcut.add(gc.screen)) {
@@ -1876,11 +1880,18 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
 
     // Shared-widget id unions: one sealed family per id-ambiguous widget, a
     // case per screen carrying that screen's typed id.
+    // Variants are `<Screen>ScreenId` — the `<Name>Id` shape belongs to the
+    // @IDs extension types (zero-cost, ERASED — which is exactly why they can't
+    // do this union's job: runtime discrimination needs real wrapper classes).
     for (final u in widgetUnions) {
       b.writeln('sealed class ${u.sealed} { const ${u.sealed}(); }');
       for (final r in u.members) {
-        b.writeln('final class ${_cap(r.name)}Id extends ${u.sealed} {');
-        b.writeln('  const ${_cap(r.name)}Id(this.id);');
+        // Identifiable: the variant IS a (screen, id) pair — `hasSameId` works
+        // against any entity sharing the id type, and the id collections apply.
+        b.writeln('final class ${_cap(r.name)}ScreenId extends ${u.sealed}'
+            ' with Identifiable<${r.idType ?? 'Object?'}> {');
+        b.writeln('  const ${_cap(r.name)}ScreenId(this.id);');
+        b.writeln('  @override');
         b.writeln('  final ${r.idType ?? 'Object?'} id;');
         b.writeln('}');
       }

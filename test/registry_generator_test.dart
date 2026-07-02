@@ -189,8 +189,8 @@ void main() {
         generateFor: {'pkg|lib/spec.dart'},
         outputs: {
           'pkg|lib/spec.nav.dart': decodedMatches(allOf([
-            contains('extension type ProductId(String _) implements String {'),
-            contains('extension type AuthorId(String _) implements String {'),
+            contains('extension type const ProductId(String _) implements String {'),
+            contains('extension type const AuthorId(String _) implements String {'),
             // the back-link: type → grammar node (codec rides on it)
             contains('static const Ids node = Ids.product;'),
             contains('static const Ids node = Ids.author;'),

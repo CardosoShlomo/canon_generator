@@ -5,3 +5,7 @@ builders:
     build_extensions: {".dart": [".nav.dart"]}
     auto_apply: dependents
     build_to: source
+    # Phase before mappable: its mappers may reference the generated @IDs
+    # extension types (an entity's `AdId id` field), and build_runner hides a
+    # generated asset from builders phased before its generator.
+    runs_before: ["dart_mappable_builder:dart_mappable_builder"]

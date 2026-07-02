@@ -84,6 +84,9 @@ class CompositeId with IdNode {
   Codec get codec => Record2Codec(n1.codec, n2.codec);
 }
 class IDs { const IDs(); }
+mixin Identifiable<I> {
+  I get id;
+}
 ''';
 
 // home -> item(String) -> about -> item.stacked  (item & about form a cycle).
@@ -1799,8 +1802,12 @@ void main() {
       _expectGenerated(
         allOf([
           matches(RegExp(r'sealed class DetailScreenId \{\s*const DetailScreenId\(\);')),
-          contains('final class ProductId extends DetailScreenId'),
-          contains('final class OrderId extends DetailScreenId'),
+          // `<Screen>ScreenId` — the bare `<Name>Id` shape belongs to the @IDs
+          // extension types; the variant is Identifiable by its wrapped id.
+          contains('final class ProductScreenId extends DetailScreenId'
+              ' with Identifiable<String>'),
+          contains('final class OrderScreenId extends DetailScreenId'
+              ' with Identifiable<int>'),
           contains('static DetailScreenId detailScreenId(BuildContext context)'),
           contains('ScreenScope.idOf<String>(context, _Screens.product)'),
           contains('ScreenScope.idOf<int>(context, _Screens.order)'),
