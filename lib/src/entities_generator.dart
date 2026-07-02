@@ -31,12 +31,16 @@ class EntitiesGenerator extends GeneratorForAnnotation<Entities> {
           element: element);
     }
 
-    // Row name → (entity type name, key type name).
+    // Row name → (entity type AS WRITTEN, key type name). Written, because a
+    // resolved Type constant may carry generated types (InvalidType in this
+    // builder's own phase) or expand a typedef — and an extension NAME can't
+    // hold type arguments anyway.
+    final written = await _writtenRowTypes(element, buildStep);
     final rows = <String, (String, String)>{};
     for (final f in element.fields) {
       if (!f.isEnumConstant) continue;
       final v = f.computeConstantValue();
-      final typeName = v?.getField('type')?.toTypeValue()?.getDisplayString();
+      final typeName = written[f.name];
       if (typeName == null) continue;
       final node = v?.getField('key');
       final keyType = _typedNodeName(node) ?? _nodeValueType(node) ?? 'Object?';
@@ -81,6 +85,21 @@ class EntitiesGenerator extends GeneratorForAnnotation<Entities> {
       b.writeln('}');
     }
     return b.toString();
+  }
+
+  /// Each entity row's FIRST argument (the type literal) as source text.
+  Future<Map<String, String>> _writtenRowTypes(
+      EnumElement entitiesEnum, BuildStep buildStep) async {
+    final ast = await buildStep.resolver
+        .astNodeFor(entitiesEnum.firstFragment, resolve: false);
+    if (ast is! EnumDeclaration || ast.body is! BlockEnumBody) return const {};
+    final map = <String, String>{};
+    for (final c in (ast.body as BlockEnumBody).constants) {
+      final arg = c.arguments?.argumentList.arguments.firstOrNull;
+      final expr = arg?.argumentExpression;
+      if (expr != null) map[c.name.lexeme] = expr.toSource();
+    }
+    return map;
   }
 
   /// The (parent row, child row) ownership edges of the static graph literal.

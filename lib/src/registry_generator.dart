@@ -61,18 +61,24 @@ class RegistryGenerator extends GeneratorForAnnotation<Stores> {
       // InvalidType inside this builder's own phase (its outputs are hidden
       // from its resolver) — recover the args syntactically from the store
       // class's `extends` clause.
-      if (args.contains('InvalidType')) {
+      var entityKey = _expandedName(s.typeArguments[1]);
+      if (args.any((a) => a.contains('InvalidType'))) {
         final syntactic = await _syntacticStoreArgs(held, buildStep);
-        if (syntactic != null) args = syntactic;
+        if (syntactic != null) {
+          args = syntactic;
+          if (entityKey.contains('InvalidType')) entityKey = syntactic[1];
+        }
       }
       final superT = 'Store<${args.join(', ')}>';
       final ref = '$enumName.$name.store as $superT';
 
       // Derivation through E: the store's entity type finds its @entities row,
       // which carries the key node — nothing is declared twice, so the trees
-      // can never disagree.
+      // can never disagree. Matched on the alias-EXPANDED type name: the
+      // store's supertype keeps a typedef (`AdChatItem`) while the row's Type
+      // constant expands it (`ChatItem<AdChatId>`).
       final entityType = args[1];
-      final info = entityByType[entityType];
+      final info = entityByType[entityKey];
       if (info == null) {
         throw InvalidGenerationSourceError(
             'store "$name" holds a Store of `$entityType`, which is not a row '
@@ -214,16 +220,50 @@ class RegistryGenerator extends GeneratorForAnnotation<Stores> {
     if (entitiesEnum == null) return const {};
 
     final owned = await _ownedRows(entitiesEnum, buildStep);
+    // Generated id types are invisible to this builder's own phase, so a
+    // row's Type constant may resolve to `ChatItem<InvalidType>` — collapsing
+    // distinct instantiations. Fall back to the type name AS WRITTEN.
+    final written = await _writtenRowTypes(entitiesEnum, buildStep);
     final map = <String, _EntityInfo>{};
     for (final f in entitiesEnum.fields) {
       if (!f.isEnumConstant) continue;
       final v = f.computeConstantValue();
-      final typeName = v?.getField('type')?.toTypeValue()?.getDisplayString();
-      if (typeName == null) continue;
-      map[typeName] = _EntityInfo(f.name!, v?.getField('key'),
+      final type = v?.getField('type')?.toTypeValue();
+      if (type == null) continue;
+      final expanded = _expandedName(type);
+      final key = expanded.contains('InvalidType')
+          ? (written[f.name] ?? expanded)
+          : expanded;
+      map[key] = _EntityInfo(f.name!, v?.getField('key'),
           owned: owned.contains(f.name));
     }
     return map;
+  }
+
+  /// Each entity row's FIRST argument (the type literal) as source text —
+  /// the syntactic identity that survives InvalidType.
+  Future<Map<String, String>> _writtenRowTypes(
+      EnumElement entitiesEnum, BuildStep buildStep) async {
+    final ast = await buildStep.resolver
+        .astNodeFor(entitiesEnum.firstFragment, resolve: false);
+    if (ast is! EnumDeclaration || ast.body is! BlockEnumBody) return const {};
+    final map = <String, String>{};
+    for (final c in (ast.body as BlockEnumBody).constants) {
+      final arg = c.arguments?.argumentList.arguments.firstOrNull;
+      final expr = arg?.argumentExpression;
+      if (expr != null) map[c.name.lexeme] = expr.toSource();
+    }
+    return map;
+  }
+
+  /// A type's name with every alias expanded — the normal form both sides of
+  /// the entity lookup reduce to.
+  String _expandedName(DartType t) {
+    if (t is! InterfaceType) return t.getDisplayString();
+    final args = t.typeArguments;
+    return args.isEmpty
+        ? '${t.element.name}'
+        : '${t.element.name}<${args.map(_expandedName).join(', ')}>';
   }
 
   /// The row names the entity graph declares as OWNED — every name appearing
