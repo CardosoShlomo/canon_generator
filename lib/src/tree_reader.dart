@@ -324,7 +324,11 @@ Future<TreeModel> readTree(EnumElement root, BuildStep buildStep) async {
               orElse: () => throw InvalidGenerationSourceError(
                   '"${placed.screen}.inherit($srcName)" — $srcName is not an ancestor',
                   element: root));
-          sources.add(src.inheritSource ?? src);
+          // The DECLARED source, never its own source: chains flatten later in
+          // the generator, whose pass knows a projection must anchor at its
+          // composite (eager flattening here would swap in the wrong id —
+          // `user.inherit(adLike)` for a `user.inherit(composite)`).
+          sources.add(src);
         }
         placed.inheritSources = sources;
         // The single-source form keeps the existing `inheritSource` wiring intact;

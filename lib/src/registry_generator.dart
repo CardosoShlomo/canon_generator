@@ -52,9 +52,14 @@ class RegistryGenerator extends GeneratorForAnnotation<Stores> {
       // held registry) so the two grammar trees can never silently disagree.
       final keyType = args[0];
       final idValueType = _idValueType(field.computeConstantValue());
-      if (idValueType != null && idValueType != keyType) {
+      final typedKey = _typedKeyName(field.computeConstantValue());
+      if (idValueType != null &&
+          idValueType != keyType &&
+          typedKey != keyType) {
+        final expected =
+            typedKey != null ? '`$typedKey` (or `$idValueType`)' : '`$idValueType`';
         throw InvalidGenerationSourceError(
-            'registry "$name" binds an @ids node whose codec yields `$idValueType`, '
+            'registry "$name" binds an @ids node whose key type is $expected, '
             'but its registry key type is `$keyType`. The id-node and the '
             'registry key must agree.',
             element: element);
@@ -172,6 +177,21 @@ class RegistryGenerator extends GeneratorForAnnotation<Stores> {
       }
     }
     return null;
+  }
+
+  /// The generated extension-type name for the row's `key` node, when its enum
+  /// wears `@IDs` (`Ids.author` → `AuthorId`) — the typed alternative the store
+  /// key K may use instead of the raw codec type.
+  String? _typedKeyName(DartObject? row) {
+    final key = row?.getField('key');
+    final el = key?.type?.element;
+    if (el is! EnumElement) return null;
+    final annotated = el.metadata.annotations
+        .any((a) => a.computeConstantValue()?.type?.element?.name == 'IDs');
+    if (!annotated) return null;
+    final raw = key?.getField('_name')?.toStringValue();
+    if (raw == null) return null;
+    return '${raw[0].toUpperCase()}${raw.substring(1)}Id';
   }
 
   /// The held object's `Store<K,E,M>` (3 args) supertype, or null.

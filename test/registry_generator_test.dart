@@ -14,6 +14,21 @@ mixin StoreNode<Self extends StoreNode<Self, Ids>, Ids> on Enum {
 abstract class Store<K, E, M> { const Store(); }
 ''';
 
+// identifiable owns the @IDs grammar + IdNode/CompositeId.
+const _identifiableStub = '''
+class IDs { const IDs(); }
+abstract mixin class IdNode {
+  const IdNode();
+  const factory IdNode.compose(IdNode n1, IdNode n2, [IdNode? n3, IdNode? n4]) =
+      CompositeId;
+}
+class CompositeId with IdNode {
+  const CompositeId(this.n1, this.n2, [this.n3, this.n4]);
+  final IdNode n1, n2;
+  final IdNode? n3, n4;
+}
+''';
+
 // canon is the facade — re-exports ledger + identifiable, so the spec imports only
 // `package:canon/canon.dart` and gets the nav grammar, `@stores`, and the engines.
 const _canonStub = '''
@@ -134,7 +149,57 @@ enum _Stores with StoreNode<_Stores, Ids> {
 }
 ''';
 
+// An @IDs enum with atomic rows, a composite row, and a static composite —
+// each atomic node emits a zero-cost extension type; composites emit typed
+// record aliases.
+const _idsSpec = '''
+import 'package:canon/canon.dart';
+
+part 'spec.nav.dart';
+
+@IDs()
+enum Ids with IdNode {
+  product(StringCodec()),
+  author(StringCodec()),
+  review.compose(product, author);
+
+  const Ids(Codec this._codec) : n1 = null, n2 = null;
+  const Ids.compose(IdNode this.n1, IdNode this.n2) : _codec = null;
+
+  final Codec? _codec;
+  final IdNode? n1, n2;
+
+  @override
+  Codec get codec => _codec!;
+
+  static const IdNode order = .compose(product, author);
+}
+''';
+
 void main() {
+  test('@IDs emits extension types + composite typedefs', () => testBuilder(
+        PartBuilder([IdsGenerator()], '.nav.dart'),
+        {
+          'ledger|lib/ledger.dart': _ledgerStub,
+          'identifiable|lib/identifiable.dart': _identifiableStub,
+          'canon|lib/canon.dart': _canonStub,
+          'pkg|lib/spec.dart': _idsSpec,
+        },
+        rootPackage: 'pkg',
+        generateFor: {'pkg|lib/spec.dart'},
+        outputs: {
+          'pkg|lib/spec.nav.dart': decodedMatches(allOf([
+            contains('extension type ProductId(String _) implements String {'),
+            contains('extension type AuthorId(String _) implements String {'),
+            // the back-link: type → grammar node (codec rides on it)
+            contains('static const Ids node = Ids.product;'),
+            contains('static const Ids node = Ids.author;'),
+            contains('typedef ReviewId = (ProductId, AuthorId);'),
+            contains('typedef OrderId = (ProductId, AuthorId);'),
+          ]))
+        },
+      ));
+
   test('emits a typed Data surface; key type follows the @ids node codec',
       () => testBuilder(
             PartBuilder([RegistryGenerator()], '.nav.dart'),

@@ -106,6 +106,38 @@ DartObject? _nodeCodec(DartObject? o) {
   return (backing != null && !backing.isNull) ? backing : null;
 }
 
+// Whether an id value's enum wears `@IDs` — the gate for TYPED ids: an
+// annotated id-space has generated extension types (`AuthorId`), so verbs and
+// casts use them; an unannotated one keeps the raw codec types.
+bool _idsAnnotated(DartObject? o) {
+  final el = o?.type?.element;
+  if (el is! EnumElement) return false;
+  return el.metadata.annotations
+      .any((a) => a.computeConstantValue()?.type?.element?.name == 'IDs');
+}
+
+// The generated extension-type name for an id value: `Ids.author` → `AuthorId`;
+// a composite → the record of its components' type names (splittable by the
+// composite machinery, assignable to/from the generated typedef). Null when
+// the id isn't a node of an `@IDs` enum.
+String? _typedIdName(DartObject? o) {
+  if (o == null || o.isNull) return null;
+  String? nameOf(DartObject n) {
+    if (!_idsAnnotated(n)) return null;
+    final raw = n.getField('_name')?.toStringValue();
+    if (raw == null) return null;
+    return '${raw[0].toUpperCase()}${raw.substring(1)}Id';
+  }
+
+  final parts = _compositeParts(o);
+  if (parts != null) {
+    final names = [for (final p in parts) nameOf(p)];
+    if (names.contains(null)) return null;
+    return '(${names.join(', ')})';
+  }
+  return nameOf(o);
+}
+
 // A composite id-node's component node values, in order — read from its
 // `n1`…`n16` fields (a const constructor can't build a list, so the parts are
 // individual fields; the trailing ones are null). Both composite forms carry
@@ -260,6 +292,10 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
           ];
           idStr = '(${ts.join(', ')})';
         }
+        // An `@IDs` id-space has generated extension types — the id type IS the
+        // typed name (`AuthorId`, `(ProductId, AuthorId)`), erasing to the codec
+        // value type at runtime (all casts stay sound).
+        idStr = _typedIdName(idObj) ?? idStr;
       }
       if (idStr != null && idDartType != null && !_hasValueEquality(idDartType)) {
         log.warning(
@@ -485,12 +521,14 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     // one whose `@ids` node matches this screen's node (by node identity, so two
     // same-typed components stay distinct). Record the index; a projection is NOT
     // flattened past its composite source (its id is one part of that record).
-    final nodesOf = {for (final r in rows) r.name: r.idNodes};    for (final ps in placements.values) {
+    final nodesOf = {for (final r in rows) r.name: r.idNodes};
+    for (final ps in placements.values) {
       for (final n in ps) {
         final src = n.inheritSource;
         if (src == null) continue;
         final srcNodes = nodesOf[src.screen];
-        final childNodes = nodesOf[n.screen];        if (srcNodes != null &&
+        final childNodes = nodesOf[n.screen];
+        if (srcNodes != null &&
             srcNodes.length > 1 &&
             childNodes != null &&
             childNodes.length == 1) {
@@ -558,7 +596,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
             throw InvalidGenerationSourceError(
                 '"${n.screen}.inherit(${src.screen})": id type mismatch — '
                 '${n.screen} is $childT but ${src.screen} is $srcT. An inheriting '
-                'placement must declare the same id type as its source.',
+                'placement must declare the same id type as its source. ',
                 element: element);
           }
         }

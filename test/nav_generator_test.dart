@@ -42,7 +42,7 @@ Object? slot(Object? codec) => null;
 
 class NavGraph<S> {
   NavGraph(Set<S> roots,
-      {required S initial,
+      {required Object root,
       required Object Function(S, Object?, Object?) pageOf});
 }
 
@@ -83,6 +83,7 @@ class CompositeId with IdNode {
   @override
   Codec get codec => Record2Codec(n1.codec, n2.codec);
 }
+class IDs { const IDs(); }
 ''';
 
 // home -> item(String) -> about -> item.stacked  (item & about form a cycle).
@@ -105,7 +106,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
     {
       home({item({about({item.stacked})})}),
     },
-    initial: home,
+    root: 0,
     pageOf: (s, c, k) => 0,
   );
 }
@@ -132,7 +133,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
       home({author}),
       author.links({slot(Codec.string)}),
     },
-    initial: home,
+    root: 0,
     pageOf: (s, c, k) => 0,
   );
 }
@@ -158,7 +159,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
       home({author}),
       author.links({slot(Codec.uuid | Codec.username)}),
     },
-    initial: home,
+    root: 0,
     pageOf: (s, c, k) => 0,
   );
 }
@@ -184,7 +185,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
       home({author}),
       author.links({slot(Codec.literal('me') | Codec.uuid | Codec.username)}),
     },
-    initial: home,
+    root: 0,
     pageOf: (s, c, k) => 0,
   );
 }
@@ -211,7 +212,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
       home,
       author({slot(Codec.literal('me') | Codec.username)}),
     },
-    initial: home,
+    root: 0,
     pageOf: (s, c, k) => 0,
   );
 }
@@ -238,7 +239,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
       home,
       feed.query({_Keys.category(Codec.string), _Keys.radius(Codec.integer)}),
     },
-    initial: home,
+    root: 0,
     pageOf: (s, c, k) => 0,
   );
 }
@@ -265,7 +266,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
       home({author}),
       author.links({slot(Codec.uuid | Codec.username)}),
     },
-    initial: home,
+    root: 0,
     pageOf: (s, c, k) => 0,
   );
 }
@@ -296,7 +297,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
       feed.query({_Keys.category(Codec.string) & (_Keys.radius(Codec.integer) | _Keys.size(Codec.integer))})
           .fragment({_Frag.tab(Codec.string) | _Frag.pane(Codec.string)}),
     },
-    initial: home,
+    root: 0,
     pageOf: (s, c, k) => 0,
   );
 }
@@ -325,7 +326,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
       home,
       feed.query({_Q.category(Codec.string)}).fragment({_F.tab(Codec.string)}),
     },
-    initial: home,
+    root: 0,
     pageOf: (s, c, k) => 0,
   );
 }
@@ -355,7 +356,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
       home({account.link({slot(Codec.string)})}),
       profile({account}),
     },
-    initial: home,
+    root: 0,
     pageOf: (s, c, k) => 0,
   );
 }
@@ -387,7 +388,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
       profile({account.link({slot(Codec.uuid)})}),
       settings({account}),
     },
-    initial: home,
+    root: 0,
     pageOf: (s, c, k) => 0,
   );
 }
@@ -417,7 +418,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
       home({item.query({_Keys.tag(Codec.string)})}),
       feed({item}),
     },
-    initial: home,
+    root: 0,
     pageOf: (s, c, k) => 0,
   );
 }
@@ -443,7 +444,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
     {
       home({author()}),
     },
-    initial: home,
+    root: 0,
     pageOf: (s, c, k) => 0,
   );
 }
@@ -469,7 +470,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
     {
       home({account, account.link({slot(Codec.string)})}),
     },
-    initial: home,
+    root: 0,
     pageOf: (s, c, k) => 0,
   );
 }
@@ -498,7 +499,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
       home({account({slot(Codec.string)})}),
       settings({detail({slot(Codec.username)})}),
     },
-    initial: home,
+    root: 0,
     pageOf: (s, c, k) => 0,
   );
 }
@@ -534,7 +535,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 
   static final graph = NavGraph<_Screens>(
     {home, feed},
-    initial: home,
+    root: 0,
     pageOf: (s, c, k) => 0,
   );
 }
@@ -561,7 +562,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 
   static final graph = NavGraph<_Screens>(
     {home({product, order})},
-    initial: home,
+    root: 0,
     pageOf: (s, c, k) => 0,
   );
 }
@@ -586,7 +587,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 
   static final graph = NavGraph<_Screens>(
     {home({editImage, page})},
-    initial: home,
+    root: 0,
     pageOf: (s, c, k) => 0,
   );
 }
@@ -611,7 +612,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 
   static final graph = NavGraph<_Screens>(
     {home({product({editProduct.inherit(product)})})},
-    initial: home,
+    root: 0,
     pageOf: (s, c, k) => 0,
   );
 }
@@ -638,7 +639,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 
   static final graph = NavGraph<_Screens>(
     {home({section({product({editProduct.inherit(product)})})})},
-    initial: home,
+    root: 0,
     pageOf: (s, c, k) => 0,
   );
 }
@@ -665,7 +666,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 
   static final graph = NavGraph<_Screens>(
     {home({item({itemPreview({editItem.inherit(itemPreview)}).inherit(item)})})},
-    initial: home,
+    root: 0,
     pageOf: (s, c, k) => 0,
   );
 }
@@ -693,7 +694,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 
   static final graph = NavGraph<_Screens>(
     {home({profile({order({orderProfile.inherit(profile)})})})},
-    initial: home,
+    root: 0,
     pageOf: (s, c, k) => 0,
   );
 }
@@ -722,7 +723,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
       home({item({editItem.inherit(item)})}),
       feed({item({editItem.inherit(item)})}),
     },
-    initial: home,
+    root: 0,
     pageOf: (s, c, k) => 0,
   );
 }
@@ -749,7 +750,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 
   static final graph = NavGraph<_Screens>(
     {home({product({author({order.inherit(product, author)})})})},
-    initial: home,
+    root: 0,
     pageOf: (s, c, k) => 0,
   );
 }
@@ -774,7 +775,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 
   static final graph = NavGraph<_Screens>(
     {home({product({order.inherit(product)})})},
-    initial: home,
+    root: 0,
     pageOf: (s, c, k) => 0,
   );
 }
@@ -798,7 +799,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 
   static final graph = NavGraph<_Screens>(
     {home({order})},
-    initial: home,
+    root: 0,
     pageOf: (s, c, k) => 0,
   );
 }
@@ -824,7 +825,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 
   static final graph = NavGraph<_Screens>(
     {home({a({b({c({order.inherit(a, b, c)})})})})},
-    initial: home,
+    root: 0,
     pageOf: (s, c, k) => 0,
   );
 }
@@ -879,7 +880,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
     {
       home({profile}),
     },
-    initial: home,
+    root: 0,
     pageOf: (s, c, k) => 0,
   );
 }
@@ -916,7 +917,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
     {
       home({review({author.inherit(review)})}),
     },
-    initial: home,
+    root: 0,
     pageOf: (s, c, k) => 0,
   );
 }
@@ -925,6 +926,57 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 // Same projection, but the composite is a ROW of the @ids enum itself
 // (`review.compose(product, author)`) — codec is a getter over a `_codec`
 // backing field, so the generator must read `_codec`/`n*` on enum rows.
+// A projection UNDER an inherited composite: `review.inherit(product)` gives
+// the review placement its own source, and `author.inherit(review)` must
+// anchor at the COMPOSITE — the tree reader once eagerly flattened it to
+// `product`, silently wiring the WRONG id (a productId as the author's id;
+// with untyped Strings this passed the guard and shipped).
+const _nestedProjectionSpec = '''
+import 'package:canon/canon.dart';
+
+part 'spec.nav.dart';
+
+@IDs()
+enum Ids with IdNode {
+  product(Codec.uuid),
+  author(Codec.username),
+  review.compose(product, author);
+
+  const Ids(Codec this._codec) : n1 = null, n2 = null;
+  const Ids.compose(IdNode this.n1, IdNode this.n2) : _codec = null;
+
+  final Codec? _codec;
+  final IdNode? n1, n2;
+
+  @override
+  Codec get codec => _codec ?? Record2Codec(n1!.codec, n2!.codec);
+}
+
+@screens
+enum _Screens with ScreenNode<Object?, _Screens> {
+  home(0),
+  product(0, .product),
+  author(0, .author),
+  review(0, .review);
+
+  const _Screens(this.widget, [this.id]);
+  final Object widget;
+  final Ids? id;
+
+  static final graph = NavGraph<_Screens>(
+    {
+      home({
+        product({
+          review.inherit(product)({author.inherit(review)}),
+        }),
+      }),
+    },
+    root: 0,
+    pageOf: (s, c, k) => 0,
+  );
+}
+''';
+
 const _rowCompositeSpec = '''
 import 'package:canon/canon.dart';
 
@@ -959,7 +1011,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
     {
       home({review({author.inherit(review)})}),
     },
-    initial: home,
+    root: 0,
     pageOf: (s, c, k) => 0,
   );
 }
@@ -999,7 +1051,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
         }),
       }),
     },
-    initial: home,
+    root: 0,
     pageOf: (s, c, k) => 0,
   );
 }
@@ -1026,13 +1078,77 @@ enum _Screens with ScreenNode<Object?, _Screens> {
       home({product}),
       product.links({slot(Codec.sku)}),
     },
-    initial: home,
+    root: 0,
+    pageOf: (s, c, k) => 0,
+  );
+}
+''';
+
+// The @IDs-ANNOTATED twin: generated extension types exist, so verbs, reads
+// and casts use the typed ids (`AuthorId`, `(ProductId, AuthorId)`).
+const _typedIdsSpec = '''
+import 'package:canon/canon.dart';
+
+part 'spec.nav.dart';
+
+@IDs()
+enum Ids with IdNode {
+  product(Codec.uuid),
+  author(Codec.username),
+  review.compose(product, author);
+
+  const Ids(Codec this._codec) : n1 = null, n2 = null;
+  const Ids.compose(IdNode this.n1, IdNode this.n2) : _codec = null;
+
+  final Codec? _codec;
+  final IdNode? n1, n2;
+
+  @override
+  Codec get codec => _codec ?? Record2Codec(n1!.codec, n2!.codec);
+}
+
+@screens
+enum _Screens with ScreenNode<Object?, _Screens> {
+  home(0),
+  author(0, .author),
+  review(0, .review);
+
+  const _Screens(this.widget, [this.id]);
+  final Object widget;
+  final Ids? id;
+
+  static final graph = NavGraph<_Screens>(
+    {
+      home({review({author.inherit(review)})}),
+    },
+    root: 0,
     pageOf: (s, c, k) => 0,
   );
 }
 ''';
 
 void main() {
+  test('projection under an inherited composite anchors at the composite', () =>
+      _expectGenerated(
+        allOf([
+          // author's id = component 2 of the COMPOSITE — never product's id
+          contains('(ProductId, AuthorId)).\$2'),
+          isNot(contains('goAuthor(ProductId')),
+        ]),
+        spec: _nestedProjectionSpec,
+      ));
+
+  test('@IDs id-space → typed verbs, reads and projections', () =>
+      _expectGenerated(
+        allOf([
+          contains('goReview((ProductId, AuthorId) id)'), // typed composite verb
+          contains('Screen<AuthorId>'), // typed screen surface
+          contains('(ProductId, AuthorId)).\$2'), // typed projection cast
+          isNot(contains('goReview((String, String) id)')),
+        ]),
+        spec: _typedIdsSpec,
+      ));
+
   test('a custom codec\'s link value type resolves via the analyzer', () =>
       _expectGenerated(
         allOf([
