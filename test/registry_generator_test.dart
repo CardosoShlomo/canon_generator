@@ -331,6 +331,29 @@ void main() {
         allOf(contains('keys as'), contains("store's key type is `int`")));
   });
 
+  test('an ownership edge emits surgical tree ops on the parent map', () =>
+      testBuilder(
+        PartBuilder([EntitiesGenerator()], '.canon.dart'),
+        {
+          'ledger|lib/ledger.dart': _ledgerStub,
+          'identifiable|lib/identifiable.dart': _identifiableStub,
+          'canon|lib/canon.dart': _canonStub,
+          'pkg|lib/spec.dart': '$_guardBase',
+        },
+        rootPackage: 'pkg',
+        generateFor: {'pkg|lib/spec.dart'},
+        outputs: {
+          'pkg|lib/spec.canon.dart': decodedMatches(allOf([
+            contains('extension ReviewStateTreeOps'
+                ' on IdentifiableMap<String, ReviewState>'),
+            contains('updateComment('),
+            contains('o.copyWith(comments: o.comments.updateById(id, fn))'),
+            contains('addComment('),
+            contains('removeComment('),
+          ]))
+        },
+      ));
+
   test('rejects a store on an OWNED entity — state lives in its root', () async {
     expect(await guardLogs(_ownedStoreSpec),
         allOf(contains('OWNED'), contains('root entity')));

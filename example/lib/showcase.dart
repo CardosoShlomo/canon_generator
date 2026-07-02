@@ -75,18 +75,38 @@ class Products extends Store<String, Product, ProductMsg> {
       };
 }
 
-// ── The STORE grammar (@stores) ───────────────────────────────────────
-// Each row holds a const store + the @ids node it is keyed by. The generator
-// hangs typed reads on `ledger`; because the `product` screen binds the SAME
-// node, those reads inject by nav location (`productsOnProduct()`).
-@stores
-enum _Stores with StoreNode<_Stores, Ids> {
-  products(Products(), Ids.product);
+// ── The ENTITY grammar (@entities) ────────────────────────────────────
+// Each row binds an entity TYPE to its id-node; the graph declares OWNERSHIP
+// (roots are the aggregate boundaries stores may attach to). Key node, key
+// type, and screen associations all derive from here.
+@entities
+enum _Entities with EntityNode<_Entities> {
+  product(Product, Ids.product);
 
-  const _Stores(this.store, this.key);
-  final Object store;
+  const _Entities(this.type, this.key);
   @override
-  final Ids key;
+  final Type type;
+  @override
+  final IdNode key;
+
+  // Generator-read (ownership derivation); runtime consumers arrive with the
+  // tree-store surface.
+  // ignore: unused_field
+  static final graph = EntityGraph({product});
+}
+
+// ── The STORE grammar (@stores) ───────────────────────────────────────
+// A row declares the two things nothing derives: that this collection exists,
+// and its reduce. The generator hangs typed reads on `ledger`; because the
+// `product` screen binds the SAME node (via the entity), those reads inject by
+// nav location (`productsOnProduct()`).
+@stores
+enum _Stores with StoreNode<_Stores> {
+  products(Products());
+
+  const _Stores(this.store);
+  @override
+  final Store store;
 }
 
 // The app's data SOURCE — faked for this runnable demo (the engine ships none;
