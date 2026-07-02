@@ -93,7 +93,7 @@ mixin Identifiable<I> {
 const _spec = '''
 import 'package:canon/canon.dart';
 
-part 'spec.nav.dart';
+part 'spec.canon.dart';
 
 @screens
 enum _Screens with ScreenNode<Object?, _Screens> {
@@ -120,7 +120,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 const _linksSpec = '''
 import 'package:canon/canon.dart';
 
-part 'spec.nav.dart';
+part 'spec.canon.dart';
 
 @screens
 enum _Screens with ScreenNode<Object?, _Screens> {
@@ -146,7 +146,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 const _unionSpec = '''
 import 'package:canon/canon.dart';
 
-part 'spec.nav.dart';
+part 'spec.canon.dart';
 
 @screens
 enum _Screens with ScreenNode<Object?, _Screens> {
@@ -172,7 +172,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 const _literalUnionSpec = '''
 import 'package:canon/canon.dart';
 
-part 'spec.nav.dart';
+part 'spec.canon.dart';
 
 @screens
 enum _Screens with ScreenNode<Object?, _Screens> {
@@ -199,7 +199,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 const _widgetFormSpec = '''
 import 'package:canon/canon.dart';
 
-part 'spec.nav.dart';
+part 'spec.canon.dart';
 
 @screens
 enum _Screens with ScreenNode<Object?, _Screens> {
@@ -225,7 +225,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 const _viewSpec = '''
 import 'package:canon/canon.dart';
 
-part 'spec.nav.dart';
+part 'spec.canon.dart';
 
 enum _Keys with QueryKeyBase { category, radius }
 
@@ -253,7 +253,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 const _slotUnionOpSpec = '''
 import 'package:canon/canon.dart';
 
-part 'spec.nav.dart';
+part 'spec.canon.dart';
 
 @screens
 enum _Screens with ScreenNode<Object?, _Screens> {
@@ -281,7 +281,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 const _viewOpSpec = '''
 import 'package:canon/canon.dart';
 
-part 'spec.nav.dart';
+part 'spec.canon.dart';
 
 enum _Keys with QueryKeyBase { category, radius, size }
 enum _Frag with QueryKeyBase { tab, pane }
@@ -311,7 +311,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 const _viewBothSpec = '''
 import 'package:canon/canon.dart';
 
-part 'spec.nav.dart';
+part 'spec.canon.dart';
 
 enum _Q with QueryKeyBase { category }
 enum _F with QueryKeyBase { tab }
@@ -340,7 +340,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 const _nestedLinkSpec = '''
 import 'package:canon/canon.dart';
 
-part 'spec.nav.dart';
+part 'spec.canon.dart';
 
 @screens
 enum _Screens with ScreenNode<Object?, _Screens> {
@@ -370,7 +370,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 const _ambiguousLinkSpec = '''
 import 'package:canon/canon.dart';
 
-part 'spec.nav.dart';
+part 'spec.canon.dart';
 
 @screens
 enum _Screens with ScreenNode<Object?, _Screens> {
@@ -402,7 +402,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 const _multiViewSpec = '''
 import 'package:canon/canon.dart';
 
-part 'spec.nav.dart';
+part 'spec.canon.dart';
 
 enum _Keys with QueryKeyBase { tag }
 
@@ -432,7 +432,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 const _emptyCallSpec = '''
 import 'package:canon/canon.dart';
 
-part 'spec.nav.dart';
+part 'spec.canon.dart';
 
 @screens
 enum _Screens with ScreenNode<Object?, _Screens> {
@@ -458,7 +458,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 const _redundantLinkSpec = '''
 import 'package:canon/canon.dart';
 
-part 'spec.nav.dart';
+part 'spec.canon.dart';
 
 @screens
 enum _Screens with ScreenNode<Object?, _Screens> {
@@ -484,7 +484,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 const _probeSpec = '''
 import 'package:canon/canon.dart';
 
-part 'spec.nav.dart';
+part 'spec.canon.dart';
 
 @screens
 enum _Screens with ScreenNode<Object?, _Screens> {
@@ -518,14 +518,14 @@ Future<void> _expectGenerated(Matcher content, {String spec = _spec}) =>
       },
       rootPackage: 'pkg',
       generateFor: {'pkg|lib/spec.dart'},
-      outputs: {'pkg|lib/spec.nav.dart': decodedMatches(content)},
+      outputs: {'pkg|lib/spec.canon.dart': decodedMatches(content)},
     );
 
 // A flat tree — every screen is a root, nothing can ever be popped.
 const _flatSpec = '''
 import 'package:canon/canon.dart';
 
-part 'spec.nav.dart';
+part 'spec.canon.dart';
 
 @screens
 enum _Screens with ScreenNode<Object?, _Screens> {
@@ -548,7 +548,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 const _sharedSpec = '''
 import 'package:canon/canon.dart';
 
-part 'spec.nav.dart';
+part 'spec.canon.dart';
 
 class DetailScreen { const DetailScreen(); }
 class HomeScreen { const HomeScreen(); }
@@ -576,7 +576,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 const _recordIdSpec = '''
 import 'package:canon/canon.dart';
 
-part 'spec.nav.dart';
+part 'spec.canon.dart';
 
 @screens
 enum _Screens with ScreenNode<Object?, _Screens> {
@@ -601,7 +601,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 const _inheritSpec = '''
 import 'package:canon/canon.dart';
 
-part 'spec.nav.dart';
+part 'spec.canon.dart';
 
 @screens
 enum _Screens with ScreenNode<Object?, _Screens> {
@@ -627,7 +627,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 const _deepInheritSpec = '''
 import 'package:canon/canon.dart';
 
-part 'spec.nav.dart';
+part 'spec.canon.dart';
 
 @screens
 enum _Screens with ScreenNode<Object?, _Screens> {
@@ -654,7 +654,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 const _chainInheritSpec = '''
 import 'package:canon/canon.dart';
 
-part 'spec.nav.dart';
+part 'spec.canon.dart';
 
 @screens
 enum _Screens with ScreenNode<Object?, _Screens> {
@@ -682,7 +682,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 const _interposedIdSpec = '''
 import 'package:canon/canon.dart';
 
-part 'spec.nav.dart';
+part 'spec.canon.dart';
 
 @screens
 enum _Screens with ScreenNode<Object?, _Screens> {
@@ -708,7 +708,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 const _parentOfSpec = '''
 import 'package:canon/canon.dart';
 
-part 'spec.nav.dart';
+part 'spec.canon.dart';
 
 @screens
 enum _Screens with ScreenNode<Object?, _Screens> {
@@ -738,7 +738,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 const _compositeSpec = '''
 import 'package:canon/canon.dart';
 
-part 'spec.nav.dart';
+part 'spec.canon.dart';
 
 @screens
 enum _Screens with ScreenNode<Object?, _Screens> {
@@ -764,7 +764,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 const _compositePartialSpec = '''
 import 'package:canon/canon.dart';
 
-part 'spec.nav.dart';
+part 'spec.canon.dart';
 
 @screens
 enum _Screens with ScreenNode<Object?, _Screens> {
@@ -789,7 +789,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 const _compositeNoneSpec = '''
 import 'package:canon/canon.dart';
 
-part 'spec.nav.dart';
+part 'spec.canon.dart';
 
 @screens
 enum _Screens with ScreenNode<Object?, _Screens> {
@@ -812,7 +812,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 const _compositeOverflowSpec = '''
 import 'package:canon/canon.dart';
 
-part 'spec.nav.dart';
+part 'spec.canon.dart';
 
 @screens
 enum _Screens with ScreenNode<Object?, _Screens> {
@@ -861,7 +861,7 @@ Future<void> _expectBuildError(String spec, String needle) async {
 const _idsNodeSpec = '''
 import 'package:canon/canon.dart';
 
-part 'spec.nav.dart';
+part 'spec.canon.dart';
 
 enum Ids with IdNode {
   author(Codec.uuid);
@@ -895,7 +895,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 const _projectionSpec = '''
 import 'package:canon/canon.dart';
 
-part 'spec.nav.dart';
+part 'spec.canon.dart';
 
 enum Ids with IdNode {
   product(Codec.uuid),
@@ -937,7 +937,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 const _nestedProjectionSpec = '''
 import 'package:canon/canon.dart';
 
-part 'spec.nav.dart';
+part 'spec.canon.dart';
 
 @IDs()
 enum Ids with IdNode {
@@ -983,7 +983,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 const _rowCompositeSpec = '''
 import 'package:canon/canon.dart';
 
-part 'spec.nav.dart';
+part 'spec.canon.dart';
 
 enum Ids with IdNode {
   product(Codec.uuid),
@@ -1027,7 +1027,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 const _cycleKickstartSpec = '''
 import 'package:canon/canon.dart';
 
-part 'spec.nav.dart';
+part 'spec.canon.dart';
 
 @screens
 enum _Screens with ScreenNode<Object?, _Screens> {
@@ -1065,7 +1065,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 const _customCodecLinkSpec = '''
 import 'package:canon/canon.dart';
 
-part 'spec.nav.dart';
+part 'spec.canon.dart';
 
 @screens
 enum _Screens with ScreenNode<Object?, _Screens> {
@@ -1092,7 +1092,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 const _typedIdsSpec = '''
 import 'package:canon/canon.dart';
 
-part 'spec.nav.dart';
+part 'spec.canon.dart';
 
 @IDs()
 enum Ids with IdNode {

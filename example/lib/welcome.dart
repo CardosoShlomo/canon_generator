@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:canon/canon.dart';
 
-part 'welcome.nav.dart';
+part 'welcome.canon.dart';
 
 // ── The WELCOME example ─────────────────────────────────────────────────────
 // The smallest canon app. The whole navigation space is the ONE grammar tree

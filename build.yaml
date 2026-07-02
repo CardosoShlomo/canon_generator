@@ -2,7 +2,7 @@ builders:
   nav:
     import: "package:canon_generator/canon_generator.dart"
     builder_factories: ["navBuilder"]
-    build_extensions: {".dart": [".nav.dart"]}
+    build_extensions: {".dart": [".canon.dart"]}
     auto_apply: dependents
     build_to: source
     # Phase before mappable: its mappers may reference the generated @IDs

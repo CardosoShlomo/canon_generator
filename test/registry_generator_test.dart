@@ -53,7 +53,7 @@ class NavGraph<S> {
 const _spec = '''
 import 'package:canon/canon.dart';
 
-part 'spec.nav.dart';
+part 'spec.canon.dart';
 
 enum Ids {
   author(StringCodec());
@@ -94,7 +94,7 @@ enum _Stores with StoreNode<_Stores, Ids> {
 const _mismatchSpec = '''
 import 'package:canon/canon.dart';
 
-part 'spec.nav.dart';
+part 'spec.canon.dart';
 
 enum Ids {
   author(StringCodec());
@@ -124,7 +124,7 @@ enum _Stores with StoreNode<_Stores, Ids> {
 const _unsealedMsgSpec = '''
 import 'package:canon/canon.dart';
 
-part 'spec.nav.dart';
+part 'spec.canon.dart';
 
 enum Ids {
   author(StringCodec());
@@ -155,7 +155,7 @@ enum _Stores with StoreNode<_Stores, Ids> {
 const _idsSpec = '''
 import 'package:canon/canon.dart';
 
-part 'spec.nav.dart';
+part 'spec.canon.dart';
 
 @IDs()
 enum Ids with IdNode {
@@ -178,7 +178,7 @@ enum Ids with IdNode {
 
 void main() {
   test('@IDs emits extension types + composite typedefs', () => testBuilder(
-        PartBuilder([IdsGenerator()], '.nav.dart'),
+        PartBuilder([IdsGenerator()], '.canon.dart'),
         {
           'ledger|lib/ledger.dart': _ledgerStub,
           'identifiable|lib/identifiable.dart': _identifiableStub,
@@ -188,7 +188,7 @@ void main() {
         rootPackage: 'pkg',
         generateFor: {'pkg|lib/spec.dart'},
         outputs: {
-          'pkg|lib/spec.nav.dart': decodedMatches(allOf([
+          'pkg|lib/spec.canon.dart': decodedMatches(allOf([
             contains('extension type const ProductId(String _) implements String {'),
             contains('extension type const AuthorId(String _) implements String {'),
             // the back-link: type → grammar node (codec rides on it)
@@ -202,7 +202,7 @@ void main() {
 
   test('emits a typed Data surface; key type follows the @ids node codec',
       () => testBuilder(
-            PartBuilder([RegistryGenerator()], '.nav.dart'),
+            PartBuilder([RegistryGenerator()], '.canon.dart'),
             {
               'ledger|lib/ledger.dart': _ledgerStub,
               'canon|lib/canon.dart': _canonStub,
@@ -211,7 +211,7 @@ void main() {
             rootPackage: 'pkg',
             generateFor: {'pkg|lib/spec.dart'},
             outputs: {
-              'pkg|lib/spec.nav.dart': decodedMatches(allOf([
+              'pkg|lib/spec.canon.dart': decodedMatches(allOf([
                 // one api: a global `ledger` + the public per-row store globals
                 contains('final ledger = Ledger();'),
                 contains('extension on Ledger {'),

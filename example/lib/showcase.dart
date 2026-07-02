@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:canon/canon.dart'; // the facade — nav, state (ledger), and identity
 
-part 'showcase.nav.dart';
+part 'showcase.canon.dart';
 
 // ── The SHOWCASE example ──────────────────────────────────────────────────
 // A compact e-commerce app whose single grammar tree exercises EVERY canon

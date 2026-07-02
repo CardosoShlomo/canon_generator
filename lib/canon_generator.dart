@@ -9,4 +9,4 @@ export 'src/ids_generator.dart' show IdsGenerator;
 export 'src/registry_generator.dart' show RegistryGenerator;
 
 Builder navBuilder(BuilderOptions options) => PartBuilder(
-    [IdsGenerator(), NavGenerator(), RegistryGenerator()], '.nav.dart');
+    [IdsGenerator(), NavGenerator(), RegistryGenerator()], '.canon.dart');

@@ -11,19 +11,19 @@ part of 'showcase.dart';
 // from the @ids grammar. Zero-cost: each erases to its codec's
 // value type at runtime. `node` links back to the grammar
 // (`XId.node.codec` reaches the codec).
-extension type ProductId(String _) implements String {
+extension type const ProductId(String _) implements String {
   static const Ids node = Ids.product;
 }
-extension type SellerId(String _) implements String {
+extension type const SellerId(String _) implements String {
   static const Ids node = Ids.seller;
 }
-extension type CategoryId(String _) implements String {
+extension type const CategoryId(String _) implements String {
   static const Ids node = Ids.category;
 }
-extension type OrderId(String _) implements String {
+extension type const OrderId(String _) implements String {
   static const Ids node = Ids.order;
 }
-extension type ListingId(String _) implements String {
+extension type const ListingId(String _) implements String {
   static const Ids node = Ids.listing;
 }
 
