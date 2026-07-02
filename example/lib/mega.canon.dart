@@ -446,10 +446,9 @@ final class Screen<I> {
   /// in-memory stack, drives browser back/forward + the URL channel on
   /// web, and system back on mobile. (The placement may change; the name
   /// stays — always pass it where a `RouterDelegate` goes.)
-  static NavDelegate? _manager;
   static NavDelegate get manager {
     assert(_fresh);
-    return _manager ??= NavDelegate(_Screens.graph);
+    return _Screens.graph.delegate;
   }
 
   /// A restoration-serializable snapshot of the whole nav state

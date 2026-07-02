@@ -1271,11 +1271,10 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln('  /// in-memory stack, drives browser back/forward + the URL channel on');
     b.writeln('  /// web, and system back on mobile. (The placement may change; the name');
     b.writeln('  /// stays — always pass it where a `RouterDelegate` goes.)');
-    b.writeln('  static NavDelegate? _manager;');
     b.writeln('  static NavDelegate get manager {');
     b.writeln('    assert(_fresh);');
     if (hasData) b.writeln('    ledger.bind();');
-    b.writeln('    return _manager ??= NavDelegate($spec.graph);');
+    b.writeln('    return $spec.graph.delegate;');
     b.writeln('  }');
     b.writeln('  /// A restoration-serializable snapshot of the whole nav state');
     b.writeln('  /// (no URLs; ids via each screen codec). Persist + [restore] it.');
