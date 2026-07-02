@@ -8,13 +8,13 @@ import 'package:test/test.dart';
 const _ledgerStub = '''
 class Stores { const Stores(); }
 const stores = Stores();
-mixin StoreNode<Self extends StoreNode<Self, Ids>, Ids> on Enum {
-  Ids get key;
+mixin StoreNode<Self extends StoreNode<Self>> on Enum {
+  Store get store;
 }
 abstract class Store<K, E, M> { const Store(); }
 ''';
 
-// identifiable owns the @IDs grammar + IdNode/CompositeId.
+// identifiable owns the @IDs + @entities grammars.
 const _identifiableStub = '''
 class IDs { const IDs(); }
 abstract mixin class IdNode {
@@ -26,6 +26,25 @@ class CompositeId with IdNode {
   const CompositeId(this.n1, this.n2, [this.n3, this.n4]);
   final IdNode n1, n2;
   final IdNode? n3, n4;
+}
+class Entities { const Entities(); }
+const entities = Entities();
+abstract interface class EntityTreeNode {}
+mixin EntityNode<Self extends EntityNode<Self>> on Enum
+    implements EntityTreeNode {
+  Type get type;
+  IdNode get key;
+  EntityTreeNode call([Set<EntityTreeNode> children = const {}]) =>
+      EntityBranch(this, children);
+}
+class EntityBranch implements EntityTreeNode {
+  EntityBranch(this.entity, this.children);
+  final Enum entity;
+  final Set<EntityTreeNode> children;
+}
+class EntityGraph {
+  EntityGraph(this.tree);
+  final Set<EntityTreeNode> tree;
 }
 ''';
 
@@ -48,14 +67,15 @@ class NavGraph<S> {
 }
 ''';
 
-// An @ids enum (hand-written id-space) + stores keyed by its nodes. Each node's
-// codec value-type MATCHES the held descriptor's key type.
+// The three grammars connected: @ids nodes, @entities binding type↔node (+ the
+// ownership graph), and @stores holding only the reduces — key node, key type,
+// and screen association all DERIVE through the store's entity type.
 const _spec = '''
 import 'package:canon/canon.dart';
 
 part 'spec.canon.dart';
 
-enum Ids {
+enum Ids with IdNode {
   author(StringCodec());
   const Ids(this.codec);
   final Codec codec;
@@ -65,6 +85,19 @@ class ReviewState {}
 sealed class ReviewMsg {}
 class Review extends Store<String, ReviewState, ReviewMsg> {
   const Review();
+}
+
+@entities
+enum _Entities with EntityNode<_Entities> {
+  review(ReviewState, Ids.author);
+
+  const _Entities(this.type, this.key);
+  @override
+  final Type type;
+  @override
+  final Ids key;
+
+  static final graph = EntityGraph({review});
 }
 
 @screens
@@ -79,73 +112,116 @@ enum _Screens with ScreenNode<_Screens> {
 }
 
 @stores
-enum _Stores with StoreNode<_Stores, Ids> {
-  review(Review(), Ids.author);
+enum _Stores with StoreNode<_Stores> {
+  review(Review());
 
-  const _Stores(this.store, this.key);
-  final Object store;
+  const _Stores(this.store);
   @override
-  final Ids key;
+  final Store store;
 }
 ''';
 
-// Same shape but the key type (int) disagrees with the id-node's codec
-// value-type (String) — the cross-tree guard must reject it.
-const _mismatchSpec = '''
+// The shared scaffolding of the guard specs: id node + entity space; each
+// spec below appends its own Review store + @stores enum.
+const _guardBase = '''
 import 'package:canon/canon.dart';
 
 part 'spec.canon.dart';
 
-enum Ids {
-  author(StringCodec());
+enum Ids with IdNode {
+  author(StringCodec()),
+  comment(StringCodec());
   const Ids(this.codec);
   final Codec codec;
 }
 
 class ReviewState {}
+class CommentState {}
+
+@entities
+enum _Entities with EntityNode<_Entities> {
+  review(ReviewState, Ids.author),
+  comment(CommentState, Ids.comment);
+
+  const _Entities(this.type, this.key);
+  @override
+  final Type type;
+  @override
+  final Ids key;
+
+  static final graph = EntityGraph({review({comment})});
+}
+''';
+
+// The store's key type (int) disagrees with the entity node's codec value-type
+// (String) — the derived key guard must reject it.
+const _mismatchSpec = '''
+$_guardBase
 sealed class ReviewMsg {}
 class Review extends Store<int, ReviewState, ReviewMsg> {
   const Review();
 }
 
 @stores
-enum _Stores with StoreNode<_Stores, Ids> {
-  review(Review(), Ids.author);
-
-  const _Stores(this.store, this.key);
-  final Object store;
+enum _Stores with StoreNode<_Stores> {
+  review(Review());
+  const _Stores(this.store);
   @override
-  final Ids key;
+  final Store store;
 }
 ''';
 
 // A registry whose message type is NOT sealed — the reduce can't be exhaustive,
 // so the generator must reject it at build time.
 const _unsealedMsgSpec = '''
-import 'package:canon/canon.dart';
-
-part 'spec.canon.dart';
-
-enum Ids {
-  author(StringCodec());
-  const Ids(this.codec);
-  final Codec codec;
-}
-
-class ReviewState {}
+$_guardBase
 class ReviewMsg {}
 class Review extends Store<String, ReviewState, ReviewMsg> {
   const Review();
 }
 
 @stores
-enum _Stores with StoreNode<_Stores, Ids> {
-  review(Review(), Ids.author);
-
-  const _Stores(this.store, this.key);
-  final Object store;
+enum _Stores with StoreNode<_Stores> {
+  review(Review());
+  const _Stores(this.store);
   @override
-  final Ids key;
+  final Store store;
+}
+''';
+
+// A store on an OWNED entity — comment lives inside review's aggregate, so a
+// store of its own is illegal.
+const _ownedStoreSpec = '''
+$_guardBase
+sealed class CommentMsg {}
+class Comments extends Store<String, CommentState, CommentMsg> {
+  const Comments();
+}
+
+@stores
+enum _Stores with StoreNode<_Stores> {
+  comments(Comments());
+  const _Stores(this.store);
+  @override
+  final Store store;
+}
+''';
+
+// A store of a type that is no @entities row at all.
+const _unknownEntitySpec = '''
+$_guardBase
+class OrphanState {}
+sealed class OrphanMsg {}
+class Orphans extends Store<String, OrphanState, OrphanMsg> {
+  const Orphans();
+}
+
+@stores
+enum _Stores with StoreNode<_Stores> {
+  orphans(Orphans());
+  const _Stores(this.store);
+  @override
+  final Store store;
 }
 ''';
 
@@ -205,6 +281,7 @@ void main() {
             PartBuilder([RegistryGenerator()], '.canon.dart'),
             {
               'ledger|lib/ledger.dart': _ledgerStub,
+              'identifiable|lib/identifiable.dart': _identifiableStub,
               'canon|lib/canon.dart': _canonStub,
               'pkg|lib/spec.dart': _spec,
             },
@@ -231,37 +308,41 @@ void main() {
             },
           ));
 
-  test('rejects a store whose key type disagrees with its @ids node', () async {
+  Future<String> guardLogs(String spec) async {
     final logs = <String>[];
     await testBuilder(
       navBuilder(BuilderOptions.empty),
       {
         'ledger|lib/ledger.dart': _ledgerStub,
+        'identifiable|lib/identifiable.dart': _identifiableStub,
         'canon|lib/canon.dart': _canonStub,
-        'pkg|lib/spec.dart': _mismatchSpec,
+        'pkg|lib/spec.dart': spec,
       },
       rootPackage: 'pkg',
       generateFor: {'pkg|lib/spec.dart'},
       onLog: (r) => logs.add('${r.message}'),
     );
-    expect(logs.join('\n'),
-        allOf(contains('id-node and the'), contains('must agree')));
+    return logs.join('\n');
+  }
+
+  test('rejects a store whose key type disagrees with its entity node',
+      () async {
+    expect(await guardLogs(_mismatchSpec),
+        allOf(contains('keys as'), contains("store's key type is `int`")));
+  });
+
+  test('rejects a store on an OWNED entity — state lives in its root', () async {
+    expect(await guardLogs(_ownedStoreSpec),
+        allOf(contains('OWNED'), contains('root entity')));
+  });
+
+  test('rejects a store whose entity is no @entities row', () async {
+    expect(await guardLogs(_unknownEntitySpec),
+        allOf(contains('OrphanState'), contains('@entities')));
   });
 
   test('rejects a registry whose message type is not sealed', () async {
-    final logs = <String>[];
-    await testBuilder(
-      navBuilder(BuilderOptions.empty),
-      {
-        'ledger|lib/ledger.dart': _ledgerStub,
-        'canon|lib/canon.dart': _canonStub,
-        'pkg|lib/spec.dart': _unsealedMsgSpec,
-      },
-      rootPackage: 'pkg',
-      generateFor: {'pkg|lib/spec.dart'},
-      onLog: (r) => logs.add('${r.message}'),
-    );
-    expect(logs.join('\n'),
+    expect(await guardLogs(_unsealedMsgSpec),
         allOf(contains('ReviewMsg'), contains('sealed')));
   });
 }

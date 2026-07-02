@@ -1,3 +1,4 @@
+import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/constant/value.dart';
 import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/type.dart';
@@ -7,16 +8,26 @@ import 'package:source_gen/source_gen.dart';
 // ledger owns the @stores grammar and is pure Dart, so the builder stays flutter-free.
 import 'package:ledger/ledger.dart' show Stores;
 
-/// Reads an `@stores` enum and emits the typed DATA surface. For each row it
-/// extracts the entity/key types from the held `Store<K, E, M>` (read
-/// canon never imports the data engine), and emits a typed accessor.
-///
-/// First slice: emits the typed `Data` surface (state types proven extractable).
-/// The ledger wiring + nav-keyed injection land in the following slices.
+/// One `@entities` row as the generator sees it: the row's name, its id-node
+/// value, and whether the graph declares it OWNED (state lives in its root's
+/// store — no store of its own).
+class _EntityInfo {
+  _EntityInfo(this.row, this.node, {required this.owned});
+  final String row;
+  final DartObject? node;
+  final bool owned;
+}
+
+/// Reads an `@stores` enum and emits the typed DATA surface. A row declares the
+/// two things no grammar derives — that the collection exists, and its reduce
+/// (`ads(Ads())`). Everything else derives from the `@entities` graph through
+/// the held `Store<K, E, M>`'s entity type: the key node (and so the key type
+/// and screen associations), and store LEGALITY (roots only — an owned entity's
+/// state lives inside its root's store).
 class RegistryGenerator extends GeneratorForAnnotation<Stores> {
   @override
-  String generateForAnnotatedElement(
-      Element element, ConstantReader annotation, BuildStep buildStep) {
+  Future<String> generateForAnnotatedElement(
+      Element element, ConstantReader annotation, BuildStep buildStep) async {
     if (element is! EnumElement) {
       throw InvalidGenerationSourceError('@stores must annotate an enum',
           element: element);
@@ -26,6 +37,9 @@ class RegistryGenerator extends GeneratorForAnnotation<Stores> {
     final fields = <String>[]; // store field decls
     final binds = <String>[]; // bind() body lines
     final reads = <String>[]; // typed accessors
+
+    // The @entities space: entity TYPE name → its row info (node + ownedness).
+    final entityByType = await _entitiesByType(element, buildStep);
 
     // The screen↔registry association is DERIVED, not declared: a screen and a
     // registry that bind the SAME @ids node are about the same identity, so the
@@ -42,31 +56,55 @@ class RegistryGenerator extends GeneratorForAnnotation<Stores> {
             element: element);
       }
       final name = field.name!;
-      final args = [for (final a in s.typeArguments) a.getDisplayString()];
-      final superT = s.getDisplayString();
+      var args = [for (final a in s.typeArguments) a.getDisplayString()];
+      // A store keyed by a GENERATED type (`Store<AdId, …>`) resolves to
+      // InvalidType inside this builder's own phase (its outputs are hidden
+      // from its resolver) — recover the args syntactically from the store
+      // class's `extends` clause.
+      if (args.contains('InvalidType')) {
+        final syntactic = await _syntacticStoreArgs(held, buildStep);
+        if (syntactic != null) args = syntactic;
+      }
+      final superT = 'Store<${args.join(', ')}>';
       final ref = '$enumName.$name.store as $superT';
 
-      // Cross-tree guard: a row binds an @ids node as its `key`; if that node
-      // carries a codec, the value it decodes to MUST be the registry's key type
-      // K. Read structurally (the id-node lives in the @ids enum, the K in the
-      // held registry) so the two grammar trees can never silently disagree.
+      // Derivation through E: the store's entity type finds its @entities row,
+      // which carries the key node — nothing is declared twice, so the trees
+      // can never disagree.
+      final entityType = args[1];
+      final info = entityByType[entityType];
+      if (info == null) {
+        throw InvalidGenerationSourceError(
+            'store "$name" holds a Store of `$entityType`, which is not a row '
+            'of the @entities enum — declare the entity (type + id node) there.',
+            element: element);
+      }
+      // The ownership guard: stores attach to aggregate ROOTS only.
+      if (info.owned) {
+        throw InvalidGenerationSourceError(
+            'store "$name": `$entityType` is OWNED in the entity graph — its '
+            'state lives inside its root\'s store; declare the store on the '
+            'root entity instead.',
+            element: element);
+      }
+      // Key agreement: the node's value type (or its @IDs extension type) must
+      // be the store's K.
       final keyType = args[0];
-      final idValueType = _idValueType(field.computeConstantValue());
-      final typedKey = _typedKeyName(field.computeConstantValue());
+      final idValueType = _nodeValueType(info.node);
+      final typedKey = _typedNodeName(info.node);
       if (idValueType != null &&
           idValueType != keyType &&
           typedKey != keyType) {
         final expected =
             typedKey != null ? '`$typedKey` (or `$idValueType`)' : '`$idValueType`';
         throw InvalidGenerationSourceError(
-            'registry "$name" binds an @ids node whose key type is $expected, '
-            'but its registry key type is `$keyType`. The id-node and the '
-            'registry key must agree.',
+            'store "$name": `$entityType`\'s id-node keys as $expected, but the '
+            'store\'s key type is `$keyType`.',
             element: element);
       }
 
-      // Screens sharing this registry's id-node — the derived association.
-      final keyNode = _nodeId(field.computeConstantValue()?.getField('key'));
+      // Screens sharing this entity's id-node — the derived association.
+      final keyNode = _nodeId(info.node);
       final screens = screensByNode[keyNode] ?? const <(String, String)>[];
 
       // The reduce switches over M, so M MUST be sealed — else a new message
@@ -160,14 +198,91 @@ class RegistryGenerator extends GeneratorForAnnotation<Stores> {
     return map;
   }
 
-  /// The value type the row's `key` id-node decodes to: the `T` of the `Codec<T>`
-  /// its `codec` (or `_codec` backing, when the @ids enum hosts composite rows)
-  /// field implements. Null when the key is a plain value (no codec), which
-  /// simply skips the cross-tree check.
-  String? _idValueType(DartObject? row) {
-    final key = row?.getField('key');
-    var codecObj = key?.getField('codec');
-    if (codecObj == null || codecObj.isNull) codecObj = key?.getField('_codec');
+  /// The `@entities` space, keyed by entity TYPE name: each row's id-node and
+  /// whether the static graph declares it OWNED (appears as a child anywhere).
+  Future<Map<String, _EntityInfo>> _entitiesByType(
+      EnumElement stores, BuildStep buildStep) async {
+    EnumElement? entitiesEnum;
+    for (final en in stores.library.enums) {
+      final annotated = en.metadata.annotations.any((a) =>
+          a.computeConstantValue()?.type?.element?.name == 'Entities');
+      if (annotated) {
+        entitiesEnum = en;
+        break;
+      }
+    }
+    if (entitiesEnum == null) return const {};
+
+    final owned = await _ownedRows(entitiesEnum, buildStep);
+    final map = <String, _EntityInfo>{};
+    for (final f in entitiesEnum.fields) {
+      if (!f.isEnumConstant) continue;
+      final v = f.computeConstantValue();
+      final typeName = v?.getField('type')?.toTypeValue()?.getDisplayString();
+      if (typeName == null) continue;
+      map[typeName] = _EntityInfo(f.name!, v?.getField('key'),
+          owned: owned.contains(f.name));
+    }
+    return map;
+  }
+
+  /// The row names the entity graph declares as OWNED — every name appearing
+  /// as a CHILD in the `static final graph = EntityGraph({...})` tree literal.
+  /// Read syntactically (the graph is a non-const `final`).
+  Future<Set<String>> _ownedRows(
+      EnumElement entitiesEnum, BuildStep buildStep) async {
+    final ast = await buildStep.resolver
+        .astNodeFor(entitiesEnum.firstFragment, resolve: false);
+    if (ast is! EnumDeclaration || ast.body is! BlockEnumBody) return const {};
+    Expression? graphExpr;
+    for (final member in (ast.body as BlockEnumBody).members) {
+      if (member is FieldDeclaration) {
+        for (final v in member.fields.variables) {
+          if (v.name.lexeme == 'graph') graphExpr = v.initializer;
+        }
+      }
+    }
+    final args = switch (graphExpr) {
+      MethodInvocation(:final argumentList) => argumentList,
+      InstanceCreationExpression(:final argumentList) => argumentList,
+      _ => null,
+    };
+    final tree = args?.arguments.firstOrNull?.argumentExpression;
+    if (tree is! SetOrMapLiteral) return const {};
+
+    final owned = <String>{};
+    void walk(Expression node, {required bool asChild}) {
+      switch (node) {
+        // `row` — a bare leaf.
+        case SimpleIdentifier(:final name):
+          if (asChild) owned.add(name);
+        // `row({children})` — a branch.
+        case MethodInvocation(
+            methodName: SimpleIdentifier(:final name),
+            :final argumentList,
+          ):
+          if (asChild) owned.add(name);
+          final children = argumentList.arguments.firstOrNull?.argumentExpression;
+          if (children is SetOrMapLiteral) {
+            for (final c in children.elements) {
+              if (c is Expression) walk(c, asChild: true);
+            }
+          }
+        default:
+      }
+    }
+
+    for (final e in tree.elements) {
+      if (e is Expression) walk(e, asChild: false);
+    }
+    return owned;
+  }
+
+  /// The value type an id-node decodes to: the `T` of the `Codec<T>` its
+  /// `codec` (or `_codec` backing) field implements.
+  String? _nodeValueType(DartObject? node) {
+    var codecObj = node?.getField('codec');
+    if (codecObj == null || codecObj.isNull) codecObj = node?.getField('_codec');
     final codecType =
         (codecObj != null && !codecObj.isNull) ? codecObj.type : null;
     if (codecType is! InterfaceType) return null;
@@ -179,17 +294,15 @@ class RegistryGenerator extends GeneratorForAnnotation<Stores> {
     return null;
   }
 
-  /// The generated extension-type name for the row's `key` node, when its enum
-  /// wears `@IDs` (`Ids.author` → `AuthorId`) — the typed alternative the store
-  /// key K may use instead of the raw codec type.
-  String? _typedKeyName(DartObject? row) {
-    final key = row?.getField('key');
-    final el = key?.type?.element;
+  /// The generated extension-type name for an id-node, when its enum wears
+  /// `@IDs` (`Ids.author` → `AuthorId`).
+  String? _typedNodeName(DartObject? node) {
+    final el = node?.type?.element;
     if (el is! EnumElement) return null;
     final annotated = el.metadata.annotations
         .any((a) => a.computeConstantValue()?.type?.element?.name == 'IDs');
     if (!annotated) return null;
-    final raw = key?.getField('_name')?.toStringValue();
+    final raw = node?.getField('_name')?.toStringValue();
     if (raw == null) return null;
     return '${raw[0].toUpperCase()}${raw.substring(1)}Id';
   }
@@ -201,5 +314,23 @@ class RegistryGenerator extends GeneratorForAnnotation<Stores> {
       if (s.element.name == 'Store' && s.typeArguments.length == 3) return s;
     }
     return null;
+  }
+
+  /// The `Store<K, E, M>` type args AS WRITTEN in the held store class's
+  /// `extends` clause — the fallback when the resolver reports InvalidType
+  /// (generated id types are hidden from this builder's own phase).
+  Future<List<String>?> _syntacticStoreArgs(
+      DartType? held, BuildStep buildStep) async {
+    final el = held is InterfaceType ? held.element : null;
+    if (el == null) return null;
+    final ast =
+        await buildStep.resolver.astNodeFor(el.firstFragment, resolve: false);
+    if (ast is! ClassDeclaration) return null;
+    final sup = ast.extendsClause?.superclass;
+    final args = sup?.typeArguments?.arguments;
+    if (sup?.name.lexeme != 'Store' || args == null || args.length != 3) {
+      return null;
+    }
+    return [for (final a in args) a.toSource()];
   }
 }
