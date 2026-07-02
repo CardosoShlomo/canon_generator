@@ -1731,7 +1731,7 @@ void main() {
   test('emits the single RouterDelegate host as Screen.manager',
       () => _expectGenerated(allOf([
             contains('static NavDelegate get manager'),
-            contains('return _Screens.graph.delegate;'),
+            contains('return _manager ??= NavDelegate(_Screens.graph);'),
           ])));
 
   test('emits the Screen.replace redirect facade', () => _expectGenerated(allOf([
