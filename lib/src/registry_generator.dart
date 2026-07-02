@@ -74,17 +74,19 @@ class RegistryGenerator extends GeneratorForAnnotation<Stores> {
             'be a `sealed` class so its reduce is exhaustively pattern-matched.',
             element: element);
       }
-      // Store<K, E, M> → a keyed, optimistic store; read is `E? name(K key)`.
+      // Store<K, E, M> → a keyed, optimistic store, exposed as the PUBLIC
+      // `<row>Store` global: StoreMemory IS the consumer surface (`[key]`,
+      // `entities`, `changes`, `consume`, `watchStatus`) — no read sugar
+      // duplicates it. Only the nav-keyed reads are generated (the cross-tree
+      // derivation a consumer can't write).
       final (state, key) = (args[1], args[0]);
-      fields.add('  static late final StoreMemory<${args.join(', ')}> _$name;');
-      binds.add('    _$name = _ledger.store($ref);');
-      reads.add('  /// $name — read the entry for [key].');
-      reads.add('  static $state? $name($key key) => _$name[key];');
+      fields.add('  static late final StoreMemory<${args.join(', ')}> ${name}Store;');
+      binds.add('    ${name}Store = _ledger.store($ref);');
       for (final (scrEnum, scr) in screens) {
         reads.add('  /// $name on screen `$scr` — the entry at its live nav id.');
         reads.add('  static $state? ${name}On${_cap(scr)}() {');
         reads.add('    for (final e in $scrEnum.graph.stack) {');
-        reads.add('      if (e.screen == $scrEnum.$scr) return _$name[e.id as $key];');
+        reads.add('      if (e.screen == $scrEnum.$scr) return ${name}Store[e.id as $key];');
         reads.add('    }');
         reads.add('    return null;');
         reads.add('  }');
@@ -95,12 +97,13 @@ class RegistryGenerator extends GeneratorForAnnotation<Stores> {
     // The generated reads are public api; a consumer needn't call every one.
     b.writeln('// ignore_for_file: unused_element');
     b.writeln('/// The app-wide ledger — the single state + message api (from @stores).');
-    b.writeln('/// `Screen.manager` binds it; the typed reads inject by nav location:');
-    b.writeln('/// `ledger.products(key)` · `ledger.dispatch(msg)` · `ledger.on<…>(...)` ·');
-    b.writeln('/// `ledger.command(...)`. `Screen` is nav; `ledger` is state-and-messages.');
+    b.writeln('/// `Screen.manager` binds it. `ledger.dispatch(msg)` · `ledger.on<…>(...)` ·');
+    b.writeln('/// `ledger.command(...)`; entities live on the public `<row>Store`');
+    b.writeln('/// globals. `Screen` is nav; `ledger` is state-and-messages.');
     b.writeln('final ledger = Ledger();');
     b.writeln('bool _bound = false;');
-    // The live stores are top-level privates (an extension can hold no state).
+    // The live stores are top-level publics (an extension can hold no state);
+    // StoreMemory is the designed consumer surface, so it IS the api.
     for (final f in fields) {
       b.writeln(f.replaceFirst('  static ', ''));
     }

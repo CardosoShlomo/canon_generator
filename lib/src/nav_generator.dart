@@ -2094,8 +2094,9 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     // parse classes / `parseUrl` / Link resolve-branches come from
     // the declared `.link` endpoints (empty when none). Domain-agnostic; parse
     // is path-only — the platform verifies the host.
-    final endpoints =
-        linkEndpoints(model.links, element, {for (final r in rows) r.name}, idOf);
+    final endpoints = linkEndpoints(
+        model.links, element, {for (final r in rows) r.name}, idOf,
+        typeOf: model.typeOf);
     {
       b.writeln('');
       // One concrete `Link` class per case (k = a union branch, or null for a

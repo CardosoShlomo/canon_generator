@@ -1,5 +1,6 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/element/element.dart';
+import 'package:analyzer/dart/element/type.dart';
 import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
 
@@ -74,7 +75,7 @@ class PlacementNode {
 
 /// The virtual tree plus every enum it spans (root + grafted sub-enums).
 class TreeModel {
-  TreeModel(this.tree, this.enums, this.links);
+  TreeModel(this.tree, this.enums, this.links, this._resolvedUnits);
   final List<PlacementNode> tree;
   final List<EnumElement> enums;
 
@@ -82,6 +83,41 @@ class TreeModel {
   /// merged Link surface. Each carries its path context (`path`) and the raw
   /// link children (`linkChildren`); none appears in [tree].
   final List<PlacementNode> links;
+
+  /// RESOLVED units keyed by their UNRESOLVED twin's root — the tree itself is
+  /// walked unresolved (the grammar patterns match parse shapes), but a node's
+  /// analyzer type is recoverable on demand by locating its offset in the twin.
+  final Map<CompilationUnit, CompilationUnit> _resolvedUnits;
+
+  /// The analyzer type of [expr] (an expression from the unresolved tree), or
+  /// null when it can't be located.
+  DartType? typeOf(Expression expr) {
+    final unit = _resolvedUnits[expr.root];
+    if (unit == null) return null;
+    final node = _covering(unit, expr.offset, expr.end);
+    for (AstNode? n = node; n != null; n = n.parent) {
+      if (n.offset < expr.offset || n.end > expr.end) break;
+      if (n is Expression && n.staticType != null) return n.staticType;
+    }
+    return null;
+  }
+}
+
+/// The deepest node spanning [offset, end) — a minimal covering walk (the
+/// analyzer's NodeLocator is not public API).
+AstNode? _covering(AstNode root, int offset, int end) {
+  AstNode current = root;
+  for (;;) {
+    AstNode? child;
+    for (final e in current.childEntities) {
+      if (e is AstNode && e.offset <= offset && end <= e.end) {
+        child = e;
+        break;
+      }
+    }
+    if (child == null) return current == root ? null : current;
+    current = child;
+  }
 }
 
 /// One enum's syntactic surface: its name, screen-row names, expression-bodied
@@ -104,6 +140,8 @@ Future<TreeModel> readTree(EnumElement root, BuildStep buildStep) async {
   final frames = <String, _Frame>{};
   final enums = <EnumElement>[];
   final links = <PlacementNode>[]; // `.links(...)` branches, kept out of the nav tree
+  // Each enum's UNRESOLVED unit root — the identity typeOf's lookup keys on.
+  final unitRoots = <EnumElement, CompilationUnit>{};
 
   Future<_Frame> frameOf(EnumElement e) async {
     final existing = frames[e.name];
@@ -134,6 +172,7 @@ Future<TreeModel> readTree(EnumElement root, BuildStep buildStep) async {
     final frame = _Frame(e.name!, rows, helpers, fields);
     frames[e.name!] = frame;
     enums.add(e);
+    if (ast.root case final CompilationUnit u) unitRoots[e] = u;
     return frame;
   }
 
@@ -419,7 +458,19 @@ Future<TreeModel> readTree(EnumElement root, BuildStep buildStep) async {
     }
   }
   _rejectScreenLinkClash(tree, rootLinks, root);
-  return TreeModel(tree, enums, links);
+  // The resolved twin of every spanned enum's unit — typeOf's lookup table,
+  // keyed by the SAME unresolved root instances the tree expressions hang off.
+  final resolvedUnits = <CompilationUnit, CompilationUnit>{};
+  for (final e in enums) {
+    final uRoot = unitRoots[e];
+    if (uRoot == null || resolvedUnits.containsKey(uRoot)) continue;
+    final resolved =
+        await buildStep.resolver.astNodeFor(e.firstFragment, resolve: true);
+    if (resolved?.root case final CompilationUnit rRoot) {
+      resolvedUnits[uRoot] = rRoot;
+    }
+  }
+  return TreeModel(tree, enums, links, resolvedUnits);
 }
 
 // A node at one position is EITHER a navigable screen OR a `.link`-only branch,

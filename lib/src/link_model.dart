@@ -1,6 +1,7 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/token.dart';
 import 'package:analyzer/dart/element/element.dart';
+import 'package:analyzer/dart/element/type.dart';
 import 'package:source_gen/source_gen.dart';
 
 import 'tree_reader.dart';
@@ -99,7 +100,9 @@ String _pascal(String kebab) => kebab
 /// so a bare nested seg resolves as a screen. [element] is the `@screens` enum,
 /// for diagnostics.
 List<Endpoint> linkEndpoints(List<PlacementNode> branches, EnumElement element,
-    Set<String> rows, Map<String, String?> idOf) {
+    Set<String> rows, Map<String, String?> idOf,
+    {DartType? Function(Expression)? typeOf}) {
+  _typeOf = typeOf;
   final endpoints = <Endpoint>[];
   final usedNames = <String>{};
   final seenTemplates = <String>{};
@@ -480,26 +483,26 @@ String? _codecNameOverride(Expression codec) => switch (codec) {
   // `.uuid`
   if (codec is DotShorthandPropertyAccess) {
     final name = codec.propertyName.name;
-    return (_builtin(name) ?? 'Object', false, _pascal(name));
+    return (_staticCodecArg(codec) ?? _builtin(name) ?? 'Object', false, _pascal(name));
   }
   // `.list(...)` / `.enumValues(...)` / `.uuid(#name)` parsed as an invocation.
   if (codec is DotShorthandInvocation) {
     if (_symbolArg(codec.argumentList) != null) {
       final name = codec.memberName.name;
-      return (_builtin(name) ?? 'Object', false, _pascal(name));
+      return (_staticCodecArg(codec) ?? _builtin(name) ?? 'Object', false, _pascal(name));
     }
     return _codecInvocation(codec.memberName.name, codec.argumentList, element);
   }
   switch (codec) {
     case PrefixedIdentifier(identifier: SimpleIdentifier(:final name)):
-      return (_builtin(name) ?? 'Object', false, _pascal(name));
+      return (_staticCodecArg(codec) ?? _builtin(name) ?? 'Object', false, _pascal(name));
     case MethodInvocation(
         methodName: SimpleIdentifier(:final name),
         :final argumentList,
       ):
       // `Codec.uuid(#itemId)` — a `(#name)` override; type rides the codec name.
       if (_symbolArg(argumentList) != null) {
-        return (_builtin(name) ?? 'Object', false, _pascal(name));
+        return (_staticCodecArg(codec) ?? _builtin(name) ?? 'Object', false, _pascal(name));
       }
       return _codecInvocation(name, argumentList, element);
     default:
@@ -532,6 +535,26 @@ String? _builtin(String name) => switch (name) {
       'date' => 'DateTime',
       _ => null,
     };
+
+/// Resolves an unresolved tree expression to its analyzer type — set by
+/// [linkEndpoints] from `TreeModel.typeOf` for the duration of one generation
+/// (the walk is deeply recursive; a parameter would thread through every hop).
+DartType? Function(Expression)? _typeOf;
+
+/// The codec expression's VALUE type from the analyzer (`Codec<T>` → `T`) —
+/// works for any codec, custom or battery. Null when unresolved or erased
+/// (`Codec<Object?>` id-nodes), which falls back to the [_builtin] name table.
+String? _staticCodecArg(Expression codec) {
+  final t = _typeOf?.call(codec);
+  if (t is! InterfaceType) return null;
+  for (final s in [t, ...t.allSupertypes]) {
+    if (s.element.name == 'Codec' && s.typeArguments.length == 1) {
+      final arg = s.typeArguments.first.getDisplayString();
+      return (arg == 'Object?' || arg == 'dynamic') ? null : arg;
+    }
+  }
+  return null;
+}
 
 /// Built-in codecs whose own name is meaningful enough to name the field,
 /// beating the URL segment (`.username` → `username`). Primitives don't.

@@ -54,6 +54,9 @@ class Codec<T> {
   static const Codec<String> uuid = _StrCodec();
   static const Codec<String> username = _StrCodec();
   static const Codec<int> integer = _IntCodec();
+  // custom-named codec — its link value type must come from the analyzer,
+  // not the battery name table.
+  static const Codec<int> sku = _IntCodec();
   static Codec<String> literal(String value) => const _StrCodec();
 }
 class _StrCodec extends Codec<String> { const _StrCodec(); }
@@ -1002,7 +1005,43 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 }
 ''';
 
+// A CUSTOM-named codec in a link slot — the value type must resolve through
+// the analyzer (`Codec<int>` → int), not degrade to Object via the name table.
+const _customCodecLinkSpec = '''
+import 'package:canon/canon.dart';
+
+part 'spec.nav.dart';
+
+@screens
+enum _Screens with ScreenNode<Object?, _Screens> {
+  home(0),
+  product(0, Codec.string);
+
+  const _Screens(this.widget, [this.id]);
+  final Object widget;
+  final Codec? id;
+
+  static final graph = NavGraph<_Screens>(
+    {
+      home({product}),
+      product.links({slot(Codec.sku)}),
+    },
+    initial: home,
+    pageOf: (s, c, k) => 0,
+  );
+}
+''';
+
 void main() {
+  test('a custom codec\'s link value type resolves via the analyzer', () =>
+      _expectGenerated(
+        allOf([
+          contains('final int value0'), // Codec<int> sku → int, not Object
+          isNot(contains('final Object value0')),
+        ]),
+        spec: _customCodecLinkSpec,
+      ));
+
   test('cycle + kick-start collisions: multi-placement pop resolves via _atOf',
       () => _expectGenerated(
             allOf([
