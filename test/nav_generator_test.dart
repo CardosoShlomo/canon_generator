@@ -108,7 +108,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 }
 ''';
 
-// home -> user, plus a `user.links({slot})` branch (link-world; generator-collected,
+// home -> author, plus a `author.links({slot})` branch (link-world; generator-collected,
 // kept out of the nav tree).
 const _linksSpec = '''
 import 'package:canon/canon.dart';
@@ -118,7 +118,7 @@ part 'spec.nav.dart';
 @screens
 enum _Screens with ScreenNode<Object?, _Screens> {
   home(0),
-  user(0, Codec.string);
+  author(0, Codec.string);
 
   const _Screens(this.widget, [this.id]);
   final Object widget;
@@ -126,8 +126,8 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 
   static final graph = NavGraph<_Screens>(
     {
-      home({user}),
-      user.links({slot(Codec.string)}),
+      home({author}),
+      author.links({slot(Codec.string)}),
     },
     initial: home,
     pageOf: (s, c, k) => 0,
@@ -144,7 +144,7 @@ part 'spec.nav.dart';
 @screens
 enum _Screens with ScreenNode<Object?, _Screens> {
   home(0),
-  user(0, Codec.string);
+  author(0, Codec.string);
 
   const _Screens(this.widget, [this.id]);
   final Object widget;
@@ -152,8 +152,8 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 
   static final graph = NavGraph<_Screens>(
     {
-      home({user}),
-      user.links({slot(Codec.uuid | Codec.username)}),
+      home({author}),
+      author.links({slot(Codec.uuid | Codec.username)}),
     },
     initial: home,
     pageOf: (s, c, k) => 0,
@@ -170,7 +170,7 @@ part 'spec.nav.dart';
 @screens
 enum _Screens with ScreenNode<Object?, _Screens> {
   home(0),
-  user(0, Codec.string);
+  author(0, Codec.string);
 
   const _Screens(this.widget, [this.id]);
   final Object widget;
@@ -178,8 +178,8 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 
   static final graph = NavGraph<_Screens>(
     {
-      home({user}),
-      user.links({slot(Codec.literal('me') | Codec.uuid | Codec.username)}),
+      home({author}),
+      author.links({slot(Codec.literal('me') | Codec.uuid | Codec.username)}),
     },
     initial: home,
     pageOf: (s, c, k) => 0,
@@ -197,7 +197,7 @@ part 'spec.nav.dart';
 @screens
 enum _Screens with ScreenNode<Object?, _Screens> {
   home(0),
-  user(0, Codec.uuid);
+  author(0, Codec.uuid);
 
   const _Screens(this.widget, [this.id]);
   final Object widget;
@@ -206,7 +206,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
   static final graph = NavGraph<_Screens>(
     {
       home,
-      user({slot(Codec.literal('me') | Codec.username)}),
+      author({slot(Codec.literal('me') | Codec.username)}),
     },
     initial: home,
     pageOf: (s, c, k) => 0,
@@ -251,7 +251,7 @@ part 'spec.nav.dart';
 @screens
 enum _Screens with ScreenNode<Object?, _Screens> {
   home(0),
-  user(0, Codec.string);
+  author(0, Codec.string);
 
   const _Screens(this.widget, [this.id]);
   final Object widget;
@@ -259,8 +259,8 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 
   static final graph = NavGraph<_Screens>(
     {
-      home({user}),
-      user.links({slot(Codec.uuid | Codec.username)}),
+      home({author}),
+      author.links({slot(Codec.uuid | Codec.username)}),
     },
     initial: home,
     pageOf: (s, c, k) => 0,
@@ -420,7 +420,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 }
 ''';
 
-// An empty call `user()` for a childless leaf — needless; the bare `user` says
+// An empty call `author()` for a childless leaf — needless; the bare `author` says
 // it. The call form's set is required and must be non-empty → throw.
 const _emptyCallSpec = '''
 import 'package:canon/canon.dart';
@@ -430,7 +430,7 @@ part 'spec.nav.dart';
 @screens
 enum _Screens with ScreenNode<Object?, _Screens> {
   home(0),
-  user(0);
+  author(0);
 
   const _Screens(this.widget, [this.id]);
   final Object widget;
@@ -438,7 +438,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 
   static final graph = NavGraph<_Screens>(
     {
-      home({user()}),
+      home({author()}),
     },
     initial: home,
     pageOf: (s, c, k) => 0,
@@ -589,7 +589,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 }
 ''';
 
-// editAd inherits its ad parent's id: the chained push verb takes no id and
+// editProduct inherits its product parent's id: the chained push verb takes no id and
 // reads the live ancestor id instead.
 const _inheritSpec = '''
 import 'package:canon/canon.dart';
@@ -599,15 +599,15 @@ part 'spec.nav.dart';
 @screens
 enum _Screens with ScreenNode<Object?, _Screens> {
   home(0),
-  ad(0, Codec.string),
-  editAd(0, Codec.string);
+  product(0, Codec.string),
+  editProduct(0, Codec.string);
 
   const _Screens(this.widget, [this.id]);
   final Object widget;
   final Codec? id;
 
   static final graph = NavGraph<_Screens>(
-    {home({ad({editAd.inherit(ad)})})},
+    {home({product({editProduct.inherit(product)})})},
     initial: home,
     pageOf: (s, c, k) => 0,
   );
@@ -615,7 +615,7 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 ''';
 
 // A 3-deep inherit chain with an id-free intermediate (section): every ancestor
-// ABOVE the id source (ad) can reach editAd with the one id; the intermediate is
+// ABOVE the id source (product) can reach editProduct with the one id; the intermediate is
 // stamped null, the source and target with the id.
 const _deepInheritSpec = '''
 import 'package:canon/canon.dart';
@@ -626,15 +626,15 @@ part 'spec.nav.dart';
 enum _Screens with ScreenNode<Object?, _Screens> {
   home(0),
   section(0),
-  ad(0, Codec.string),
-  editAd(0, Codec.string);
+  product(0, Codec.string),
+  editProduct(0, Codec.string);
 
   const _Screens(this.widget, [this.id]);
   final Object widget;
   final Codec? id;
 
   static final graph = NavGraph<_Screens>(
-    {home({section({ad({editAd.inherit(ad)})})})},
+    {home({section({product({editProduct.inherit(product)})})})},
     initial: home,
     pageOf: (s, c, k) => 0,
   );
@@ -668,10 +668,10 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 }
 ''';
 
-// chatProfile inherits profile, but chat (its OWN id) sits between them. No
-// single id can reach chatProfile from above chat (you'd need profile's AND
-// chat's ids), so there is no goChatProfile(id) reach verb anywhere; at chat the
-// id is already live, so it's the no-arg goChatProfile().
+// orderProfile inherits profile, but order (its OWN id) sits between them. No
+// single id can reach orderProfile from above order (you'd need profile's AND
+// order's ids), so there is no goOrderProfile(id) reach verb anywhere; at order the
+// id is already live, so it's the no-arg goOrderProfile().
 const _interposedIdSpec = '''
 import 'package:canon/canon.dart';
 
@@ -681,15 +681,15 @@ part 'spec.nav.dart';
 enum _Screens with ScreenNode<Object?, _Screens> {
   home(0),
   profile(0, Codec.string),
-  chat(0, Codec.string),
-  chatProfile(0, Codec.string);
+  order(0, Codec.string),
+  orderProfile(0, Codec.string);
 
   const _Screens(this.widget, [this.id]);
   final Object widget;
   final Codec? id;
 
   static final graph = NavGraph<_Screens>(
-    {home({profile({chat({chatProfile.inherit(profile)})})})},
+    {home({profile({order({orderProfile.inherit(profile)})})})},
     initial: home,
     pageOf: (s, c, k) => 0,
   );
@@ -725,8 +725,8 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 }
 ''';
 
-// COMPOSITE inherit: chat's record id (String, int) is sourced component-by-
-// component from two ancestors — the String from ad, the int from user. Both
+// COMPOSITE inherit: order's record id (String, int) is sourced component-by-
+// component from two ancestors — the String from product, the int from author. Both
 // components inherited → the chained verb shrinks to no args.
 const _compositeSpec = '''
 import 'package:canon/canon.dart';
@@ -736,23 +736,23 @@ part 'spec.nav.dart';
 @screens
 enum _Screens with ScreenNode<Object?, _Screens> {
   home(0),
-  ad(0, Codec.string),
-  user(0, Codec.integer),
-  chat(0, Record2Codec(Codec.string, Codec.integer));
+  product(0, Codec.string),
+  author(0, Codec.integer),
+  order(0, Record2Codec(Codec.string, Codec.integer));
 
   const _Screens(this.widget, [this.id]);
   final Object widget;
   final Codec? id;
 
   static final graph = NavGraph<_Screens>(
-    {home({ad({user({chat.inherit(ad, user)})})})},
+    {home({product({author({order.inherit(product, author)})})})},
     initial: home,
     pageOf: (s, c, k) => 0,
   );
 }
 ''';
 
-// PARTIAL composite: only the String component is inherited (from ad); the int
+// PARTIAL composite: only the String component is inherited (from product); the int
 // component has no matching ancestor, so it stays a required arg on the verb.
 const _compositePartialSpec = '''
 import 'package:canon/canon.dart';
@@ -762,15 +762,15 @@ part 'spec.nav.dart';
 @screens
 enum _Screens with ScreenNode<Object?, _Screens> {
   home(0),
-  ad(0, Codec.string),
-  chat(0, Record2Codec(Codec.string, Codec.integer));
+  product(0, Codec.string),
+  order(0, Record2Codec(Codec.string, Codec.integer));
 
   const _Screens(this.widget, [this.id]);
   final Object widget;
   final Codec? id;
 
   static final graph = NavGraph<_Screens>(
-    {home({ad({chat.inherit(ad)})})},
+    {home({product({order.inherit(product)})})},
     initial: home,
     pageOf: (s, c, k) => 0,
   );
@@ -787,14 +787,14 @@ part 'spec.nav.dart';
 @screens
 enum _Screens with ScreenNode<Object?, _Screens> {
   home(0),
-  chat(0, Record2Codec(Codec.string, Codec.integer));
+  order(0, Record2Codec(Codec.string, Codec.integer));
 
   const _Screens(this.widget, [this.id]);
   final Object widget;
   final Codec? id;
 
   static final graph = NavGraph<_Screens>(
-    {home({chat})},
+    {home({order})},
     initial: home,
     pageOf: (s, c, k) => 0,
   );
@@ -813,14 +813,14 @@ enum _Screens with ScreenNode<Object?, _Screens> {
   a(0, Codec.string),
   b(0, Codec.integer),
   c(0, Codec.string),
-  chat(0, Record2Codec(Codec.string, Codec.integer));
+  order(0, Record2Codec(Codec.string, Codec.integer));
 
   const _Screens(this.widget, [this.id]);
   final Object widget;
   final Codec? id;
 
   static final graph = NavGraph<_Screens>(
-    {home({a({b({c({chat.inherit(a, b, c)})})})})},
+    {home({a({b({c({order.inherit(a, b, c)})})})})},
     initial: home,
     pageOf: (s, c, k) => 0,
   );
@@ -848,7 +848,7 @@ Future<void> _expectBuildError(String spec, String needle) async {
       reason: 'no build error mentioning "$needle"; logs: $logs');
 }
 
-// A screen binds an @ids NODE (`id: .user`) instead of a Codec directly. The
+// A screen binds an @ids NODE (`id: .author`) instead of a Codec directly. The
 // node IS-A Codec (erased to Object?) but carries Codec.uuid (Codec<String>) in
 // its `codec` field — the generator must unwrap that to the SPECIFIC type.
 const _idsNodeSpec = '''
@@ -857,7 +857,7 @@ import 'package:canon/canon.dart';
 part 'spec.nav.dart';
 
 enum Ids with IdNode {
-  user(Codec.uuid);
+  author(Codec.uuid);
   const Ids(this.codec);
   @override
   final Codec codec;
@@ -866,7 +866,7 @@ enum Ids with IdNode {
 @screens
 enum _Screens with ScreenNode<Object?, _Screens> {
   home(0),
-  profile(0, Ids.user);
+  profile(0, Ids.author);
 
   const _Screens(this.widget, [this.id]);
   final Object widget;
@@ -1045,10 +1045,10 @@ void main() {
   test('composite inherit: both components inherited -> no-arg verb', () =>
       _expectGenerated(
         allOf([
-          contains('ChatNav goChat() {'), // both components inherited -> no args
-          contains('_Screens.graph.go(_Screens.chat, ('),
-          contains('_idOf(_Screens.ad)'),
-          contains('_idOf(_Screens.user)'),
+          contains('OrderNav goOrder() {'), // both components inherited -> no args
+          contains('_Screens.graph.go(_Screens.order, ('),
+          contains('_idOf(_Screens.product)'),
+          contains('_idOf(_Screens.author)'),
           contains('Object? _idOf(Enum s)'),
         ]),
         spec: _compositeSpec,
@@ -1057,10 +1057,10 @@ void main() {
   test('composite inherit: partial -> verb requires only the missing component',
       () => _expectGenerated(
             allOf([
-              contains('ChatNav goChat(int id) {'),
+              contains('OrderNav goOrder(int id) {'),
               contains(
-                  '_Screens.graph.go(_Screens.chat, (_idOf(_Screens.ad), id), true)'),
-              isNot(contains('goChat((String, int) id)')),
+                  '_Screens.graph.go(_Screens.order, (_idOf(_Screens.product), id), true)'),
+              isNot(contains('goOrder((String, int) id)')),
             ]),
             spec: _compositePartialSpec,
           ));
@@ -1068,8 +1068,8 @@ void main() {
   test('composite id with no inherit: verb takes the atomic record id', () =>
       _expectGenerated(
         allOf([
-          contains('goChat((String, int) id)'),
-          isNot(contains('goChat(String')), // never destructured
+          contains('goOrder((String, int) id)'),
+          isNot(contains('goOrder(String')), // never destructured
         ]),
         spec: _compositeNoneSpec,
       ));
@@ -1080,11 +1080,11 @@ void main() {
   test('single-arg inherit output is unchanged (regression)', () =>
       _expectGenerated(
         allOf([
-          contains('EditAdNav goEditAd() {'),
+          contains('EditProductNav goEditProduct() {'),
           contains(
-              '_Screens.graph.go(_Screens.editAd, _idOf(_Screens.ad), true)'),
-          isNot(contains('goEditAd(String id) {\n'
-              '    _Screens.graph.go(_Screens.editAd')), // still the no-arg edge
+              '_Screens.graph.go(_Screens.editProduct, _idOf(_Screens.product), true)'),
+          isNot(contains('goEditProduct(String id) {\n'
+              '    _Screens.graph.go(_Screens.editProduct')), // still the no-arg edge
         ]),
         spec: _inheritSpec,
       ));
@@ -1092,8 +1092,8 @@ void main() {
   test('inherited edge: no-arg chained verb reads the ancestor id', () =>
       _expectGenerated(
         allOf(
-          contains('EditAdNav goEditAd() {'), // chained: no id parameter
-          contains('_Screens.graph.go(_Screens.editAd, _idOf(_Screens.ad), true)'),
+          contains('EditProductNav goEditProduct() {'), // chained: no id parameter
+          contains('_Screens.graph.go(_Screens.editProduct, _idOf(_Screens.product), true)'),
           contains('Object? _idOf(Enum s)'), // the live-ancestor reader
         ),
         spec: _inheritSpec,
@@ -1102,12 +1102,12 @@ void main() {
   test('inherit kick-start rescue: one id fills the whole chain', () =>
       _expectGenerated(
         allOf([
-          contains('static EditAdNav goEditAd(String id)'), // global kick-start
-          contains('_Screens.graph.go(_Screens.ad, id);'), // stamp the source
-          contains('_Screens.graph.go(_Screens.editAd, id, true)'), // ...then target
+          contains('static EditProductNav goEditProduct(String id)'), // global kick-start
+          contains('_Screens.graph.go(_Screens.product, id);'), // stamp the source
+          contains('_Screens.graph.go(_Screens.editProduct, id, true)'), // ...then target
           // Not in the single-go Hop KICK-START class (needs the multi-step chain);
           // it IS navigable as a chain-carrying Place Hop, which is fine.
-          isNot(contains('Hop<EditAdNav>._(')),
+          isNot(contains('Hop<EditProductNav>._(')),
         ]),
         spec: _inheritSpec,
       ));
@@ -1115,11 +1115,11 @@ void main() {
   test('inherit ancestor-reach: parent gets goEdit(id), pushing both levels', () =>
       _expectGenerated(
         allOf([
-          contains('EditAdNav goEditAd(String id) {'), // on the ancestor handle (home)
+          contains('EditProductNav goEditProduct(String id) {'), // on the ancestor handle (home)
           // edge-required source push — distinguishes this from the kick-start,
           // which pushes the source with a plain (non-edge) go.
-          contains('_Screens.graph.go(_Screens.ad, id, true)'),
-          contains('_Screens.graph.go(_Screens.editAd, id, true)'),
+          contains('_Screens.graph.go(_Screens.product, id, true)'),
+          contains('_Screens.graph.go(_Screens.editProduct, id, true)'),
         ]),
         spec: _inheritSpec,
       ));
@@ -1128,14 +1128,14 @@ void main() {
       _expectGenerated(
         allOf([
           // direct parent of the source (section): push source + target.
-          contains('EditAdNav goEditAd(String id) {\n'
-              '    _Screens.graph.go(_Screens.ad, id, true);\n'
-              '    _Screens.graph.go(_Screens.editAd, id, true);'),
+          contains('EditProductNav goEditProduct(String id) {\n'
+              '    _Screens.graph.go(_Screens.product, id, true);\n'
+              '    _Screens.graph.go(_Screens.editProduct, id, true);'),
           // two levels up (home): the id-free intermediate is stamped null.
-          contains('EditAdNav goEditAd(String id) {\n'
+          contains('EditProductNav goEditProduct(String id) {\n'
               '    _Screens.graph.go(_Screens.section, null, true);\n'
-              '    _Screens.graph.go(_Screens.ad, id, true);\n'
-              '    _Screens.graph.go(_Screens.editAd, id, true);'),
+              '    _Screens.graph.go(_Screens.product, id, true);\n'
+              '    _Screens.graph.go(_Screens.editProduct, id, true);'),
         ]),
         spec: _deepInheritSpec,
       ));
@@ -1156,24 +1156,24 @@ void main() {
         spec: _chainInheritSpec,
       ));
 
-  test('inherit blocked by an interposed id: no single-id reach, no-arg at chat', () =>
+  test('inherit blocked by an interposed id: no single-id reach, no-arg at order', () =>
       _expectGenerated(
         allOf([
-          // at chat the source id is live → no-arg verb reading it.
-          contains('goChatProfile()'),
-          contains('_Screens.graph.go(_Screens.chatProfile, _idOf(_Screens.profile), true)'),
-          // chat's id sits between profile and chatProfile → no single-id reach.
-          isNot(contains('goChatProfile(String id)')),
+          // at order the source id is live → no-arg verb reading it.
+          contains('goOrderProfile()'),
+          contains('_Screens.graph.go(_Screens.orderProfile, _idOf(_Screens.profile), true)'),
+          // order's id sits between profile and orderProfile → no single-id reach.
+          isNot(contains('goOrderProfile(String id)')),
         ]),
         spec: _interposedIdSpec,
       ));
 
   test('broad reach: a plain id screen is reachable through id-free intermediates', () =>
       _expectGenerated(
-        // home reaches ad with just ad's id — section (id-free) is stamped null.
-        contains('AdNav goAd(String id) {\n'
+        // home reaches product with just product's id — section (id-free) is stamped null.
+        contains('ProductNav goProduct(String id) {\n'
             '    _Screens.graph.go(_Screens.section, null, true);\n'
-            '    _Screens.graph.go(_Screens.ad, id, true);'),
+            '    _Screens.graph.go(_Screens.product, id, true);'),
         spec: _deepInheritSpec,
       ));
 
@@ -1249,22 +1249,22 @@ void main() {
   test('a .links branch generates the Link surface; nav stays intact', () =>
       _expectGenerated(
         allOf([
-          contains('HomeEntry'), // home + user nav generation succeeded…
-          contains('UserEntry'),
+          contains('HomeEntry'), // home + author nav generation succeeded…
+          contains('AuthorEntry'),
           isNot(contains('LinksEntry')), // …and .links added no phantom screen
           contains('sealed class Url'), // …and emitted the typed Link surface
           contains('sealed class Link extends Url'), // the families
           // single-slot endpoint → one concrete widgetless class, no marker
-          contains('final class UserLink extends Link'),
+          contains('final class AuthorLink extends Link'),
           contains('final String value0'), // the slot's typed field
           contains('Url? parseUrl(String url)'),
           contains('final String? domain;'), // the inbound origin rides on Url
-          contains("'user/*' => UserLink(m.path[0] as String, origin)"), // typed map + origin
+          contains("'author/*' => AuthorLink(m.path[0] as String, origin)"), // typed map + origin
           // …and an instance toUri per class (no @Screens domain → domain required)
           contains('Uri toUri(String domain);'), // base declares it abstract
           contains('Uri toUri(String domain) => Uri.parse('), // each class implements
           contains('encodeLink('),
-          contains("'user/*'"),
+          contains("'author/*'"),
           contains('<Object?>[value0]'),
           contains('<int>[0]'),
         ]),
@@ -1274,15 +1274,15 @@ void main() {
   test('a union slot generates sibling Link classes under a per-entity marker', () =>
       _expectGenerated(
         allOf([
-          contains('sealed class UserLink implements Url'), // the per-entity marker
+          contains('sealed class AuthorLink implements Url'), // the per-entity marker
           contains(
-              'final class UserByUuidLink extends Link implements UserLink'),
-          contains('class UserByNameLink'), // username → entity-prefix stripped → ByName
+              'final class AuthorByUuidLink extends Link implements AuthorLink'),
+          contains('class AuthorByUsernameLink'), // username field name rides the codec
           contains('final String uuid;'), // semantic codec → field name
           contains('final String username;'),
           contains('switch (m.branches[0])'), // parse picks the branch…
-          contains('0 => UserByUuidLink(m.path[0] as String, origin)'),
-          contains('1 => UserByNameLink(m.path[0] as String, origin)'),
+          contains('0 => AuthorByUuidLink(m.path[0] as String, origin)'),
+          contains('1 => AuthorByUsernameLink(m.path[0] as String, origin)'),
           contains('Uri toUri(String domain) =>'), // …an instance toUri per sibling
           contains('<Object?>[uuid]'),
         ]),
@@ -1292,12 +1292,12 @@ void main() {
   test('slot(a | b) is the same union as slots({a, b})', () =>
       _expectGenerated(
         allOf([
-          contains('sealed class UserLink implements Url'),
+          contains('sealed class AuthorLink implements Url'),
           contains(
-              'final class UserByUuidLink extends Link implements UserLink'),
-          contains('class UserByNameLink'),
-          contains('0 => UserByUuidLink(m.path[0] as String, origin)'),
-          contains('1 => UserByNameLink(m.path[0] as String, origin)'),
+              'final class AuthorByUuidLink extends Link implements AuthorLink'),
+          contains('class AuthorByUsernameLink'),
+          contains('0 => AuthorByUuidLink(m.path[0] as String, origin)'),
+          contains('1 => AuthorByUsernameLink(m.path[0] as String, origin)'),
         ]),
         spec: _slotUnionOpSpec,
       ));
@@ -1319,13 +1319,13 @@ void main() {
   test('a literal in a union slot becomes a payload-less widgetless sibling', () =>
       _expectGenerated(
         allOf([
-          contains('sealed class UserLink implements Url'),
+          contains('sealed class AuthorLink implements Url'),
           contains(
-              'final class UserMeLink extends Link implements UserLink'),
-          contains('const UserMeLink([super.domain]);'), // payload-less, no field
+              'final class AuthorMeLink extends Link implements AuthorLink'),
+          contains('const AuthorMeLink([super.domain]);'), // payload-less, no field
           contains(
-              'final class UserByUuidLink extends Link implements UserLink'),
-          contains('0 => UserMeLink(origin)'), // parse: branch 0 reads no path token
+              'final class AuthorByUuidLink extends Link implements AuthorLink'),
+          contains('0 => AuthorMeLink(origin)'), // parse: branch 0 reads no path token
           contains("<Object?>['me']"), // encode threads the literal back in toUri
         ]),
         spec: _literalUnionSpec,
@@ -1334,19 +1334,19 @@ void main() {
   test('the widget form injects the screen id as a Place sibling', () =>
       _expectGenerated(
         allOf([
-          contains('sealed class UserLink implements Url'),
+          contains('sealed class AuthorLink implements Url'),
           // injected id branch → Place, field `<screen>Id`, class `…ByIdLink`
-          contains('final class UserByIdLink extends Place'),
-          contains('final String userId;'),
+          contains('final class AuthorByIdLink extends Place'),
+          contains('final String authorId;'),
           // declared branches stay widgetless
-          contains('final class UserMeLink extends Link'),
-          contains('class UserByNameLink'),
+          contains('final class AuthorMeLink extends Link'),
+          contains('class AuthorByUsernameLink'),
           contains('final String username;'),
           // order: the canonical id leads, declared resolvers follow ⇒
-          // userId=0, me=1, username=2
-          contains('0 => UserByIdLink(m.path[0] as String, origin)'),
-          contains('1 => UserMeLink(origin)'),
-          contains('2 => UserByNameLink(m.path[0] as String, origin)'),
+          // authorId=0, me=1, username=2
+          contains('0 => AuthorByIdLink(m.path[0] as String, origin)'),
+          contains('1 => AuthorMeLink(origin)'),
+          contains('2 => AuthorByUsernameLink(m.path[0] as String, origin)'),
         ]),
         spec: _widgetFormSpec,
       ));
@@ -1356,15 +1356,15 @@ void main() {
             allOf([
               // Link carries the nav-tree roots…
               contains('static _WLHome get home =>'),
-              // …and `user` (a nav root with widget-form resolvers) clashes with
+              // …and `author` (a nav root with widget-form resolvers) clashes with
               // its own widgetless leaf — the nav-target METHOD wins on Link
-              contains('static _WLUser user(String id) =>'),
-              // the widgetless resolvers stay reachable via Link.user
-              contains('static _LXUser get user =>'),
-              contains("me() => _LXUserSlot([..._p, 'me'], [..._b, 1]);"),
-              contains('byName(String username) =>'),
+              contains('static _WLAuthor author(String id) =>'),
+              // the widgetless resolvers stay reachable via Link.author
+              contains('static _LXAuthor get author =>'),
+              contains("me() => _LXAuthorSlot([..._p, 'me'], [..._b, 1]);"),
+              contains('byUsername(String username) =>'),
               // the leaf step builds its URL off the accumulators
-              contains("_Screens.graph.encodeLink(domain, 'user/*', _p, _b)"),
+              contains("_Screens.graph.encodeLink(domain, 'author/*', _p, _b)"),
             ]),
             spec: _widgetFormSpec,
           ));
@@ -1423,23 +1423,23 @@ void main() {
             allOf([
               contains('sealed class Place extends Url'),
               // id-free root → a getter; id-bearing root → a method (id mandatory
-              // before `.toUri()`, no bare `.user`)
+              // before `.toUri()`, no bare `.author`)
               contains('static _WLHome get home => _WLHome._([_Screens.home]'),
-              contains('static _WLUser user(String id) =>'),
-              isNot(contains('static _WLUser get user')),
-              contains('final class _WLUser implements Hop<'),
+              contains('static _WLAuthor author(String id) =>'),
+              isNot(contains('static _WLAuthor get author')),
+              contains('final class _WLAuthor implements Hop<'),
               // every nav-target node prints its full path via the nav-mirror
               contains('_Screens.graph.encodeNavUrl('),
               // the widgetless resolver branches (me/username) live on the
               // SEPARATE Link surface, not the Place nav tree
-              contains('static _LXUser get user =>'),
-              contains("me() => _LXUserSlot([..._p, 'me']"),
+              contains('static _LXAuthor get author =>'),
+              contains("me() => _LXAuthorSlot([..._p, 'me']"),
               isNot(contains('me() => _WL')),
             ]),
             spec: _widgetFormSpec,
           ));
 
-  test('an empty call `user()` is rejected (write the bare leaf)', () async {
+  test('an empty call `author()` is rejected (write the bare leaf)', () async {
     final logs = <String>[];
     await testBuilder(
       navBuilder(BuilderOptions.empty),

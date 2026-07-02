@@ -41,21 +41,21 @@ import 'package:canon/canon.dart';
 part 'spec.nav.dart';
 
 enum Ids {
-  user(StringCodec());
+  author(StringCodec());
   const Ids(this.codec);
   final Codec codec;
 }
 
-class InterestState {}
-sealed class InterestMsg {}
-class Interest extends Store<String, InterestState, InterestMsg> {
-  const Interest();
+class ReviewState {}
+sealed class ReviewMsg {}
+class Review extends Store<String, ReviewState, ReviewMsg> {
+  const Review();
 }
 
 @screens
 enum _Screens with ScreenNode<_Screens> {
   home(null),
-  profile(Ids.user);
+  profile(Ids.author);
 
   const _Screens(this.id);
   final Ids? id;
@@ -65,7 +65,7 @@ enum _Screens with ScreenNode<_Screens> {
 
 @stores
 enum _Stores with StoreNode<_Stores, Ids> {
-  interest(Interest(), Ids.user);
+  review(Review(), Ids.author);
 
   const _Stores(this.store, this.key);
   final Object store;
@@ -82,20 +82,20 @@ import 'package:canon/canon.dart';
 part 'spec.nav.dart';
 
 enum Ids {
-  user(StringCodec());
+  author(StringCodec());
   const Ids(this.codec);
   final Codec codec;
 }
 
-class InterestState {}
-sealed class InterestMsg {}
-class Interest extends Store<int, InterestState, InterestMsg> {
-  const Interest();
+class ReviewState {}
+sealed class ReviewMsg {}
+class Review extends Store<int, ReviewState, ReviewMsg> {
+  const Review();
 }
 
 @stores
 enum _Stores with StoreNode<_Stores, Ids> {
-  interest(Interest(), Ids.user);
+  review(Review(), Ids.author);
 
   const _Stores(this.store, this.key);
   final Object store;
@@ -112,20 +112,20 @@ import 'package:canon/canon.dart';
 part 'spec.nav.dart';
 
 enum Ids {
-  user(StringCodec());
+  author(StringCodec());
   const Ids(this.codec);
   final Codec codec;
 }
 
-class InterestState {}
-class InterestMsg {}
-class Interest extends Store<String, InterestState, InterestMsg> {
-  const Interest();
+class ReviewState {}
+class ReviewMsg {}
+class Review extends Store<String, ReviewState, ReviewMsg> {
+  const Review();
 }
 
 @stores
 enum _Stores with StoreNode<_Stores, Ids> {
-  interest(Interest(), Ids.user);
+  review(Review(), Ids.author);
 
   const _Stores(this.store, this.key);
   final Object store;
@@ -147,19 +147,19 @@ void main() {
             generateFor: {'pkg|lib/spec.dart'},
             outputs: {
               'pkg|lib/spec.nav.dart': decodedMatches(allOf([
-                // one api: a global `ledger` + an extension on Ledger
+                // one api: a global `ledger` + the public per-row store globals
                 contains('final ledger = Ledger();'),
                 contains('extension on Ledger {'),
                 contains('void bind() {'),
                 contains(
-                    'StoreMemory<String, InterestState, InterestMsg>'),
-                contains('_interest = store('), // bind uses this.registry
-                contains(
-                    'InterestState? interest(String key) => _interest[key];'),
-                // derived screen↔store association: profile shares Ids.user
-                contains('InterestState? interestOnProfile()'),
+                    'late final StoreMemory<String, ReviewState, ReviewMsg> reviewStore;'),
+                contains('reviewStore = store('), // bind uses this.registry
+                // StoreMemory IS the read surface — no `review(key)` sugar
+                isNot(contains('ReviewState? review(String key)')),
+                // derived screen↔store association: profile shares Ids.author
+                contains('ReviewState? reviewOnProfile()'),
                 contains('e.screen == _Screens.profile'),
-                contains('_interest[e.id as String]'),
+                contains('reviewStore[e.id as String]'),
                 // home has no id-node → no accessors at all
                 isNot(contains('OnHome')),
               ]))
@@ -197,6 +197,6 @@ void main() {
       onLog: (r) => logs.add('${r.message}'),
     );
     expect(logs.join('\n'),
-        allOf(contains('InterestMsg'), contains('sealed')));
+        allOf(contains('ReviewMsg'), contains('sealed')));
   });
 }
