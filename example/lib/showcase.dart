@@ -6,9 +6,13 @@ import 'package:canon_flutter/canon_flutter.dart'; // the facade — nav, state 
 part 'showcase.canon.dart';
 
 // ── The SHOWCASE example ──────────────────────────────────────────────────
-// A compact e-commerce app whose single grammar tree exercises EVERY canon
-// capability. Most screens are a color + a row of nav buttons; `product` is a
-// REAL consuming screen, so this doubles as the runnable app you test on.
+// A compact e-commerce app whose grammar trees exercise EVERY canon
+// capability — nav (keep/forget, inherit, stacked/cycled, graft,
+// query/fragment, links) AND state (a keyed store with OWNED children and
+// tree ops, a keyless UNIT store, derived request status via an `Awaits`
+// twin, reactive per-key reads). Most screens are a color + a row of nav
+// buttons; `product` is a REAL consuming screen, so this doubles as the
+// runnable app you test on.
 //
 // What only the running app shows (it's all runtime): every `Screen.goX`
 // round-trips to a clean URL and back; browser back/forward and refresh restore
@@ -32,11 +36,12 @@ enum Sort { relevance, priceLow, priceHigh, newest }
 // across the screens and registries trees, which is what lets data inject by nav.
 @IDs()
 enum Ids with IdNode {
-  product(Codec.uuid),
-  seller(Codec.username),
-  category(Codec.string),
-  order(Codec.uuid),
-  listing(Codec.uuid);
+  product(.uuid),
+  review(.uuid),
+  seller(.username),
+  category(.string),
+  order(.uuid),
+  listing(.uuid);
 
   const Ids(this.codec);
   @override
@@ -44,18 +49,37 @@ enum Ids with IdNode {
 }
 
 // ── The STORES (consumer-defined; pure `reduce` on the `ledger` engine) ───
-class Product with Identifiable<String> {
-  Product(this.id, this.name, this.price);
+// A review — an OWNED child: it lives inside its product as an id-keyed map
+// field (never in a store of its own; the aggregate is the consistency unit).
+class Review with Identifiable<ReviewId> {
+  Review(this.id, this.author, this.text);
   @override
-  final String id;
-  final String name;
-  final int price;
+  final ReviewId id;
+  final String author;
+  final String text;
 }
 
-sealed class ProductMsg extends Msg with Identifiable<String> {
+class Product with Identifiable<ProductId> {
+  Product(this.id, this.name, this.price,
+      {this.reviews = const {}, this.hasMoreReviews = false});
+  @override
+  final ProductId id;
+  final String name;
+  final int price;
+  final IdentifiableMap<ReviewId, Review> reviews;
+  final bool hasMoreReviews;
+
+  Product copyWith(
+          {IdentifiableMap<ReviewId, Review>? reviews, bool? hasMoreReviews}) =>
+      Product(id, name, price,
+          reviews: reviews ?? this.reviews,
+          hasMoreReviews: hasMoreReviews ?? this.hasMoreReviews);
+}
+
+sealed class ProductMsg extends Msg with Identifiable<ProductId> {
   ProductMsg(this.id);
   @override
-  final String id;
+  final ProductId id;
 }
 
 class ProductLoaded extends ProductMsg {
@@ -64,14 +88,84 @@ class ProductLoaded extends ProductMsg {
   final int price;
 }
 
-class Products extends Store<String, Product, ProductMsg> {
-  const Products();
+// A page of OLDER reviews for one product — appends; the id-keyed map dedupes
+// page overlaps by construction.
+class ReviewsPage extends ProductMsg {
+  ReviewsPage(super.id, this.reviews, {required this.hasMore});
+  final List<Review> reviews;
+  final bool hasMore;
+}
+
+// The REQUEST is NOT part of the reduce family — it has no state effect, so
+// the reduce never carries a dead arm for it. The `Awaits` twin below relates
+// it to the store instead.
+class GetReviews extends Msg {
+  GetReviews(this.productId, {this.before});
+  final ProductId productId;
+  final ReviewId? before;
+}
+
+// The correlation twin: which key a request puts IN FLIGHT. The engine
+// key-correlates — dispatching `GetReviews` marks the product `loading`, the
+// next fold that touches it (the page arriving) confirms it. Request status
+// is DERIVED; no `loading` field ever enters state.
+class ProductsAwaits extends Awaits<ProductId, GetReviews> {
+  const ProductsAwaits();
   @override
-  IdentifiableMap<String, Product> reduce(
-          IdentifiableMap<String, Product> entities, ProductMsg msg) =>
+  ProductId keyOf(GetReviews request) => request.productId;
+}
+
+class Products extends Store<ProductId, Product, ProductMsg> {
+  const Products();
+
+  @override
+  Awaits<ProductId, Msg>? get awaits => const ProductsAwaits();
+
+  @override
+  IdentifiableMap<ProductId, Product> reduce(
+          IdentifiableMap<ProductId, Product> entities, ProductMsg msg) =>
       switch (msg) {
         ProductLoaded(:final id, :final name, :final price) =>
-          entities.upsert(Product(id, name, price)),
+          entities.containsKey(id)
+              ? entities
+              : entities.upsert(Product(id, name, price)),
+        ReviewsPage(:final id, :final reviews, :final hasMore) =>
+          entities.updateById(
+              id,
+              (p) => p.copyWith(
+                    reviews: {...p.reviews, for (final r in reviews) r.id: r},
+                    hasMoreReviews: hasMore,
+                  )),
+      };
+}
+
+// ── The cart: a UNIT store ────────────────────────────────────────────
+// The wire test: cart facts arrive KEYLESS (the session is the identity), so
+// the cart is a `ValueStore` — one value, no key.
+class CartState {
+  const CartState({this.items = const []});
+  final List<String> items; // product names, kept trivial for the demo
+
+  int get count => items.length;
+}
+
+sealed class CartMsg extends Msg {}
+
+class CartItemAdded extends CartMsg {
+  CartItemAdded(this.name);
+  final String name;
+}
+
+class CartUnit extends ValueStore<CartState, CartMsg> {
+  const CartUnit();
+
+  @override
+  CartState get initial => const CartState();
+
+  @override
+  CartState reduce(CartState state, CartMsg msg) => switch (msg) {
+        CartItemAdded(:final name) =>
+          CartState(items: [...state.items, name]),
       };
 }
 
@@ -81,18 +175,27 @@ class Products extends Store<String, Product, ProductMsg> {
 // type, and screen associations all derive from here.
 @entities
 enum _Entities with EntityNode<_Entities> {
-  product(Product, Ids.product);
+  // A KEYLESS row is a UNIT — cardinality one, the session is its identity
+  // (the wire test: its facts arrive without an id).
+  cart(CartState),
+  product(Product, .product),
+  review(Review, .review);
 
-  const _Entities(this.type, this.key);
+  const _Entities(this.type, [this.key]);
   @override
   final Type type;
   @override
-  final IdNode key;
+  final Ids? key;
 
   // Generator-read (ownership derivation); runtime consumers arrive with the
   // tree-store surface.
   // ignore: unused_field
-  static final graph = EntityGraph({product});
+  static final graph = EntityGraph({
+    cart,
+    // OWNERSHIP: reviews live inside their product (an id-keyed map field) —
+    // the generator derives surgical tree ops (`addReview`, `updateReview`…).
+    product({review}),
+  });
 }
 
 // ── The STORE grammar (@stores) ───────────────────────────────────────
@@ -102,25 +205,44 @@ enum _Entities with EntityNode<_Entities> {
 // nav location (`productsOnProduct()`).
 @stores
 enum _Stores with StoreNode<_Stores> {
+  cart(CartUnit()),
   products(Products());
 
   const _Stores(this.store);
   @override
-  final Store store;
+  final AnyStore store;
 }
 
 // The app's data SOURCE — faked for this runnable demo (the engine ships none;
 // the app owns transport). On each nav commit it loads the live product by
 // dispatching a SOURCE message (implements the sealed reduce family), which the
-// store reduces in. A real app pipes a socket through the same dispatch.
+// store reduces in. A real app pipes a socket through the same dispatch — and
+// because the wire is just another subscriber, `ledger.dispatch` is the app's
+// only verb: the same call states a fact, sends a request, and (via the
+// `Awaits` twin) marks its key in flight.
 void demoBackend() {
   _Screens.graph.navigations.listen((_) {
     for (final e in _Screens.graph.stack) {
       if (e.screen == _Screens.product) {
-        final id = e.id as String;
+        final id = ProductId(e.id as String);
         ledger.dispatch(ProductLoaded(id, 'Product $id', 1999));
       }
     }
+  });
+  // The "server" answers a reviews request after a beat — long enough to watch
+  // the derived `loading` status flip on and off.
+  ledger.on<GetReviews>().listen((req) async {
+    await Future<void>.delayed(const Duration(milliseconds: 700));
+    final page = req.before == null ? 0 : 1;
+    ledger.dispatch(ReviewsPage(
+      req.productId,
+      [
+        for (var i = 0; i < 3; i++)
+          Review(ReviewId('${req.productId}-r$page$i'), 'buyer$page$i',
+              'Review ${page * 3 + i + 1} — solid product.'),
+      ],
+      hasMore: page == 0,
+    ));
   });
 }
 
@@ -131,7 +253,7 @@ enum _Checkout with SubScreenNode<_Checkout> {
   cart(_S('Cart', Color(0xFF8E24AA))),
   checkout(_S('Checkout', Color(0xFF5E35B1))),
   payment(_S('Payment', Color(0xFF3949AB))),
-  confirmation(_S('Confirmation', Color(0xFF1E88E5)), Codec.uuid);
+  confirmation(_S('Confirmation', Color(0xFF1E88E5)), .uuid);
 
   const _Checkout(this.widget, [this.id]);
   @override
@@ -147,7 +269,7 @@ enum _Checkout with SubScreenNode<_Checkout> {
 enum _Screens with ScreenNode<_Screens> {
   splash(_S('Splash', Color(0xFF263238))),
   signIn(_S('Sign in', Color(0xFF37474F))),
-  otp(_S('OTP', Color(0xFF455A64)), Codec.string),
+  otp(_S('OTP', Color(0xFF455A64)), .string),
 
   home(_S('Home', Color(0xFF00897B))),
   search(_S('Search', Color(0xFF00ACC1))),
@@ -176,7 +298,7 @@ enum _Screens with ScreenNode<_Screens> {
   // `.cycled`) and carries `?variant=` + `#tab=` view-state.
   static _Screens _product() => product({
         seller({product.cycled}),
-      }).query({_PV.variant(Codec.string)}).fragment({_Tab.tab(Codec.string)});
+      }).query({_PV.variant(.string)}).fragment({_Tab.tab(.string)});
 
   static final graph = NavGraph(
     {
@@ -189,9 +311,9 @@ enum _Screens with ScreenNode<_Screens> {
         // co-present price range (a record — both or neither). `q` and `sort` are
         // their own optional keys.
         search({_product()}).query({
-          _Filter.q(Codec.string),
-          _Filter.sort(Codec.enumValues(Sort.values)),
-          _Filter.minPrice(Codec.integer) & _Filter.maxPrice(Codec.integer),
+          _Filter.q(.string),
+          _Filter.sort(.enumValues(Sort.values)),
+          _Filter.minPrice(.integer) & _Filter.maxPrice(.integer),
         }),
         // `stacked`: drill category → subcategory in fresh frames.
         category({category.stacked, _product()}),
@@ -305,38 +427,65 @@ class _S extends StatelessWidget {
 }
 
 // A REAL consuming screen — the payoff of sharing one @ids node across the
-// screens and stores trees. It takes NO id: `ledger.productsOnProduct()` reads
-// the store at the live `product` frame's id (that same node). It rebuilds on
-// any `ProductMsg` so the value appears once the demo backend loads it.
-class _Product extends StatefulWidget {
+// screens, entities, and stores trees. It takes NO id: `context.idOf(.product)`
+// is the AMBIENT identity (the live nav frame's), and `productsStore(id)
+// .of(context)` is the reactive per-key read — this widget rebuilds when THIS
+// product changes, not when any other does. No subscription, no setState, no
+// selector: the engine decided the granularity once.
+class _Product extends StatelessWidget {
   const _Product();
-  @override
-  State<_Product> createState() => _ProductState();
-}
-
-class _ProductState extends State<_Product> {
-  late final StreamSubscription<Envelope> _sub =
-      ledger.on<ProductMsg>((_, __) {
-    if (mounted) setState(() {});
-  });
-
-  @override
-  void dispose() {
-    _sub.cancel();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
-    final product = ledger.productsOnProduct();
+    final id = context.idOf(.product);
+    final product = productsStore(id).of(context);
+    // DERIVED request status: true from `dispatch(GetReviews(...))` until the
+    // page folds — the `Awaits` twin key-correlates; no loading field exists.
+    final loading = productsStore(id).loadingOf(context);
+    final cart = cartStore.of(context);
     const style = TextStyle(color: Colors.white70, fontSize: 16);
     return _S(
       product?.name ?? 'Product',
       const Color(0xFFE53935),
       extra: [
-        Text(product == null
-            ? 'loading…'
-            : '\$${(product.price / 100).toStringAsFixed(2)}', style: style),
+        Text(
+            product == null
+                ? 'loading…'
+                : '\$${(product.price / 100).toStringAsFixed(2)}',
+            style: style),
+        const SizedBox(height: 8),
+        FilledButton.tonal(
+          // States a fact; the cart UNIT folds it. The badge below reads the
+          // unit reactively — `cartStore.of(context)`.
+          onPressed: product == null
+              ? null
+              : () => ledger.dispatch(CartItemAdded(product.name)),
+          child: Text('add to cart (${cart.count})'),
+        ),
+        const SizedBox(height: 8),
+        // OWNED children: reviews live INSIDE the product (the entity graph's
+        // `product({review})`), folded from `ReviewsPage` facts.
+        for (final r in [...?product?.reviews.values])
+          Text('★ ${r.author}: ${r.text}', style: style),
+        if (loading)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 4),
+            child: Text('loading reviews…',
+                style: TextStyle(color: Colors.white38, fontSize: 14)),
+          )
+        else if (product != null &&
+            (product.reviews.isEmpty || product.hasMoreReviews))
+          OutlinedButton(
+            // ONE verb for everything: this dispatch sends the request (the
+            // wire is a subscriber) AND marks the key in flight (Awaits).
+            onPressed: () => ledger.dispatch(GetReviews(id,
+                before: product.reviews.values.lastOrNull?.id)),
+            style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white,
+                side: const BorderSide(color: Colors.white54)),
+            child: Text(
+                product.reviews.isEmpty ? 'load reviews' : 'more reviews'),
+          ),
       ],
     );
   }

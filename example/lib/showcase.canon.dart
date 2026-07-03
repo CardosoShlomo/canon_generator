@@ -14,6 +14,9 @@ part of 'showcase.dart';
 extension type const ProductId(String _) implements String {
   static const Ids node = Ids.product;
 }
+extension type const ReviewId(String _) implements String {
+  static const Ids node = Ids.review;
+}
 extension type const SellerId(String _) implements String {
   static const Ids node = Ids.seller;
 }
@@ -25,6 +28,36 @@ extension type const OrderId(String _) implements String {
 }
 extension type const ListingId(String _) implements String {
   static const Ids node = Ids.listing;
+}
+
+// **************************************************************************
+// EntitiesGenerator
+// **************************************************************************
+
+// Tree ops — one extension per owning entity, from the
+// @entities graph: surgical child updates, pure, reduce-safe.
+extension ProductTreeOps on IdentifiableMap<ProductId, Product> {
+  /// Surgically update one `review` inside its owner.
+  IdentifiableMap<ProductId, Product> updateReview(
+    ProductId owner,
+    ReviewId id,
+    Review Function(Review) fn,
+  ) => updateById(
+    owner,
+    (o) => o.copyWith(reviews: o.reviews.updateById(id, fn)),
+  );
+
+  /// Insert/replace one `review` inside its owner.
+  IdentifiableMap<ProductId, Product> addReview(
+    ProductId owner,
+    Review child,
+  ) => updateById(owner, (o) => o.copyWith(reviews: o.reviews.upsert(child)));
+
+  /// Remove one `review` from its owner.
+  IdentifiableMap<ProductId, Product> removeReview(
+    ProductId owner,
+    ReviewId id,
+  ) => updateById(owner, (o) => o.copyWith(reviews: o.reviews.removeById(id)));
 }
 
 // **************************************************************************
@@ -4686,7 +4719,8 @@ Enum _termOf(On sel) =>
 /// globals. `Screen` is nav; `ledger` is state-and-messages.
 final ledger = Ledger();
 bool _bound = false;
-late final StoreMemory<String, Product, ProductMsg> productsStore;
+late final ValueMemory<CartState, CartMsg> cartStore;
+late final StoreMemory<ProductId, Product, ProductMsg> productsStore;
 
 /// The generated data surface, hung on [Ledger] so `ledger.` is the one api.
 extension on Ledger {
@@ -4694,15 +4728,16 @@ extension on Ledger {
   void bind() {
     if (_bound) return;
     _bound = true;
+    cartStore = value(_Stores.cart.store as ValueStore<CartState, CartMsg>);
     productsStore = store(
-      _Stores.products.store as Store<String, Product, ProductMsg>,
+      _Stores.products.store as Store<ProductId, Product, ProductMsg>,
     );
   }
 
   /// products on screen `product` — the entry at its live nav id.
   Product? productsOnProduct() {
     for (final e in _Screens.graph.stack) {
-      if (e.screen == _Screens.product) return productsStore[e.id as String];
+      if (e.screen == _Screens.product) return productsStore[e.id as ProductId];
     }
     return null;
   }

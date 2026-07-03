@@ -19,7 +19,7 @@ void main() {
         ['home', 'cart', 'checkout', 'payment']);
 
     // inherit kick-start rescue: editListing stamps the listing id
-    Screen.goEditListing('L1');
+    Screen.goEditListing(ListingId('L1'));
     await tester.pumpAndSettle();
     expect(Screen.stack.current.name, 'editListing');
     expect(Screen.stack.currentId, 'L1');
