@@ -54,7 +54,12 @@ class RegistryGenerator extends GeneratorForAnnotation<Stores> {
       if (v != null) {
         final name = field.name!;
         final vArgs = [for (final a in v.typeArguments) a.getDisplayString()];
-        final stateKey = _expandedName(v.typeArguments[0]);
+        // S may be nullable (ValueStore<ViewerState?, …>) — the entity row is
+        // the base type.
+        var stateKey = _expandedName(v.typeArguments[0]);
+        if (stateKey.endsWith('?')) {
+          stateKey = stateKey.substring(0, stateKey.length - 1);
+        }
         final info = entityByType[stateKey];
         if (info == null) {
           throw InvalidGenerationSourceError(
