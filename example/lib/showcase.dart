@@ -272,7 +272,7 @@ enum _Screens with ScreenNode<_Screens> {
   otp(_S('OTP', Color(0xFF455A64)), .string),
 
   home(_S('Home', Color(0xFF00897B))),
-  search(_S('Search', Color(0xFF00ACC1), extra: [_ProductsStrip()])),
+  search(_S('Search', Color(0xFF00ACC1), body: [_ProductsStrip()])),
   scan(_S('Scan', Color(0xFF039BE5))),
   category(_S('Category', Color(0xFF43A047)), Ids.category),
   product(_Product(), Ids.product),
@@ -369,10 +369,10 @@ final Map<String, VoidCallback> _nav = {
 
 // An extremely simple screen: a color, a title, optional data rows, nav buttons.
 class _S extends StatelessWidget {
-  const _S(this.title, this.color, {this.extra = const []});
+  const _S(this.title, this.color, {this.body = const []});
   final String title;
   final Color color;
-  final List<Widget> extra;
+  final List<Widget> body;
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -394,8 +394,8 @@ class _S extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        ...extra,
-                        if (extra.isNotEmpty)
+                        ...body,
+                        if (body.isNotEmpty)
                           const Divider(color: Colors.white24, height: 32),
                         Wrap(
                           spacing: 8,
@@ -491,7 +491,7 @@ class _Product extends StatelessWidget {
     return _S(
       product?.name ?? 'Product',
       const Color(0xFFE53935),
-      extra: [
+      body: [
         Text(
             product == null
                 ? 'loading…'
