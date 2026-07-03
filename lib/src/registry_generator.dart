@@ -49,10 +49,47 @@ class RegistryGenerator extends GeneratorForAnnotation<Stores> {
     for (final field in element.fields) {
       if (!field.isEnumConstant) continue;
       final held = field.computeConstantValue()?.getField('store')?.type;
+      // A UNIT row: holds a ValueStore<S, M> (cardinality one, keyless facts).
+      final v = _matchedValue(held);
+      if (v != null) {
+        final name = field.name!;
+        final vArgs = [for (final a in v.typeArguments) a.getDisplayString()];
+        final stateKey = _expandedName(v.typeArguments[0]);
+        final info = entityByType[stateKey];
+        if (info == null) {
+          throw InvalidGenerationSourceError(
+              'unit store "$name" holds a ValueStore of `${vArgs[0]}`, which '
+              'is not a row of the @entities enum — declare the UNIT entity '
+              '(type, no key) there.',
+              element: element);
+        }
+        if (info.node != null && !info.node!.isNull) {
+          throw InvalidGenerationSourceError(
+              'unit store "$name": `${vArgs[0]}` is a KEYED entity (it has an '
+              'id node) — a ValueStore may only hold a UNIT entity (a row '
+              'declared without a key).',
+              element: element);
+        }
+        final mType = v.typeArguments.last;
+        final mEl = mType is InterfaceType ? mType.element : null;
+        if (mEl is! ClassElement || !mEl.isSealed) {
+          throw InvalidGenerationSourceError(
+              'unit store "$name" reduces `${mType.getDisplayString()}`, which '
+              'must be a `sealed` class so its reduce is exhaustively '
+              'pattern-matched.',
+              element: element);
+        }
+        final superT = 'ValueStore<${vArgs.join(', ')}>';
+        fields.add(
+            '  static late final ValueMemory<${vArgs.join(', ')}> ${name}Store;');
+        binds.add('    ${name}Store = _ledger.value($enumName.$name.store as $superT);');
+        continue;
+      }
       final s = _matched(held);
       if (s == null) {
         throw InvalidGenerationSourceError(
-            'store "${field.name}" must hold a Store<K,E,M> as its `store` field.',
+            'store "${field.name}" must hold a Store<K,E,M> (or a '
+            'ValueStore<S,M> for a unit) as its `store` field.',
             element: element);
       }
       final name = field.name!;
@@ -352,6 +389,16 @@ class RegistryGenerator extends GeneratorForAnnotation<Stores> {
     if (t is! InterfaceType) return null;
     for (final s in [t, ...t.allSupertypes]) {
       if (s.element.name == 'Store' && s.typeArguments.length == 3) return s;
+    }
+    return null;
+  }
+
+  InterfaceType? _matchedValue(DartType? t) {
+    if (t is! InterfaceType) return null;
+    for (final s in [t, ...t.allSupertypes]) {
+      if (s.element.name == 'ValueStore' && s.typeArguments.length == 2) {
+        return s;
+      }
     }
     return null;
   }

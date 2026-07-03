@@ -9,9 +9,11 @@ const _ledgerStub = '''
 class Stores { const Stores(); }
 const stores = Stores();
 mixin StoreNode<Self extends StoreNode<Self>> on Enum {
-  Store get store;
+  AnyStore get store;
 }
-abstract class Store<K, E, M> { const Store(); }
+abstract interface class AnyStore {}
+abstract class Store<K, E, M> implements AnyStore { const Store(); }
+abstract class ValueStore<S, M> implements AnyStore { const ValueStore(); }
 ''';
 
 // identifiable owns the @IDs + @entities grammars.
@@ -33,7 +35,7 @@ abstract interface class EntityTreeNode {}
 mixin EntityNode<Self extends EntityNode<Self>> on Enum
     implements EntityTreeNode {
   Type get type;
-  IdNode get key;
+  IdNode? get key;
   EntityTreeNode call([Set<EntityTreeNode> children = const {}]) =>
       EntityBranch(this, children);
 }
@@ -252,6 +254,54 @@ enum Ids with IdNode {
 }
 ''';
 
+
+// A UNIT: keyless entity row + a ValueStore holding it — emits a ValueMemory
+// global bound via ledger.value.
+const _unitSpec = '''
+import 'package:canon/canon.dart';
+
+part 'spec.canon.dart';
+
+enum Ids with IdNode {
+  author(StringCodec());
+  const Ids(this.codec);
+  final Codec codec;
+}
+
+class ReviewState {}
+class ViewerState {}
+sealed class ProfileMsg {}
+class Viewer extends ValueStore<ViewerState?, ProfileMsg> {
+  const Viewer();
+  @override
+  ViewerState? get initial => null;
+  @override
+  ViewerState? reduce(ViewerState? state, ProfileMsg msg) => state;
+}
+
+@entities
+enum _Entities with EntityNode<_Entities> {
+  review(ReviewState, Ids.author),
+  viewer(ViewerState);
+
+  const _Entities(this.type, [this.key]);
+  @override
+  final Type type;
+  @override
+  final Ids? key;
+
+  static final graph = EntityGraph({review, viewer});
+}
+
+@stores
+enum _Stores with StoreNode<_Stores> {
+  viewer(Viewer());
+  const _Stores(this.store);
+  @override
+  final AnyStore store;
+}
+''';
+
 void main() {
   test('@IDs emits extension types + composite typedefs', () => testBuilder(
         PartBuilder([IdsGenerator()], '.canon.dart'),
@@ -275,6 +325,26 @@ void main() {
           ]))
         },
       ));
+
+  test('a UNIT row (ValueStore + keyless entity) emits a ValueMemory global',
+      () => testBuilder(
+            PartBuilder([RegistryGenerator()], '.canon.dart'),
+            {
+              'ledger|lib/ledger.dart': _ledgerStub,
+              'identifiable|lib/identifiable.dart': _identifiableStub,
+              'canon|lib/canon.dart': _canonStub,
+              'pkg|lib/spec.dart': _unitSpec,
+            },
+            rootPackage: 'pkg',
+            generateFor: {'pkg|lib/spec.dart'},
+            outputs: {
+              'pkg|lib/spec.canon.dart': decodedMatches(allOf([
+                contains(
+                    'late final ValueMemory<ViewerState?, ProfileMsg> viewerStore;'),
+                contains('viewerStore = value('),
+              ]))
+            },
+          ));
 
   test('emits a typed Data surface; key type follows the @ids node codec',
       () => testBuilder(
