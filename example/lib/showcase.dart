@@ -272,7 +272,7 @@ enum _Screens with ScreenNode<_Screens> {
   otp(_S('OTP', Color(0xFF455A64)), .string),
 
   home(_S('Home', Color(0xFF00897B))),
-  search(_S('Search', Color(0xFF00ACC1))),
+  search(_S('Search', Color(0xFF00ACC1), extra: [_ProductsStrip()])),
   scan(_S('Scan', Color(0xFF039BE5))),
   category(_S('Category', Color(0xFF43A047)), Ids.category),
   product(_Product(), Ids.product),
@@ -424,6 +424,50 @@ class _S extends StatelessWidget {
           ),
         ),
       );
+}
+
+// A keyed-store LIST, the EntityScope pattern. `productsStore.of(context)`
+// yields the key SEQUENCE and rebuilds this strip ONLY when it changes —
+// add/remove/reorder (the engine's structure feed); a value change never
+// fires here. Each item sits under an `EntityScope` (self-keyed by the id),
+// so a price change rebuilds ONE tile — no selectors, no listEquals.
+class _ProductsStrip extends StatelessWidget {
+  const _ProductsStrip();
+
+  @override
+  Widget build(BuildContext context) {
+    final ids = productsStore.of(context);
+    const style = TextStyle(color: Colors.white70, fontSize: 14);
+    if (ids.isEmpty) {
+      return const Text('products you visit collect here', style: style);
+    }
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (final id in ids)
+          EntityScope(productsStore, id, child: const _ProductTile()),
+      ],
+    );
+  }
+}
+
+// Inside the scope the entity is AMBIENT — the tile takes no arguments.
+class _ProductTile extends StatelessWidget {
+  const _ProductTile();
+
+  @override
+  Widget build(BuildContext context) {
+    final product = EntityScope.of<Product>(context);
+    return OutlinedButton(
+      onPressed: () => Screen.on(.search)?.goProduct(product.id),
+      style: OutlinedButton.styleFrom(
+          foregroundColor: Colors.white,
+          side: const BorderSide(color: Colors.white54)),
+      child: Text(
+          '${product.name} · \$${(product.price / 100).toStringAsFixed(2)}'),
+    );
+  }
 }
 
 // A REAL consuming screen — the payoff of sharing one @ids node across the
