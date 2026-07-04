@@ -6,7 +6,7 @@ import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
 
 // ledger owns the @stores grammar and is pure Dart, so the builder stays flutter-free.
-import 'package:ledger/ledger.dart' show Stores;
+import 'package:regent/regent.dart' show Stores;
 
 /// One `@entities` row as the generator sees it: the row's name, its id-node
 /// value, and whether the graph declares it OWNED (state lives in its root's

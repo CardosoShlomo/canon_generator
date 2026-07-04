@@ -5,7 +5,7 @@ import 'package:source_gen/source_gen.dart';
 import 'package:test/test.dart';
 
 // ledger owns the @stores grammar + the Store base the generator recognises.
-const _ledgerStub = '''
+const _regentStub = '''
 class Stores { const Stores(); }
 const stores = Stores();
 mixin StoreNode<Self extends StoreNode<Self>> on Enum {
@@ -65,7 +65,7 @@ class EntityGraph {
 // canon is the facade — re-exports ledger + identifiable, so the spec imports only
 // `package:canon/canon.dart` and gets the nav grammar, `@stores`, and the engines.
 const _canonStub = '''
-export 'package:ledger/ledger.dart';
+export 'package:regent/regent.dart';
 export 'package:identifiable/identifiable.dart';
 
 abstract class Codec<T> { const Codec(); }
@@ -368,7 +368,7 @@ void main() {
   test('@IDs emits extension types + composite typedefs', () => testBuilder(
         PartBuilder([IdsGenerator()], '.canon.dart'),
         {
-          'ledger|lib/ledger.dart': _ledgerStub,
+          'regent|lib/regent.dart': _regentStub,
           'identifiable|lib/identifiable.dart': _identifiableStub,
           'canon|lib/canon.dart': _canonStub,
           'pkg|lib/spec.dart': _idsSpec,
@@ -392,7 +392,7 @@ void main() {
       () => testBuilder(
             PartBuilder([RegistryGenerator()], '.canon.dart'),
             {
-              'ledger|lib/ledger.dart': _ledgerStub,
+              'regent|lib/regent.dart': _regentStub,
               'identifiable|lib/identifiable.dart': _identifiableStub,
               'canon|lib/canon.dart': _canonStub,
               'pkg|lib/spec.dart': _unitSpec,
@@ -412,7 +412,7 @@ void main() {
       () => testBuilder(
             PartBuilder([RegistryGenerator()], '.canon.dart'),
             {
-              'ledger|lib/ledger.dart': _ledgerStub,
+              'regent|lib/regent.dart': _regentStub,
               'identifiable|lib/identifiable.dart': _identifiableStub,
               'canon|lib/canon.dart': _canonStub,
               'pkg|lib/spec.dart': _spec,
@@ -447,7 +447,7 @@ void main() {
   test('a graph merge edge wires the memories in bind()', () => testBuilder(
         PartBuilder([RegistryGenerator()], '.canon.dart'),
         {
-          'ledger|lib/ledger.dart': _ledgerStub,
+          'regent|lib/regent.dart': _regentStub,
           'identifiable|lib/identifiable.dart': _identifiableStub,
           'canon|lib/canon.dart': _canonStub,
           'pkg|lib/spec.dart': _mergeSpec,
@@ -465,7 +465,7 @@ void main() {
     await testBuilder(
       navBuilder(BuilderOptions.empty),
       {
-        'ledger|lib/ledger.dart': _ledgerStub,
+        'regent|lib/regent.dart': _regentStub,
         'identifiable|lib/identifiable.dart': _identifiableStub,
         'canon|lib/canon.dart': _canonStub,
         'pkg|lib/spec.dart': spec,
@@ -487,7 +487,7 @@ void main() {
       testBuilder(
         PartBuilder([EntitiesGenerator()], '.canon.dart'),
         {
-          'ledger|lib/ledger.dart': _ledgerStub,
+          'regent|lib/regent.dart': _regentStub,
           'identifiable|lib/identifiable.dart': _identifiableStub,
           'canon|lib/canon.dart': _canonStub,
           'pkg|lib/spec.dart': '$_guardBase',
