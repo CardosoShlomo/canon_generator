@@ -250,6 +250,13 @@ class RegistryGenerator extends GeneratorForAnnotation<Stores> {
     b.writeln('/// `ledger.command(...)`; entities live on the public `<row>Store`');
     b.writeln('/// globals. `Screen` is nav; `ledger` is state-and-messages.');
     b.writeln('final ledger = Ledger();');
+    b.writeln();
+    b.writeln('/// States a fact — dispatch is the ONLY verb, so it needs no prefix.');
+    b.writeln('/// (`ledger.` keeps the rarer surfaces: `on`, `veto`, `guard`, `journal`.)');
+    b.writeln('void dispatch(Msg msg,');
+    b.writeln('        {Source? source, bool optimistic = false, String? correlationId}) =>');
+    b.writeln('    ledger.dispatch(msg,');
+    b.writeln('        source: source, optimistic: optimistic, correlationId: correlationId);');
     b.writeln('bool _bound = false;');
     // The live stores are top-level publics (an extension can hold no state);
     // StoreMemory is the designed consumer surface, so it IS the api.

@@ -223,7 +223,7 @@ void demoBackend() {
     for (final e in _Screens.graph.stack) {
       if (e.screen == _Screens.product) {
         final id = ProductId(e.id as String);
-        ledger.dispatch(ProductLoaded(id, 'Product $id', 1999));
+        dispatch(ProductLoaded(id, 'Product $id', 1999));
       }
     }
   });
@@ -232,7 +232,7 @@ void demoBackend() {
   ledger.on<GetReviews>().listen((req) async {
     await Future<void>.delayed(const Duration(milliseconds: 700));
     final page = req.before == null ? 0 : 1;
-    ledger.dispatch(ReviewsPage(
+    dispatch(ReviewsPage(
       req.productId,
       [
         for (var i = 0; i < 3; i++)
@@ -501,7 +501,7 @@ class _Product extends StatelessWidget {
           // unit reactively — `cartStore.of(context)`.
           onPressed: product == null
               ? null
-              : () => ledger.dispatch(CartItemAdded(product.name)),
+              : () => dispatch(CartItemAdded(product.name)),
           child: Text('add to cart (${cart.count})'),
         ),
         const SizedBox(height: 8),
@@ -520,7 +520,7 @@ class _Product extends StatelessWidget {
           OutlinedButton(
             // ONE verb for everything: this dispatch sends the request (the
             // wire is a subscriber) AND marks the key in flight (Awaits).
-            onPressed: () => ledger.dispatch(GetReviews(id,
+            onPressed: () => dispatch(GetReviews(id,
                 before: product.reviews.values.lastOrNull?.id)),
             style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.white,

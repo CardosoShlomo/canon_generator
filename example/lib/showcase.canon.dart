@@ -4714,10 +4714,24 @@ Enum _termOf(On sel) =>
 
 // ignore_for_file: unused_element
 /// The app-wide ledger — the single state + message api (from @stores).
-/// `Screen.manager` binds it. `ledger.dispatch(msg)` · `ledger.on<…>(...)` ·
+/// `Screen.manager` binds it. `dispatch(msg)` · `ledger.on<…>(...)` ·
 /// `ledger.command(...)`; entities live on the public `<row>Store`
 /// globals. `Screen` is nav; `ledger` is state-and-messages.
 final ledger = Ledger();
+
+/// States a fact — dispatch is the ONLY verb, so it needs no prefix.
+/// (`ledger.` keeps the rarer surfaces: `on`, `veto`, `guard`, `journal`.)
+void dispatch(
+  Msg msg, {
+  Source? source,
+  bool optimistic = false,
+  String? correlationId,
+}) => dispatch(
+  msg,
+  source: source,
+  optimistic: optimistic,
+  correlationId: correlationId,
+);
 bool _bound = false;
 late final UnitMemory<CartState, CartMsg> cartStore;
 late final StoreMemory<ProductId, Product, ProductMsg> productsStore;
