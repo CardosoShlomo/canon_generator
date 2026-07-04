@@ -4728,7 +4728,7 @@ extension on Ledger {
   void bind() {
     if (_bound) return;
     _bound = true;
-    cartStore = value(_Stores.cart.store as Unit<CartState, CartMsg>);
+    cartStore = unit(_Stores.cart.store as Unit<CartState, CartMsg>);
     productsStore = store(
       _Stores.products.store as Store<ProductId, Product, ProductMsg>,
     );
