@@ -432,9 +432,9 @@ void main() {
                 isNot(contains('ReviewState? review(String key)')),
                 // derived screen↔store association: profile shares Ids.author
                 contains('ReviewState? reviewOnProfile()'),
-                // Door 2: the committed-navigation trigger consults surface
+                // Door 2: the committed-navigation trigger consults the twin
                 contains('graph.navigations.listen('),
-                contains('.surface('),
+                contains('?.surface('),
                 contains('reviewStore.inFlight(key)'),
                 contains('e.screen == _Screens.profile'),
                 contains('reviewStore[e.id as String]'),

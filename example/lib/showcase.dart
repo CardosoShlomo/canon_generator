@@ -109,7 +109,7 @@ class GetReviews extends Msg {
 // key-correlates — dispatching `GetReviews` marks the product `loading`, the
 // next fold that touches it (the page arriving) confirms it. Request status
 // is DERIVED; no `loading` field ever enters state.
-class ProductsAwaits extends Awaits<ProductId, GetReviews> {
+class ProductsAwaits extends Awaits<ProductId, Product, GetReviews> {
   const ProductsAwaits();
   @override
   ProductId keyOf(GetReviews request) => request.productId;
@@ -119,7 +119,7 @@ class Products extends Store<ProductId, Product, ProductMsg> {
   const Products();
 
   @override
-  Awaits<ProductId, Msg>? get awaits => const ProductsAwaits();
+  Awaits<ProductId, Product, Msg>? get awaits => const ProductsAwaits();
 
   @override
   IdentifiableMap<ProductId, Product> reduce(

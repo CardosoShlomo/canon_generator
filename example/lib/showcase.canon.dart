@@ -4732,6 +4732,23 @@ extension on Ledger {
     productsStore = store(
       _Stores.products.store as Store<ProductId, Product, ProductMsg>,
     );
+    _Screens.graph.navigations.listen((n) {
+      final (screen, id) = n.destination;
+      if (screen == _Screens.product) {
+        final key = id as ProductId;
+        if (!productsStore.inFlight(key)) {
+          final msg =
+              (_Stores.products.store as Store<ProductId, Product, ProductMsg>)
+                  .awaits
+                  ?.surface(
+                    key,
+                    productsStore.entities[key],
+                    productsStore.flagsOf(key),
+                  );
+          if (msg != null) dispatch(msg);
+        }
+      }
+    });
   }
 
   /// products on screen `product` — the entry at its live nav id.
