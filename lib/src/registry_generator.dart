@@ -37,6 +37,10 @@ class RegistryGenerator extends GeneratorForAnnotation<Stores> {
     final fields = <String>[]; // store field decls
     final binds = <String>[]; // bind() body lines
     final reads = <String>[]; // typed accessors
+    // Door 2 — scope-entry asks: (screens enum, screen, store name, spec
+    // ref, key type) per screen↔store association; emitted as ONE committed-
+    // navigation listener consulting each spec's `surface`.
+    final triggers = <(String, String, String, String, String)>[];
 
     // The @entities space: entity TYPE name → its row info (node + ownedness).
     final entityByType = await _entitiesByType(element, buildStep);
@@ -180,6 +184,7 @@ class RegistryGenerator extends GeneratorForAnnotation<Stores> {
       binds.add('    ${name}Store = _ledger.store($ref);');
       storeByEntityRow[info.row] = (name, false);
       for (final (scrEnum, scr) in screens) {
+        triggers.add((scrEnum, scr, name, ref, key));
         reads.add('  /// $name on screen `$scr` — the entry at its live nav id.');
         reads.add('  static $state? ${name}On${_cap(scr)}() {');
         reads.add('    for (final e in $scrEnum.graph.stack) {');
@@ -188,6 +193,27 @@ class RegistryGenerator extends GeneratorForAnnotation<Stores> {
         reads.add('    return null;');
         reads.add('  }');
       }
+    }
+
+    // Door 2 — the nav trigger: on a COMMITTED navigation (never a render),
+    // each associated spec judges the landed key via `surface(key, row,
+    // flags)` on the RAW store state; a non-null answer dispatches. In-flight
+    // keys are skipped (the Awaits twin marked them on the last ask).
+    if (triggers.isNotEmpty) {
+      final scrEnum = triggers.first.$1;
+      binds.add('    $scrEnum.graph.navigations.listen((n) {');
+      binds.add('      final (screen, id) = n.destination;');
+      for (final (_, scr, name, ref, key) in triggers) {
+        binds.add('      if (screen == $scrEnum.$scr) {');
+        binds.add('        final key = id as $key;');
+        binds.add('        if (!${name}Store.inFlight(key)) {');
+        binds.add('          final msg = ($ref).surface(');
+        binds.add('              key, ${name}Store.entities[key], ${name}Store.flagsOf(key));');
+        binds.add('          if (msg != null) dispatch(msg);');
+        binds.add('        }');
+        binds.add('      }');
+      }
+      binds.add('    });');
     }
 
     // Merge wiring — after every memory is bound (an edge references two).
