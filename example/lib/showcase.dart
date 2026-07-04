@@ -157,10 +157,8 @@ class CartItemAdded extends CartMsg {
 }
 
 class CartUnit extends ValueStore<CartState, CartMsg> {
-  const CartUnit();
+  const CartUnit() : super(const CartState());
 
-  @override
-  CartState get initial => const CartState();
 
   @override
   CartState reduce(CartState state, CartMsg msg) => switch (msg) {
