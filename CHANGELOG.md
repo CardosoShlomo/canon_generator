@@ -1,3 +1,11 @@
+## 0.26.0
+
+- Wire graph merge edges: `row.merge(source, projection)` binds the memories in `bind()`.
+- Emit the nav trigger: a committed navigation consults each associated store's `Awaits.surface` on the raw row.
+- Emit the top-level `dispatch` verb next to the `ledger` global.
+- `Unit`/`UnitMemory` vocabulary (renamed from ValueStore); typed navigation snapshots (`ScreenEntry`, `Screen.navigations`).
+- Requires canon ^0.20.0 and regent ^0.1.1.
+
 ## 0.25.1
 
 - `pop()` returns the sealed `…Placement`/`PopDestPlacement` directly (resolved internally) — drop the `…PopNav`/`PopDestNav` wrappers and `.at`. Remove the view `.at` accessor too; `Screen.at`/`context.at` are the placement-reach API.
