@@ -4719,7 +4719,7 @@ Enum _termOf(On sel) =>
 /// globals. `Screen` is nav; `ledger` is state-and-messages.
 final ledger = Ledger();
 bool _bound = false;
-late final ValueMemory<CartState, CartMsg> cartStore;
+late final UnitMemory<CartState, CartMsg> cartStore;
 late final StoreMemory<ProductId, Product, ProductMsg> productsStore;
 
 /// The generated data surface, hung on [Ledger] so `ledger.` is the one api.
@@ -4728,7 +4728,7 @@ extension on Ledger {
   void bind() {
     if (_bound) return;
     _bound = true;
-    cartStore = value(_Stores.cart.store as ValueStore<CartState, CartMsg>);
+    cartStore = value(_Stores.cart.store as Unit<CartState, CartMsg>);
     productsStore = store(
       _Stores.products.store as Store<ProductId, Product, ProductMsg>,
     );

@@ -13,7 +13,7 @@ mixin StoreNode<Self extends StoreNode<Self>> on Enum {
 }
 abstract interface class AnyStore {}
 abstract class Store<K, E, M> implements AnyStore { const Store(); }
-abstract class ValueStore<S, M> implements AnyStore { const ValueStore(); }
+abstract class Unit<S, M> implements AnyStore { const Unit(); }
 ''';
 
 // identifiable owns the @IDs + @entities grammars.
@@ -267,7 +267,7 @@ enum Ids with IdNode {
 ''';
 
 
-// A UNIT: keyless entity row + a ValueStore holding it — emits a ValueMemory
+// A UNIT: keyless entity row + a Unit holding it — emits a UnitMemory
 // global bound via ledger.value.
 const _unitSpec = '''
 import 'package:canon/canon.dart';
@@ -283,7 +283,7 @@ enum Ids with IdNode {
 class ReviewState {}
 class ViewerState {}
 sealed class ProfileMsg {}
-class Viewer extends ValueStore<ViewerState?, ProfileMsg> {
+class Viewer extends Unit<ViewerState?, ProfileMsg> {
   const Viewer();
   @override
   ViewerState? get initial => null;
@@ -332,7 +332,7 @@ class ViewerState {}
 sealed class UserMsg {}
 sealed class ProfileMsg {}
 class Users extends Store<String, UserState, UserMsg> { const Users(); }
-class Viewer extends ValueStore<ViewerState?, ProfileMsg> { const Viewer(); }
+class Viewer extends Unit<ViewerState?, ProfileMsg> { const Viewer(); }
 class ViewerSupportsUser {
   const ViewerSupportsUser();
 }
@@ -388,7 +388,7 @@ void main() {
         },
       ));
 
-  test('a UNIT row (ValueStore + keyless entity) emits a ValueMemory global',
+  test('a UNIT row (Unit + keyless entity) emits a UnitMemory global',
       () => testBuilder(
             PartBuilder([RegistryGenerator()], '.canon.dart'),
             {
@@ -402,8 +402,8 @@ void main() {
             outputs: {
               'pkg|lib/spec.canon.dart': decodedMatches(allOf([
                 contains(
-                    'late final ValueMemory<ViewerState?, ProfileMsg> viewerStore;'),
-                contains('viewerStore = value('),
+                    'late final UnitMemory<ViewerState?, ProfileMsg> viewerStore;'),
+                contains('viewerStore = unit('),
               ]))
             },
           ));

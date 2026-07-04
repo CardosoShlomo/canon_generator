@@ -141,7 +141,7 @@ class Products extends Store<ProductId, Product, ProductMsg> {
 
 // ── The cart: a UNIT store ────────────────────────────────────────────
 // The wire test: cart facts arrive KEYLESS (the session is the identity), so
-// the cart is a `ValueStore` — one value, no key.
+// the cart is a `Unit` — one value, no key.
 class CartState {
   const CartState({this.items = const []});
   final List<String> items; // product names, kept trivial for the demo
@@ -156,7 +156,7 @@ class CartItemAdded extends CartMsg {
   final String name;
 }
 
-class CartUnit extends ValueStore<CartState, CartMsg> {
+class CartUnit extends Unit<CartState, CartMsg> {
   const CartUnit() : super(const CartState());
 
 
