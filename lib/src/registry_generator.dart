@@ -40,6 +40,10 @@ class RegistryGenerator extends GeneratorForAnnotation<Stores> {
 
     // The @entities space: entity TYPE name → its row info (node + ownedness).
     final entityByType = await _entitiesByType(element, buildStep);
+    // Merge edges declared in the graph: (target row, source row, projection).
+    final mergeEdges = await _mergeEdges(element, buildStep);
+    // Entity ROW name → (store field name, unit?) — resolves edges to memories.
+    final storeByEntityRow = <String, (String, bool)>{};
 
     // The screen↔registry association is DERIVED, not declared: a screen and a
     // registry that bind the SAME @ids node are about the same identity, so the
@@ -88,6 +92,7 @@ class RegistryGenerator extends GeneratorForAnnotation<Stores> {
         fields.add(
             '  static late final ValueMemory<${vArgs.join(', ')}> ${name}Store;');
         binds.add('    ${name}Store = _ledger.value($enumName.$name.store as $superT);');
+        storeByEntityRow[info.row] = (name, true);
         continue;
       }
       final s = _matched(held);
@@ -173,6 +178,7 @@ class RegistryGenerator extends GeneratorForAnnotation<Stores> {
       final (state, key) = (args[1], args[0]);
       fields.add('  static late final StoreMemory<${args.join(', ')}> ${name}Store;');
       binds.add('    ${name}Store = _ledger.store($ref);');
+      storeByEntityRow[info.row] = (name, false);
       for (final (scrEnum, scr) in screens) {
         reads.add('  /// $name on screen `$scr` — the entry at its live nav id.');
         reads.add('  static $state? ${name}On${_cap(scr)}() {');
@@ -182,6 +188,31 @@ class RegistryGenerator extends GeneratorForAnnotation<Stores> {
         reads.add('    return null;');
         reads.add('  }');
       }
+    }
+
+    // Merge wiring — after every memory is bound (an edge references two).
+    for (final (target, source, projection) in mergeEdges) {
+      final t = storeByEntityRow[target];
+      final s = storeByEntityRow[source];
+      if (t == null || s == null) {
+        throw InvalidGenerationSourceError(
+            'merge edge `$target.merge($source, …)`: both rows need a @stores '
+            'entry (missing: ${[if (t == null) target, if (s == null) source].join(', ')}).',
+            element: element);
+      }
+      if (t.$2) {
+        throw InvalidGenerationSourceError(
+            'merge edge `$target.merge($source, …)`: the TARGET must be a '
+            'keyed store — a unit has no per-key read surface to route.',
+            element: element);
+      }
+      if (!s.$2) {
+        throw InvalidGenerationSourceError(
+            'merge edge `$target.merge($source, …)`: the SOURCE must be a '
+            'unit store (it speaks at its state\'s own Identifiable id).',
+            element: element);
+      }
+      binds.add('    ${t.$1}Store.merge(${s.$1}Store, $projection);');
     }
 
     final b = StringBuffer();
@@ -308,14 +339,13 @@ class RegistryGenerator extends GeneratorForAnnotation<Stores> {
         : '${t.element.name}<${args.map(_expandedName).join(', ')}>';
   }
 
-  /// The row names the entity graph declares as OWNED — every name appearing
-  /// as a CHILD in the `static final graph = EntityGraph({...})` tree literal.
-  /// Read syntactically (the graph is a non-const `final`).
-  Future<Set<String>> _ownedRows(
+  /// The `EntityGraph({...})` tree literal of [entitiesEnum]'s static `graph`,
+  /// read syntactically (the graph is a non-const `final`).
+  Future<SetOrMapLiteral?> _graphTree(
       EnumElement entitiesEnum, BuildStep buildStep) async {
     final ast = await buildStep.resolver
         .astNodeFor(entitiesEnum.firstFragment, resolve: false);
-    if (ast is! EnumDeclaration || ast.body is! BlockEnumBody) return const {};
+    if (ast is! EnumDeclaration || ast.body is! BlockEnumBody) return null;
     Expression? graphExpr;
     for (final member in (ast.body as BlockEnumBody).members) {
       if (member is FieldDeclaration) {
@@ -330,27 +360,53 @@ class RegistryGenerator extends GeneratorForAnnotation<Stores> {
       _ => null,
     };
     final tree = args?.arguments.firstOrNull?.argumentExpression;
-    if (tree is! SetOrMapLiteral) return const {};
+    return tree is SetOrMapLiteral ? tree : null;
+  }
+
+  /// A graph node's ROW name, seen through the wrappers a node may wear:
+  /// `row` · `row({children})` · `row.merge(src, proj)` (chainable) ·
+  /// `row.merge(...)({children})`.
+  String? _rowOf(Expression node) => switch (node) {
+        SimpleIdentifier(:final name) => name,
+        MethodInvocation(
+          target: final Expression target,
+          methodName: SimpleIdentifier(name: 'merge'),
+        ) =>
+          _rowOf(target),
+        MethodInvocation(target: null, methodName: SimpleIdentifier(:final name)) =>
+          name,
+        FunctionExpressionInvocation(:final function) => _rowOf(function),
+        _ => null,
+      };
+
+  /// A graph node's `{children}` literal, if it declares one.
+  SetOrMapLiteral? _childrenOf(Expression node) {
+    final lit = switch (node) {
+      MethodInvocation(target: null, :final argumentList) =>
+        argumentList.arguments.firstOrNull?.argumentExpression,
+      FunctionExpressionInvocation(:final argumentList) =>
+        argumentList.arguments.firstOrNull?.argumentExpression,
+      _ => null,
+    };
+    return lit is SetOrMapLiteral ? lit : null;
+  }
+
+  /// The row names the entity graph declares as OWNED — every name appearing
+  /// as a CHILD in the `static final graph = EntityGraph({...})` tree literal.
+  Future<Set<String>> _ownedRows(
+      EnumElement entitiesEnum, BuildStep buildStep) async {
+    final tree = await _graphTree(entitiesEnum, buildStep);
+    if (tree == null) return const {};
 
     final owned = <String>{};
     void walk(Expression node, {required bool asChild}) {
-      switch (node) {
-        // `row` — a bare leaf.
-        case SimpleIdentifier(:final name):
-          if (asChild) owned.add(name);
-        // `row({children})` — a branch.
-        case MethodInvocation(
-            methodName: SimpleIdentifier(:final name),
-            :final argumentList,
-          ):
-          if (asChild) owned.add(name);
-          final children = argumentList.arguments.firstOrNull?.argumentExpression;
-          if (children is SetOrMapLiteral) {
-            for (final c in children.elements) {
-              if (c is Expression) walk(c, asChild: true);
-            }
-          }
-        default:
+      final row = _rowOf(node);
+      if (asChild && row != null) owned.add(row);
+      final children = _childrenOf(node);
+      if (children != null) {
+        for (final c in children.elements) {
+          if (c is Expression) walk(c, asChild: true);
+        }
       }
     }
 
@@ -358,6 +414,60 @@ class RegistryGenerator extends GeneratorForAnnotation<Stores> {
       if (e is Expression) walk(e, asChild: false);
     }
     return owned;
+  }
+
+  /// Every merge edge in the graph, declaration order: (target row, source
+  /// row, projection source text). `user.merge(viewer, const P())` reads as
+  /// "user's read surface consults viewer through P".
+  Future<List<(String, String, String)>> _mergeEdges(
+      EnumElement stores, BuildStep buildStep) async {
+    EnumElement? entitiesEnum;
+    for (final en in stores.library.enums) {
+      final annotated = en.metadata.annotations.any((a) =>
+          a.computeConstantValue()?.type?.element?.name == 'Entities');
+      if (annotated) {
+        entitiesEnum = en;
+        break;
+      }
+    }
+    if (entitiesEnum == null) return const [];
+    final tree = await _graphTree(entitiesEnum, buildStep);
+    if (tree == null) return const [];
+
+    final edges = <(String, String, String)>[];
+    void collect(Expression node) {
+      switch (node) {
+        case MethodInvocation(
+            target: final Expression target,
+            methodName: SimpleIdentifier(name: 'merge'),
+            :final argumentList,
+          ):
+          collect(target);
+          final args = [
+            for (final a in argumentList.arguments) a.argumentExpression
+          ];
+          final row = _rowOf(target);
+          final source = args.firstOrNull;
+          if (row != null && args.length == 2 && source is SimpleIdentifier) {
+            // Chained edges collect target-first — declaration order.
+            edges.add((row, source.name, args[1].toSource()));
+          }
+        case FunctionExpressionInvocation(:final function):
+          collect(function);
+        default:
+      }
+      final children = _childrenOf(node);
+      if (children != null) {
+        for (final c in children.elements) {
+          if (c is Expression) collect(c);
+        }
+      }
+    }
+
+    for (final e in tree.elements) {
+      if (e is Expression) collect(e);
+    }
+    return edges;
   }
 
   /// The value type an id-node decodes to: the `T` of the `Codec<T>` its

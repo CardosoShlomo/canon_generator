@@ -38,11 +38,23 @@ mixin EntityNode<Self extends EntityNode<Self>> on Enum
   IdNode? get key;
   EntityTreeNode call([Set<EntityTreeNode> children = const {}]) =>
       EntityBranch(this, children);
+  EntityMerge merge(Self source, Object projection) =>
+      EntityMerge(this, [(source, projection)]);
 }
 class EntityBranch implements EntityTreeNode {
   EntityBranch(this.entity, this.children);
   final Enum entity;
   final Set<EntityTreeNode> children;
+}
+class EntityMerge implements EntityTreeNode {
+  EntityMerge(this.entity, this.edges, [this.children = const {}]);
+  final Enum entity;
+  final List<(Enum, Object)> edges;
+  final Set<EntityTreeNode> children;
+  EntityMerge merge(Enum source, Object projection) =>
+      EntityMerge(entity, [...edges, (source, projection)], children);
+  EntityMerge call([Set<EntityTreeNode> children = const {}]) =>
+      EntityMerge(entity, edges, children);
 }
 class EntityGraph {
   EntityGraph(this.tree);
@@ -302,6 +314,56 @@ enum _Stores with StoreNode<_Stores> {
 }
 ''';
 
+// A MERGE EDGE in the graph: the keyed `user` surface consults the `viewer`
+// unit through a projection — the generator wires the memories in bind().
+const _mergeSpec = '''
+import 'package:canon/canon.dart';
+
+part 'spec.canon.dart';
+
+enum Ids with IdNode {
+  user(StringCodec());
+  const Ids(this.codec);
+  final Codec codec;
+}
+
+class UserState {}
+class ViewerState {}
+sealed class UserMsg {}
+sealed class ProfileMsg {}
+class Users extends Store<String, UserState, UserMsg> { const Users(); }
+class Viewer extends ValueStore<ViewerState?, ProfileMsg> { const Viewer(); }
+class ViewerSupportsUser {
+  const ViewerSupportsUser();
+}
+
+@entities
+enum _Entities with EntityNode<_Entities> {
+  user(UserState, Ids.user),
+  viewer(ViewerState);
+
+  const _Entities(this.type, [this.key]);
+  @override
+  final Type type;
+  @override
+  final Ids? key;
+
+  static final graph = EntityGraph({
+    user.merge(viewer, const ViewerSupportsUser()),
+    viewer,
+  });
+}
+
+@stores
+enum _Stores with StoreNode<_Stores> {
+  users(Users()),
+  viewer(Viewer());
+  const _Stores(this.store);
+  @override
+  final AnyStore store;
+}
+''';
+
 void main() {
   test('@IDs emits extension types + composite typedefs', () => testBuilder(
         PartBuilder([IdsGenerator()], '.canon.dart'),
@@ -377,6 +439,22 @@ void main() {
               ]))
             },
           ));
+
+  test('a graph merge edge wires the memories in bind()', () => testBuilder(
+        PartBuilder([RegistryGenerator()], '.canon.dart'),
+        {
+          'ledger|lib/ledger.dart': _ledgerStub,
+          'identifiable|lib/identifiable.dart': _identifiableStub,
+          'canon|lib/canon.dart': _canonStub,
+          'pkg|lib/spec.dart': _mergeSpec,
+        },
+        rootPackage: 'pkg',
+        generateFor: {'pkg|lib/spec.dart'},
+        outputs: {
+          'pkg|lib/spec.canon.dart': decodedMatches(contains(
+              'usersStore.merge(viewerStore, const ViewerSupportsUser());')),
+        },
+      ));
 
   Future<String> guardLogs(String spec) async {
     final logs = <String>[];
