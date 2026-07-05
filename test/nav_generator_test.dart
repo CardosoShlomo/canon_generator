@@ -1791,7 +1791,10 @@ void main() {
       () => _expectGenerated(
             allOf(
               contains('static set resolver(void Function(Url? url) fn) =>'),
-              contains('graph.setResolver((url) => fn(parseUrl(url)))'),
+              contains('fn(parseUrl(url)),'),
+              // Mobile has no host-fed cold URL — assignment during boot
+              // fires the launch route as the fallback.
+              contains('boot:'),
               contains('get rootUrl'),
               contains('platformDispatcher.defaultRouteName'),
             ),

@@ -1415,7 +1415,10 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       b.writeln('  /// deep link — web URL + mobile app-link, one channel. Write plain');
       b.writeln('  /// `Screen.goX()` / `Screen.replace`. Single, last-wins, never disposed.');
       b.writeln('  static set resolver(void Function(Url? url) fn) =>');
-      b.writeln('      $spec.graph.setResolver((url) => fn(parseUrl(url)));');
+      b.writeln('      $spec.graph.setResolver((url) => fn(parseUrl(url)),');
+      b.writeln('          boot: $spec.graph.bootUrl ??');
+      b.writeln(
+          '              WidgetsBinding.instance.platformDispatcher.defaultRouteName);');
     }
     if (hasCanPop) {
       b.writeln('  /// The poppable handle if the active top is a non-root placement,');
