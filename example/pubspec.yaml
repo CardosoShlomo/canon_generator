@@ -7,8 +7,8 @@ environment:
   sdk: ^3.12.0
 
 dependencies:
-  canon_flutter: ^0.1.0
-  regent: ^0.1.1 # the optimistic state engine the @registries surface binds to
+  canon_flutter: ^0.2.0
+  regent: ^0.2.0 # the optimistic state engine the @registries surface binds to
   flutter:
     sdk: flutter
   flutter_web_plugins:

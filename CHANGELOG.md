@@ -1,3 +1,7 @@
+## 0.27.0
+
+- `Screen.resolver` fires at cold start on mobile (boot fallback).
+
 ## 0.26.0
 
 - Wire graph merge edges: `row.merge(source, projection)` binds the memories in `bind()`.
