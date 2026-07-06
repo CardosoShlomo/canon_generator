@@ -365,7 +365,7 @@ enum _Stores with StoreNode<_Stores> {
 ''';
 
 void main() {
-  test('@IDs emits extension types + composite typedefs', () => testBuilder(
+  test('@IDs emits extension types, composites with named components', () => testBuilder(
         PartBuilder([IdsGenerator()], '.canon.dart'),
         {
           'regent|lib/regent.dart': _regentStub,
@@ -382,8 +382,14 @@ void main() {
             // the back-link: type → grammar node (codec rides on it)
             contains('static const Ids node = Ids.product;'),
             contains('static const Ids node = Ids.author;'),
-            contains('typedef ReviewId = (ProductId, AuthorId);'),
-            contains('typedef OrderId = (ProductId, AuthorId);'),
+            contains(
+                  'extension type const ReviewId((ProductId, AuthorId) _) {'),
+              contains('const ReviewId.of(ProductId product, AuthorId author)'),
+              contains(': this((product, author));'),
+              contains('ProductId get product => _.\$1;'),
+              contains('AuthorId get author => _.\$2;'),
+            contains(
+                  'extension type const OrderId((ProductId, AuthorId) _) {'),
           ]))
         },
       ));

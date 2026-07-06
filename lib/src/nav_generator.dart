@@ -13,10 +13,22 @@ import 'link_model.dart';
 import 'tree_reader.dart';
 
 class _Row {
-  _Row(this.name, this.idType, this.spec, {this.owner = true, this.idNodes});
+  _Row(this.name, this.idType, this.spec,
+      {this.owner = true,
+      this.idNodes,
+      this.idComponentTypes,
+      this.idComponentNames});
 
   final String name;
   final String? idType;
+
+  /// Component TYPE names when [idType] is a NOMINAL composite (an @ids
+  /// extension type, unsplittable as a string) — null otherwise.
+  final List<String>? idComponentTypes;
+
+  /// The components' grammar-row names (the generated getters: `.ad`,
+  /// `.user`) for a nominal composite — null otherwise.
+  final List<String>? idComponentNames;
 
   /// The `@ids` node identities this screen's id is made of (`Ids#1`), or null
   /// when the id isn't node-based. One entry for an atomic node, N for a
@@ -131,6 +143,10 @@ String? _typedIdName(DartObject? o) {
 
   final parts = _compositeParts(o);
   if (parts != null) {
+    // An @ids enum composite row is its own extension type (`AdChatId`);
+    // a static-const composite falls back to the positional tuple.
+    final own = nameOf(o);
+    if (own != null) return own;
     final names = [for (final p in parts) nameOf(p)];
     if (names.contains(null)) return null;
     return '(${names.join(', ')})';
@@ -265,6 +281,8 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       // (it drives the typed verb), and the codec round-trips the value for
       // restoration. A repeated-key `Codec.list` can't be a single-token id.
       String? idStr;
+      List<String>? compTypes;
+      List<String>? compNames;
       DartType? idDartType;
       if (idObj != null && !idObj.isNull) {
         // A screen may bind a Codec directly OR an @ids node that carries one in
@@ -286,16 +304,25 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
         // erases to Object?. Rebuild its record type from the component codecs.
         final compVals = _compositeParts(idObj);
         if (compVals != null) {
-          final ts = [
+          compTypes = [
             for (final c in compVals)
-              _codecArg(_nodeCodec(c)?.type)?.getDisplayString() ?? 'Object?'
+              _typedIdName(c) ??
+                  _codecArg(_nodeCodec(c)?.type)?.getDisplayString() ??
+                  'Object?'
           ];
-          idStr = '(${ts.join(', ')})';
+          compNames = [
+            for (final c in compVals) c.getField('_name')?.toStringValue()
+          ].whereType<String>().toList();
+          if (compNames.length != compVals.length) compNames = null;
+          idStr = '(${compTypes.join(', ')})';
         }
         // An `@IDs` id-space has generated extension types — the id type IS the
         // typed name (`AuthorId`, `(ProductId, AuthorId)`), erasing to the codec
         // value type at runtime (all casts stay sound).
         idStr = _typedIdName(idObj) ?? idStr;
+        // Named component getters exist only on NOMINAL composites (an @ids
+        // enum row's extension type) — a structural tuple keeps `.$n`.
+        if (idStr == null || idStr.startsWith('(')) compNames = null;
       }
       if (idStr != null && idDartType != null && !_hasValueEquality(idDartType)) {
         log.warning(
@@ -305,7 +332,10 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
             'for value semantics');
       }
       rows.add(_Row(field.name!, idStr, e.name!,
-          owner: owner, idNodes: _idNodes(idObj)));
+          owner: owner,
+          idNodes: _idNodes(idObj),
+          idComponentTypes: compTypes,
+          idComponentNames: compNames));
       }
     }
     // A screen name is ONE screen across the virtual tree. It may be declared
@@ -346,15 +376,42 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       // the owner left it off (any disagreement already rejected above).
       final nodes =
           e.value.map((r) => r.idNodes).whereType<List<String>>().toList();
+      final comps = e.value
+          .map((r) => r.idComponentTypes)
+          .whereType<List<String>>()
+          .toList();
+      final compNames = e.value
+          .map((r) => r.idComponentNames)
+          .whereType<List<String>>()
+          .toList();
       collapsed.add(_Row(e.key, idTypes.isEmpty ? null : idTypes.first,
           owners.single.spec,
-          idNodes: nodes.isEmpty ? null : nodes.first));
+          idNodes: nodes.isEmpty ? null : nodes.first,
+          idComponentTypes: comps.isEmpty ? null : comps.first,
+          idComponentNames: compNames.isEmpty ? null : compNames.first));
     }
     rows
       ..clear()
       ..addAll(collapsed);
 
     final idOf = {for (final r in rows) r.name: r.idType};
+    // Component type names for NOMINAL composites (extension types): the
+    // string form is no longer splittable, so the reader records them.
+    final compsOf = <String, List<String>>{
+      for (final r in rows)
+        if (r.idComponentTypes != null) r.name: r.idComponentTypes!,
+    };
+    List<String> componentsOf(String screen) =>
+        compsOf[screen] ?? _idComponents(idOf[screen]);
+    final namesOf = <String, List<String>>{
+      for (final r in rows)
+        if (r.idComponentNames != null) r.name: r.idComponentNames!,
+    };
+    // A nominal composite reads `.ad`; a structural tuple reads `.\$1`.
+    String componentRead(String src, int comp) {
+      final names = namesOf[src];
+      return names != null ? '.${names[comp]}' : '.\$${comp + 1}';
+    }
     final specOf = {for (final r in rows) r.name: r.spec};
     // A screen's enum-qualified value (`_Root.home`, `Shop.shop`) — the only
     // place graft surfaces in the output; everything else is by name.
@@ -469,7 +526,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     // single-source paths treat the screen as a plain atomic-record-id screen;
     // the composite verb is emitted separately from `inheritSources`.
     bool isComposite(String screen) =>
-        _idComponents(idOf[screen]).length > 1 &&
+        componentsOf(screen).length > 1 &&
         placements[screen]!.any((n) => n.inheritSources.isNotEmpty);
     for (final ps in placements.values) {
       for (final n in ps) {
@@ -484,7 +541,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     for (final ps in placements.values) {
       for (final n in ps) {
         if (!isComposite(n.screen) && n.inheritSources.length <= 1) continue;
-        final comps = _idComponents(idOf[n.screen]);
+        final comps = componentsOf(n.screen);
         if (n.inheritSources.length > comps.length) {
           throw InvalidGenerationSourceError(
               '"${n.screen}.inherit(${[for (final s in n.inheritSources) s.screen].join(', ')})": '
@@ -583,7 +640,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
           if (n.inheritComponent != null) {
             // A projection: the child's id is ONE component of the composite
             // source — that component's type must match the child's.
-            final comps = _idComponents(srcT);
+            final comps = componentsOf(src.screen);
             final ci = n.inheritComponent!;
             if (ci >= comps.length || comps[ci] != childT) {
               throw InvalidGenerationSourceError(
@@ -882,7 +939,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     // Read a source's live id, projecting one record component for a projection.
     String idRead(String src, int? comp) => comp == null
         ? '_idOf(${sv(src)})'
-        : '(_idOf(${sv(src)}) as ${idOf[src]}).\$${comp + 1}';
+        : '(_idOf(${sv(src)}) as ${idOf[src]})${componentRead(src, comp)}';
     String parentPush(String x) {
       final src = inheritSrcUniform(x);
       final idT = idOf[x];
@@ -910,7 +967,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     // are required args (each as its component type). Null when not composite.
     ({String params, String record})? compositeVerb(PlacementNode n) {
       if (n.inheritSources.isEmpty) return null;
-      final comps = _idComponents(idOf[n.screen]);
+      final comps = componentsOf(n.screen);
       if (comps.length < 2) return null;
       final filled = List<String?>.filled(comps.length, null);
       for (final src in n.inheritSources) {
@@ -966,7 +1023,8 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
         final ci = node?.inheritComponent;
         final read = ci == null
             ? '_idOf(${sv(inheritSrc)})'
-            : '(_idOf(${sv(inheritSrc)}) as ${idOf[inheritSrc]}).\$${ci + 1}';
+            : '(_idOf(${sv(inheritSrc)}) as ${idOf[inheritSrc]})'
+                '${componentRead(inheritSrc, ci)}';
         return '  $returns go${_cap(child)}() {\n'
             '    $popSelf$spec.graph.go(${sv(child)}, $read, true);\n'
             '    return const $returns._();\n'

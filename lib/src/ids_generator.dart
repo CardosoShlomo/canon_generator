@@ -69,8 +69,21 @@ class IdsGenerator extends GeneratorForAnnotation<IDs> {
       b.writeln('}');
     }
     for (final e in composites.entries) {
-      final comps = [for (final n in e.value) _idName(n)].join(', ');
-      b.writeln('typedef ${_idName(e.key)} = ($comps);');
+      // Composites are extension types like the atomics: NAMED component
+      // access (`key.ad`, never `.$1`) over the positional record the codecs
+      // and the engine already speak — zero-cost, nominal, erased.
+      final rec = [for (final n in e.value) _idName(n)].join(', ');
+      final ctorParams =
+          [for (final n in e.value) '${_idName(n)} ${n}'].join(', ');
+      final ctorArgs = e.value.join(', ');
+      b.writeln('extension type const ${_idName(e.key)}(($rec) _) {');
+      b.writeln('  const ${_idName(e.key)}.of($ctorParams) '
+          ': this(($ctorArgs));');
+      for (var i = 0; i < e.value.length; i++) {
+        b.writeln('  ${_idName(e.value[i])} get ${e.value[i]} => _.\$${i + 1};');
+      }
+      b.writeln('  static const $enumName node = $enumName.${e.key};');
+      b.writeln('}');
     }
     return b.toString();
   }

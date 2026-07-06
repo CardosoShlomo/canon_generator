@@ -1135,7 +1135,7 @@ void main() {
       _expectGenerated(
         allOf([
           // author's id = component 2 of the COMPOSITE — never product's id
-          contains('(ProductId, AuthorId)).\$2'),
+          contains('ReviewId).author'),
           isNot(contains('goAuthor(ProductId')),
         ]),
         spec: _nestedProjectionSpec,
@@ -1144,9 +1144,9 @@ void main() {
   test('@IDs id-space → typed verbs, reads and projections', () =>
       _expectGenerated(
         allOf([
-          contains('goReview((ProductId, AuthorId) id)'), // typed composite verb
+          contains('goReview(ReviewId id)'), // typed composite verb
           contains('Screen<AuthorId>'), // typed screen surface
-          contains('(ProductId, AuthorId)).\$2'), // typed projection cast
+          contains('ReviewId).author'), // typed projection cast
           isNot(contains('goReview((String, String) id)')),
         ]),
         spec: _typedIdsSpec,
