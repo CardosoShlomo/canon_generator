@@ -382,6 +382,102 @@ enum _Stores with RegentNode<_Stores> {
 }
 ''';
 
+const _guardRowSpec = '''
+import 'package:canon/canon.dart';
+
+part 'spec.canon.dart';
+
+enum Ids with IdNode {
+  user(StringCodec());
+  const Ids(this.codec);
+  final Codec codec;
+}
+
+class UserState {}
+class GateState {}
+sealed class UserMsg {}
+sealed class GateMsg {}
+class CachedUsers extends UserMsg {}
+class Users extends Store<String, UserState, UserMsg> { const Users(); }
+class Covered extends Unit<GateState?, GateMsg> { const Covered(); }
+class CachedGate extends Veto<CachedUsers, Stores> {
+  const CachedGate();
+  bool block(Envelope env, CachedUsers msg, Stores stores) => true;
+}
+
+@entities
+enum _Entities with EntityNode<_Entities> {
+  user(UserState, Ids.user),
+  gate(GateState);
+
+  const _Entities(this.type, [this.key]);
+  @override
+  final Type type;
+  @override
+  final Ids? key;
+
+  static final graph = EntityGraph({user, gate});
+}
+
+@regents
+enum _Regents with RegentNode<_Regents> {
+  covered(Covered()),
+  cachedGate(CachedGate()),
+  users(Users());
+  const _Regents(this.regent);
+  @override
+  final Regent regent;
+}
+''';
+
+const _guardMergeSpec = '''
+import 'package:canon/canon.dart';
+
+part 'spec.canon.dart';
+
+enum Ids with IdNode {
+  user(StringCodec());
+  const Ids(this.codec);
+  final Codec codec;
+}
+
+class UserState {}
+sealed class UserMsg {}
+class CachedUsers extends UserMsg {}
+class Users extends Store<String, UserState, UserMsg> { const Users(); }
+class CachedGate extends Veto<CachedUsers, Stores> {
+  const CachedGate();
+  bool block(Envelope env, CachedUsers msg, Stores stores) => true;
+}
+class P { const P(); }
+
+@entities
+enum _Entities with EntityNode<_Entities> {
+  user(UserState, Ids.user);
+
+  const _Entities(this.type, [this.key]);
+  @override
+  final Type type;
+  @override
+  final Ids? key;
+
+  static final graph = EntityGraph({user});
+}
+
+@regents
+enum _Regents with RegentNode<_Regents> {
+  cachedGate(CachedGate()),
+  users(Users());
+  const _Regents(this.regent);
+  @override
+  final Regent regent;
+
+  static final merges = {
+    users.from(cachedGate, const P()),
+  };
+}
+''';
+
 void main() {
   test('@IDs emits extension types, composites with named components', () => testBuilder(
         PartBuilder([IdsGenerator()], '.canon.dart'),
@@ -468,6 +564,28 @@ void main() {
             },
           ));
 
+  test('a GUARD row binds positionally and reads through the facade',
+      () => testBuilder(
+        PartBuilder([RegistryGenerator()], '.canon.dart'),
+        {
+          'regent|lib/regent.dart': _regentStub,
+          'identifiable|lib/identifiable.dart': _identifiableStub,
+          'canon|lib/canon.dart': _canonStub,
+          'pkg|lib/spec.dart': _guardRowSpec,
+        },
+        rootPackage: 'pkg',
+        generateFor: {'pkg|lib/spec.dart'},
+        outputs: {
+          'pkg|lib/spec.canon.dart': decodedMatches(allOf([
+            contains('class Stores {'),
+            contains('get covered => coveredStore;'),
+            contains('get users => usersStore;'),
+            contains('guard('),
+            contains('as Guard<CachedUsers, Stores>'),
+          ])),
+        },
+      ));
+
   test('a `merges` edge wires the memories in bind()', () => testBuilder(
         PartBuilder([RegistryGenerator()], '.canon.dart'),
         {
@@ -543,5 +661,9 @@ void main() {
   test('rejects a registry whose message type is not sealed', () async {
     expect(await guardLogs(_unsealedMsgSpec),
         allOf(contains('ReviewMsg'), contains('sealed')));
+  });
+
+  test('rejects a merge edge whose endpoint is a GUARD row', () async {
+    expect(await guardLogs(_guardMergeSpec), contains('STORE rows only'));
   });
 }
