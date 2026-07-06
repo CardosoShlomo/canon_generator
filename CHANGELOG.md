@@ -1,3 +1,7 @@
+## 0.29.0
+
+- `@regents` replaces `@stores`: ordered citizens, guard rows, `from` merges.
+
 ## 0.28.0
 
 - Composite ids generate nominal extension types with named component getters (`key.ad`, never `.\$1`).
