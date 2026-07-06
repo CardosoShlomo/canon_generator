@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:canon_flutter/canon_flutter.dart' show Stability;
 import 'package:canon_example/welcome.dart';
 
 void main() {
-  testWidgets('welcome: home -> item(id) -> back, and home -> settings',
+  testWidgets('welcome: home -> todo(id) -> back; optimistic complete',
       (tester) async {
     verifyScreens();
     await tester.pumpWidget(MaterialApp.router(routerDelegate: Screen.manager));
@@ -12,17 +13,25 @@ void main() {
     await tester.pumpAndSettle();
     expect(Screen.stack.current.name, 'home');
 
-    Screen.goItem('001');
+    dispatch(TodoAdded(TodoId('001'), 'Buy milk'));
     await tester.pumpAndSettle();
-    expect(Screen.stack.current.name, 'item');
+    expect(find.text('Buy milk'), findsOneWidget);
+
+    Screen.goTodo(TodoId('001'));
+    await tester.pumpAndSettle();
+    expect(Screen.stack.current.name, 'todo');
     expect(Screen.stack.currentId, '001');
+
+    // The optimistic write folds instantly (a pending overlay)…
+    dispatch(TodoAdded(TodoId('002'), 'Brew tea'));
+    dispatch(const CompleteTodo(TodoId('002'), done: true));
+    expect(todosStore[TodoId('002')]!.done, isTrue);
+    // …and the echo settles it by state comparison: confirmed.
+    dispatch(const TodoToggled(TodoId('002'), done: true));
+    expect(todosStore.flagsOf(TodoId('002'))?.stability, Stability.confirmed);
 
     Screen.pop();
     await tester.pumpAndSettle();
     expect(Screen.stack.current.name, 'home');
-
-    Screen.goSettings();
-    await tester.pumpAndSettle();
-    expect(Screen.stack.current.name, 'settings');
   });
 }

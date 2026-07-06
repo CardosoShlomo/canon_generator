@@ -181,6 +181,7 @@ final class Screen<I> {
   /// stays — always pass it where a `RouterDelegate` goes.)
   static NavDelegate get manager {
     assert(_fresh);
+    ledger.bind();
     return _Screens.graph.delegate;
   }
 
@@ -4722,6 +4723,9 @@ Enum _termOf(On sel) =>
 class Stores {
   const Stores();
   UnitMemory<CartState, CartMsg> get cart => cartStore;
+  UnitMemory<bool, ProductMsg> get catalogCovered => catalogCoveredStore;
+  StoreMemory<ProductId, Product, ProductMsg> get localProducts =>
+      localProductsStore;
   StoreMemory<ProductId, Product, ProductMsg> get products => productsStore;
 }
 
@@ -4737,6 +4741,8 @@ void dispatch(Msg msg, {bool optimistic = false, String? correlationId}) =>
     ledger.dispatch(msg, optimistic: optimistic, correlationId: correlationId);
 bool _bound = false;
 late final UnitMemory<CartState, CartMsg> cartStore;
+late final UnitMemory<bool, ProductMsg> catalogCoveredStore;
+late final StoreMemory<ProductId, Product, ProductMsg> localProductsStore;
 late final StoreMemory<ProductId, Product, ProductMsg> productsStore;
 
 /// The generated data surface, hung on [Ledger] so `ledger.` is the one api.
@@ -4746,15 +4752,36 @@ extension on Ledger {
     if (_bound) return;
     _bound = true;
     cartStore = unit(_Regents.cart.regent as Unit<CartState, CartMsg>);
+    catalogCoveredStore = unit(
+      _Regents.catalogCovered.regent as Unit<bool, ProductMsg>,
+    );
     guard(
       _Regents.catalogGate.regent as Guard<CatalogCacheMsg, Stores>,
       const Stores(),
+    );
+    localProductsStore = store(
+      _Regents.localProducts.regent as Store<ProductId, Product, ProductMsg>,
     );
     productsStore = store(
       _Regents.products.regent as Store<ProductId, Product, ProductMsg>,
     );
     _Screens.graph.navigations.listen((n) {
       final (screen, id) = n.destination;
+      if (screen == _Screens.product) {
+        final key = id as ProductId;
+        if (!localProductsStore.inFlight(key)) {
+          final msg =
+              (_Regents.localProducts.regent
+                      as Store<ProductId, Product, ProductMsg>)
+                  .awaits
+                  ?.surface(
+                    key,
+                    localProductsStore.entities[key],
+                    localProductsStore.flagsOf(key),
+                  );
+          if (msg != null) dispatch(msg);
+        }
+      }
       if (screen == _Screens.product) {
         final key = id as ProductId;
         if (!productsStore.inFlight(key)) {
@@ -4771,6 +4798,16 @@ extension on Ledger {
         }
       }
     });
+    productsStore.mergeStore(localProductsStore, const LocalProductSupports());
+  }
+
+  /// localProducts on screen `product` — the entry at its live nav id.
+  Product? localProductsOnProduct() {
+    for (final e in _Screens.graph.stack) {
+      if (e.screen == _Screens.product)
+        return localProductsStore[e.id as ProductId];
+    }
+    return null;
   }
 
   /// products on screen `product` — the entry at its live nav id.

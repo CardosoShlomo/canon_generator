@@ -4,6 +4,18 @@
 part of 'welcome.dart';
 
 // **************************************************************************
+// IdsGenerator
+// **************************************************************************
+
+// Typed ids — nominal identity in the value space, generated
+// from the @ids grammar. Zero-cost: each erases to its codec's
+// value type at runtime. `node` links back to the grammar
+// (`XId.node.codec` reaches the codec).
+extension type const TodoId(String _) implements String {
+  static const Ids node = Ids.todo;
+}
+
+// **************************************************************************
 // NavGenerator
 // **************************************************************************
 
@@ -25,8 +37,7 @@ final class Screen<I> {
   /// readable identity of a stack entry (`Screen.stack.current.name`).
   String get name => _spec.name;
   static const home = Screen<Never>._(_Screens.home);
-  static const item = Screen<String>._(_Screens.item);
-  static const settings = Screen<Never>._(_Screens.settings);
+  static const todo = Screen<TodoId>._(_Screens.todo);
   static Screen<Object?> _forSpec(Enum spec) => _bySpec[spec]!;
 
   /// The [Screen] constant for a grammar row — `pageOf`'s bridge from
@@ -42,8 +53,7 @@ final class Screen<I> {
   static const _bySpec = <Enum, Screen<Object?>>{
     BootScreen.root: Screen<Never>._(BootScreen.root),
     _Screens.home: home,
-    _Screens.item: item,
-    _Screens.settings: settings,
+    _Screens.todo: todo,
   };
 
   /// The live active stack as wrappers: .current/.currentId/.tab/
@@ -59,7 +69,7 @@ final class Screen<I> {
   /// The active top screen's FRAGMENT view-state, read-only and
   /// context-free.
   static Map<String, Object?> get fragment => _Screens.graph.activeView('f');
-  static const _treeSignature = 'home(item(),settings())';
+  static const _treeSignature = 'home(todo())';
 
   /// True when this generated code still matches the live tree.
   /// Assert it in a test to fail CI on a stale (un-regenerated) tree:
@@ -81,6 +91,7 @@ final class Screen<I> {
   /// stays — always pass it where a `RouterDelegate` goes.)
   static NavDelegate get manager {
     assert(_fresh);
+    ledger.bind();
     return _Screens.graph.delegate;
   }
 
@@ -223,14 +234,9 @@ final class Screen<I> {
     return const HomeNav._();
   }
 
-  static ItemNav goItem(String id) {
-    _Screens.graph.go(_Screens.item, id);
-    return const ItemNav._();
-  }
-
-  static SettingsNav goSettings() {
-    _Screens.graph.go(_Screens.settings);
-    return const SettingsNav._();
+  static TodoNav goTodo(TodoId id) {
+    _Screens.graph.go(_Screens.todo, id);
+    return const TodoNav._();
   }
 }
 
@@ -285,14 +291,9 @@ final class Replace {
     return Screen.goHome();
   }
 
-  ItemNav goItem(String id) {
+  TodoNav goTodo(TodoId id) {
     _Screens.graph.markReplace();
-    return Screen.goItem(id);
-  }
-
-  SettingsNav goSettings() {
-    _Screens.graph.markReplace();
-    return Screen.goSettings();
+    return Screen.goTodo(id);
   }
 }
 
@@ -320,19 +321,14 @@ final class HomeEntry extends ScreenEntry {
   const HomeEntry();
 }
 
-final class ItemEntry extends ScreenEntry {
-  const ItemEntry(this.id);
-  final String id;
-}
-
-final class SettingsEntry extends ScreenEntry {
-  const SettingsEntry();
+final class TodoEntry extends ScreenEntry {
+  const TodoEntry(this.id);
+  final TodoId id;
 }
 
 ScreenEntry _entryOf(Enum s, Object? id) => switch (s) {
   _Screens.home => const HomeEntry(),
-  _Screens.item => ItemEntry(id as String),
-  _Screens.settings => const SettingsEntry(),
+  _Screens.todo => TodoEntry(id as TodoId),
   _ => throw StateError('not a _Screens screen'),
 };
 
@@ -347,13 +343,8 @@ final class Hop<N extends AnyNav> {
   /// full path, so `Screen.go` lands the whole placement.
   List<(Enum, Object?)> get chain => [(spec, id)];
   static const home = Hop<HomeNav>._(_Screens.home, null, HomeNav._());
-  static Hop<ItemNav> item(String id) =>
-      Hop._(_Screens.item, id, const ItemNav._());
-  static const settings = Hop<SettingsNav>._(
-    _Screens.settings,
-    null,
-    SettingsNav._(),
-  );
+  static Hop<TodoNav> todo(TodoId id) =>
+      Hop._(_Screens.todo, id, const TodoNav._());
 }
 
 /// The root/boot placement: `Screen.current` returns it until the first
@@ -375,27 +366,20 @@ final class On<N extends AnyNav> {
   final List<ViewCond> conds;
   static OnHome get home =>
       OnHome._([_Screens.home], [null], const HomeNav._());
-  static OnItem get item =>
-      OnItem._([_Screens.item], [null], const ItemNav._());
-  static On<SettingsNav> get settings =>
-      On._([_Screens.settings], [null], const SettingsNav._());
+  static OnTodo get todo =>
+      OnTodo._([_Screens.todo], [null], const TodoNav._());
 }
 
 final class OnHome extends On<HomeNav> {
   const OnHome._(super.specs, super.ids, super.nav) : super._();
-  OnItem get item =>
-      OnItem._([...specs, _Screens.item], [...ids, null], const ItemNav._());
-  On<SettingsNav> get settings => On._(
-    [...specs, _Screens.settings],
-    [...ids, null],
-    const SettingsNav._(),
-  );
+  OnTodo get todo =>
+      OnTodo._([...specs, _Screens.todo], [...ids, null], const TodoNav._());
 }
 
-final class OnItem extends On<ItemNav> {
-  const OnItem._(super.specs, super.ids, super.nav) : super._();
-  OnItem call(String id) =>
-      OnItem._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
+final class OnTodo extends On<TodoNav> {
+  const OnTodo._(super.specs, super.ids, super.nav) : super._();
+  OnTodo call(TodoId id) =>
+      OnTodo._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 sealed class AnyPlacement extends AnyNav {
@@ -405,8 +389,7 @@ sealed class AnyPlacement extends AnyNav {
 AnyPlacement _atOf(Enum s) {
   return switch (s) {
     _Screens.home => const HomeNav._(),
-    _Screens.item => const ItemNav._(),
-    _Screens.settings => const SettingsNav._(),
+    _Screens.todo => const TodoNav._(),
     BootScreen.root => const Root._(),
     _ => throw StateError('not a _Screens screen'),
   };
@@ -439,56 +422,18 @@ final class HomeNav extends AnyPlacement implements PopDestPlacement {
     return const HomeNav._();
   }
 
-  ItemNav goItem(String id) {
+  TodoNav goTodo(TodoId id) {
     _Screens.graph.popTo(_Screens.home);
-    _Screens.graph.go(_Screens.item, id, true);
-    return const ItemNav._();
-  }
-
-  SettingsNav goSettings() {
-    _Screens.graph.popTo(_Screens.home);
-    _Screens.graph.go(_Screens.settings, null, true);
-    return const SettingsNav._();
-  }
-
-  N go<N extends AnyNav>(HomeHop<N> hop) {
-    _Screens.graph.go(hop.spec, hop.id, true);
-    return hop.nav;
+    _Screens.graph.go(_Screens.todo, id, true);
+    return const TodoNav._();
   }
 }
 
-final class HomeHop<N extends AnyNav> {
-  const HomeHop._(this.spec, this.id, this.nav);
-  final Enum spec;
-  final Object? id;
-  final N nav;
-  static HomeHop<ItemNav> item(String id) =>
-      HomeHop._(_Screens.item, id, const ItemNav._());
-  static const settings = HomeHop<SettingsNav>._(
-    _Screens.settings,
-    null,
-    SettingsNav._(),
-  );
-}
-
-final class ItemNav extends AnyPlacement {
-  const ItemNav._() : super._();
-  ItemNav surface() {
-    _Screens.graph.popTo(_Screens.item);
-    return const ItemNav._();
-  }
-
-  HomeNav pop() {
-    _Screens.graph.pop();
-    return const HomeNav._();
-  }
-}
-
-final class SettingsNav extends AnyPlacement {
-  const SettingsNav._() : super._();
-  SettingsNav surface() {
-    _Screens.graph.popTo(_Screens.settings);
-    return const SettingsNav._();
+final class TodoNav extends AnyPlacement {
+  const TodoNav._() : super._();
+  TodoNav surface() {
+    _Screens.graph.popTo(_Screens.todo);
+    return const TodoNav._();
   }
 
   HomeNav pop() {
@@ -498,7 +443,7 @@ final class SettingsNav extends AnyPlacement {
 }
 
 extension type const ScreenId<I>._(Enum spec) {
-  static const item = ScreenId<String>._(_Screens.item);
+  static const todo = ScreenId<TodoId>._(_Screens.todo);
 }
 
 extension ScreenIdOf on BuildContext {
@@ -515,12 +460,8 @@ void verifyScreens() {
       'home has an unexpected id codec — rerun build_runner',
     );
     assert(
-      _Screens.item.id != null,
-      'item is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.settings.id == null,
-      'settings has an unexpected id codec — rerun build_runner',
+      _Screens.todo.id != null,
+      'todo is missing its id codec — rerun build_runner',
     );
     return true;
   }());
@@ -536,10 +477,8 @@ sealed class Url {
   /// `parseUrl` (read it in `Screen.resolver`); null when built locally.
   final String? domain;
   static _WLHome get home => _WLHome._([_Screens.home], [null]);
-  static _WLHomeItem item(String id) =>
-      _WLHomeItem._([_Screens.home, _Screens.item], [null, id]);
-  static _WLHomeSettings get settings =>
-      _WLHomeSettings._([_Screens.home, _Screens.settings], [null, null]);
+  static _WLHomeTodo todo(TodoId id) =>
+      _WLHomeTodo._([_Screens.home, _Screens.todo], [null, id]);
 }
 
 /// A POSITION in the tree — a screen with a widget to present and a nav
@@ -557,10 +496,8 @@ sealed class Place extends Url implements Hop<AnyNav> {
   @override
   AnyNav get nav => _atOf(_Screens.graph.current);
   static _WLHome get home => _WLHome._([_Screens.home], [null]);
-  static _WLHomeItem item(String id) =>
-      _WLHomeItem._([_Screens.home, _Screens.item], [null, id]);
-  static _WLHomeSettings get settings =>
-      _WLHomeSettings._([_Screens.home, _Screens.settings], [null, null]);
+  static _WLHomeTodo todo(TodoId id) =>
+      _WLHomeTodo._([_Screens.home, _Screens.todo], [null, id]);
 }
 
 /// A resolve-only branch (declared via `.link`/`slots`): URL-shaped DATA
@@ -630,16 +567,14 @@ final class _WLHome implements Hop<HomeNav> {
   Object? get id => _i.last;
   @override
   HomeNav get nav => const HomeNav._();
-  _WLHomeItem item(String id) =>
-      _WLHomeItem._([..._s, _Screens.item], [..._i, id]);
-  _WLHomeSettings get settings =>
-      _WLHomeSettings._([..._s, _Screens.settings], [..._i, null]);
+  _WLHomeTodo todo(TodoId id) =>
+      _WLHomeTodo._([..._s, _Screens.todo], [..._i, id]);
   Uri toUri(String domain) =>
       Uri.parse(_Screens.graph.encodeNavUrl(domain, _s, _i));
 }
 
-final class _WLHomeItem implements Hop<ItemNav> {
-  const _WLHomeItem._(this._s, this._i);
+final class _WLHomeTodo implements Hop<TodoNav> {
+  const _WLHomeTodo._(this._s, this._i);
   final List<Enum> _s;
   final List<Object?> _i;
   @override
@@ -651,25 +586,100 @@ final class _WLHomeItem implements Hop<ItemNav> {
   @override
   Object? get id => _i.last;
   @override
-  ItemNav get nav => const ItemNav._();
+  TodoNav get nav => const TodoNav._();
   Uri toUri(String domain) =>
       Uri.parse(_Screens.graph.encodeNavUrl(domain, _s, _i));
 }
 
-final class _WLHomeSettings implements Hop<SettingsNav> {
-  const _WLHomeSettings._(this._s, this._i);
-  final List<Enum> _s;
-  final List<Object?> _i;
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  SettingsNav get nav => const SettingsNav._();
-  Uri toUri(String domain) =>
-      Uri.parse(_Screens.graph.encodeNavUrl(domain, _s, _i));
+// **************************************************************************
+// RegistryGenerator
+// **************************************************************************
+
+// ignore_for_file: unused_element
+/// The read-only world a GUARD sees: one typed getter per store row.
+/// Guards judge through this — never through the globals — so a judge
+/// is replayable by construction.
+class Stores {
+  const Stores();
+  UnitMemory<bool, TodoMsg> get todosCovered => todosCoveredStore;
+  StoreMemory<TodoId, Todo, TodoMsg> get localTodos => localTodosStore;
+  StoreMemory<TodoId, Todo, TodoMsg> get todos => todosStore;
+}
+
+/// The app-wide ledger — the single state + message api (from @regents).
+/// `Screen.manager` binds it. `ledger.dispatch(msg)` · `ledger.on<…>(...)` ·
+/// `ledger.command(...)`; entities live on the public `<row>Store`
+/// globals. `Screen` is nav; `ledger` is state-and-messages.
+final ledger = Ledger();
+
+/// States a fact — dispatch is the ONLY verb, so it needs no prefix.
+/// (`ledger.` keeps the rarer surfaces: `on`, `veto`, `guard`, `journal`.)
+void dispatch(Msg msg, {bool optimistic = false, String? correlationId}) =>
+    ledger.dispatch(msg, optimistic: optimistic, correlationId: correlationId);
+bool _bound = false;
+late final UnitMemory<bool, TodoMsg> todosCoveredStore;
+late final StoreMemory<TodoId, Todo, TodoMsg> localTodosStore;
+late final StoreMemory<TodoId, Todo, TodoMsg> todosStore;
+
+/// The generated data surface, hung on [Ledger] so `ledger.` is the one api.
+extension on Ledger {
+  /// Register the stores on the ledger. Idempotent — `Screen.manager` calls it.
+  void bind() {
+    if (_bound) return;
+    _bound = true;
+    todosCoveredStore = unit(
+      _Regents.todosCovered.regent as Unit<bool, TodoMsg>,
+    );
+    guard(
+      _Regents.cachedTodosGate.regent as Guard<CachedTodosMsg, Stores>,
+      const Stores(),
+    );
+    localTodosStore = store(
+      _Regents.localTodos.regent as Store<TodoId, Todo, TodoMsg>,
+    );
+    todosStore = store(_Regents.todos.regent as Store<TodoId, Todo, TodoMsg>);
+    _Screens.graph.navigations.listen((n) {
+      final (screen, id) = n.destination;
+      if (screen == _Screens.todo) {
+        final key = id as TodoId;
+        if (!localTodosStore.inFlight(key)) {
+          final msg =
+              (_Regents.localTodos.regent as Store<TodoId, Todo, TodoMsg>)
+                  .awaits
+                  ?.surface(
+                    key,
+                    localTodosStore.entities[key],
+                    localTodosStore.flagsOf(key),
+                  );
+          if (msg != null) dispatch(msg);
+        }
+      }
+      if (screen == _Screens.todo) {
+        final key = id as TodoId;
+        if (!todosStore.inFlight(key)) {
+          final msg = (_Regents.todos.regent as Store<TodoId, Todo, TodoMsg>)
+              .awaits
+              ?.surface(key, todosStore.entities[key], todosStore.flagsOf(key));
+          if (msg != null) dispatch(msg);
+        }
+      }
+    });
+    todosStore.mergeStore(localTodosStore, const LocalTodoSupports());
+  }
+
+  /// localTodos on screen `todo` — the entry at its live nav id.
+  Todo? localTodosOnTodo() {
+    for (final e in _Screens.graph.stack) {
+      if (e.screen == _Screens.todo) return localTodosStore[e.id as TodoId];
+    }
+    return null;
+  }
+
+  /// todos on screen `todo` — the entry at its live nav id.
+  Todo? todosOnTodo() {
+    for (final e in _Screens.graph.stack) {
+      if (e.screen == _Screens.todo) return todosStore[e.id as TodoId];
+    }
+    return null;
+  }
 }

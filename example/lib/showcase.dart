@@ -88,9 +88,10 @@ class ProductLoaded extends ProductMsg {
   final int price;
 }
 
-// The DISK CACHE speaking at boot: same fold as a live load, but a stale
-// catalog row must not overwrite live state — the CatalogGate veto row
-// stands between this message and the products store.
+// The DISK CACHE speaking at boot. It folds into the SHADOW store (which
+// supports the main store's reads through a merge edge) and is vetoed by
+// the gate row once the live catalog has covered this session — the full
+// shadow/coverage/gate pattern in three citizens.
 class CatalogCacheMsg extends ProductMsg {
   CatalogCacheMsg(super.id, this.name, this.price);
   final String name;
@@ -134,11 +135,11 @@ final class Products extends Store<ProductId, Product, ProductMsg> {
   IdentifiableMap<ProductId, Product> reduce(
           IdentifiableMap<ProductId, Product> entities, ProductMsg msg) =>
       switch (msg) {
-        ProductLoaded(:final id, :final name, :final price) ||
-        CatalogCacheMsg(:final id, :final name, :final price) =>
+        ProductLoaded(:final id, :final name, :final price) =>
           entities.containsKey(id)
               ? entities
               : entities.upsert(Product(id, name, price)),
+        CatalogCacheMsg() => entities, // the SHADOW folds it, not main
         ReviewsPage(:final id, :final reviews, :final hasMore) =>
           entities.updateById(
               id,
@@ -186,6 +187,7 @@ enum _Entities with EntityNode<_Entities> {
   // A KEYLESS row is a UNIT — cardinality one, the session is its identity
   // (the wire test: its facts arrive without an id).
   cart(CartState),
+  coverage(bool),
   product(Product, .product),
   review(Review, .review);
 
@@ -200,6 +202,7 @@ enum _Entities with EntityNode<_Entities> {
   // ignore: unused_field
   static final graph = EntityGraph({
     cart,
+    coverage,
     // OWNERSHIP: reviews live inside their product (an id-keyed map field) —
     // the generator derives surgical tree ops (`addReview`, `updateReview`…).
     product({review}),
@@ -216,24 +219,69 @@ enum _Entities with EntityNode<_Entities> {
 @regents
 enum _Regents with RegentNode<_Regents> {
   cart(CartUnit()),
-  // The catalog gate: once the cart holds anything, stale catalog caches may
-  // not overwrite the products below (a demo of a positional VETO row).
+  // coverage first — the gate reads it
+  catalogCovered(CatalogCovered()),
+  // the gate: once the live catalog has covered, cache facts drop here —
+  // every row below sees only admitted messages (placement IS protection)
   catalogGate(CatalogGate()),
+  // the disk-cache SHADOW — absent-only folds, supports main via the merge
+  localProducts(LocalProducts()),
   products(Products());
 
   const _Regents(this.regent);
   @override
   final Regent regent;
+
+  // Merge edges — STORE rows only: the target reads-from the source through
+  // a projection, at read time (state is never copied).
+  static final merges = {
+    products.from(localProducts, const LocalProductSupports()),
+  };
 }
 
-/// A VETO row: judges [CatalogCacheMsg] against the cart unit through the
-/// generated read-only [Stores] facade — pure, replayable, positional.
+/// Has the LIVE catalog covered this session? (Any live product load counts.)
+final class CatalogCovered extends Unit<bool, ProductMsg> {
+  const CatalogCovered() : super(false);
+
+  @override
+  bool reduce(bool state, ProductMsg msg) =>
+      switch (msg) { ProductLoaded() => true, _ => state };
+}
+
+/// A VETO row: judges [CatalogCacheMsg] against the coverage unit through
+/// the generated read-only [Stores] facade — pure, replayable, positional.
 final class CatalogGate extends Veto<CatalogCacheMsg, Stores> {
   const CatalogGate();
 
   @override
   bool block(Envelope env, CatalogCacheMsg msg, Stores stores) =>
-      stores.cart.value.items.isNotEmpty;
+      stores.catalogCovered.value;
+}
+
+/// The disk-cache SHADOW: cache facts fold here absent-only; live-family
+/// facts delegate to the main spec so the shadow tracks the same truth.
+final class LocalProducts extends Store<ProductId, Product, ProductMsg> {
+  const LocalProducts();
+
+  @override
+  IdentifiableMap<ProductId, Product> reduce(
+          IdentifiableMap<ProductId, Product> entities, ProductMsg msg) =>
+      switch (msg) {
+        CatalogCacheMsg(:final id, :final name, :final price) =>
+          entities.containsKey(id)
+              ? entities
+              : entities.upsert(Product(id, name, price)),
+        _ => const Products().reduce(entities, msg),
+      };
+}
+
+/// Row-or-local: the main store's row wins; the shadow answers the gaps.
+final class LocalProductSupports
+    extends Projection<Product, ProductId, Product> {
+  const LocalProductSupports();
+
+  @override
+  Product resolve(Product? row, Product local) => row ?? local;
 }
 
 // The app's data SOURCE — faked for this runnable demo (the engine ships none;

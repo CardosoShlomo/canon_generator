@@ -1,3 +1,7 @@
+## 0.29.1
+
+- Fix: `Screen.manager` binds the ledger under `@regents`; todo welcome + showcase shadow/coverage/merges examples.
+
 ## 0.29.0
 
 - `@regents` replaces `@stores`: ordered citizens, guard rows, `from` merges.
