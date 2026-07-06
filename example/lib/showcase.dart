@@ -88,6 +88,15 @@ class ProductLoaded extends ProductMsg {
   final int price;
 }
 
+// The DISK CACHE speaking at boot: same fold as a live load, but a stale
+// catalog row must not overwrite live state — the CatalogGate veto row
+// stands between this message and the products store.
+class CatalogCacheMsg extends ProductMsg {
+  CatalogCacheMsg(super.id, this.name, this.price);
+  final String name;
+  final int price;
+}
+
 // A page of OLDER reviews for one product — appends; the id-keyed map dedupes
 // page overlaps by construction.
 class ReviewsPage extends ProductMsg {
@@ -115,7 +124,7 @@ class ProductsAwaits extends Awaits<ProductId, Product, GetReviews> {
   ProductId keyOf(GetReviews request) => request.productId;
 }
 
-class Products extends Store<ProductId, Product, ProductMsg> {
+final class Products extends Store<ProductId, Product, ProductMsg> {
   const Products();
 
   @override
@@ -125,7 +134,8 @@ class Products extends Store<ProductId, Product, ProductMsg> {
   IdentifiableMap<ProductId, Product> reduce(
           IdentifiableMap<ProductId, Product> entities, ProductMsg msg) =>
       switch (msg) {
-        ProductLoaded(:final id, :final name, :final price) =>
+        ProductLoaded(:final id, :final name, :final price) ||
+        CatalogCacheMsg(:final id, :final name, :final price) =>
           entities.containsKey(id)
               ? entities
               : entities.upsert(Product(id, name, price)),
@@ -156,7 +166,7 @@ class CartItemAdded extends CartMsg {
   final String name;
 }
 
-class CartUnit extends Unit<CartState, CartMsg> {
+final class CartUnit extends Unit<CartState, CartMsg> {
   const CartUnit() : super(const CartState());
 
 
@@ -196,19 +206,34 @@ enum _Entities with EntityNode<_Entities> {
   });
 }
 
-// ── The STORE grammar (@stores) ───────────────────────────────────────
-// A row declares the two things nothing derives: that this collection exists,
-// and its reduce. The generator hangs typed reads on `ledger`; because the
-// `product` screen binds the SAME node (via the entity), those reads inject by
-// nav location (`productsOnProduct()`).
-@stores
-enum _Stores with StoreNode<_Stores> {
+// ── The CITIZENS grammar (@regents) ───────────────────────────────────
+// A row declares the two things nothing derives: that this citizen exists,
+// and its spec. ROW ORDER IS TRAVERSAL ORDER — the guard row protects the
+// rows below it (readers fold what passes; judges decide what passes). The
+// generator hangs typed reads on `ledger`; because the `product` screen
+// binds the SAME node (via the entity), those reads inject by nav location
+// (`productsOnProduct()`).
+@regents
+enum _Regents with RegentNode<_Regents> {
   cart(CartUnit()),
+  // The catalog gate: once the cart holds anything, stale catalog caches may
+  // not overwrite the products below (a demo of a positional VETO row).
+  catalogGate(CatalogGate()),
   products(Products());
 
-  const _Stores(this.store);
+  const _Regents(this.regent);
   @override
-  final AnyStore store;
+  final Regent regent;
+}
+
+/// A VETO row: judges [CatalogCacheMsg] against the cart unit through the
+/// generated read-only [Stores] facade — pure, replayable, positional.
+final class CatalogGate extends Veto<CatalogCacheMsg, Stores> {
+  const CatalogGate();
+
+  @override
+  bool block(Envelope env, CatalogCacheMsg msg, Stores stores) =>
+      stores.cart.value.items.isNotEmpty;
 }
 
 // The app's data SOURCE — faked for this runnable demo (the engine ships none;

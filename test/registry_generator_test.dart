@@ -4,16 +4,30 @@ import 'package:canon_generator/canon_generator.dart';
 import 'package:source_gen/source_gen.dart';
 import 'package:test/test.dart';
 
-// ledger owns the @stores grammar + the Store base the generator recognises.
+// ledger owns the @regents grammar + the citizen bases the generator
+// recognises.
 const _regentStub = '''
-class Stores { const Stores(); }
-const stores = Stores();
-mixin StoreNode<Self extends StoreNode<Self>> on Enum {
-  AnyStore get store;
+class Regents { const Regents(); }
+const regents = Regents();
+mixin RegentNode<Self extends RegentNode<Self>> on Enum {
+  Regent get regent;
+  RegentMerge<Self> from(Self source, Object projection) =>
+      RegentMerge<Self>(this as Self, [(source, projection)]);
+}
+class RegentMerge<Self extends RegentNode<Self>> {
+  const RegentMerge(this.target, this.edges);
+  final Self target;
+  final List<(Self, Object)> edges;
+  RegentMerge<Self> from(Self source, Object projection) =>
+      RegentMerge<Self>(target, [...edges, (source, projection)]);
 }
 abstract interface class AnyStore {}
-abstract class Store<K, E, M> implements AnyStore { const Store(); }
-abstract class Unit<S, M> implements AnyStore { const Unit(); }
+abstract class Regent { const Regent(); }
+abstract class Store<K, E, M> extends Regent implements AnyStore { const Store(); }
+abstract class Unit<S, M> extends Regent implements AnyStore { const Unit(); }
+class Envelope { const Envelope(); }
+abstract class Guard<M, S> extends Regent { const Guard(); }
+abstract class Veto<M, S> extends Guard<M, S> { const Veto(); }
 ''';
 
 // identifiable owns the @IDs + @entities grammars.
@@ -63,7 +77,7 @@ class EntityGraph {
 ''';
 
 // canon is the facade — re-exports ledger + identifiable, so the spec imports only
-// `package:canon/canon.dart` and gets the nav grammar, `@stores`, and the engines.
+// `package:canon/canon.dart` and gets the nav grammar, `@regents`, and the engines.
 const _canonStub = '''
 export 'package:regent/regent.dart';
 export 'package:identifiable/identifiable.dart';
@@ -82,7 +96,7 @@ class NavGraph<S> {
 ''';
 
 // The three grammars connected: @ids nodes, @entities binding type↔node (+ the
-// ownership graph), and @stores holding only the reduces — key node, key type,
+// ownership graph), and @regents holding only the reduces — key node, key type,
 // and screen association all DERIVE through the store's entity type.
 const _spec = '''
 import 'package:canon/canon.dart';
@@ -125,18 +139,18 @@ enum _Screens with ScreenNode<_Screens> {
   static final graph = NavGraph<_Screens>();
 }
 
-@stores
-enum _Stores with StoreNode<_Stores> {
+@regents
+enum _Stores with RegentNode<_Stores> {
   review(Review());
 
-  const _Stores(this.store);
+  const _Stores(this.regent);
   @override
-  final Store store;
+  final Regent regent;
 }
 ''';
 
 // The shared scaffolding of the guard specs: id node + entity space; each
-// spec below appends its own Review store + @stores enum.
+// spec below appends its own Review store + @regents enum.
 const _guardBase = '''
 import 'package:canon/canon.dart';
 
@@ -176,12 +190,12 @@ class Review extends Store<int, ReviewState, ReviewMsg> {
   const Review();
 }
 
-@stores
-enum _Stores with StoreNode<_Stores> {
+@regents
+enum _Stores with RegentNode<_Stores> {
   review(Review());
-  const _Stores(this.store);
+  const _Stores(this.regent);
   @override
-  final Store store;
+  final Regent regent;
 }
 ''';
 
@@ -194,12 +208,12 @@ class Review extends Store<String, ReviewState, ReviewMsg> {
   const Review();
 }
 
-@stores
-enum _Stores with StoreNode<_Stores> {
+@regents
+enum _Stores with RegentNode<_Stores> {
   review(Review());
-  const _Stores(this.store);
+  const _Stores(this.regent);
   @override
-  final Store store;
+  final Regent regent;
 }
 ''';
 
@@ -212,12 +226,12 @@ class Comments extends Store<String, CommentState, CommentMsg> {
   const Comments();
 }
 
-@stores
-enum _Stores with StoreNode<_Stores> {
+@regents
+enum _Stores with RegentNode<_Stores> {
   comments(Comments());
-  const _Stores(this.store);
+  const _Stores(this.regent);
   @override
-  final Store store;
+  final Regent regent;
 }
 ''';
 
@@ -230,12 +244,12 @@ class Orphans extends Store<String, OrphanState, OrphanMsg> {
   const Orphans();
 }
 
-@stores
-enum _Stores with StoreNode<_Stores> {
+@regents
+enum _Stores with RegentNode<_Stores> {
   orphans(Orphans());
-  const _Stores(this.store);
+  const _Stores(this.regent);
   @override
-  final Store store;
+  final Regent regent;
 }
 ''';
 
@@ -305,12 +319,12 @@ enum _Entities with EntityNode<_Entities> {
   static final graph = EntityGraph({review, viewer});
 }
 
-@stores
-enum _Stores with StoreNode<_Stores> {
+@regents
+enum _Stores with RegentNode<_Stores> {
   viewer(Viewer());
-  const _Stores(this.store);
+  const _Stores(this.regent);
   @override
-  final AnyStore store;
+  final Regent regent;
 }
 ''';
 
@@ -349,18 +363,22 @@ enum _Entities with EntityNode<_Entities> {
   final Ids? key;
 
   static final graph = EntityGraph({
-    user.merge(viewer, const ViewerSupportsUser()),
+    user,
     viewer,
   });
 }
 
-@stores
-enum _Stores with StoreNode<_Stores> {
+@regents
+enum _Stores with RegentNode<_Stores> {
   users(Users()),
   viewer(Viewer());
-  const _Stores(this.store);
+  const _Stores(this.regent);
   @override
-  final AnyStore store;
+  final Regent regent;
+
+  static final merges = {
+    users.from(viewer, const ViewerSupportsUser()),
+  };
 }
 ''';
 
@@ -450,7 +468,7 @@ void main() {
             },
           ));
 
-  test('a graph merge edge wires the memories in bind()', () => testBuilder(
+  test('a `merges` edge wires the memories in bind()', () => testBuilder(
         PartBuilder([RegistryGenerator()], '.canon.dart'),
         {
           'regent|lib/regent.dart': _regentStub,

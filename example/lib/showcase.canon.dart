@@ -181,7 +181,6 @@ final class Screen<I> {
   /// stays — always pass it where a `RouterDelegate` goes.)
   static NavDelegate get manager {
     assert(_fresh);
-    ledger.bind();
     return _Screens.graph.delegate;
   }
 
@@ -315,8 +314,12 @@ final class Screen<I> {
   /// `runApp`). Fires with the cold-start link (or null), then on every
   /// deep link — web URL + mobile app-link, one channel. Write plain
   /// `Screen.goX()` / `Screen.replace`. Single, last-wins, never disposed.
-  static set resolver(void Function(Url? url) fn) =>
-      _Screens.graph.setResolver((url) => fn(parseUrl(url)));
+  static set resolver(void Function(Url? url) fn) => _Screens.graph.setResolver(
+    (url) => fn(parseUrl(url)),
+    boot:
+        _Screens.graph.bootUrl ??
+        WidgetsBinding.instance.platformDispatcher.defaultRouteName,
+  );
 
   /// The poppable handle if the active top is a non-root placement,
   /// else null (at a scope root). `.at` = current placement; `.pop()`
@@ -4713,25 +4716,25 @@ Enum _termOf(On sel) =>
 // **************************************************************************
 
 // ignore_for_file: unused_element
-/// The app-wide ledger — the single state + message api (from @stores).
-/// `Screen.manager` binds it. `dispatch(msg)` · `ledger.on<…>(...)` ·
+/// The read-only world a GUARD sees: one typed getter per store row.
+/// Guards judge through this — never through the globals — so a judge
+/// is replayable by construction.
+class Stores {
+  const Stores();
+  UnitMemory<CartState, CartMsg> get cart => cartStore;
+  StoreMemory<ProductId, Product, ProductMsg> get products => productsStore;
+}
+
+/// The app-wide ledger — the single state + message api (from @regents).
+/// `Screen.manager` binds it. `ledger.dispatch(msg)` · `ledger.on<…>(...)` ·
 /// `ledger.command(...)`; entities live on the public `<row>Store`
 /// globals. `Screen` is nav; `ledger` is state-and-messages.
 final ledger = Ledger();
 
 /// States a fact — dispatch is the ONLY verb, so it needs no prefix.
 /// (`ledger.` keeps the rarer surfaces: `on`, `veto`, `guard`, `journal`.)
-void dispatch(
-  Msg msg, {
-  Source? source,
-  bool optimistic = false,
-  String? correlationId,
-}) => dispatch(
-  msg,
-  source: source,
-  optimistic: optimistic,
-  correlationId: correlationId,
-);
+void dispatch(Msg msg, {bool optimistic = false, String? correlationId}) =>
+    ledger.dispatch(msg, optimistic: optimistic, correlationId: correlationId);
 bool _bound = false;
 late final UnitMemory<CartState, CartMsg> cartStore;
 late final StoreMemory<ProductId, Product, ProductMsg> productsStore;
@@ -4742,9 +4745,13 @@ extension on Ledger {
   void bind() {
     if (_bound) return;
     _bound = true;
-    cartStore = unit(_Stores.cart.store as Unit<CartState, CartMsg>);
+    cartStore = unit(_Regents.cart.regent as Unit<CartState, CartMsg>);
+    guard(
+      _Regents.catalogGate.regent as Guard<CatalogCacheMsg, Stores>,
+      const Stores(),
+    );
     productsStore = store(
-      _Stores.products.store as Store<ProductId, Product, ProductMsg>,
+      _Regents.products.regent as Store<ProductId, Product, ProductMsg>,
     );
     _Screens.graph.navigations.listen((n) {
       final (screen, id) = n.destination;
@@ -4752,7 +4759,8 @@ extension on Ledger {
         final key = id as ProductId;
         if (!productsStore.inFlight(key)) {
           final msg =
-              (_Stores.products.store as Store<ProductId, Product, ProductMsg>)
+              (_Regents.products.regent
+                      as Store<ProductId, Product, ProductMsg>)
                   .awaits
                   ?.surface(
                     key,

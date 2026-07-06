@@ -581,8 +581,12 @@ final class Screen<I> {
   /// `runApp`). Fires with the cold-start link (or null), then on every
   /// deep link — web URL + mobile app-link, one channel. Write plain
   /// `Screen.goX()` / `Screen.replace`. Single, last-wins, never disposed.
-  static set resolver(void Function(Url? url) fn) =>
-      _Screens.graph.setResolver((url) => fn(parseUrl(url)));
+  static set resolver(void Function(Url? url) fn) => _Screens.graph.setResolver(
+    (url) => fn(parseUrl(url)),
+    boot:
+        _Screens.graph.bootUrl ??
+        WidgetsBinding.instance.platformDispatcher.defaultRouteName,
+  );
 
   /// The poppable handle if the active top is a non-root placement,
   /// else null (at a scope root). `.at` = current placement; `.pop()`
