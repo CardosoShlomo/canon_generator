@@ -1,3 +1,8 @@
+## 0.28.0
+
+- Composite ids generate nominal extension types with named component getters (`key.ad`, never `.\$1`).
+- Build workflow note documented (two-pass regeneration).
+
 ## 0.27.0
 
 - `Screen.resolver` fires at cold start on mobile (boot fallback).
