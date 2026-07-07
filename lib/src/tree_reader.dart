@@ -63,6 +63,10 @@ class PlacementNode {
   List<Expression> viewQuery = const [];
   List<Expression> viewFragment = const [];
 
+  /// The PATH-scheme fragment tree expression (`fragment.path(<this>)`), or
+  /// null — raw AST; derivations read nodes out of it.
+  Expression? viewFragmentPath;
+
   Iterable<PlacementNode> get ancestors sync* {
     for (var n = parent; n != null; n = n.parent) {
       yield n;
@@ -368,6 +372,21 @@ Future<TreeModel> readTree(EnumElement root, BuildStep buildStep) async {
                 '"${placed.screen}.inherit(...).${expr.propertyName.name}" has no '
                 'same-screen ancestor to cycle back to',
                 element: root));
+        return placed;
+      // `placement.fragment.path(tree)` — the PATH-scheme fragment. The tree is
+      // runtime-read (the graph owns decode); the reader just unwraps to the
+      // placement and stashes the raw tree expression for derivations.
+      case MethodInvocation(
+          target: PropertyAccess(
+            target: final t?,
+            propertyName: SimpleIdentifier(name: 'fragment'),
+          ),
+          methodName: SimpleIdentifier(name: 'path'),
+          :final argumentList,
+        ):
+        final placed = await place(t, ancestors, frame);
+        placed.viewFragmentPath =
+            argumentList.arguments.firstOrNull?.argumentExpression;
         return placed;
       // `placement.query({...})` / `.fragment({...})` — view-state keys on a screen
       // placement (NOT a link branch). Attach the raw key set; the generator types it.
