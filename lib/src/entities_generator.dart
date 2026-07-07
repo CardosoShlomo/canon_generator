@@ -167,8 +167,8 @@ class EntitiesGenerator extends GeneratorForAnnotation<Entities> {
   String? _typedNodeName(DartObject? node) {
     final el = node?.type?.element;
     if (el is! EnumElement) return null;
-    final annotated = el.metadata.annotations
-        .any((a) => a.computeConstantValue()?.type?.element?.name == 'IDs');
+    final annotated = el.metadata.annotations.any((a) => const {'IDs', 'Canon'}
+        .contains(a.computeConstantValue()?.type?.element?.name));
     if (!annotated) return null;
     final raw = node?.getField('_name')?.toStringValue();
     if (raw == null) return null;

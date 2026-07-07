@@ -356,8 +356,8 @@ class RegistryGenerator extends GeneratorForAnnotation<Regents> {
   Map<String, List<(String, String)>> _screensByNode(EnumElement registries) {
     final map = <String, List<(String, String)>>{};
     for (final en in registries.library.enums) {
-      final isScreens = en.metadata.annotations.any((a) =>
-          a.computeConstantValue()?.type?.element?.name == 'Screens');
+      final isScreens = en.allSupertypes.any((t) =>
+          const {'ScreenNodeBase', 'ScreenNode'}.contains(t.element.name));
       if (!isScreens) continue;
       for (final f in en.fields) {
         if (!f.isEnumConstant) continue;
@@ -375,8 +375,8 @@ class RegistryGenerator extends GeneratorForAnnotation<Regents> {
       EnumElement stores, BuildStep buildStep) async {
     EnumElement? entitiesEnum;
     for (final en in stores.library.enums) {
-      final annotated = en.metadata.annotations.any((a) =>
-          a.computeConstantValue()?.type?.element?.name == 'Entities');
+      final annotated =
+          en.allSupertypes.any((t) => t.element.name == 'EntityNode');
       if (annotated) {
         entitiesEnum = en;
         break;
@@ -584,8 +584,8 @@ class RegistryGenerator extends GeneratorForAnnotation<Regents> {
   String? _typedNodeName(DartObject? node) {
     final el = node?.type?.element;
     if (el is! EnumElement) return null;
-    final annotated = el.metadata.annotations
-        .any((a) => a.computeConstantValue()?.type?.element?.name == 'IDs');
+    final annotated = el.metadata.annotations.any((a) => const {'IDs', 'Canon'}
+        .contains(a.computeConstantValue()?.type?.element?.name));
     if (!annotated) return null;
     final raw = node?.getField('_name')?.toStringValue();
     if (raw == null) return null;

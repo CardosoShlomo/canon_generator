@@ -79,9 +79,14 @@ class PlacementNode {
 
 /// The virtual tree plus every enum it spans (root + grafted sub-enums).
 class TreeModel {
-  TreeModel(this.tree, this.enums, this.links, this._resolvedUnits);
+  TreeModel(this.tree, this.enums, this.links, this._resolvedUnits,
+      {this.domain});
   final List<PlacementNode> tree;
   final List<EnumElement> enums;
+
+  /// The tree's canonical output domain — a bare `Domain('https://…')` in the
+  /// trunk set (the in-grammar successor of `@Screens(domain:)`).
+  final String? domain;
 
   /// `.links(...)` branches gathered across the tree (root + nested), for the
   /// merged Link surface. Each carries its path context (`path`) and the raw
@@ -485,7 +490,21 @@ Future<TreeModel> readTree(EnumElement root, BuildStep buildStep) async {
   }
   final tree = <PlacementNode>[];
   final rootLinks = <PlacementNode>[];
+  String? domain;
   for (final r in treeLit.elements) {
+    // `Domain('https://…')` in the trunk set — the tree's canonical output
+    // domain. Grammar metadata, not a placement.
+    if (r case MethodInvocation(
+          methodName: SimpleIdentifier(name: 'Domain'),
+          :final argumentList,
+        )
+        when argumentList.arguments.singleOrNull?.argumentExpression
+            is SimpleStringLiteral) {
+      domain ??= (argumentList.arguments.single.argumentExpression
+              as SimpleStringLiteral)
+          .value;
+      continue;
+    }
     final node = await place(r as Expression, [], rootFrame);
     if (node.isLink) {
       links.add(node);
@@ -507,7 +526,7 @@ Future<TreeModel> readTree(EnumElement root, BuildStep buildStep) async {
       resolvedUnits[uRoot] = rRoot;
     }
   }
-  return TreeModel(tree, enums, links, resolvedUnits);
+  return TreeModel(tree, enums, links, resolvedUnits, domain: domain);
 }
 
 // A node at one position is EITHER a navigable screen OR a `.link`-only branch,

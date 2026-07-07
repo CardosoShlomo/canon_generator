@@ -121,11 +121,14 @@ DartObject? _nodeCodec(DartObject? o) {
 // Whether an id value's enum wears `@IDs` — the gate for TYPED ids: an
 // annotated id-space has generated extension types (`AuthorId`), so verbs and
 // casts use them; an unannotated one keeps the raw codec types.
+// The mark (`@IDs` or `@canon`) signals the extension types were GENERATED —
+// an unmarked IdNode enum has none, so its values stay raw. Annotation-based
+// on purpose.
 bool _idsAnnotated(DartObject? o) {
   final el = o?.type?.element;
   if (el is! EnumElement) return false;
-  return el.metadata.annotations
-      .any((a) => a.computeConstantValue()?.type?.element?.name == 'IDs');
+  return el.metadata.annotations.any((a) => const {'IDs', 'Canon'}
+      .contains(a.computeConstantValue()?.type?.element?.name));
 }
 
 // The generated extension-type name for an id value: `Ids.author` → `AuthorId`;
@@ -261,8 +264,8 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     // If the library also declares a @registries enum, the generated `Data`
     // surface exists — the manager binds it (idempotently), so the app needs no
     // explicit Data.bind()/Ledger() wiring.
-    final hasData = element.library.enums.any((e) => e.metadata.annotations.any(
-        (a) => a.computeConstantValue()?.type?.element?.name == 'Regents'));
+    final hasData = element.library.enums
+        .any((e) => e.allSupertypes.any((t) => t.element.name == 'RegentNode'));
 
     // Read the VIRTUAL tree first (follows grafts into sub-enums), then build
     // rows from every enum it spans — each tagged with its home enum (`spec`).
@@ -2270,8 +2273,10 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       }
 
       // Encode is an instance method `link.toUri([domain])` (mirrors canon_link),
-      // not a global `toUri(link)`. Domain defaults to the grammar's when declared.
-      final linkDomain = annotation.peek('domain')?.stringValue;
+      // not a global `toUri(link)`. Domain defaults to the grammar's when
+      // declared — `Domain('https://…')` in the tree, or the legacy
+      // `@Screens(domain:)` param.
+      final linkDomain = model.domain ?? annotation.peek('domain')?.stringValue;
       final domainSig = linkDomain != null ? '[String? domain]' : 'String domain';
       final domainArg = linkDomain != null ? "domain ?? '$linkDomain'" : 'domain';
       // ── Builder chain — `Link.<route>` / `Place.<route>` /
