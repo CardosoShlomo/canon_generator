@@ -376,10 +376,24 @@ Future<TreeModel> readTree(EnumElement root, BuildStep buildStep) async {
       // `placement.fragment.path(tree)` — the PATH-scheme fragment. The tree is
       // runtime-read (the graph owns decode); the reader just unwraps to the
       // placement and stashes the raw tree expression for derivations.
+      // (`row.fragment` parses as a PrefixedIdentifier; `x(...).fragment`
+      // as a PropertyAccess — same meaning, two AST shapes.)
       case MethodInvocation(
           target: PropertyAccess(
             target: final t?,
             propertyName: SimpleIdentifier(name: 'fragment'),
+          ),
+          methodName: SimpleIdentifier(name: 'path'),
+          :final argumentList,
+        ):
+        final placed = await place(t, ancestors, frame);
+        placed.viewFragmentPath =
+            argumentList.arguments.firstOrNull?.argumentExpression;
+        return placed;
+      case MethodInvocation(
+          target: PrefixedIdentifier(
+            prefix: final SimpleIdentifier t,
+            identifier: SimpleIdentifier(name: 'fragment'),
           ),
           methodName: SimpleIdentifier(name: 'path'),
           :final argumentList,

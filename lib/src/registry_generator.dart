@@ -69,10 +69,19 @@ class RegistryGenerator extends GeneratorForAnnotation<Regents> {
       final v = _matchedValue(held);
       if (v != null) {
         final name = field.name!;
-        final vArgs = [for (final a in v.typeArguments) a.getDisplayString()];
+        var vArgs = [for (final a in v.typeArguments) a.getDisplayString()];
+        // Generated id types are hidden from this builder's own phase — a
+        // `Unit<Set<UserId>, …>` resolves as Set<InvalidType>. Recover the
+        // args AS WRITTEN in the unit class's extends clause; the entity
+        // row's written type matches by the same fallback.
+        if (vArgs.any((a) => a.contains('InvalidType'))) {
+          vArgs = await _syntacticUnitArgs(held, buildStep) ?? vArgs;
+        }
         // S may be nullable (Unit<ViewerState?, …>) — the entity row is
         // the base type.
-        var stateKey = _expandedName(v.typeArguments[0]);
+        var stateKey = vArgs[0].contains('InvalidType') || v.typeArguments[0].getDisplayString() != vArgs[0]
+            ? vArgs[0]
+            : _expandedName(v.typeArguments[0]);
         if (stateKey.endsWith('?')) {
           stateKey = stateKey.substring(0, stateKey.length - 1);
         }
@@ -610,6 +619,24 @@ class RegistryGenerator extends GeneratorForAnnotation<Regents> {
       }
     }
     return null;
+  }
+
+  /// The `Unit<S, M>` type args AS WRITTEN in the held unit class's
+  /// `extends` clause — the fallback when the resolver reports InvalidType
+  /// (generated id types are hidden from this builder's own phase).
+  Future<List<String>?> _syntacticUnitArgs(
+      DartType? held, BuildStep buildStep) async {
+    final el = held is InterfaceType ? held.element : null;
+    if (el == null) return null;
+    final ast =
+        await buildStep.resolver.astNodeFor(el.firstFragment, resolve: false);
+    if (ast is! ClassDeclaration) return null;
+    final sup = ast.extendsClause?.superclass;
+    final args = sup?.typeArguments?.arguments;
+    if (sup?.name.lexeme != 'Unit' || args == null || args.length != 2) {
+      return null;
+    }
+    return [for (final a in args) a.toSource()];
   }
 
   /// The `Guard<M, S>` type args AS WRITTEN in the held guard class's
