@@ -1,3 +1,7 @@
+## 0.30.0
+
+- Tree reader unwraps `fragment.path`; syntactic fallback for unit type args.
+
 ## 0.29.1
 
 - Fix: `Screen.manager` binds the ledger under `@regents`; todo welcome + showcase shadow/coverage/merges examples.
