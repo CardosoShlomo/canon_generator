@@ -249,13 +249,14 @@ final class CatalogCovered extends Unit<bool, ProductMsg> {
 }
 
 /// A VETO row: judges [CatalogCacheMsg] against the coverage unit through
-/// the generated read-only [Stores] facade — pure, replayable, positional.
-final class CatalogGate extends Veto<CatalogCacheMsg, Stores> {
+/// `read` — the ledger's own state by citizen identity — pure, replayable,
+/// positional.
+final class CatalogGate extends Veto<CatalogCacheMsg> {
   const CatalogGate();
 
   @override
-  bool block(Envelope env, CatalogCacheMsg msg, Stores stores) =>
-      stores.catalogCovered.value;
+  bool block(Envelope env, CatalogCacheMsg msg, ReadStore read) =>
+      read(const CatalogCovered());
 }
 
 /// The disk-cache SHADOW: cache facts fold here absent-only; live-family

@@ -596,16 +596,6 @@ final class _WLHomeTodo implements Hop<TodoNav> {
 // **************************************************************************
 
 // ignore_for_file: unused_element
-/// The read-only world a GUARD sees: one typed getter per store row.
-/// Guards judge through this — never through the globals — so a judge
-/// is replayable by construction.
-class Stores {
-  const Stores();
-  UnitMemory<bool, TodoMsg> get todosCovered => todosCoveredStore;
-  StoreMemory<TodoId, Todo, TodoMsg> get localTodos => localTodosStore;
-  StoreMemory<TodoId, Todo, TodoMsg> get todos => todosStore;
-}
-
 /// The app-wide ledger — the single state + message api (from @regents).
 /// `Screen.manager` binds it. `ledger.dispatch(msg)` · `ledger.on<…>(...)` ·
 /// `ledger.command(...)`; entities live on the public `<row>Store`
@@ -630,10 +620,7 @@ extension on Ledger {
     todosCoveredStore = unit(
       _Regents.todosCovered.regent as Unit<bool, TodoMsg>,
     );
-    guard(
-      _Regents.cachedTodosGate.regent as Guard<CachedTodosMsg, Stores>,
-      const Stores(),
-    );
+    guard(_Regents.cachedTodosGate.regent as Guard<CachedTodosMsg>);
     localTodosStore = store(
       _Regents.localTodos.regent as Store<TodoId, Todo, TodoMsg>,
     );

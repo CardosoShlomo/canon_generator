@@ -7,15 +7,15 @@ environment:
   sdk: ^3.12.0
 
 dependencies:
-  canon_flutter: ^0.5.0
-  regent: ^0.7.1 # the optimistic state engine the @regents surface binds to
+  canon_flutter: ^0.6.0
+  regent: ^0.8.0 # the optimistic state engine the @regents surface binds to
   flutter:
     sdk: flutter
   flutter_web_plugins:
     sdk: flutter
 dev_dependencies:
   build_runner: ^2.15.0
-  canon_generator: ^0.31.0
+  canon_generator: ^0.32.0
   flutter_test:
     sdk: flutter
 

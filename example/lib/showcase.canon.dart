@@ -4717,18 +4717,6 @@ Enum _termOf(On sel) =>
 // **************************************************************************
 
 // ignore_for_file: unused_element
-/// The read-only world a GUARD sees: one typed getter per store row.
-/// Guards judge through this — never through the globals — so a judge
-/// is replayable by construction.
-class Stores {
-  const Stores();
-  UnitMemory<CartState, CartMsg> get cart => cartStore;
-  UnitMemory<bool, ProductMsg> get catalogCovered => catalogCoveredStore;
-  StoreMemory<ProductId, Product, ProductMsg> get localProducts =>
-      localProductsStore;
-  StoreMemory<ProductId, Product, ProductMsg> get products => productsStore;
-}
-
 /// The app-wide ledger — the single state + message api (from @regents).
 /// `Screen.manager` binds it. `ledger.dispatch(msg)` · `ledger.on<…>(...)` ·
 /// `ledger.command(...)`; entities live on the public `<row>Store`
@@ -4755,10 +4743,7 @@ extension on Ledger {
     catalogCoveredStore = unit(
       _Regents.catalogCovered.regent as Unit<bool, ProductMsg>,
     );
-    guard(
-      _Regents.catalogGate.regent as Guard<CatalogCacheMsg, Stores>,
-      const Stores(),
-    );
+    guard(_Regents.catalogGate.regent as Guard<CatalogCacheMsg>);
     localProductsStore = store(
       _Regents.localProducts.regent as Store<ProductId, Product, ProductMsg>,
     );

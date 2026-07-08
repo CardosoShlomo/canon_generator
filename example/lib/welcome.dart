@@ -137,13 +137,13 @@ final class TodosCovered extends Unit<bool, TodoMsg> {
 }
 
 /// The GATE — a veto row above the shadow: once the authority has spoken,
-/// a late cache fact is dropped for every row below. Judges through the
-/// generated read-only [Stores] facade; pure and replayable.
-final class CachedTodosGate extends Veto<CachedTodosMsg, Stores> {
+/// a late cache fact is dropped for every row below. Judges through `read` —
+/// the ledger's own state by citizen identity; pure and replayable.
+final class CachedTodosGate extends Veto<CachedTodosMsg> {
   const CachedTodosGate();
   @override
-  bool block(Envelope env, CachedTodosMsg msg, Stores stores) =>
-      stores.todosCovered.value;
+  bool block(Envelope env, CachedTodosMsg msg, ReadStore read) =>
+      read(const TodosCovered());
 }
 
 final class LocalTodoSupports extends Projection<Todo, TodoId, Todo> {

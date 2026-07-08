@@ -1,3 +1,8 @@
+## 0.32.0
+
+- Guard binds drop the facade (no generated `Stores`); regent 0.8 `read` wave.
+- Build-time read citizenship: every `read(const X())` in an enrolled guard must name a citizen of the regents enum.
+
 ## 0.31.0
 
 - `@canon`: one mark for every spec enum, dispatched by node mixin.
