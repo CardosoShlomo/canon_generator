@@ -1,4 +1,5 @@
 import 'package:analyzer/dart/ast/ast.dart';
+import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/dart/constant/value.dart';
 import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/type.dart';
@@ -46,6 +47,11 @@ class RegistryGenerator extends GeneratorForAnnotation<Regents> {
     // ref, key type) per screen↔store association; emitted as ONE committed-
     // navigation listener consulting each spec's `surface`.
     final triggers = <(String, String, String, String, String)>[];
+
+    // Every `read(const X())` in an enrolled guard must name a citizen of
+    // THIS enum — checked at build, so an unknown class or a missing `const`
+    // fails codegen instead of throwing at the first judge.
+    await _validateReadCitizenship(element, buildStep);
 
     // The @entities space: entity TYPE name → its row info (node + ownedness).
     final entityByType = await _entitiesByType(element, buildStep);
@@ -658,5 +664,95 @@ class RegistryGenerator extends GeneratorForAnnotation<Regents> {
       return null;
     }
     return [for (final a in args) a.toSource()];
+  }
+
+  /// Build-time citizenship: every `read(…)` argument inside a guard class
+  /// held by a row must be a `const` construction of a class some row holds.
+  /// (Exact-args identity stays a runtime law; the class-level and
+  /// missing-`const` mistakes fail HERE, with the guard and row named.)
+  Future<void> _validateReadCitizenship(
+      EnumElement element, BuildStep buildStep) async {
+    final citizenTypes = <InterfaceElement>{};
+    final guards = <InterfaceElement>[];
+    for (final field in element.fields) {
+      if (!field.isEnumConstant) continue;
+      final held = field.computeConstantValue()?.getField('regent')?.type;
+      final el = held is InterfaceType ? held.element : null;
+      if (el == null) continue;
+      citizenTypes.add(el);
+      if (el.allSupertypes
+          .any((s) => s.element.name == 'Guard' && s.typeArguments.length == 1)) {
+        guards.add(el);
+      }
+    }
+    for (final guard in guards) {
+      final ast = await buildStep.resolver
+          .astNodeFor(guard.firstFragment, resolve: true);
+      if (ast is! ClassDeclaration) continue;
+      final visitor = _ReadCallVisitor();
+      ast.visitChildren(visitor);
+      for (final arg in visitor.readArgs) {
+        if (arg is! InstanceCreationExpression) {
+          throw InvalidGenerationSourceError(
+              'guard "${guard.name}" passes `${arg.toSource()}` to `read` — '
+              'name the citizen with an inline `const <Class>(…)` so the '
+              'build can check it against the regents enum.',
+              element: element);
+        }
+        if (!arg.isConst && !arg.inConstantContext) {
+          throw InvalidGenerationSourceError(
+              'guard "${guard.name}" reads `${arg.toSource()}` without '
+              '`const` — a non-const expression is a fresh instance, never '
+              'the enrolled citizen.',
+              element: element);
+        }
+        final target = arg.staticType;
+        final targetEl = target is InterfaceType ? target.element : null;
+        if (targetEl == null || !citizenTypes.contains(targetEl)) {
+          throw InvalidGenerationSourceError(
+              'guard "${guard.name}" reads `${arg.toSource()}`, but no row '
+              'of $enumMark holds a ${targetEl?.name ?? arg.toSource()} — '
+              'every read names a citizen of the regents enum.',
+              element: element);
+        }
+      }
+    }
+  }
+
+  static const enumMark = 'the regents enum';
+}
+
+/// Collects the argument of every call through a `ReadStore`-typed formal
+/// parameter (`read(const X())` inside a judge/block body).
+class _ReadCallVisitor extends RecursiveAstVisitor<void> {
+  final List<Expression> readArgs = [];
+
+  bool _isReadParam(Element? el) {
+    if (el is! FormalParameterElement) return false;
+    final t = el.type;
+    if (t is! FunctionType || t.formalParameters.length != 1) return false;
+    final p = t.formalParameters.single.type;
+    return p is InterfaceType && p.element.name == 'AnyStore';
+  }
+
+  @override
+  void visitFunctionExpressionInvocation(FunctionExpressionInvocation node) {
+    final fn = node.function;
+    if (fn is SimpleIdentifier &&
+        _isReadParam(fn.element) &&
+        node.argumentList.arguments.length == 1) {
+      readArgs.add(node.argumentList.arguments.single.argumentExpression);
+    }
+    super.visitFunctionExpressionInvocation(node);
+  }
+
+  @override
+  void visitMethodInvocation(MethodInvocation node) {
+    if (node.target == null &&
+        _isReadParam(node.methodName.element) &&
+        node.argumentList.arguments.length == 1) {
+      readArgs.add(node.argumentList.arguments.single.argumentExpression);
+    }
+    super.visitMethodInvocation(node);
   }
 }

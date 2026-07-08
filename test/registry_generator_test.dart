@@ -21,12 +21,12 @@ class RegentMerge<Self extends RegentNode<Self>> {
   RegentMerge<Self> from(Self source, Object projection) =>
       RegentMerge<Self>(target, [...edges, (source, projection)]);
 }
-abstract interface class AnyStore {}
+abstract interface class AnyStore<S> {}
 abstract class Regent { const Regent(); }
-abstract class Store<K, E, M> extends Regent implements AnyStore { const Store(); }
-abstract class Unit<S, M> extends Regent implements AnyStore { const Unit(); }
+abstract class Store<K, E, M> extends Regent implements AnyStore<Map<K, E>> { const Store(); }
+abstract class Unit<S, M> extends Regent implements AnyStore<S> { const Unit(); }
 class Envelope { const Envelope(); }
-class LedgerReads { const LedgerReads(); }
+typedef ReadStore = S Function<S>(AnyStore<S> spec);
 abstract class Guard<M> extends Regent { const Guard(); }
 abstract class Veto<M> extends Guard<M> { const Veto(); }
 ''';
@@ -403,7 +403,8 @@ class Users extends Store<String, UserState, UserMsg> { const Users(); }
 class Covered extends Unit<GateState?, GateMsg> { const Covered(); }
 class CachedGate extends Veto<CachedUsers> {
   const CachedGate();
-  bool block(Envelope env, CachedUsers msg, LedgerReads reads) => true;
+  bool block(Envelope env, CachedUsers msg, ReadStore read) =>
+      read(const Covered()) != null;
 }
 
 @entities
@@ -431,6 +432,53 @@ enum _Regents with RegentNode<_Regents> {
 }
 ''';
 
+// A guard reading a citizen NO row holds — citizenship fails the build.
+const _strangerReadSpec = '''
+import 'package:canon/canon.dart';
+
+part 'spec.canon.dart';
+
+@IDs()
+enum Ids with IdNode {
+  user(StringCodec());
+  const Ids(this.codec);
+  final Codec codec;
+}
+
+class UserState {}
+sealed class UserMsg {}
+class CachedUsers extends UserMsg {}
+class Users extends Store<String, UserState, UserMsg> { const Users(); }
+class Stranger extends Unit<int, UserMsg> { const Stranger(); }
+class CachedGate extends Veto<CachedUsers> {
+  const CachedGate();
+  bool block(Envelope env, CachedUsers msg, ReadStore read) =>
+      read(const Stranger()) > 0;
+}
+
+@entities
+enum _Entities with EntityNode<_Entities> {
+  user(UserState, Ids.user);
+
+  const _Entities(this.type, [this.key]);
+  @override
+  final Type type;
+  @override
+  final Ids? key;
+
+  static final graph = EntityGraph({user});
+}
+
+@regents
+enum _Regents with RegentNode<_Regents> {
+  cachedGate(CachedGate()),
+  users(Users());
+  const _Regents(this.regent);
+  @override
+  final Regent regent;
+}
+''';
+
 const _guardMergeSpec = '''
 import 'package:canon/canon.dart';
 
@@ -448,7 +496,7 @@ class CachedUsers extends UserMsg {}
 class Users extends Store<String, UserState, UserMsg> { const Users(); }
 class CachedGate extends Veto<CachedUsers> {
   const CachedGate();
-  bool block(Envelope env, CachedUsers msg, LedgerReads reads) => true;
+  bool block(Envelope env, CachedUsers msg, ReadStore read) => true;
 }
 class P { const P(); }
 
@@ -664,5 +712,10 @@ void main() {
 
   test('rejects a merge edge whose endpoint is a GUARD row', () async {
     expect(await guardLogs(_guardMergeSpec), contains('STORE rows only'));
+  });
+
+  test('rejects a guard reading a citizen no row holds', () async {
+    expect(await guardLogs(_strangerReadSpec),
+        allOf(contains('CachedGate'), contains('no row')));
   });
 }
