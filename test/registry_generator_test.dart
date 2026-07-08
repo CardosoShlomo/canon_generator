@@ -26,8 +26,9 @@ abstract class Regent { const Regent(); }
 abstract class Store<K, E, M> extends Regent implements AnyStore { const Store(); }
 abstract class Unit<S, M> extends Regent implements AnyStore { const Unit(); }
 class Envelope { const Envelope(); }
-abstract class Guard<M, S> extends Regent { const Guard(); }
-abstract class Veto<M, S> extends Guard<M, S> { const Veto(); }
+class LedgerReads { const LedgerReads(); }
+abstract class Guard<M> extends Regent { const Guard(); }
+abstract class Veto<M> extends Guard<M> { const Veto(); }
 ''';
 
 // identifiable owns the @IDs + @entities grammars.
@@ -400,9 +401,9 @@ sealed class GateMsg {}
 class CachedUsers extends UserMsg {}
 class Users extends Store<String, UserState, UserMsg> { const Users(); }
 class Covered extends Unit<GateState?, GateMsg> { const Covered(); }
-class CachedGate extends Veto<CachedUsers, Stores> {
+class CachedGate extends Veto<CachedUsers> {
   const CachedGate();
-  bool block(Envelope env, CachedUsers msg, Stores stores) => true;
+  bool block(Envelope env, CachedUsers msg, LedgerReads reads) => true;
 }
 
 @entities
@@ -445,9 +446,9 @@ class UserState {}
 sealed class UserMsg {}
 class CachedUsers extends UserMsg {}
 class Users extends Store<String, UserState, UserMsg> { const Users(); }
-class CachedGate extends Veto<CachedUsers, Stores> {
+class CachedGate extends Veto<CachedUsers> {
   const CachedGate();
-  bool block(Envelope env, CachedUsers msg, Stores stores) => true;
+  bool block(Envelope env, CachedUsers msg, LedgerReads reads) => true;
 }
 class P { const P(); }
 
@@ -564,7 +565,7 @@ void main() {
             },
           ));
 
-  test('a GUARD row binds positionally and reads through the facade',
+  test('a GUARD row binds positionally; no facade is generated',
       () => testBuilder(
         PartBuilder([RegistryGenerator()], '.canon.dart'),
         {
@@ -577,11 +578,9 @@ void main() {
         generateFor: {'pkg|lib/spec.dart'},
         outputs: {
           'pkg|lib/spec.canon.dart': decodedMatches(allOf([
-            contains('class Stores {'),
-            contains('get covered => coveredStore;'),
-            contains('get users => usersStore;'),
+            isNot(contains('class Stores {')), // the facade is gone
             contains('guard('),
-            contains('as Guard<CachedUsers, Stores>'),
+            contains('as Guard<CachedUsers>'),
           ])),
         },
       ));
