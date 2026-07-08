@@ -1,4 +1,5 @@
 import 'package:analyzer/dart/ast/ast.dart';
+import 'package:analyzer/dart/ast/token.dart';
 import 'package:analyzer/dart/element/element.dart';
 import 'package:build/build.dart';
 import 'package:canon/canon.dart' show Canon;
@@ -51,7 +52,7 @@ class LinksGenerator extends GeneratorForAnnotation<Canon> {
     final face = enumName.startsWith('_') ? enumName.substring(1) : enumName;
 
     // ── The trie ──
-    final root = _Step('', face);
+    final root = _Step(face);
     final treeSet = routes.argumentList.arguments.firstOrNull?.argumentExpression;
     final domains = treeSet is SetOrMapLiteral
         ? [for (final e in treeSet.elements) if (e is Expression) e]
@@ -115,29 +116,40 @@ String _pascal(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
 
 String _lc(String s) => s.isEmpty ? s : s[0].toLowerCase() + s.substring(1);
 
-/// One trie node: a chain step class in the generated face.
+/// One trie node: a chain step class in the generated face. A static seg
+/// contributes a template literal and no value; a slot contributes `*`, one
+/// typed value, and one union-branch index (0 for a single codec).
 class _Step {
-  _Step(this.token, this.className, {this.methodName = '', this.valueType})
+  _Step(this.className,
+      {this.methodName = '', this.valueType, this.templateToken})
       : endpoint = false;
 
-  /// The template token this step contributes ('ads', '*', '*_thumb').
-  final String token;
   final String className;
   final String methodName;
 
-  /// Non-null = this step consumes a typed value (a slot, possibly fused).
+  /// Non-null = this step consumes a typed value (a slot).
   final String? valueType;
+
+  /// The template token: a kebab literal (static) or `*` (slot).
+  String? templateToken;
+
+  /// This step's own union-branch index (slots only).
+  int branch = 0;
   bool endpoint;
   final List<_Step> children = [];
+
+  /// The full template ('ads/*/*') and the branch constants ([0, 0]) from the
+  /// root to this step — baked into the leaf's printRoute call.
   String template = '';
+  List<int> branches = const [];
 
   String memberSource({bool static = false}) {
     final mod = static ? 'static ' : '';
+    final src = static ? 'const <Object?>[]' : '_p';
     return valueType == null
-        ? '  $mod$className get $methodName => '
-            '$className(${static ? 'const <Object?>[]' : '_p'});'
+        ? '  $mod$className get $methodName => $className($src);'
         : '  $mod$className $methodName($valueType v) => '
-            '$className([...${static ? 'const <Object?>[]' : '_p'}, v]);';
+            '$className([...$src, v]);';
   }
 
   String classSource(String facePrefix) {
@@ -149,8 +161,9 @@ class _Step {
       b.writeln(c.memberSource());
     }
     if (endpoint) {
-      b.writeln('  String get url =>');
-      b.writeln("      _${facePrefix}Matcher.printRoute(template: '$template', path: _p);");
+      b.writeln('  String get url => _${facePrefix}Matcher.printRoute(');
+      b.writeln("      template: '$template', path: _p, "
+          'branches: const ${branches.isEmpty ? '<int>[]' : branches});');
       b.writeln('  Uri toUri() => Uri.parse(url);');
     }
     b.writeln('}');
@@ -158,9 +171,51 @@ class _Step {
   }
 }
 
+/// Detects `Codec.literal('x')` / `.literal('x')` and returns its string.
+String? _literalOf(Expression e) => switch (e) {
+      MethodInvocation(methodName: SimpleIdentifier(name: 'literal'))
+          when e.argumentList.arguments.firstOrNull?.argumentExpression
+              is SimpleStringLiteral =>
+        (e.argumentList.arguments.first.argumentExpression
+                as SimpleStringLiteral)
+            .value,
+      DotShorthandInvocation(memberName: SimpleIdentifier(name: 'literal'))
+          when e.argumentList.arguments.firstOrNull?.argumentExpression
+              is SimpleStringLiteral =>
+        (e.argumentList.arguments.first.argumentExpression
+                as SimpleStringLiteral)
+            .value,
+      _ => null,
+    };
+
+/// Flattens `a + b + c` (concat) into its operands in order.
+List<Expression> _concatOperands(Expression e) => switch (e) {
+      BinaryExpression(operator: Token(lexeme: '+'), :final leftOperand, :final rightOperand) =>
+        [..._concatOperands(leftOperand), ..._concatOperands(rightOperand)],
+      _ => [e],
+    };
+
 /// Names + types for a slot codec expression.
 ({String name, String type}) _codecFace(Expression codec, EnumElement el) {
   switch (codec) {
+    // A concat (`Ids.image + .literal('_thumb')`): the single variable member
+    // carries the type; literals decorate the name (`image` + `Thumb`).
+    case BinaryExpression(operator: Token(lexeme: '+')):
+      final ops = _concatOperands(codec);
+      final variables = [for (final o in ops) if (_literalOf(o) == null) o];
+      if (variables.length != 1) {
+        throw InvalidGenerationSourceError(
+            'a concat slot needs exactly one variable codec (literals frame '
+            'it); got ${variables.length} in "$codec"',
+            element: el);
+      }
+      final base = _codecFace(variables.single, el);
+      final decorations = [
+        for (final o in ops)
+          if (_literalOf(o) case final lit?)
+            _pascal(lit.replaceAll(RegExp('[^A-Za-z0-9]'), ''))
+      ].join();
+      return (name: '${base.name}$decorations', type: base.type);
     // Ids.ad — an id-space node: step `ad`, type `AdId`.
     case PrefixedIdentifier(:final identifier):
       return (
@@ -178,7 +233,22 @@ class _Step {
           .join();
       final name = sym ?? methodName.name;
       return (name: name, type: _dartType(methodName.name));
-    // .integer (dot shorthand, unnamed) — step named by the semantic.
+    // .integer(#image) — dot-shorthand named semantic codec.
+    case DotShorthandInvocation(:final memberName, :final argumentList):
+      final sym = argumentList.arguments
+          .map((a) => a.argumentExpression)
+          .whereType<SymbolLiteral>()
+          .firstOrNull
+          ?.components
+          .map((t) => t.lexeme)
+          .join();
+      return (
+        name: sym ?? memberName.name,
+        type: _dartType(memberName.name),
+      );
+    // .integer / Codec.integer (unnamed) — step named by the semantic.
+    case DotShorthandPropertyAccess(:final propertyName):
+      return (name: propertyName.name, type: _dartType(propertyName.name));
     case PropertyAccess(:final propertyName):
       return (name: propertyName.name, type: _dartType(propertyName.name));
     default:
@@ -223,11 +293,8 @@ void _place(Expression expr, _Step parent, Set<String> rows, EnumElement el) {
         _ => (null, const <Expression>[]),
       };
       if (slotExpr != null) {
-        final slot = _slotStep(slotExpr, parent, el, methodName: name);
-        parent.children.add(slot);
-        for (final c in slotChildren) {
-          _place(c, slot, rows, el);
-        }
+        _placeSlot(_slotCodec(slotExpr), slotChildren, parent, rows, el,
+            fusedName: name);
         return;
       }
       final step = _seg(name, parent);
@@ -238,12 +305,12 @@ void _place(Expression expr, _Step parent, Set<String> rows, EnumElement el) {
     // bare seg leaf.
     case SimpleIdentifier(:final name) when rows.contains(name):
       parent.children.add(_seg(name, parent)..endpoint = true);
-    // slot(codec) / slot(codec, suffix: '…') under a multi-child parent.
+    // slot(codec) under a multi-child parent.
     case MethodInvocation(
         target: null,
         methodName: SimpleIdentifier(name: 'slot'),
       ):
-      parent.children.add(_slotStep(expr, parent, el));
+      _placeSlot(_slotCodec(expr), const [], parent, rows, el);
     // slot(...)({children})
     case FunctionExpressionInvocation(
         function: MethodInvocation(
@@ -251,17 +318,14 @@ void _place(Expression expr, _Step parent, Set<String> rows, EnumElement el) {
             final MethodInvocation inner,
         :final argumentList,
       ):
-      final slot = _slotStep(inner, parent, el);
-      parent.children.add(slot);
-      for (final c in [
+      final slotChildren = [
         for (final e in (argumentList.arguments.firstOrNull?.argumentExpression
                 as SetOrMapLiteral?)
                 ?.elements ??
             const <CollectionElement>[])
           if (e is Expression) e
-      ]) {
-        _place(c, slot, rows, el);
-      }
+      ];
+      _placeSlot(_slotCodec(inner), slotChildren, parent, rows, el);
     default:
       throw InvalidGenerationSourceError(
           'cannot read address-tree expression "$expr"',
@@ -271,44 +335,59 @@ void _place(Expression expr, _Step parent, Set<String> rows, EnumElement el) {
 
 var _stepSeq = 0;
 
-_Step _seg(String name, _Step parent) {
-  final s = _Step('${_kebab(name)}', '_LS${_stepSeq++}', methodName: name)
-    ..template = parent.template.isEmpty
-        ? _kebab(name)
-        : '${parent.template}/${_kebab(name)}';
-  return s;
-}
+String _appendTemplate(String parent, String seg) =>
+    parent.isEmpty ? seg : '$parent/$seg';
 
-_Step _slotStep(MethodInvocation slotExpr, _Step parent, EnumElement el,
-    {String? methodName}) {
-  String? suffix;
-  for (final a in slotExpr.argumentList.arguments) {
-    if (a is NamedArgument &&
-        a.name.lexeme == 'suffix' &&
-        a.argumentExpression is SimpleStringLiteral) {
-      suffix = (a.argumentExpression as SimpleStringLiteral).value;
+_Step _seg(String name, _Step parent) => _Step('_LS${_stepSeq++}',
+    methodName: name, templateToken: _kebab(name))
+  ..template = _appendTemplate(parent.template, _kebab(name))
+  ..branches = parent.branches;
+
+/// The union branches of `a | b | c` (each a codec expression), or `[e]`.
+List<Expression> _unionBranches(Expression e) => switch (e) {
+      BinaryExpression(
+        operator: Token(lexeme: '|'),
+        :final leftOperand,
+        :final rightOperand
+      ) =>
+        [..._unionBranches(leftOperand), ..._unionBranches(rightOperand)],
+      _ => [e],
+    };
+
+/// Places a slot under [parent] — one method per union branch, each sharing
+/// the slot's continuation ([slotChildren]). [fusedName] fuses a leading seg
+/// (`ads({slot(Ids.ad)})` → `Cdn.ads(adId)`); it requires a single branch.
+void _placeSlot(Expression codecExpr, List<Expression> slotChildren,
+    _Step parent, Set<String> rows, EnumElement el,
+    {String? fusedName}) {
+  final branches = _unionBranches(codecExpr);
+  if (fusedName != null && branches.length > 1) {
+    throw InvalidGenerationSourceError(
+        'a fused seg+slot ("$fusedName") cannot hold a union — give the union '
+        'slot its own children set.',
+        element: el);
+  }
+  for (var i = 0; i < branches.length; i++) {
+    final face = _codecFace(branches[i], el);
+    final tmpl = fusedName != null
+        ? _appendTemplate(parent.template, '${_kebab(fusedName)}/*')
+        : _appendTemplate(parent.template, '*');
+    final step = _Step('_LS${_stepSeq++}',
+        methodName: fusedName ?? face.name,
+        valueType: face.type,
+        templateToken: '*')
+      ..branch = i
+      ..template = tmpl
+      ..branches = [...parent.branches, i];
+    parent.children.add(step);
+    for (final c in slotChildren) {
+      _place(c, step, rows, el);
     }
   }
-  final codecExpr = slotExpr.argumentList.arguments
-      .firstWhere((a) => a is! NamedArgument)
-      .argumentExpression;
-  final face = _codecFace(codecExpr, el);
-  final suffixPascal = suffix == null
-      ? ''
-      : _pascal(suffix.replaceAll(RegExp('[^A-Za-z0-9]'), ''));
-  final token = '*${suffix ?? ''}';
-  final s = _Step(
-    token,
-    '_LS${_stepSeq++}',
-    methodName: methodName ?? '${face.name}$suffixPascal',
-    valueType: face.type,
-  )..template =
-      parent.template.isEmpty ? token : '${parent.template}/$token';
-  // A fused seg step contributes BOTH tokens.
-  if (methodName != null) {
-    s.template = parent.template.isEmpty
-        ? '${_kebab(methodName)}/$token'
-        : '${parent.template}/${_kebab(methodName)}/$token';
-  }
-  return s;
 }
+
+/// The codec expression inside a `slot(...)` invocation.
+Expression _slotCodec(MethodInvocation slotExpr) => slotExpr
+    .argumentList.arguments
+    .firstWhere((a) => a is! NamedArgument)
+    .argumentExpression;

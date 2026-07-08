@@ -19,11 +19,16 @@ abstract class Codec<T> {
   const Codec();
   static const Codec<String> uuid = _C();
   static const _C2 integer = _C2();
+  static Codec<String> literal(String s) => const _C();
 }
 class _C extends Codec<String> { const _C(); }
 class _C2 extends Codec<int> {
   const _C2();
   Codec<int> call(Symbol name) => this;
+}
+extension CodecOps on Codec<Object?> {
+  Codec<Object?> operator |(Codec<Object?> o) => this;
+  Codec<Object?> operator +(Codec<Object?> o) => this;
 }
 
 abstract mixin class IdNode implements Codec<Object?> {
@@ -39,12 +44,11 @@ class Domain {
 class Slot {
   Slot call(Set<Object?> children) => this;
 }
-Slot slot(Codec<Object?> codec, {String? suffix}) => Slot();
+Slot slot(Codec<Object?> codec) => Slot();
 Object tree(Set<Object?> domains) => Object();
 class LinkMatcher {
   const LinkMatcher(Object spec);
-}
-''';
+}''';
 
 const _cdnSpec = '''
 import 'package:canon/canon.dart';
@@ -69,8 +73,8 @@ enum _Cdn with SegBase {
       ads({
         slot(Ids.ad)({
           thumb,
-          slot(Codec.integer(#image), suffix: '_thumb'),
-          slot(Codec.integer(#image)),
+          slot(Codec.integer(#image) + Codec.literal('_thumb') |
+              Codec.integer(#image)),
         }),
       }),
       profiles({
@@ -104,15 +108,17 @@ void main() {
         // fused seg+slot steps, typed values
         contains('ads(AdId v)'),
         contains('profiles(UserId v)'),
-        // static seg children as getters, slot steps named by #symbol + suffix
+        // static seg children as getters; union branches → two methods, the
+        // concat branch named by its literal decoration
         contains('get thumb'),
         contains('imageThumb(int v)'),
         contains('image(int v)'),
         contains('get avatar'),
-        // endpoints print through the runtime spec
+        // templates are all `*`; the branch constant disambiguates thumb vs full
         contains("template: 'ads/*/thumb'"),
-        contains("template: 'ads/*/*_thumb'"),
         contains("template: 'ads/*/*'"),
+        contains('branches: const [0, 0]'), // thumb branch
+        contains('branches: const [0, 1]'), // full branch
         contains("template: 'profiles/*/avatar'"),
         contains('String get url'),
         contains('Uri toUri()'),

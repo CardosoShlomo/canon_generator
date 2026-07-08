@@ -1,3 +1,8 @@
+## 0.31.0
+
+- `@canon`: one mark for every spec enum, dispatched by node mixin.
+- `SegBase` address trees generate typed builder faces; slots read concat (`+`) and union (`|`) codecs.
+
 ## 0.30.0
 
 - Tree reader unwraps `fragment.path`; syntactic fallback for unit type args.
