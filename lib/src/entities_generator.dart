@@ -6,7 +6,7 @@ import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
 
 // identifiable owns the @entities grammar; pure Dart, flutter-free builder.
-import 'package:identifiable/identifiable.dart' show Entities;
+import 'package:canon/canon.dart' show Entities;
 
 /// Reads an `@entities` enum and emits the TREE OPS: for every ownership edge
 /// (`review({comment})`) an extension on the parent's map with surgical child

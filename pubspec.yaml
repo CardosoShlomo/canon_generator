@@ -10,9 +10,10 @@ environment:
 dependencies:
   analyzer: ^13.0.0
   build: ^4.0.6
-  canon: ^0.24.0
-  identifiable: ^0.5.0
-  regent: ^0.4.0
+  canon: ^0.25.0
+  canon_codec: ^0.3.0
+  identifiable: ^0.6.0
+  regent: ^0.7.0
   source_gen: ^4.2.3
 
 dev_dependencies:

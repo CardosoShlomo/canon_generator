@@ -5,7 +5,7 @@ import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
 
 // identifiable owns the @IDs grammar; pure Dart, so the builder stays flutter-free.
-import 'package:identifiable/identifiable.dart' show IDs;
+import 'package:canon_codec/canon_codec.dart' show IDs;
 
 /// Reads an `@IDs` enum and emits one zero-cost EXTENSION TYPE per atomic node
 /// (`ad` → `extension type AdId(String _) implements String {}`) and one typed
