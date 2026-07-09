@@ -263,6 +263,14 @@ class RegistryGenerator extends GeneratorForAnnotation<Regents> {
       binds.add('    });');
     }
 
+    // A ledger WITHOUT a nav row keeps navigation on the local fold — a
+    // legitimate choice, but make it conscious: the journal is complete
+    // except for movement.
+    if (navUnitRow == null && triggers.isNotEmpty) {
+      log.info(
+          'the regents ledger does not own navigation — add `nav(NavUnit())` '
+          'as the LAST row for whole-session replay and nav-judging gates.');
+    }
     // The ledger OWNS navigation: verbs route through the queue, the
     // NavUnit row folds, the graph mirrors the folded state back — and is
     // (re)seeded so restores and system pops stay truth.
