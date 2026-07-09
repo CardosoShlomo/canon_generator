@@ -629,26 +629,17 @@ extension on Ledger {
       final (screen, id) = n.destination;
       if (screen == _Screens.todo) {
         final key = id as TodoId;
-        if (!localTodosStore.inFlight(key)) {
-          final msg =
-              (_Regents.localTodos.regent as Store<TodoId, Todo, TodoMsg>)
-                  .awaits
-                  ?.surface(
-                    key,
-                    localTodosStore.entities[key],
-                    localTodosStore.flagsOf(key),
-                  );
-          if (msg != null) dispatch(msg);
-        }
+        final msg = (_Regents.localTodos.regent as Store<TodoId, Todo, TodoMsg>)
+            .awaits
+            ?.surface(key, localTodosStore.entities[key]);
+        if (msg != null) dispatch(msg);
       }
       if (screen == _Screens.todo) {
         final key = id as TodoId;
-        if (!todosStore.inFlight(key)) {
-          final msg = (_Regents.todos.regent as Store<TodoId, Todo, TodoMsg>)
-              .awaits
-              ?.surface(key, todosStore.entities[key], todosStore.flagsOf(key));
-          if (msg != null) dispatch(msg);
-        }
+        final msg = (_Regents.todos.regent as Store<TodoId, Todo, TodoMsg>)
+            .awaits
+            ?.surface(key, todosStore.entities[key]);
+        if (msg != null) dispatch(msg);
       }
     });
     todosStore.mergeStore(localTodosStore, const LocalTodoSupports());

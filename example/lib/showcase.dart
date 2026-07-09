@@ -107,29 +107,31 @@ class ReviewsPage extends ProductMsg {
 }
 
 // The REQUEST is NOT part of the reduce family — it has no state effect, so
-// the reduce never carries a dead arm for it. The `Awaits` twin below relates
-// it to the store instead.
+// the reduce never carries a dead arm for it. The in-flight row below
+// tracks it instead.
 class GetReviews extends Msg {
   GetReviews(this.productId, {this.before});
   final ProductId productId;
   final ReviewId? before;
 }
 
-// The correlation twin: which key a request puts IN FLIGHT. The engine
-// key-correlates — dispatching `GetReviews` marks the product `loading`, the
-// next fold that touches it (the page arriving) confirms it. Request status
-// is DERIVED; no `loading` field ever enters state.
-class ProductsAwaits extends Awaits<ProductId, Product, GetReviews> {
-  const ProductsAwaits();
+// Request status as an HONEST ROW: dispatching `GetReviews` folds the key
+// in, the page arriving folds it out. Presence = loading; no machinery,
+// no `loading` field in Product.
+final class ReviewsInFlight extends Unit<Set<ProductId>, Msg> {
+  const ReviewsInFlight() : super(const {});
+
   @override
-  ProductId keyOf(GetReviews request) => request.productId;
+  Set<ProductId> reduce(Set<ProductId> state, Msg msg) => switch (msg) {
+        GetReviews(:final productId) => {...state, productId},
+        ReviewsPage(:final id) =>
+          {for (final k in state) if (k != id) k},
+        _ => state,
+      };
 }
 
 final class Products extends Store<ProductId, Product, ProductMsg> {
   const Products();
-
-  @override
-  Awaits<ProductId, Product, Msg>? get awaits => const ProductsAwaits();
 
   @override
   IdentifiableMap<ProductId, Product> reduce(
@@ -188,6 +190,7 @@ enum _Entities with EntityNode<_Entities> {
   // (the wire test: its facts arrive without an id).
   cart(CartState),
   coverage(bool),
+  inFlight(Set<ProductId>),
   product(Product, .product),
   review(Review, .review);
 
@@ -203,6 +206,7 @@ enum _Entities with EntityNode<_Entities> {
   static final graph = EntityGraph({
     cart,
     coverage,
+    inFlight,
     // OWNERSHIP: reviews live inside their product (an id-keyed map field) —
     // the generator derives surgical tree ops (`addReview`, `updateReview`…).
     product({review}),
@@ -226,7 +230,8 @@ enum _Regents with RegentNode<_Regents> {
   catalogGate(CatalogGate()),
   // the disk-cache SHADOW — absent-only folds, supports main via the merge
   localProducts(LocalProducts()),
-  products(Products());
+  products(Products()),
+  reviewsInFlight(ReviewsInFlight());
 
   const _Regents(this.regent);
   @override
@@ -555,9 +560,9 @@ class _Product extends StatelessWidget {
   Widget build(BuildContext context) {
     final id = context.idOf(.product);
     final product = productsStore(id).of(context);
-    // DERIVED request status: true from `dispatch(GetReviews(...))` until the
-    // page folds — the `Awaits` twin key-correlates; no loading field exists.
-    final loading = productsStore(id).loadingOf(context);
+    // Request status is an honest ROW: in the set from
+    // `dispatch(GetReviews(...))` until the page folds it out.
+    final loading = reviewsInFlightStore.of(context).contains(id);
     final cart = cartStore.of(context);
     const style = TextStyle(color: Colors.white70, fontSize: 16);
     return _S(

@@ -4732,6 +4732,7 @@ late final UnitMemory<CartState, CartMsg> cartStore;
 late final UnitMemory<bool, ProductMsg> catalogCoveredStore;
 late final StoreMemory<ProductId, Product, ProductMsg> localProductsStore;
 late final StoreMemory<ProductId, Product, ProductMsg> productsStore;
+late final UnitMemory<Set<ProductId>, Msg> reviewsInFlightStore;
 
 /// The generated data surface, hung on [Ledger] so `ledger.` is the one api.
 extension on Ledger {
@@ -4750,37 +4751,27 @@ extension on Ledger {
     productsStore = store(
       _Regents.products.regent as Store<ProductId, Product, ProductMsg>,
     );
+    reviewsInFlightStore = unit(
+      _Regents.reviewsInFlight.regent as Unit<Set<ProductId>, Msg>,
+    );
     _Screens.graph.navigations.listen((n) {
       final (screen, id) = n.destination;
       if (screen == _Screens.product) {
         final key = id as ProductId;
-        if (!localProductsStore.inFlight(key)) {
-          final msg =
-              (_Regents.localProducts.regent
-                      as Store<ProductId, Product, ProductMsg>)
-                  .awaits
-                  ?.surface(
-                    key,
-                    localProductsStore.entities[key],
-                    localProductsStore.flagsOf(key),
-                  );
-          if (msg != null) dispatch(msg);
-        }
+        final msg =
+            (_Regents.localProducts.regent
+                    as Store<ProductId, Product, ProductMsg>)
+                .awaits
+                ?.surface(key, localProductsStore.entities[key]);
+        if (msg != null) dispatch(msg);
       }
       if (screen == _Screens.product) {
         final key = id as ProductId;
-        if (!productsStore.inFlight(key)) {
-          final msg =
-              (_Regents.products.regent
-                      as Store<ProductId, Product, ProductMsg>)
-                  .awaits
-                  ?.surface(
-                    key,
-                    productsStore.entities[key],
-                    productsStore.flagsOf(key),
-                  );
-          if (msg != null) dispatch(msg);
-        }
+        final msg =
+            (_Regents.products.regent as Store<ProductId, Product, ProductMsg>)
+                .awaits
+                ?.surface(key, productsStore.entities[key]);
+        if (msg != null) dispatch(msg);
       }
     });
     productsStore.mergeStore(localProductsStore, const LocalProductSupports());

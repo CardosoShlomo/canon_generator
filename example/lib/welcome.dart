@@ -48,15 +48,15 @@ class TodoAdded extends TodoMsg {
 }
 
 /// Intent AND prediction. It states the TARGET (`done: true`), never the
-/// operation ("toggle") — verdicts settle by comparing state, and only
-/// absolute facts re-apply as no-ops.
+/// operation ("toggle") — absolute facts re-apply as no-ops, so the echo
+/// below lands idempotently.
 class CompleteTodo extends TodoMsg {
   const CompleteTodo(this.id, {required this.done});
   final TodoId id;
   final bool done;
 }
 
-/// The echo — the resolver family of the verdict below.
+/// The server's echo of the toggle.
 class TodoToggled extends TodoMsg {
   const TodoToggled(this.id, {required this.done});
   final TodoId id;
@@ -87,14 +87,8 @@ class Todo with Identifiable<TodoId> {
 }
 
 // ── The citizens ──
-final class CompleteVerdict extends Verdict<CompleteTodo, TodoToggled> {
-  const CompleteVerdict();
-  @override
-  Duration get deadline => const Duration(seconds: 3);
-}
-
 final class Todos extends Store<TodoId, Todo, TodoMsg> {
-  const Todos() : super(verdict: const CompleteVerdict());
+  const Todos();
 
   @override
   IdentifiableMap<TodoId, Todo> reduce(
