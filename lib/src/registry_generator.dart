@@ -275,14 +275,14 @@ class RegistryGenerator extends GeneratorForAnnotation<Regents> {
             'rows only — a guard judges the flow, it holds no rows to read.',
             element: element);
       }
-      if (t == _RowKind.unit) {
+      if (t == _RowKind.unit && sk != _RowKind.unit) {
         throw InvalidGenerationSourceError(
-            'merge edge `$target.from($source, …)`: the TARGET must be a '
-            'keyed store — a unit has no per-key read surface to route.',
+            'merge edge `$target.from($source, …)`: a unit target takes a '
+            'unit source — a store source has no single value to lend.',
             element: element);
       }
-      // A unit source speaks at its state's own id; a store source lends
-      // its whole collection.
+      // A unit source speaks at its state's own id (whole value on a unit
+      // target); a store source lends its whole collection.
       binds.add(sk == _RowKind.unit
           ? '    ${target}Store.merge(${source}Store, $projection);'
           : '    ${target}Store.mergeStore(${source}Store, $projection);');
