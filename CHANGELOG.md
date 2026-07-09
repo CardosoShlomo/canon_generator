@@ -1,3 +1,8 @@
+## 0.33.0
+
+- Unit-to-unit merge edges in the regents merges set.
+- Nav trigger consults `surface(key, row)` — dedupe belongs to an in-flight gate, never the trigger.
+
 ## 0.32.0
 
 - Guard binds drop the facade (no generated `Stores`); regent 0.8 `read` wave.

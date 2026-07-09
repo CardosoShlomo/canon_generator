@@ -236,9 +236,9 @@ class RegistryGenerator extends GeneratorForAnnotation<Regents> {
 
     // Door 2 — the nav trigger: on a COMMITTED navigation (never a render),
     // each associated store's Awaits twin judges the landed key via
-    // `surface(key, row, flags)` on the RAW store state; a non-null answer
-    // dispatches — and, being the twin's own request family by type, marks
-    // the key in flight. In-flight keys are skipped.
+    // `surface(key, row)` on the RAW store state; a non-null answer
+    // dispatches. Duplicate asks are a GUARD's business (an in-flight row
+    // gate), never the trigger's.
     if (triggers.isNotEmpty) {
       final scrEnum = triggers.first.$1;
       binds.add('    $scrEnum.graph.navigations.listen((n) {');
@@ -246,11 +246,9 @@ class RegistryGenerator extends GeneratorForAnnotation<Regents> {
       for (final (_, scr, name, ref, key) in triggers) {
         binds.add('      if (screen == $scrEnum.$scr) {');
         binds.add('        final key = id as $key;');
-        binds.add('        if (!${name}Store.inFlight(key)) {');
-        binds.add('          final msg = ($ref).awaits?.surface(');
-        binds.add('              key, ${name}Store.entities[key], ${name}Store.flagsOf(key));');
-        binds.add('          if (msg != null) dispatch(msg);');
-        binds.add('        }');
+        binds.add('        final msg = ($ref).awaits?.surface(');
+        binds.add('            key, ${name}Store.entities[key]);');
+        binds.add('        if (msg != null) dispatch(msg);');
         binds.add('      }');
       }
       binds.add('    });');

@@ -604,7 +604,8 @@ void main() {
                 // Door 2: the committed-navigation trigger consults the twin
                 contains('graph.navigations.listen('),
                 contains('?.surface('),
-                contains('reviewStore.inFlight(key)'),
+                contains('reviewStore.entities[key]'),
+                isNot(contains('inFlight')),
                 contains('e.screen == _Screens.profile'),
                 contains('reviewStore[e.id as String]'),
                 // home has no id-node → no accessors at all
