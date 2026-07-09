@@ -604,9 +604,15 @@ final ledger = Ledger();
 
 /// States a fact — dispatch is the ONLY verb, so it needs no prefix.
 /// (`ledger.` keeps the rarer surfaces: `on`, `veto`, `guard`, `journal`.)
-void dispatch(Msg msg, {bool optimistic = false, String? correlationId}) =>
-    ledger.dispatch(msg, optimistic: optimistic, correlationId: correlationId);
+void dispatch(Msg msg) => ledger.dispatch(msg);
 bool _bound = false;
+
+/// The `todo` screen was navigated to (never a render).
+class TodoEnteredMsg extends Msg {
+  const TodoEnteredMsg(this.id);
+  final TodoId id;
+}
+
 late final UnitMemory<bool, TodoMsg> todosCoveredStore;
 late final StoreMemory<TodoId, Todo, TodoMsg> localTodosStore;
 late final StoreMemory<TodoId, Todo, TodoMsg> todosStore;
@@ -628,18 +634,7 @@ extension on Ledger {
     _Screens.graph.navigations.listen((n) {
       final (screen, id) = n.destination;
       if (screen == _Screens.todo) {
-        final key = id as TodoId;
-        final msg = (_Regents.localTodos.regent as Store<TodoId, Todo, TodoMsg>)
-            .awaits
-            ?.surface(key, localTodosStore.entities[key]);
-        if (msg != null) dispatch(msg);
-      }
-      if (screen == _Screens.todo) {
-        final key = id as TodoId;
-        final msg = (_Regents.todos.regent as Store<TodoId, Todo, TodoMsg>)
-            .awaits
-            ?.surface(key, todosStore.entities[key]);
-        if (msg != null) dispatch(msg);
+        dispatch(TodoEnteredMsg(id as TodoId));
       }
     });
     todosStore.mergeStore(localTodosStore, const LocalTodoSupports());

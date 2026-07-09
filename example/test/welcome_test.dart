@@ -22,13 +22,13 @@ void main() {
     expect(Screen.stack.current.name, 'todo');
     expect(Screen.stack.currentId, '001');
 
-    // The optimistic write folds instantly (a pending overlay)…
+    // The intent folds instantly (it states the TARGET)…
     dispatch(TodoAdded(TodoId('002'), 'Brew tea'));
     dispatch(const CompleteTodo(TodoId('002'), done: true));
     expect(todosStore[TodoId('002')]!.done, isTrue);
-    // …and the echo settles it by state comparison: confirmed.
+    // …and the echo lands as a no-op re-statement of the same fact.
     dispatch(const TodoToggled(TodoId('002'), done: true));
-    expect(todosStore.flagsOf(TodoId('002'))?.stability, Stability.confirmed);
+    expect(todosStore[TodoId('002')]!.done, isTrue);
 
     Screen.pop();
     await tester.pumpAndSettle();

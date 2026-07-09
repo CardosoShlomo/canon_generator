@@ -1,3 +1,7 @@
+## 0.34.0
+
+- Scope entry is a FACT: the nav trigger dispatches a generated `<Screen>EnteredMsg` per id-keyed screen; ask/refetch policy is a consumer guard's, `surface` is never consulted.
+
 ## 0.33.0
 
 - Unit-to-unit merge edges in the regents merges set.

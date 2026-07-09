@@ -234,21 +234,21 @@ class RegistryGenerator extends GeneratorForAnnotation<Regents> {
       }
     }
 
-    // Door 2 — the nav trigger: on a COMMITTED navigation (never a render),
-    // each associated store's Awaits twin judges the landed key via
-    // `surface(key, row)` on the RAW store state; a non-null answer
-    // dispatches. Duplicate asks are a GUARD's business (an in-flight row
-    // gate), never the trigger's.
-    if (triggers.isNotEmpty) {
-      final scrEnum = triggers.first.$1;
+    // Door 2 — scope entry is a FACT: a COMMITTED navigation (never a
+    // render) dispatches the screen's generated entry msg; ask/refetch
+    // policy is a GUARD's business, judging the fact like any other.
+    final entryScreens = <String, (String, String)>{};
+    for (final (scrEnum, scr, _, _, key) in triggers) {
+      entryScreens[scr] = (scrEnum, key);
+    }
+    if (entryScreens.isNotEmpty) {
+      final scrEnum = entryScreens.values.first.$1;
       binds.add('    $scrEnum.graph.navigations.listen((n) {');
       binds.add('      final (screen, id) = n.destination;');
-      for (final (_, scr, name, ref, key) in triggers) {
-        binds.add('      if (screen == $scrEnum.$scr) {');
-        binds.add('        final key = id as $key;');
-        binds.add('        final msg = ($ref).awaits?.surface(');
-        binds.add('            key, ${name}Store.entities[key]);');
-        binds.add('        if (msg != null) dispatch(msg);');
+      for (final e in entryScreens.entries) {
+        final cls = '${e.key[0].toUpperCase()}${e.key.substring(1)}EnteredMsg';
+        binds.add('      if (screen == $scrEnum.${e.key}) {');
+        binds.add('        dispatch($cls(id as ${e.value.$2}));');
         binds.add('      }');
       }
       binds.add('    });');
@@ -297,11 +297,19 @@ class RegistryGenerator extends GeneratorForAnnotation<Regents> {
     b.writeln();
     b.writeln('/// States a fact — dispatch is the ONLY verb, so it needs no prefix.');
     b.writeln('/// (`ledger.` keeps the rarer surfaces: `on`, `veto`, `guard`, `journal`.)');
-    b.writeln('void dispatch(Msg msg,');
-    b.writeln('        {bool optimistic = false, String? correlationId}) =>');
-    b.writeln('    ledger.dispatch(msg,');
-    b.writeln('        optimistic: optimistic, correlationId: correlationId);');
+    b.writeln('void dispatch(Msg msg) => ledger.dispatch(msg);');
     b.writeln('bool _bound = false;');
+    // Scope-entry FACTS — one per id-keyed screen: a committed navigation
+    // dispatches it; guards judge asks/refetches from it.
+    for (final e in entryScreens.entries) {
+      final cls = '${e.key[0].toUpperCase()}${e.key.substring(1)}EnteredMsg';
+      b.writeln();
+      b.writeln('/// The `${e.key}` screen was navigated to (never a render).');
+      b.writeln('class $cls extends Msg {');
+      b.writeln('  const $cls(this.id);');
+      b.writeln('  final ${e.value.$2} id;');
+      b.writeln('}');
+    }
     // The live stores are top-level publics (an extension can hold no state);
     // StoreMemory is the designed consumer surface, so it IS the api.
     for (final f in fields) {

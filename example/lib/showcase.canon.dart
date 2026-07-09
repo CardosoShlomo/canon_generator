@@ -4725,9 +4725,15 @@ final ledger = Ledger();
 
 /// States a fact — dispatch is the ONLY verb, so it needs no prefix.
 /// (`ledger.` keeps the rarer surfaces: `on`, `veto`, `guard`, `journal`.)
-void dispatch(Msg msg, {bool optimistic = false, String? correlationId}) =>
-    ledger.dispatch(msg, optimistic: optimistic, correlationId: correlationId);
+void dispatch(Msg msg) => ledger.dispatch(msg);
 bool _bound = false;
+
+/// The `product` screen was navigated to (never a render).
+class ProductEnteredMsg extends Msg {
+  const ProductEnteredMsg(this.id);
+  final ProductId id;
+}
+
 late final UnitMemory<CartState, CartMsg> cartStore;
 late final UnitMemory<bool, ProductMsg> catalogCoveredStore;
 late final StoreMemory<ProductId, Product, ProductMsg> localProductsStore;
@@ -4757,21 +4763,7 @@ extension on Ledger {
     _Screens.graph.navigations.listen((n) {
       final (screen, id) = n.destination;
       if (screen == _Screens.product) {
-        final key = id as ProductId;
-        final msg =
-            (_Regents.localProducts.regent
-                    as Store<ProductId, Product, ProductMsg>)
-                .awaits
-                ?.surface(key, localProductsStore.entities[key]);
-        if (msg != null) dispatch(msg);
-      }
-      if (screen == _Screens.product) {
-        final key = id as ProductId;
-        final msg =
-            (_Regents.products.regent as Store<ProductId, Product, ProductMsg>)
-                .awaits
-                ?.surface(key, productsStore.entities[key]);
-        if (msg != null) dispatch(msg);
+        dispatch(ProductEnteredMsg(id as ProductId));
       }
     });
     productsStore.mergeStore(localProductsStore, const LocalProductSupports());
