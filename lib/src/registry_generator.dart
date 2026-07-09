@@ -92,14 +92,16 @@ class RegistryGenerator extends GeneratorForAnnotation<Regents> {
           stateKey = stateKey.substring(0, stateKey.length - 1);
         }
         final info = entityByType[stateKey];
-        if (info == null) {
+        // NavState is the ENGINE's own unit entity — auto-admitted, never a
+        // consumer declaration.
+        if (info == null && stateKey != 'NavState') {
           throw InvalidGenerationSourceError(
               'unit store "$name" holds a Unit of `${vArgs[0]}`, which '
               'is not a row of the @entities enum — declare the UNIT entity '
               '(type, no key) there.',
               element: element);
         }
-        if (info.node != null && !info.node!.isNull) {
+        if (info != null && info.node != null && !info.node!.isNull) {
           throw InvalidGenerationSourceError(
               'unit store "$name": `${vArgs[0]}` is a KEYED entity (it has an '
               'id node) — a Unit may only hold a UNIT entity (a row '

@@ -2,7 +2,7 @@
 
 - Scope entry is a FACT: the nav trigger dispatches a generated `<Screen>EnteredMsg` per id-keyed screen; ask/refetch policy is a consumer guard's, `surface` is never consulted.
 - The generated `dispatch` wrapper is `dispatch(msg)` — no transit metadata exists.
-- A `NavUnit` row wires ledger-owned navigation in `bind()`: verbs route through the queue, the unit folds, the graph mirrors and reseeds.
+- A `NavUnit` row wires ledger-owned navigation in `bind()`: verbs route through the queue, the unit folds, the graph mirrors and reseeds. `NavState` is auto-admitted — the engine's entity, never a consumer declaration.
 - canon ^0.28.0, regent ^0.10.0.
 
 ## 0.33.0
