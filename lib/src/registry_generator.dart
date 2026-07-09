@@ -47,6 +47,7 @@ class RegistryGenerator extends GeneratorForAnnotation<Regents> {
     // ref, key type) per screen↔store association; emitted as ONE committed-
     // navigation listener consulting each spec's `surface`.
     final triggers = <(String, String, String, String, String)>[];
+    String? navUnitRow;
 
     // Every `read(const X())` in an enrolled guard must name a citizen of
     // THIS enum — checked at build, so an unknown class or a missing `const`
@@ -121,6 +122,12 @@ class RegistryGenerator extends GeneratorForAnnotation<Regents> {
             '  static late final UnitMemory<${vArgs.join(', ')}> ${name}Store;');
         binds.add('    ${name}Store = _ledger.unit($enumName.$name.regent as $superT);');
         rowKind[name] = _RowKind.unit;
+        // A NavUnit row makes the LEDGER own navigation: verbs route their
+        // ops through the queue (gates may judge them), the unit folds, and
+        // the graph mirrors the folded state back.
+        if (held?.getDisplayString().startsWith('NavUnit') ?? false) {
+          navUnitRow = name;
+        }
         continue;
       }
       // A GUARD row: judged at its position — protects the rows below it.
@@ -252,6 +259,19 @@ class RegistryGenerator extends GeneratorForAnnotation<Regents> {
         binds.add('      }');
       }
       binds.add('    });');
+    }
+
+    // The ledger OWNS navigation: verbs route through the queue, the
+    // NavUnit row folds, the graph mirrors the folded state back — and is
+    // (re)seeded so restores and system pops stay truth.
+    if (navUnitRow != null && triggers.isNotEmpty) {
+      final scrEnum = triggers.first.$1;
+      binds.add('    $scrEnum.graph.routeOps(dispatch);');
+      binds.add('    ${navUnitRow}Store.events.listen((e) {');
+      binds.add('      final s = e.after;');
+      binds.add('      if (s != null) $scrEnum.graph.applyState(s);');
+      binds.add('    });');
+      binds.add('    dispatch(SeedOp($scrEnum.graph.navState));');
     }
 
     // Merge wiring — after every memory is bound (an edge references two).
