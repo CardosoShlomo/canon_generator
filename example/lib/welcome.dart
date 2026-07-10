@@ -117,7 +117,9 @@ final class LocalTodos extends Store<TodoId, Todo, TodoMsg> {
               if (!todos.containsKey(t.id)) t.id: t,
             ...todos,
           },
-        _ => const Todos().reduce(todos, msg),
+        // The shadow law: the delegation arm is TYPED, never a wildcard —
+        // exhaustive by the sealed family, a new fact is a compile error.
+        TodoMsg() => const Todos().reduce(todos, msg),
       };
 }
 
@@ -211,8 +213,10 @@ class TodoListScreen extends StatelessWidget {
       appBar: AppBar(title: const Text('todos')),
       body: ListView(
         children: [
+          // The item PLANT: scopes one todo (data + identity) over its tile —
+          // self-keyed, per-key rebuilds, and the subtree needs no arguments.
           for (final id in ids)
-            _TodoTile(id: id), // per-key rebuilds inside
+            todosStore.item(id, child: const _TodoTile()),
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -225,21 +229,23 @@ class TodoListScreen extends StatelessWidget {
 }
 
 class _TodoTile extends StatelessWidget {
-  const _TodoTile({required this.id});
-  final TodoId id;
+  const _TodoTile();
 
   @override
   Widget build(BuildContext context) {
-    final todo = todosStore.entityOf(context, id); // ONE entity — surgical
-    if (todo == null) return const SizedBox.shrink();
+    final todo = EntityScope.of<Todo>(context); // the scope's snapshot
     return ListTile(
       title: Text(todo.title),
       leading: Checkbox(
         value: todo.done,
-        // Optimistic: flips NOW; the echo confirms, silence reverts.
-        onChanged: (v) => dispatch(CompleteTodo(id, done: v ?? false)),
+        // Optimistic: flips NOW; the echo confirms, silence reverts. The
+        // WRITE is an explicit fact whose id was READ ambiently.
+        onChanged: (v) =>
+            dispatch(CompleteTodo(TodoID.of(context), done: v ?? false)),
       ),
-      onTap: () => Screen.goTodo(id), // the only legal move — typed, URL-real
+      // DEICTIC: navigates from where this tile stands — no chain named,
+      // no id passed; the fold enforces the edge. Typed, URL-real.
+      onTap: () => TodoID.navOf(context).go(),
     );
   }
 }
@@ -249,8 +255,9 @@ class TodoScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final TodoId id = context.idOf(.todo); // ambient identity
-    final todo = todosStore.entityOf(context, id);
+    // The screen PLANTS its identity: both reads are ambient — the typed id
+    // and the entity at it — no constructor threading anywhere.
+    final todo = todosStore.entityOf(context);
     return Scaffold(
       appBar: AppBar(
         title: Text(todo?.title ?? '…'),
