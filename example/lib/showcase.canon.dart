@@ -5600,6 +5600,7 @@ extension on Ledger {
           as Store<SellerChatId, SellerThread, SellerChatMsg>,
     );
     IdScope.tag(sellerThreadsStore, Ids.sellerChat);
+    guard(_Regents.threadGate.regent as Guard<SellerChatEnteredMsg>);
     guard(_Regents.cartWriteGate.regent as Guard<CartMsg>);
     cartWriteStore = unit(
       _Regents.cartWrite.regent as Unit<CartWrite, CartMsg>,

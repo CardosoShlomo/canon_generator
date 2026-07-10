@@ -1,3 +1,8 @@
+## 0.35.0
+
+- canon ^0.29.0 + regent ^0.11.0 (judgments: guards return `.forward`/`.mint` launches).
+- The showcase demonstrates the MINT door: `ThreadGate` derives `ThreadOpened` from the chat's entry fact — the row above it folds the derivation (tour point 16).
+
 ## 0.34.0
 
 - Scope entry is a FACT: the nav trigger dispatches a generated `<Screen>EnteredMsg` per id-keyed screen; ask/refetch policy is a consumer guard's, `surface` is never consulted.

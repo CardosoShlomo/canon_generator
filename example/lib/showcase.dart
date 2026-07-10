@@ -43,6 +43,11 @@ part 'showcase.canon.dart';
 //      Identity is NODE-MATCHED: with product (item) and seller (screen)
 //      both ambient, `SellerID.of(context)` walks past the nearer product
 //      scope — a read can never answer with another node's id
+//  16. MINT — the upward door: a guard's verdict is a set of LAUNCHES,
+//      `.forward(msg)` continuing below, `.mint(msg)` deriving a new round
+//      from index 0 (unjournaled, re-derived on replay, depth-budgeted).
+//      `ThreadGate` mints `ThreadOpened` from the chat's entry fact and the
+//      thread row ABOVE it folds the derivation
 //
 // Most screens are a color + a row of nav buttons; `product` is a REAL
 // consuming screen, so this doubles as the runnable app you test on.
@@ -197,7 +202,7 @@ final class DedupeGetReviews extends Veto<GetReviews> {
   const DedupeGetReviews();
 
   @override
-  bool block(Envelope env, GetReviews msg, ReadStore read) =>
+  bool block(GetReviews msg, ReadStore read) =>
       read(const ReviewsInFlight()).contains(msg.productId);
 }
 
@@ -209,11 +214,11 @@ final class ProductEntryGate extends Guard<ProductEnteredMsg> {
   const ProductEntryGate();
 
   @override
-  Set<Msg> judge(Envelope env, ProductEnteredMsg msg, ReadStore read) =>
+  Set<Judgment> judge(ProductEnteredMsg msg, ReadStore read) =>
       !read(const Products()).containsKey(msg.id) &&
               !read(const ReviewsInFlight()).contains(msg.id)
-          ? {msg, GetReviews(msg.id)}
-          : {msg};
+          ? {.forward(msg), .forward(GetReviews(msg.id))}
+          : {.forward(msg)};
 }
 
 final class Products extends Store<ProductId, Product, ProductMsg> {
@@ -251,12 +256,25 @@ sealed class SellerChatMsg extends Msg {
   const SellerChatMsg();
 }
 
-/// The thread was entered — dispatched by the chat screen's own body with
-/// its AMBIENT id (`SellerChatID.of(context)`): the write stays an explicit
-/// fact, the id it carries was read ambiently.
+/// The thread was entered. MINTED by [ThreadGate] from the chat screen's
+/// entry fact — a derivation the fold already implies ("whenever the chat
+/// is entered, its thread counts an opening"), so it is never journaled
+/// and re-derives on replay.
 class ThreadOpened extends SellerChatMsg {
   const ThreadOpened(this.id);
   final SellerChatId id;
+}
+
+/// 16. A MINT: the gate's verdict launches at index 0 — the derived fact
+/// runs as its own round, re-judged by every guard, and reaches the
+/// [SellerThreads] row even though that row sits ABOVE this gate. Forward
+/// can only speak downward; mint is the sanctioned upward door.
+final class ThreadGate extends Guard<SellerChatEnteredMsg> {
+  const ThreadGate();
+
+  @override
+  Set<Judgment> judge(SellerChatEnteredMsg msg, ReadStore read) =>
+      {.forward(msg), .mint(ThreadOpened(msg.id))};
 }
 
 final class SellerThreads
@@ -424,16 +442,19 @@ final class CartWriteGate extends Guard<CartMsg> {
   const CartWriteGate();
 
   @override
-  Set<Msg> judge(Envelope env, CartMsg msg, ReadStore read) {
+  Set<Judgment> judge(CartMsg msg, ReadStore read) {
     switch (msg) {
       case final SetQty p:
         // The prediction PASSES — the wire effect still sends it; base
         // ignores it. The capture is the dock's copy.
-        return {msg, CartPredictedMsg(p, read(const CartUnit()))};
+        return {
+          .forward(msg),
+          .forward(CartPredictedMsg(p, read(const CartUnit()))),
+        };
       case final QtySaved echo:
         final write = read(const CartWriteUnit());
         final p = write.pending;
-        if (p == null) return {msg};
+        if (p == null) return {.forward(msg)};
         final a = read(const CartUnit());
         final b = const CartUnit().reduce(a, echo);
         final outcome = applyQty(b, p) == b
@@ -441,7 +462,10 @@ final class CartWriteGate extends Guard<CartMsg> {
             : b == a
                 ? WriteOutcome.reverted
                 : WriteOutcome.tampered;
-        return {msg, CartSettledMsg(outcome)};
+        return {
+          .forward(msg),
+          .forward(CartSettledMsg(outcome)),
+        };
       case QtyTimedOut():
         final write = read(const CartWriteUnit());
         final p = write.pending;
@@ -452,9 +476,9 @@ final class CartWriteGate extends Guard<CartMsg> {
             : a == write.base
                 ? WriteOutcome.reverted
                 : WriteOutcome.amended;
-        return {CartSettledMsg(outcome)};
+        return {.forward(CartSettledMsg(outcome))};
       default:
-        return {msg};
+        return {.forward(msg)};
     }
   }
 }
@@ -529,6 +553,9 @@ enum _Regents with RegentNode<_Regents> {
   products(Products()),
   // the composite-keyed thread — its id node powers the gated identity tier
   sellerThreads(SellerThreads()),
+  // 16. BELOW the row it feeds: its mint re-enters at index 0, so the
+  // thread row above folds the derivation — the upward door, lawfully
+  threadGate(ThreadGate()),
   // the write dock — below every other reader: the prediction reaches them
   // all, then the gate mints the capture; base never folds the promise
   cartWriteGate(CartWriteGate()),
@@ -567,7 +594,7 @@ final class CatalogGate extends Veto<CatalogCacheMsg> {
   const CatalogGate();
 
   @override
-  bool block(Envelope env, CatalogCacheMsg msg, ReadStore read) =>
+  bool block(CatalogCacheMsg msg, ReadStore read) =>
       read(const CatalogCovered());
 }
 
@@ -910,6 +937,9 @@ class _SellerChatBody extends StatelessWidget {
         Text('opened ${thread?.opened ?? 0}×', style: style),
         const SizedBox(height: 8),
         FilledButton.tonal(
+          // The count also climbs by ENTRY alone: ThreadGate mints
+          // ThreadOpened from the entry fact — this button just shows the
+          // same fact is an ordinary value anyone may state.
           onPressed: () => dispatch(ThreadOpened(SellerChatID.of(context))),
           child: const Text('mark opened'),
         ),

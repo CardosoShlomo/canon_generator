@@ -136,7 +136,7 @@ final class TodosCovered extends Unit<bool, TodoMsg> {
 final class CachedTodosGate extends Veto<CachedTodosMsg> {
   const CachedTodosGate();
   @override
-  bool block(Envelope env, CachedTodosMsg msg, ReadStore read) =>
+  bool block(CachedTodosMsg msg, ReadStore read) =>
       read(const TodosCovered());
 }
 
