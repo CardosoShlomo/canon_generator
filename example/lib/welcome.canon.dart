@@ -663,6 +663,9 @@ abstract final class TodoID {
   static TodoId of(BuildContext context) => IdScope.of<TodoId>(context);
   static IdNav<TodoId> navOf(BuildContext context) =>
       IdScope.navOf<TodoId>(context);
+  static TodoId screenOf(BuildContext context) =>
+      IdScope.screenOf<TodoId>(context);
+  static TodoId itemOf(BuildContext context) => IdScope.itemOf<TodoId>(context);
 }
 
 /// Deictic forward verbs for the `todo` identity —

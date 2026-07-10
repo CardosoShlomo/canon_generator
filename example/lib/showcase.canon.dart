@@ -5659,6 +5659,10 @@ abstract final class ProductID {
   static ProductId of(BuildContext context) => IdScope.of<ProductId>(context);
   static IdNav<ProductId> navOf(BuildContext context) =>
       IdScope.navOf<ProductId>(context);
+  static ProductId screenOf(BuildContext context) =>
+      IdScope.screenOf<ProductId>(context);
+  static ProductId itemOf(BuildContext context) =>
+      IdScope.itemOf<ProductId>(context);
 
   /// The CLAIMED handle — compile-gated: only chains that
   /// EVIDENCE this identity type-check (`ProductOn`);
@@ -5694,6 +5698,10 @@ abstract final class SellerChatID {
       IdScope.of<SellerChatId>(context);
   static IdNav<SellerChatId> navOf(BuildContext context) =>
       IdScope.navOf<SellerChatId>(context);
+  static SellerChatId screenOf(BuildContext context) =>
+      IdScope.screenOf<SellerChatId>(context);
+  static SellerChatId itemOf(BuildContext context) =>
+      IdScope.itemOf<SellerChatId>(context);
 }
 
 /// Deictic forward verbs for the `sellerChat` identity —
@@ -5721,6 +5729,10 @@ abstract final class SellerID {
   static SellerId of(BuildContext context) => IdScope.of<SellerId>(context);
   static IdNav<SellerId> navOf(BuildContext context) =>
       IdScope.navOf<SellerId>(context);
+  static SellerId screenOf(BuildContext context) =>
+      IdScope.screenOf<SellerId>(context);
+  static SellerId itemOf(BuildContext context) =>
+      IdScope.itemOf<SellerId>(context);
 
   /// The CLAIMED handle — compile-gated: only chains that
   /// EVIDENCE this identity type-check (`SellerOn`);

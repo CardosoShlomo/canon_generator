@@ -478,6 +478,10 @@ class RegistryGenerator extends GeneratorForAnnotation<Regents> {
         b.writeln('      IdScope.of<$key>(context);');
         b.writeln('  static IdNav<$key> navOf(BuildContext context) =>');
         b.writeln('      IdScope.navOf<$key>(context);');
+        b.writeln('  static $key screenOf(BuildContext context) =>');
+        b.writeln('      IdScope.screenOf<$key>(context);');
+        b.writeln('  static $key itemOf(BuildContext context) =>');
+        b.writeln('      IdScope.itemOf<$key>(context);');
         if (reverseNavs.containsKey(e.key)) {
           b.writeln('  /// The CLAIMED handle — compile-gated: only chains that');
           b.writeln('  /// EVIDENCE this identity type-check (`${_cap(nodeName)}On`);');
