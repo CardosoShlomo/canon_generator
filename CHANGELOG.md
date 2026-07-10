@@ -2,7 +2,8 @@
 
 - Scope entry is a FACT: the nav trigger dispatches a generated `<Screen>EnteredMsg` per id-keyed screen; ask/refetch policy is a consumer guard's, `surface` is never consulted.
 - The generated `dispatch` wrapper is `dispatch(msg)` — no transit metadata exists.
-- A `NavUnit` row wires ledger-owned navigation in `bind()`: verbs route through the queue, the unit folds, the graph mirrors and reseeds. `NavState` is auto-admitted — the engine's entity, never a consumer declaration. A ledger without a nav row gets a build-time hint (local-fold navigation stays a conscious choice).
+- A `NavUnit` row wires ledger-owned navigation in `bind()`: verbs route through the queue, the unit folds, the graph mirrors — synchronously for verb-routed ops (placement returns stay truthful), via the events tap for every other door — and reseeds on restores. `NavState` is auto-admitted — the engine's entity, never a consumer declaration. A ledger without a nav row gets a build-time hint (local-fold navigation stays a conscious choice).
+- The showcase example is the family's full tour: coverage, shadow+merge, in-flight+dedupe, a cart write dock, entry-fact ask gate, ledger-owned nav, and replay laws.
 - canon ^0.28.0, regent ^0.10.0.
 
 ## 0.33.0

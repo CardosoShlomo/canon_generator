@@ -7,12 +7,29 @@ part 'showcase.canon.dart';
 
 // ── The SHOWCASE example ──────────────────────────────────────────────────
 // A compact e-commerce app whose grammar trees exercise EVERY canon
-// capability — nav (keep/forget, inherit, stacked/cycled, graft,
-// query/fragment, links) AND state (a keyed store with OWNED children and
-// tree ops, a keyless UNIT store, derived request status via an `Awaits`
-// twin, reactive per-key reads). Most screens are a color + a row of nav
-// buttons; `product` is a REAL consuming screen, so this doubles as the
-// runnable app you test on.
+// capability. Nav side: keep/forget, inherit, stacked/cycled, graft,
+// query/fragment, links. State side, the numbered TOUR:
+//
+//   1. facts as sealed families (a msg IS a source: its TYPE is its rank)
+//   2. stores & units: pure folds, nothing else lives in a memory
+//   3. the @regents enum: row order is traversal order; gates protect below
+//   4. gates judging via `read(const X())` — the ledger's own state by identity
+//   5. COVERAGE: recorded permission to treat absence as knowledge
+//   6. a shadow store + merge edge: disk cache answers until censored
+//   7. an IN-FLIGHT row + dedupe gate: duplicate asks drop at the queue
+//   8. OWNED children: reviews live inside their product (@entities)
+//   9. a WRITE DOCK: optimism as rows — pending unit, settling gate,
+//      deadline as a dispatched FACT (timers live in effects)
+//  10. unit-from-unit merge: the pending promise answers reads instantly
+//  11. scope entry as a FACT: committed navigation dispatches
+//      `ProductEnteredMsg`; ask policy is an ordinary gate judging it
+//  12. ledger-owned NAVIGATION: `nav(NavUnit())` — the stack is a citizen,
+//      so replay carries the session whole
+//  13. replay: order-(in)dependence as an executable LAW
+//      (test/showcase_laws_test.dart)
+//
+// Most screens are a color + a row of nav buttons; `product` is a REAL
+// consuming screen, so this doubles as the runnable app you test on.
 //
 // What only the running app shows (it's all runtime): every `Screen.goX`
 // round-trips to a clean URL and back; browser back/forward and refresh restore
@@ -57,6 +74,12 @@ class Review with Identifiable<ReviewId> {
   final ReviewId id;
   final String author;
   final String text;
+
+  @override
+  bool operator ==(Object o) =>
+      o is Review && o.id == id && o.author == author && o.text == text;
+  @override
+  int get hashCode => Object.hash(id, author, text);
 }
 
 class Product with Identifiable<ProductId> {
@@ -74,6 +97,18 @@ class Product with Identifiable<ProductId> {
       Product(id, name, price,
           reviews: reviews ?? this.reviews,
           hasMoreReviews: hasMoreReviews ?? this.hasMoreReviews);
+
+  @override
+  bool operator ==(Object o) =>
+      o is Product &&
+      o.id == id &&
+      o.name == name &&
+      o.price == price &&
+      o.hasMoreReviews == hasMoreReviews &&
+      o.reviews.length == reviews.length &&
+      reviews.entries.every((e) => o.reviews[e.key] == e.value);
+  @override
+  int get hashCode => Object.hash(id, name, price, hasMoreReviews);
 }
 
 sealed class ProductMsg extends Msg with Identifiable<ProductId> {
@@ -115,8 +150,8 @@ class GetReviews extends Msg {
   final ReviewId? before;
 }
 
-// Request status as an HONEST ROW: dispatching `GetReviews` folds the key
-// in, the page arriving folds it out. Presence = loading; no machinery,
+// 7. Request status as an HONEST ROW: dispatching `GetReviews` folds the
+// key in, the page arriving folds it out. Presence = loading; no machinery,
 // no `loading` field in Product.
 final class ReviewsInFlight extends Unit<Set<ProductId>, Msg> {
   const ReviewsInFlight() : super(const {});
@@ -128,6 +163,32 @@ final class ReviewsInFlight extends Unit<Set<ProductId>, Msg> {
           {for (final k in state) if (k != id) k},
         _ => state,
       };
+}
+
+/// 7. The DEDUPE gate: a duplicate ask is queue noise — dropped before it
+/// can reach the wire (`ledger.on` taps the END of the queue, so the wire
+/// effect never fires on a dropped ask).
+final class DedupeGetReviews extends Veto<GetReviews> {
+  const DedupeGetReviews();
+
+  @override
+  bool block(Envelope env, GetReviews msg, ReadStore read) =>
+      read(const ReviewsInFlight()).contains(msg.productId);
+}
+
+/// 11. Scope entry is a FACT: a COMMITTED navigation to `product` dispatches
+/// the generated [ProductEnteredMsg] (never a render). Ask policy is this
+/// ordinary gate judging it: an unknown product with no ask in flight fans
+/// out the request — the imperative fetch-on-entry, gone.
+final class ProductEntryGate extends Guard<ProductEnteredMsg> {
+  const ProductEntryGate();
+
+  @override
+  Set<Msg> judge(Envelope env, ProductEnteredMsg msg, ReadStore read) =>
+      !read(const Products()).containsKey(msg.id) &&
+              !read(const ReviewsInFlight()).contains(msg.id)
+          ? {msg, GetReviews(msg.id)}
+          : {msg};
 }
 
 final class Products extends Store<ProductId, Product, ProductMsg> {
@@ -152,32 +213,200 @@ final class Products extends Store<ProductId, Product, ProductMsg> {
       };
 }
 
-// ── The cart: a UNIT store ────────────────────────────────────────────
+// ── The cart: a UNIT store + its WRITE DOCK ───────────────────────────
 // The wire test: cart facts arrive KEYLESS (the session is the identity), so
-// the cart is a `Unit` — one value, no key.
+// the cart is a `Unit` — one value, no key. Its optimism (9/10) lives in the
+// dock rows BESIDE it, never inside it.
 class CartState {
-  const CartState({this.items = const []});
+  const CartState({this.items = const [], this.qty = const {}});
   final List<String> items; // product names, kept trivial for the demo
+  final Map<ProductId, int> qty; // per-product quantity — the dock's subject
 
   int get count => items.length;
+
+  CartState withQty(ProductId id, int n) =>
+      CartState(items: items, qty: {...qty, id: n});
+
+  // Value equality — the write gate settles by STATE COMPARISON.
+  @override
+  bool operator ==(Object o) =>
+      o is CartState &&
+      o.items.length == items.length &&
+      [for (var i = 0; i < items.length; i++) i]
+          .every((i) => o.items[i] == items[i]) &&
+      o.qty.length == qty.length &&
+      qty.entries.every((e) => o.qty[e.key] == e.value);
+  @override
+  int get hashCode => Object.hash(Object.hashAll(items), qty.length);
 }
 
-sealed class CartMsg extends Msg {}
+sealed class CartMsg extends Msg {
+  const CartMsg();
+}
 
 class CartItemAdded extends CartMsg {
   CartItemAdded(this.name);
   final String name;
 }
 
+/// 9. The optimistic PREDICTION — an ABSOLUTE fact: it states the TARGET
+/// quantity, never an operation ("increment"), so the echo below re-applies
+/// as a no-op and the gate can settle by comparison.
+class SetQty extends CartMsg {
+  const SetQty(this.productId, this.qty);
+  final ProductId productId;
+  final int qty;
+}
+
+/// The server's echo of the quantity write.
+class QtySaved extends CartMsg {
+  const QtySaved(this.productId, this.qty);
+  final ProductId productId;
+  final int qty;
+}
+
+/// The pending write's DEADLINE — dispatched by an effect's timer (the
+/// ledger never holds a Timer); the gate judges it like any other fact.
+class QtyTimedOut extends CartMsg {
+  const QtyTimedOut();
+}
+
+/// The pending-write CAPTURE, minted by the write gate (never dispatch by
+/// hand): the prediction and the confirmed world it promised over.
+class CartPredictedMsg extends CartMsg {
+  const CartPredictedMsg(this.prediction, this.base);
+  final SetQty prediction;
+  final CartState base;
+}
+
+enum WriteOutcome { confirmed, reverted, amended, tampered }
+
+/// The write gate's settlement RULING on the pending cart write.
+class CartSettledMsg extends CartMsg {
+  const CartSettledMsg(this.outcome);
+  final WriteOutcome outcome;
+}
+
 final class CartUnit extends Unit<CartState, CartMsg> {
   const CartUnit() : super(const CartState());
-
 
   @override
   CartState reduce(CartState state, CartMsg msg) => switch (msg) {
         CartItemAdded(:final name) =>
-          CartState(items: [...state.items, name]),
+          CartState(items: [...state.items, name], qty: state.qty),
+        // The echo is confirmed truth; the PREDICTION has no arm — base
+        // never folds a promise, so confirmed state never lies.
+        QtySaved(:final productId, :final qty) => state.withQty(productId, qty),
+        _ => state,
       };
+}
+
+/// A prediction's diff — read-time only. ONE function serves both the
+/// gate's settle check and the merge projection, so the promise the UI sees
+/// and the promise the judge rules on can never drift apart.
+CartState applyQty(CartState state, SetQty p) =>
+    state.withQty(p.productId, p.qty);
+
+/// 9. The dock's pending row: the promise riding over base, the world it
+/// promised over, and the settled-optimism flags — honest state, so it
+/// replays.
+class CartWrite {
+  const CartWrite({
+    this.pending,
+    this.base,
+    this.reverted = false,
+    this.amended = false,
+    this.tampered = false,
+  });
+
+  final SetQty? pending;
+  final CartState? base;
+  final bool reverted;
+  final bool amended;
+  final bool tampered;
+
+  @override
+  bool operator ==(Object o) =>
+      o is CartWrite &&
+      o.pending == pending &&
+      o.base == base &&
+      o.reverted == reverted &&
+      o.amended == amended &&
+      o.tampered == tampered;
+  @override
+  int get hashCode => Object.hash(pending, base, reverted, amended, tampered);
+}
+
+/// One pending slot — a newer prediction supersedes. Any family fact speaks
+/// over the settled flags.
+final class CartWriteUnit extends Unit<CartWrite, CartMsg> {
+  const CartWriteUnit() : super(const CartWrite());
+
+  @override
+  CartWrite reduce(CartWrite state, CartMsg msg) => switch (msg) {
+        CartPredictedMsg(:final prediction, :final base) =>
+          CartWrite(pending: prediction, base: base),
+        CartSettledMsg(outcome: .tampered) => CartWrite(
+            pending: state.pending, base: state.base, tampered: true),
+        CartSettledMsg(:final outcome) => CartWrite(
+            reverted: outcome == .reverted, amended: outcome == .amended),
+        _ => state.reverted || state.amended
+            ? CartWrite(pending: state.pending, base: state.base)
+            : state,
+      };
+}
+
+/// 9. The WRITE GATE — stands directly above its dock rows at the BOTTOM of
+/// the enum, below every other reader: the prediction reaches them all, then
+/// the gate mints the capture (base has no arm for the promise) and settles
+/// it against echoes and the deadline fact by the three-way state check.
+final class CartWriteGate extends Guard<CartMsg> {
+  const CartWriteGate();
+
+  @override
+  Set<Msg> judge(Envelope env, CartMsg msg, ReadStore read) {
+    switch (msg) {
+      case final SetQty p:
+        // The prediction PASSES — the wire effect still sends it; base
+        // ignores it. The capture is the dock's copy.
+        return {msg, CartPredictedMsg(p, read(const CartUnit()))};
+      case final QtySaved echo:
+        final write = read(const CartWriteUnit());
+        final p = write.pending;
+        if (p == null) return {msg};
+        final a = read(const CartUnit());
+        final b = const CartUnit().reduce(a, echo);
+        final outcome = applyQty(b, p) == b
+            ? WriteOutcome.confirmed
+            : b == a
+                ? WriteOutcome.reverted
+                : WriteOutcome.tampered;
+        return {msg, CartSettledMsg(outcome)};
+      case QtyTimedOut():
+        final write = read(const CartWriteUnit());
+        final p = write.pending;
+        if (p == null) return const {};
+        final a = read(const CartUnit());
+        final outcome = applyQty(a, p) == a
+            ? WriteOutcome.confirmed
+            : a == write.base
+                ? WriteOutcome.reverted
+                : WriteOutcome.amended;
+        return {CartSettledMsg(outcome)};
+      default:
+        return {msg};
+    }
+  }
+}
+
+/// 10. The dock's merge edge — unit-from-unit: reads show the promise until
+/// it settles; base is never copied, never touched.
+final class WriteSupportsCart extends UnitProjection<CartWrite, CartState> {
+  const WriteSupportsCart();
+
+  @override
+  CartState resolve(CartState value, CartWrite write) =>
+      write.pending == null ? value : applyQty(value, write.pending!);
 }
 
 // ── The ENTITY grammar (@entities) ────────────────────────────────────
@@ -189,6 +418,7 @@ enum _Entities with EntityNode<_Entities> {
   // A KEYLESS row is a UNIT — cardinality one, the session is its identity
   // (the wire test: its facts arrive without an id).
   cart(CartState),
+  cartWrite(CartWrite),
   coverage(bool),
   inFlight(Set<ProductId>),
   product(Product, .product),
@@ -205,6 +435,7 @@ enum _Entities with EntityNode<_Entities> {
   // ignore: unused_field
   static final graph = EntityGraph({
     cart,
+    cartWrite,
     coverage,
     inFlight,
     // OWNERSHIP: reviews live inside their product (an id-keyed map field) —
@@ -222,24 +453,37 @@ enum _Entities with EntityNode<_Entities> {
 // (`productsOnProduct()`).
 @regents
 enum _Regents with RegentNode<_Regents> {
-  cart(CartUnit()),
   // coverage first — the gate reads it
   catalogCovered(CatalogCovered()),
-  // the gate: once the live catalog has covered, cache facts drop here —
+  // the gates: once the live catalog has covered, cache facts drop here;
+  // the entry gate fans out asks; the dedupe veto drops duplicate asks —
   // every row below sees only admitted messages (placement IS protection)
   catalogGate(CatalogGate()),
+  productEntryGate(ProductEntryGate()),
+  dedupeGetReviews(DedupeGetReviews()),
+  // the in-flight row — the dedupe gate reads it
+  reviewsInFlight(ReviewsInFlight()),
   // the disk-cache SHADOW — absent-only folds, supports main via the merge
   localProducts(LocalProducts()),
   products(Products()),
-  reviewsInFlight(ReviewsInFlight());
+  // the write dock — below every other reader: the prediction reaches them
+  // all, then the gate mints the capture; base never folds the promise
+  cartWriteGate(CartWriteGate()),
+  cartWrite(CartWriteUnit()),
+  cart(CartUnit()),
+  // 12. the stack — the session's LAST reader: it folds only navigation
+  // that survived every judge above; replay carries the session whole
+  nav(NavUnit());
 
   const _Regents(this.regent);
   @override
   final Regent regent;
 
-  // Merge edges — STORE rows only: the target reads-from the source through
-  // a projection, at read time (state is never copied).
+  // Merge edges — read-time projections, state is never copied: the dock's
+  // promise answers the cart's reads (unit-from-unit), the shadow answers
+  // the catalog's gaps (store-from-store).
   static final merges = {
+    cart.from(cartWrite, const WriteSupportsCart()),
     products.from(localProducts, const LocalProductSupports()),
   };
 }
@@ -291,20 +535,25 @@ final class LocalProductSupports
 }
 
 // The app's data SOURCE — faked for this runnable demo (the engine ships none;
-// the app owns transport). On each nav commit it loads the live product by
-// dispatching a SOURCE message (implements the sealed reduce family), which the
-// store reduces in. A real app pipes a socket through the same dispatch — and
+// the app owns transport). It answers entry facts and asks by dispatching
+// SOURCE messages (members of the sealed reduce families), which the stores
+// reduce in. A real app pipes a socket through the same dispatch — and
 // because the wire is just another subscriber, `ledger.dispatch` is the app's
 // only verb: the same call states a fact, sends a request, and (via the
-// `Awaits` twin) marks its key in flight.
+// in-flight row) marks its key in flight.
 void demoBackend() {
-  _Screens.graph.navigations.listen((_) {
-    for (final e in _Screens.graph.stack) {
-      if (e.screen == _Screens.product) {
-        final id = ProductId(e.id as String);
-        dispatch(ProductLoaded(id, 'Product $id', 1999));
-      }
-    }
+  // The entry FACT is the wire's cue too: the same admitted feed the entry
+  // gate shaped — no nav plumbing, no stack walking.
+  ledger.on<ProductEnteredMsg>().listen((e) {
+    dispatch(ProductLoaded(e.id, 'Product ${e.id}', 1999));
+  });
+  // The dock's wire half: the echo after a beat; the DEADLINE is a timer
+  // HERE in effects — the ledger judges the fact, it never holds a Timer.
+  // (A settled dock drops the late timeout at the gate.)
+  ledger.on<SetQty>().listen((p) async {
+    Timer(const Duration(seconds: 3), () => dispatch(const QtyTimedOut()));
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+    dispatch(QtySaved(p.productId, p.qty));
   });
   // The "server" answers a reviews request after a beat — long enough to watch
   // the derived `loading` status flip on and off.
@@ -582,6 +831,14 @@ class _Product extends StatelessWidget {
               ? null
               : () => dispatch(CartItemAdded(product.name)),
           child: Text('add to cart (${cart.count})'),
+        ),
+        const SizedBox(height: 8),
+        FilledButton.tonal(
+          // OPTIMISTIC via the write dock: an ABSOLUTE target quantity. The
+          // merged read shows it NOW; the echo confirms; silence reverts at
+          // the deadline fact.
+          onPressed: () => dispatch(SetQty(id, (cart.qty[id] ?? 0) + 1)),
+          child: Text('qty ${cart.qty[id] ?? 0} +'),
         ),
         const SizedBox(height: 8),
         // OWNED children: reviews live INSIDE the product (the entity graph's

@@ -276,7 +276,15 @@ class RegistryGenerator extends GeneratorForAnnotation<Regents> {
     // (re)seeded so restores and system pops stay truth.
     if (navUnitRow != null && triggers.isNotEmpty) {
       final scrEnum = triggers.first.$1;
-      binds.add('    $scrEnum.graph.routeOps(dispatch);');
+      // Verb-routed ops mirror SYNCHRONOUSLY — dispatch folds the NavUnit on
+      // the spine, so the folded state is readable on return and the verbs'
+      // placement returns (pop's destination) stay truthful. The async
+      // events tap mirrors NavOps from every other door (gates, restores).
+      binds.add('    $scrEnum.graph.routeOps((op) {');
+      binds.add('      dispatch(op);');
+      binds.add('      final s = ${navUnitRow}Store.value;');
+      binds.add('      if (s != null) $scrEnum.graph.applyState(s);');
+      binds.add('    });');
       binds.add('    ${navUnitRow}Store.events.listen((e) {');
       binds.add('      final s = e.after;');
       binds.add('      if (s != null) $scrEnum.graph.applyState(s);');

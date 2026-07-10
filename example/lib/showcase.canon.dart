@@ -4734,11 +4734,13 @@ class ProductEnteredMsg extends Msg {
   final ProductId id;
 }
 
-late final UnitMemory<CartState, CartMsg> cartStore;
 late final UnitMemory<bool, ProductMsg> catalogCoveredStore;
+late final UnitMemory<Set<ProductId>, Msg> reviewsInFlightStore;
 late final StoreMemory<ProductId, Product, ProductMsg> localProductsStore;
 late final StoreMemory<ProductId, Product, ProductMsg> productsStore;
-late final UnitMemory<Set<ProductId>, Msg> reviewsInFlightStore;
+late final UnitMemory<CartWrite, CartMsg> cartWriteStore;
+late final UnitMemory<CartState, CartMsg> cartStore;
+late final UnitMemory<NavState?, Msg> navStore;
 
 /// The generated data surface, hung on [Ledger] so `ledger.` is the one api.
 extension on Ledger {
@@ -4746,26 +4748,44 @@ extension on Ledger {
   void bind() {
     if (_bound) return;
     _bound = true;
-    cartStore = unit(_Regents.cart.regent as Unit<CartState, CartMsg>);
     catalogCoveredStore = unit(
       _Regents.catalogCovered.regent as Unit<bool, ProductMsg>,
     );
     guard(_Regents.catalogGate.regent as Guard<CatalogCacheMsg>);
+    guard(_Regents.productEntryGate.regent as Guard<ProductEnteredMsg>);
+    guard(_Regents.dedupeGetReviews.regent as Guard<GetReviews>);
+    reviewsInFlightStore = unit(
+      _Regents.reviewsInFlight.regent as Unit<Set<ProductId>, Msg>,
+    );
     localProductsStore = store(
       _Regents.localProducts.regent as Store<ProductId, Product, ProductMsg>,
     );
     productsStore = store(
       _Regents.products.regent as Store<ProductId, Product, ProductMsg>,
     );
-    reviewsInFlightStore = unit(
-      _Regents.reviewsInFlight.regent as Unit<Set<ProductId>, Msg>,
+    guard(_Regents.cartWriteGate.regent as Guard<CartMsg>);
+    cartWriteStore = unit(
+      _Regents.cartWrite.regent as Unit<CartWrite, CartMsg>,
     );
+    cartStore = unit(_Regents.cart.regent as Unit<CartState, CartMsg>);
+    navStore = unit(_Regents.nav.regent as Unit<NavState?, Msg>);
     _Screens.graph.navigations.listen((n) {
       final (screen, id) = n.destination;
       if (screen == _Screens.product) {
         dispatch(ProductEnteredMsg(id as ProductId));
       }
     });
+    _Screens.graph.routeOps((op) {
+      dispatch(op);
+      final s = navStore.value;
+      if (s != null) _Screens.graph.applyState(s);
+    });
+    navStore.events.listen((e) {
+      final s = e.after;
+      if (s != null) _Screens.graph.applyState(s);
+    });
+    dispatch(SeedOp(_Screens.graph.navState));
+    cartStore.merge(cartWriteStore, const WriteSupportsCart());
     productsStore.mergeStore(localProductsStore, const LocalProductSupports());
   }
 
