@@ -16,7 +16,7 @@ live chain), and the claimed handle gated by generated `<Node>On` chain
 markers — a chain that evidences nothing about the identity is a compile
 error. `bind()` node-tags every store, so ambient reads resolve by MATCH,
 never by distance. Build-time checks keep the spec honest: every
-`read(const X())` in a guard must name a citizen of the enum, and every
+`read(const X())` in a guard must name a regent of the enum, and every
 store's entity must be a row of `@entities`.
 
 The example is the family's showcase (an ecommerce domain): `welcome.dart`

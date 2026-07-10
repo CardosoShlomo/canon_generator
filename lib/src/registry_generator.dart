@@ -21,10 +21,10 @@ class _EntityInfo {
   final bool owned;
 }
 
-/// Reads a `@regents` enum — the CITIZENS of the ledger — and emits the typed
+/// Reads a `@regents` enum — the REGENTS of the ledger — and emits the typed
 /// DATA surface. A row declares the two things no grammar derives: that the
-/// citizen exists, and its spec (`ads(Ads())`, `cachedChatsGate(CachedChatsGate())`).
-/// ROW ORDER IS TRAVERSAL ORDER: bind() registers citizens top to bottom, so a
+/// regent exists, and its spec (`ads(Ads())`, `cachedChatsGate(CachedChatsGate())`).
+/// ROW ORDER IS TRAVERSAL ORDER: bind() registers regents top to bottom, so a
 /// guard row protects exactly the rows below it. Merge edges live in the
 /// enum's static `merges` set (`users.from(viewer, const P())`) — STORE rows
 /// only, both ends. Everything else derives from the `@entities` graph through
@@ -63,10 +63,10 @@ class RegistryGenerator extends GeneratorForAnnotation<Regents> {
     final nodeTypeOf = <String, String>{};
     String? navUnitRow;
 
-    // Every `read(const X())` in an enrolled guard must name a citizen of
+    // Every `read(const X())` in an enrolled guard must name a regent of
     // THIS enum — checked at build, so an unknown class or a missing `const`
     // fails codegen instead of throwing at the first judge.
-    await _validateReadCitizenship(element, buildStep);
+    await _validateReadRegents(element, buildStep);
 
     // The @entities space: entity TYPE name → its row info (node + ownedness).
     final entityByType = await _entitiesByType(element, buildStep);
@@ -381,7 +381,7 @@ class RegistryGenerator extends GeneratorForAnnotation<Regents> {
 
     // Merge wiring — after every memory is bound (an edge references two).
     // STORE rows only, both ends: a guard has no memory to merge (the one
-    // queue orders them, but readers and judges are different citizens).
+    // queue orders them, but readers and judges are different regents).
     for (final (target, source, projection) in mergeEdges) {
       final t = rowKind[target];
       final sk = rowKind[source];
@@ -888,20 +888,20 @@ class RegistryGenerator extends GeneratorForAnnotation<Regents> {
     return [for (final a in args) a.toSource()];
   }
 
-  /// Build-time citizenship: every `read(…)` argument inside a guard class
+  /// The build-time regent check: every `read(…)` argument inside a guard class
   /// held by a row must be a `const` construction of a class some row holds.
   /// (Exact-args identity stays a runtime law; the class-level and
   /// missing-`const` mistakes fail HERE, with the guard and row named.)
-  Future<void> _validateReadCitizenship(
+  Future<void> _validateReadRegents(
       EnumElement element, BuildStep buildStep) async {
-    final citizenTypes = <InterfaceElement>{};
+    final regentTypes = <InterfaceElement>{};
     final guards = <InterfaceElement>[];
     for (final field in element.fields) {
       if (!field.isEnumConstant) continue;
       final held = field.computeConstantValue()?.getField('regent')?.type;
       final el = held is InterfaceType ? held.element : null;
       if (el == null) continue;
-      citizenTypes.add(el);
+      regentTypes.add(el);
       if (el.allSupertypes
           .any((s) => s.element.name == 'Guard' && s.typeArguments.length == 1)) {
         guards.add(el);
@@ -917,7 +917,7 @@ class RegistryGenerator extends GeneratorForAnnotation<Regents> {
         if (arg is! InstanceCreationExpression) {
           throw InvalidGenerationSourceError(
               'guard "${guard.name}" passes `${arg.toSource()}` to `read` — '
-              'name the citizen with an inline `const <Class>(…)` so the '
+              'name the regent with an inline `const <Class>(…)` so the '
               'build can check it against the regents enum.',
               element: element);
         }
@@ -925,16 +925,16 @@ class RegistryGenerator extends GeneratorForAnnotation<Regents> {
           throw InvalidGenerationSourceError(
               'guard "${guard.name}" reads `${arg.toSource()}` without '
               '`const` — a non-const expression is a fresh instance, never '
-              'the enrolled citizen.',
+              'the enrolled regent.',
               element: element);
         }
         final target = arg.staticType;
         final targetEl = target is InterfaceType ? target.element : null;
-        if (targetEl == null || !citizenTypes.contains(targetEl)) {
+        if (targetEl == null || !regentTypes.contains(targetEl)) {
           throw InvalidGenerationSourceError(
               'guard "${guard.name}" reads `${arg.toSource()}`, but no row '
               'of $enumMark holds a ${targetEl?.name ?? arg.toSource()} — '
-              'every read names a citizen of the regents enum.',
+              'every read names a regent of the enum.',
               element: element);
         }
       }

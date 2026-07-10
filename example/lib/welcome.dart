@@ -10,7 +10,7 @@ part 'welcome.canon.dart';
 //
 //   Ids       the identity space (typed ids, URL codecs)
 //   _Entities what exists
-//   _Regents  the LEDGER's citizens, in traversal order: a coverage unit,
+//   _Regents  the LEDGER's regents, in traversal order: a coverage unit,
 //             a veto standing above the rows it protects, a disk-cache
 //             shadow store, the main store — plus the merge edge that lets
 //             the shadow answer reads
@@ -87,7 +87,7 @@ class Todo with Identifiable<TodoId> {
   int get hashCode => Object.hash(id, title, done);
 }
 
-// ── The citizens ──
+// ── The regents ──
 final class Todos extends Store<TodoId, Todo, TodoMsg> {
   const Todos();
 
@@ -135,7 +135,7 @@ final class TodosCovered extends Unit<bool, TodoMsg> {
 
 /// The GATE — a veto row above the shadow: once the authority has spoken,
 /// a late cache fact is dropped for every row below. Judges through `read` —
-/// the ledger's own state by citizen identity; pure and replayable.
+/// the ledger's own state by regent identity; pure and replayable.
 final class CachedTodosGate extends Veto<CachedTodosMsg> {
   const CachedTodosGate();
   @override
@@ -162,7 +162,7 @@ enum _Entities with EntityNode<_Entities> {
   final Ids? key;
 }
 
-// ── Regents: the ledger's citizens, row order = traversal order ──
+// ── Regents: row order = traversal order ──
 @canon
 enum _Regents with RegentNode<_Regents> {
   todosCovered(TodosCovered()),

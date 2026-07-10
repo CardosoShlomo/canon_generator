@@ -23,7 +23,7 @@ part 'showcase.canon.dart';
 //  10. unit-from-unit merge: the pending promise answers reads instantly
 //  11. scope entry as a FACT: committed navigation dispatches
 //      `ProductEnteredMsg`; ask policy is an ordinary gate judging it
-//  12. ledger-owned NAVIGATION: `nav(NavUnit())` — the stack is a citizen,
+//  12. ledger-owned NAVIGATION: `nav(NavUnit())` — the stack is a regent,
 //      so replay carries the session whole
 //  13. replay: order-(in)dependence as an executable LAW
 //      (test/showcase_laws_test.dart)
@@ -156,7 +156,7 @@ class ProductLoaded extends ProductMsg {
 // The DISK CACHE speaking at boot. It folds into the SHADOW store (which
 // supports the main store's reads through a merge edge) and is vetoed by
 // the gate row once the live catalog has covered this session — the full
-// shadow/coverage/gate pattern in three citizens.
+// shadow/coverage/gate pattern in three regents.
 class CatalogCacheMsg extends ProductMsg {
   CatalogCacheMsg(super.id, this.name, this.price);
   final String name;
@@ -530,8 +530,8 @@ enum _Entities with EntityNode<_Entities> {
   });
 }
 
-// ── The CITIZENS grammar (@regents) ───────────────────────────────────
-// A row declares the two things nothing derives: that this citizen exists,
+// ── The REGENTS grammar ───────────────────────────────────
+// A row declares the two things nothing derives: that this regent exists,
 // and its spec. ROW ORDER IS TRAVERSAL ORDER — the guard row protects the
 // rows below it (readers fold what passes; judges decide what passes). The
 // generator hangs typed reads on `ledger`; because the `product` screen
@@ -589,7 +589,7 @@ final class CatalogCovered extends Unit<bool, ProductMsg> {
 }
 
 /// A VETO row: judges [CatalogCacheMsg] against the coverage unit through
-/// `read` — the ledger's own state by citizen identity — pure, replayable,
+/// `read` — the ledger's own state by regent identity — pure, replayable,
 /// positional.
 final class CatalogGate extends Veto<CatalogCacheMsg> {
   const CatalogGate();

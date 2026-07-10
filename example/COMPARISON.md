@@ -139,7 +139,7 @@ expect(replay(_Regents.values, [cache, serverList]),
 ```
 
 The riverpod flag is the same idea — "coverage" — as private mutable state
-with its race conditions hand-managed. Canon makes it a citizen: the gate's
+with its race conditions hand-managed. Canon makes it a regent: the gate's
 *position* is the precedence rule, and the convergence claim is a one-line
 test that actually runs.
 
@@ -204,7 +204,7 @@ Where go_router + riverpod wins:
   declarations (`@IDs` `@entities` `@regents` `@screens`) are ~60 lines of
   ceremony before the first frame.
 - **Familiarity**: every Flutter dev reads a Notifier cold; canon's
-  vocabulary (citizens, gates, folds, plants) must be learned.
+  vocabulary (regents, gates, folds, plants) must be learned.
 - **Escape hatches**: ad-hoc mutation is one method away when you want to
   cheat. Canon makes cheating a compile error — which is the product, but
   on day one it feels like friction.
