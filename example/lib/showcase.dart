@@ -39,7 +39,10 @@ part 'showcase.canon.dart';
 //      `ProductID.on(context, On.seller)?.goSellerChat()` — the other
 //      component read from the claimed chain; a chain that evidences
 //      nothing is a COMPILE error (the `ProductOn` marker), a claim that
-//      misses the live chain is null (the button simply doesn't render)
+//      misses the live chain is null (the button simply doesn't render).
+//      Identity is NODE-MATCHED: with product (item) and seller (screen)
+//      both ambient, `SellerID.of(context)` walks past the nearer product
+//      scope — a read can never answer with another node's id
 //
 // Most screens are a color + a row of nav buttons; `product` is a REAL
 // consuming screen, so this doubles as the runnable app you test on.
@@ -869,12 +872,20 @@ class _ProductTile extends StatelessWidget {
           child: Text(
               '${product.name} · \$${(product.price / 100).toStringAsFixed(2)}'),
         ),
-        if (claimed != null)
+        if (claimed != null) ...[
           TextButton(
             onPressed: () =>
                 ProductID.on(context, On.seller)?.goSellerChat(),
             child: const Text('ask', style: TextStyle(color: Colors.white70)),
           ),
+          // TWO identities are ambient here: the item's (product) and the
+          // screen's (seller). Reads resolve BY NODE, so this walks PAST
+          // the nearer product scope to the seller — never the wrong id
+          // wearing the right type. (`SellerID.screenOf`/`ProductID.itemOf`
+          // name one source explicitly when nearness shouldn't decide.)
+          Text('sold by ${SellerID.of(context)}',
+              style: const TextStyle(color: Colors.white38, fontSize: 12)),
+        ],
       ],
     );
   }
