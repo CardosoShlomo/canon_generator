@@ -165,7 +165,7 @@ class CatalogCacheMsg extends ProductMsg {
 
 // A page of OLDER reviews for one product — appends; the id-keyed map dedupes
 // page overlaps by construction.
-class ReviewsPage extends ProductMsg {
+class ReviewsPage extends ProductMsg implements ReviewsInFlightMsg {
   ReviewsPage(super.id, this.reviews, {required this.hasMore});
   final List<Review> reviews;
   final bool hasMore;
@@ -174,24 +174,28 @@ class ReviewsPage extends ProductMsg {
 // The REQUEST is NOT part of the reduce family — it has no state effect, so
 // the reduce never carries a dead arm for it. The in-flight row below
 // tracks it instead.
-class GetReviews extends Msg {
+class GetReviews extends Msg implements ReviewsInFlightMsg {
   GetReviews(this.productId, {this.before});
   final ProductId productId;
   final ReviewId? before;
 }
 
+// The SHADOW LAW: no row reduces the unsealed root `Msg`. A row whose facts
+// cross families declares a sealed GROUP its facts `implements` — the
+// reduce is exhaustive, and a new member is a compile error until answered.
+sealed class ReviewsInFlightMsg extends Msg {}
+
 // 7. Request status as an HONEST ROW: dispatching `GetReviews` folds the
 // key in, the page arriving folds it out. Presence = loading; no machinery,
 // no `loading` field in Product.
-final class ReviewsInFlight extends Unit<Set<ProductId>, Msg> {
+final class ReviewsInFlight extends Unit<Set<ProductId>, ReviewsInFlightMsg> {
   const ReviewsInFlight() : super(const {});
 
   @override
-  Set<ProductId> reduce(Set<ProductId> state, Msg msg) => switch (msg) {
+  Set<ProductId> reduce(Set<ProductId> state, ReviewsInFlightMsg msg) =>
+      switch (msg) {
         GetReviews(:final productId) => {...state, productId},
-        ReviewsPage(:final id) =>
-          {for (final k in state) if (k != id) k},
-        _ => state,
+        ReviewsPage(:final id) => {for (final k in state) if (k != id) k},
       };
 }
 

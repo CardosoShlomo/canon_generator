@@ -124,13 +124,13 @@ class RegistryGenerator extends GeneratorForAnnotation<Regents> {
         }
         final mType = v.typeArguments.last;
         final mEl = mType is InterfaceType ? mType.element : null;
-        // The root `Msg` is admitted unsealed: a SHADOW reduces the whole
-        // space and delegates, so its default arm is the design.
-        if (mEl is! ClassElement || !(mEl.isSealed || mEl.name == 'Msg')) {
+        // The SHADOW LAW: no row reduces the unsealed root `Msg` — a
+        // cross-family row declares a sealed GROUP its facts implement.
+        if (mEl is! ClassElement || !mEl.isSealed) {
           throw InvalidGenerationSourceError(
               'unit store "$name" reduces `${mType.getDisplayString()}`, which '
-              'must be a `sealed` class so its reduce is exhaustively '
-              'pattern-matched.',
+              'must be a `sealed` class (a sealed GROUP for cross-family '
+              'rows) so its reduce is exhaustively pattern-matched.',
               element: element);
         }
         final superT = 'Unit<${vArgs.join(', ')}>';
@@ -294,11 +294,13 @@ class RegistryGenerator extends GeneratorForAnnotation<Regents> {
       // variant slips past the reduce with no compile error. Enforce it.
       final mType = s.typeArguments.last;
       final mEl = mType is InterfaceType ? mType.element : null;
-      // The root `Msg` is admitted unsealed (shadow delegation).
-      if (mEl is! ClassElement || !(mEl.isSealed || mEl.name == 'Msg')) {
+      // The SHADOW LAW: no row reduces the unsealed root `Msg` — a
+      // cross-family row declares a sealed GROUP its facts implement.
+      if (mEl is! ClassElement || !mEl.isSealed) {
         throw InvalidGenerationSourceError(
             'store "$name" reduces `${mType.getDisplayString()}`, which must '
-            'be a `sealed` class so its reduce is exhaustively pattern-matched.',
+            'be a `sealed` class (a sealed GROUP for cross-family rows) so '
+            'its reduce is exhaustively pattern-matched.',
             element: element);
       }
       // Store<K, E, M> → a keyed, optimistic store, exposed as the PUBLIC

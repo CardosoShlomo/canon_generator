@@ -5563,14 +5563,14 @@ class SellerChatEnteredMsg extends Msg {
 }
 
 late final UnitMemory<bool, ProductMsg> catalogCoveredStore;
-late final UnitMemory<Set<ProductId>, Msg> reviewsInFlightStore;
+late final UnitMemory<Set<ProductId>, ReviewsInFlightMsg> reviewsInFlightStore;
 late final StoreMemory<ProductId, Product, ProductMsg> localProductsStore;
 late final StoreMemory<ProductId, Product, ProductMsg> productsStore;
 late final StoreMemory<SellerChatId, SellerThread, SellerChatMsg>
 sellerThreadsStore;
 late final UnitMemory<CartWrite, CartMsg> cartWriteStore;
 late final UnitMemory<CartState, CartMsg> cartStore;
-late final UnitMemory<NavState?, Msg> navStore;
+late final UnitMemory<NavState?, NavOp> navStore;
 
 /// The generated data surface, hung on [Ledger] so `ledger.` is the one api.
 extension on Ledger {
@@ -5585,7 +5585,8 @@ extension on Ledger {
     guard(_Regents.productEntryGate.regent as Guard<ProductEnteredMsg>);
     guard(_Regents.dedupeGetReviews.regent as Guard<GetReviews>);
     reviewsInFlightStore = unit(
-      _Regents.reviewsInFlight.regent as Unit<Set<ProductId>, Msg>,
+      _Regents.reviewsInFlight.regent
+          as Unit<Set<ProductId>, ReviewsInFlightMsg>,
     );
     localProductsStore = store(
       _Regents.localProducts.regent as Store<ProductId, Product, ProductMsg>,
@@ -5606,7 +5607,7 @@ extension on Ledger {
       _Regents.cartWrite.regent as Unit<CartWrite, CartMsg>,
     );
     cartStore = unit(_Regents.cart.regent as Unit<CartState, CartMsg>);
-    navStore = unit(_Regents.nav.regent as Unit<NavState?, Msg>);
+    navStore = unit(_Regents.nav.regent as Unit<NavState?, NavOp>);
     _Screens.graph.navigations.listen((n) {
       final (screen, id) = n.destination;
       if (screen == _Screens.product) {

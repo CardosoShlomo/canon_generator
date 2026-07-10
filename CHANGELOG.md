@@ -2,6 +2,7 @@
 
 - canon ^0.29.0 + regent ^0.11.0 (judgments: guards return `.forward`/`.mint` launches).
 - The showcase demonstrates the MINT door: `ThreadGate` derives `ThreadOpened` from the chat's entry fact — the row above it folds the derivation (tour point 16).
+- The SHADOW LAW enforced at build time: the root-`Msg` escape hatch is gone — every row's message type must be sealed (a sealed GROUP for cross-family rows).
 
 ## 0.34.0
 
