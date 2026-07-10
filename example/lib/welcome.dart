@@ -230,7 +230,7 @@ class _TodoTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final todo = todosStore(id).of(context); // ONE entity — surgical
+    final todo = todosStore.entityOf(context, id); // ONE entity — surgical
     if (todo == null) return const SizedBox.shrink();
     return ListTile(
       title: Text(todo.title),
@@ -250,7 +250,7 @@ class TodoScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final TodoId id = context.idOf(.todo); // ambient identity
-    final todo = todosStore(id).of(context);
+    final todo = todosStore.entityOf(context, id);
     return Scaffold(
       appBar: AppBar(
         title: Text(todo?.title ?? '…'),
