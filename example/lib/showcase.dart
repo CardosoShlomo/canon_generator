@@ -33,6 +33,13 @@ part 'showcase.canon.dart';
 //      (the nearest ambient identity — item scope, else the screen's own;
 //      the fold enforces the edge). Ambient reads ride the same identity:
 //      `productsStore.entityOf(context)`, `inFlight.containsIdOf(context)`
+//  15. the GATED tier: a COMPOSITE identity (`sellerChat` = product ×
+//      seller) — `SellerChatID.of(context)` on its screen, component
+//      projections, and the CLAIMED handle
+//      `ProductID.on(context, On.seller)?.goSellerChat()` — the other
+//      component read from the claimed chain; a chain that evidences
+//      nothing is a COMPILE error (the `ProductOn` marker), a claim that
+//      misses the live chain is null (the button simply doesn't render)
 //
 // Most screens are a color + a row of nav buttons; `product` is a REAL
 // consuming screen, so this doubles as the runnable app you test on.
@@ -64,11 +71,20 @@ enum Ids with IdNode {
   seller(.username),
   category(.string),
   order(.uuid),
-  listing(.uuid);
+  listing(.uuid),
+  // A COMPOSITE identity: a seller chat is about one product with one
+  // seller — the PAIR is the conversation's id (`SellerChatId` generates
+  // with `.product`/`.seller` component getters).
+  sellerChat.compose(product, seller);
 
-  const Ids(this.codec);
+  const Ids(Codec this._codec) : n1 = null, n2 = null;
+  const Ids.compose(IdNode this.n1, IdNode this.n2) : _codec = null;
+
+  final Codec? _codec;
+  final IdNode? n1, n2;
+
   @override
-  final Codec codec;
+  Codec get codec => _codec ?? Codec.composite(n1!.codec, n2!.codec);
 }
 
 // ── The STORES (consumer-defined; pure `reduce` on the `ledger` engine) ───
@@ -216,6 +232,41 @@ final class Products extends Store<ProductId, Product, ProductMsg> {
                     reviews: {...p.reviews, for (final r in reviews) r.id: r},
                     hasMoreReviews: hasMore,
                   )),
+      };
+}
+
+// ── The seller-chat thread: a COMPOSITE-keyed store ────────────────────
+// The key is the (product, seller) pair — one thread per conversation.
+class SellerThread with Identifiable<SellerChatId> {
+  SellerThread(this.id, this.opened);
+  @override
+  final SellerChatId id;
+  final int opened;
+}
+
+sealed class SellerChatMsg extends Msg {
+  const SellerChatMsg();
+}
+
+/// The thread was entered — dispatched by the chat screen's own body with
+/// its AMBIENT id (`SellerChatID.of(context)`): the write stays an explicit
+/// fact, the id it carries was read ambiently.
+class ThreadOpened extends SellerChatMsg {
+  const ThreadOpened(this.id);
+  final SellerChatId id;
+}
+
+final class SellerThreads
+    extends Store<SellerChatId, SellerThread, SellerChatMsg> {
+  const SellerThreads();
+
+  @override
+  IdentifiableMap<SellerChatId, SellerThread> reduce(
+          IdentifiableMap<SellerChatId, SellerThread> entities,
+          SellerChatMsg msg) =>
+      switch (msg) {
+        ThreadOpened(:final id) =>
+          entities.upsert(SellerThread(id, (entities[id]?.opened ?? 0) + 1)),
       };
 }
 
@@ -428,7 +479,8 @@ enum _Entities with EntityNode<_Entities> {
   coverage(bool),
   inFlight(Set<ProductId>),
   product(Product, .product),
-  review(Review, .review);
+  review(Review, .review),
+  sellerThread(SellerThread, .sellerChat);
 
   const _Entities(this.type, [this.key]);
   @override
@@ -472,6 +524,8 @@ enum _Regents with RegentNode<_Regents> {
   // the disk-cache SHADOW — absent-only folds, supports main via the merge
   localProducts(LocalProducts()),
   products(Products()),
+  // the composite-keyed thread — its id node powers the gated identity tier
+  sellerThreads(SellerThreads()),
   // the write dock — below every other reader: the prediction reaches them
   // all, then the gate mints the capture; base never folds the promise
   cartWriteGate(CartWriteGate()),
@@ -608,7 +662,9 @@ enum _Screens with ScreenNode<_Screens> {
   scan(_S('Scan', Color(0xFF039BE5))),
   category(_S('Category', Color(0xFF43A047)), Ids.category),
   product(_Product(), Ids.product),
-  seller(_S('Seller', Color(0xFFD81B60)), Ids.seller),
+  seller(_S('Seller', Color(0xFFD81B60), body: [_ProductsStrip()]), Ids.seller),
+  sellerChat(_S('Seller chat', Color(0xFFC2185B), body: [_SellerChatBody()]),
+      Ids.sellerChat),
 
   wishlist(_S('Wishlist', Color(0xFFF4511E))),
   account(_S('Account', Color(0xFF6D4C41))),
@@ -629,7 +685,7 @@ enum _Screens with ScreenNode<_Screens> {
   // `parentOf` or a chain. It cycles back through its seller (collapsed by
   // `.cycled`) and carries `?variant=` + `#tab=` view-state.
   static _Screens _product() => product({
-        seller({product.cycled}),
+        seller({product.cycled, sellerChat}),
       }).query({_PV.variant(.string)}).fragment({_Tab.tab(.string)});
 
   static final graph = NavGraph(
@@ -796,13 +852,57 @@ class _ProductTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final product = EntityScope.of<Product>(context);
-    return OutlinedButton(
-      onPressed: () => ProductID.navOf(context).go(),
-      style: OutlinedButton.styleFrom(
-          foregroundColor: Colors.white,
-          side: const BorderSide(color: Colors.white54)),
-      child: Text(
-          '${product.name} · \$${(product.price / 100).toStringAsFixed(2)}'),
+    // The CLAIMED tier: on the seller screen the chain EVIDENCES the pair
+    // (seller + this product ⇒ the seller-chat composite), so the claim
+    // resolves and the button renders; on search it is null and no button.
+    // A chain proving nothing (`On.home`) would not even compile: the
+    // parameter type is the generated `ProductOn` marker.
+    final claimed = ProductID.on(context, On.seller);
+    return Row(
+      mainAxisSize: .min,
+      children: [
+        OutlinedButton(
+          onPressed: () => ProductID.navOf(context).go(),
+          style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.white,
+              side: const BorderSide(color: Colors.white54)),
+          child: Text(
+              '${product.name} · \$${(product.price / 100).toStringAsFixed(2)}'),
+        ),
+        if (claimed != null)
+          TextButton(
+            onPressed: () =>
+                ProductID.on(context, On.seller)?.goSellerChat(),
+            child: const Text('ask', style: TextStyle(color: Colors.white70)),
+          ),
+      ],
+    );
+  }
+}
+
+// The composite-identity screen: its id (the pair) is ambient from the
+// SCREEN scope — `SellerChatID.of(context)` reads it typed, `entityOf`
+// reads the thread at it, and the FACT it dispatches carries the id it
+// read ambiently (writes stay explicit; only the reading is ambient).
+class _SellerChatBody extends StatelessWidget {
+  const _SellerChatBody();
+
+  @override
+  Widget build(BuildContext context) {
+    final thread = sellerThreadsStore.entityOf(context);
+    const style = TextStyle(color: Colors.white70, fontSize: 14);
+    return Column(
+      crossAxisAlignment: .start,
+      children: [
+        Text('product ${SellerChatID.of(context).product}', style: style),
+        Text('seller ${SellerChatID.of(context).seller}', style: style),
+        Text('opened ${thread?.opened ?? 0}×', style: style),
+        const SizedBox(height: 8),
+        FilledButton.tonal(
+          onPressed: () => dispatch(ThreadOpened(SellerChatID.of(context))),
+          child: const Text('mark opened'),
+        ),
+      ],
     );
   }
 }
