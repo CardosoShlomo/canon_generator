@@ -40,6 +40,10 @@ class RegistryGenerator extends GeneratorForAnnotation<Regents> {
     }
 
     final enumName = element.name;
+    // The identity faces mention BuildContext — emit them only where the
+    // Flutter binding is imported, so pure-Dart consumers stay pure.
+    final flutterBound = element.library.firstFragment.libraryImports.any((i) =>
+        i.importedLibrary?.uri.toString().contains('canon_flutter') ?? false);
     final fields = <String>[]; // store field decls
     final binds = <String>[]; // bind() body lines
     final reads = <String>[]; // typed accessors
@@ -47,6 +51,11 @@ class RegistryGenerator extends GeneratorForAnnotation<Regents> {
     // ref, key type) per screen↔store association; emitted as ONE committed-
     // navigation listener consulting each spec's `surface`.
     final triggers = <(String, String, String, String, String)>[];
+    // Deictic item navigation — per id NODE (every store on the node shares
+    // one verb set): node identity → (typed key, node name, own screens,
+    // component projections (enum, screen, component)).
+    final idNavs = <String,
+        (String, String, List<(String, String)>, List<(String, String, String)>)>{};
     String? navUnitRow;
 
     // Every `read(const X())` in an enrolled guard must name a citizen of
@@ -210,6 +219,24 @@ class RegistryGenerator extends GeneratorForAnnotation<Regents> {
       // Screens sharing this entity's id-node — the derived association.
       final keyNode = _nodeId(info.node);
       final screens = screensByNode[keyNode] ?? const <(String, String)>[];
+      final nodeName = info.node?.getField('_name')?.toStringValue();
+      if (keyNode != null && nodeName != null) {
+        // A composite node's components project: `id.user` reaches the
+        // component's own screens (goUser from an adChat identity).
+        final compVerbs = <(String, String, String)>[]; // enum, screen, component
+        for (final comp in [info.node?.getField('n1'), info.node?.getField('n2')]) {
+          final compName = comp?.getField('_name')?.toStringValue();
+          if (compName == null) continue;
+          for (final (en, scr)
+              in screensByNode[_nodeId(comp)] ?? const <(String, String)>[]) {
+            compVerbs.add((en, scr, compName));
+          }
+        }
+        if (screens.isNotEmpty || compVerbs.isNotEmpty) {
+          idNavs.putIfAbsent(keyNode,
+              () => (typedKey ?? keyType, nodeName, screens, compVerbs));
+        }
+      }
 
       // The reduce switches over M, so M MUST be sealed — else a new message
       // variant slips past the reduce with no compile error. Enforce it.
@@ -368,7 +395,74 @@ class RegistryGenerator extends GeneratorForAnnotation<Regents> {
       b.writeln(r.replaceFirst('  static ', '  ')); // reads → instance methods
     }
     b.writeln('}');
+    // Deictic id-surgical navigation: forward verbs on `IdNav<K>`, one set
+    // per id node, minted by `IdScope.of<K>(context)` (works under an
+    // EntityScope too). Each verb anchors at the claiming widget's screen
+    // (popTo = the deictic verification: a stale or parked context throws)
+    // and takes the edge with edgeRequired enforcement — the id is the
+    // scope's own, never passed at the call site.
+    final navKeys = <String, String>{}; // typed key → node (collision guard)
+    for (final e in idNavs.entries) {
+      final (key, nodeName, screens, compVerbs) = e.value;
+      final prior = navKeys[key];
+      if (prior != null) {
+        throw InvalidGenerationSourceError(
+            'id nodes `$prior` and `$nodeName` both key as `$key` — their '
+            'IdNav verb sets would collide; give the nodes @IDs typed ids.',
+            element: element);
+      }
+      navKeys[key] = nodeName;
+      b.writeln();
+      // The identity FACE: `ProductID.of(context)` — the capital-ID stamp
+      // marks canon's generated identity beside the `ProductId` value type.
+      // Flutter-only (BuildContext), so gated on the binding being imported.
+      if (flutterBound) {
+        b.writeln('/// Canon\'s `$nodeName` identity face: `of` reads the ambient');
+        b.writeln('/// typed id, `navOf` mints the deictic handle for the verbs.');
+        b.writeln('abstract final class ${_cap(nodeName)}ID {');
+        b.writeln('  static $key of(BuildContext context) =>');
+        b.writeln('      IdScope.of<$key>(context);');
+        b.writeln('  static IdNav<$key> navOf(BuildContext context) =>');
+        b.writeln('      IdScope.navOf<$key>(context);');
+        b.writeln('}');
+        b.writeln();
+      }
+      b.writeln('/// Deictic forward verbs for the `$nodeName` identity —');
+      b.writeln('/// obtain via `${_cap(nodeName)}ID.navOf(context)`; the id is ambient.');
+      b.writeln('extension ${_cap(nodeName)}IdNav on IdNav<$key> {');
+      for (final (scrEnum, scr) in screens) {
+        final verb = _entityVerb(scr, nodeName);
+        b.writeln('  void $verb() {');
+        b.writeln('    $scrEnum.graph.popTo(screen);');
+        b.writeln('    $scrEnum.graph.go($scrEnum.$scr, id, true);');
+        b.writeln('  }');
+      }
+      // Component projections keep the full screen name: the scope is the
+      // COMPOSITE identity, so the component is worth saying (goUser from
+      // an adChat identity).
+      for (final (scrEnum, scr, comp) in compVerbs) {
+        b.writeln('  void go${_cap(scr)}() {');
+        b.writeln('    $scrEnum.graph.popTo(screen);');
+        b.writeln('    $scrEnum.graph.go($scrEnum.$scr, id.$comp, true);');
+        b.writeln('  }');
+      }
+      b.writeln('}');
+    }
     return b.toString();
+  }
+
+  /// The deictic verb name for screen [scr] presenting the [nodeName] node:
+  /// the self screen is plain `go`; other screens strip the node's name
+  /// (the scope already says it) — `userFeed` on node `user` → `goFeed`.
+  String _entityVerb(String scr, String? nodeName) {
+    if (nodeName == null) return 'go${_cap(scr)}';
+    if (scr == nodeName) return 'go';
+    if (scr.startsWith(nodeName)) return 'go${scr.substring(nodeName.length)}';
+    final cap = _cap(nodeName);
+    if (scr.endsWith(cap)) {
+      return 'go${_cap(scr.substring(0, scr.length - cap.length))}';
+    }
+    return 'go${_cap(scr)}';
   }
 
   String _cap(String s) => s[0].toUpperCase() + s.substring(1);

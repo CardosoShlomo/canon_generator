@@ -27,6 +27,12 @@ part 'showcase.canon.dart';
 //      so replay carries the session whole
 //  13. replay: order-(in)dependence as an executable LAW
 //      (test/showcase_laws_test.dart)
+//  14. DEICTIC id-surgical navigation: `ProductID.navOf(context).go()` — an
+//      item navigates from where it stands; no chain named, no id passed
+//      (`ProductID.of(context)` reads the ambient typed id itself)
+//      (the nearest ambient identity — item scope, else the screen's own;
+//      the fold enforces the edge). Ambient reads ride the same identity:
+//      `productsStore.entityOf(context)`, `inFlight.containsIdOf(context)`
 //
 // Most screens are a color + a row of nav buttons; `product` is a REAL
 // consuming screen, so this doubles as the runnable app you test on.
@@ -772,13 +778,18 @@ class _ProductsStrip extends StatelessWidget {
       runSpacing: 8,
       children: [
         for (final id in ids)
-          EntityScope(productsStore, id, child: const _ProductTile()),
+          productsStore.item(id, child: const _ProductTile()),
       ],
     );
   }
 }
 
-// Inside the scope the entity is AMBIENT — the tile takes no arguments.
+// Inside the scope the entity is AMBIENT — the tile takes no arguments, and
+// navigation is DEICTIC: `ProductID.navOf(context)` (the capital-ID identity
+// face) claims "this identity, from where I stand" — no chain named, no id
+// passed. `product` is multi-parent (no global kick-start exists), yet the
+// tile works from ANY screen that renders it: the verb anchors at the
+// claiming widget's screen and takes the edge, enforced by the fold.
 class _ProductTile extends StatelessWidget {
   const _ProductTile();
 
@@ -786,7 +797,7 @@ class _ProductTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final product = EntityScope.of<Product>(context);
     return OutlinedButton(
-      onPressed: () => Screen.on(.search)?.goProduct(product.id),
+      onPressed: () => ProductID.navOf(context).go(),
       style: OutlinedButton.styleFrom(
           foregroundColor: Colors.white,
           side: const BorderSide(color: Colors.white54)),
@@ -808,10 +819,14 @@ class _Product extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final id = context.idOf(.product);
-    final product = productsStore(id).of(context);
+    // The keyed read at the AMBIENT id — the screen's own identity here;
+    // under an item scope it would be the item's. One spelling, either way.
+    final product = productsStore.entityOf(context);
     // Request status is an honest ROW: in the set from
     // `dispatch(GetReviews(...))` until the page folds it out.
-    final loading = reviewsInFlightStore.of(context).contains(id);
+    // Membership at the ambient id — the set's element type (ProductId)
+    // states which identity the in-flight unit is keyed by.
+    final loading = reviewsInFlightStore.containsIdOf(context);
     final cart = cartStore.of(context);
     const style = TextStyle(color: Colors.white70, fontSize: 16);
     return _S(

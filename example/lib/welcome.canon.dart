@@ -656,3 +656,20 @@ extension on Ledger {
     return null;
   }
 }
+
+/// Canon's `todo` identity face: `of` reads the ambient
+/// typed id, `navOf` mints the deictic handle for the verbs.
+abstract final class TodoID {
+  static TodoId of(BuildContext context) => IdScope.of<TodoId>(context);
+  static IdNav<TodoId> navOf(BuildContext context) =>
+      IdScope.navOf<TodoId>(context);
+}
+
+/// Deictic forward verbs for the `todo` identity —
+/// obtain via `TodoID.navOf(context)`; the id is ambient.
+extension TodoIdNav on IdNav<TodoId> {
+  void go() {
+    _Screens.graph.popTo(screen);
+    _Screens.graph.go(_Screens.todo, id, true);
+  }
+}

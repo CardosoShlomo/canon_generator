@@ -4,6 +4,8 @@
 - The generated `dispatch` wrapper is `dispatch(msg)` — no transit metadata exists.
 - A `NavUnit` row wires ledger-owned navigation in `bind()`: verbs route through the queue, the unit folds, the graph mirrors — synchronously for verb-routed ops (placement returns stay truthful), via the events tap for every other door — and reseeds on restores. `NavState` is auto-admitted — the engine's entity, never a consumer declaration. A ledger without a nav row gets a build-time hint (local-fold navigation stays a conscious choice).
 - The showcase example is the family's full tour: coverage, shadow+merge, in-flight+dedupe, a cart write dock, entry-fact ask gate, ledger-owned nav, and replay laws.
+- Deictic id-surgical navigation: `IdNav<K>` extensions per id node — `go()` for the self screen, node-stripped names for siblings (`userFeed` → `goFeed`), component projections on composites (`goUser` from an adChat identity via `id.user`), anchored at the claiming widget's screen with edge-required enforcement.
+- Identity faces: a generated twin per id node (the capital-ID canon stamp) — `ProductID.of(context)` reads the ambient typed id, `ProductID.navOf(context)` mints the deictic handle; emitted only where the Flutter binding is imported, so pure-Dart consumers stay pure.
 - canon ^0.28.0, regent ^0.10.0.
 
 ## 0.33.0

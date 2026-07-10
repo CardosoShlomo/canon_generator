@@ -4806,3 +4806,20 @@ extension on Ledger {
     return null;
   }
 }
+
+/// Canon's `product` identity face: `of` reads the ambient
+/// typed id, `navOf` mints the deictic handle for the verbs.
+abstract final class ProductID {
+  static ProductId of(BuildContext context) => IdScope.of<ProductId>(context);
+  static IdNav<ProductId> navOf(BuildContext context) =>
+      IdScope.navOf<ProductId>(context);
+}
+
+/// Deictic forward verbs for the `product` identity —
+/// obtain via `ProductID.navOf(context)`; the id is ambient.
+extension ProductIdNav on IdNav<ProductId> {
+  void go() {
+    _Screens.graph.popTo(screen);
+    _Screens.graph.go(_Screens.product, id, true);
+  }
+}
