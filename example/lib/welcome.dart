@@ -160,9 +160,6 @@ enum _Entities with EntityNode<_Entities> {
   final Type type;
   @override
   final Ids? key;
-
-  // ignore: unused_field
-  static final graph = EntityGraph({todo, coverage});
 }
 
 // ── Regents: the ledger's citizens, row order = traversal order ──

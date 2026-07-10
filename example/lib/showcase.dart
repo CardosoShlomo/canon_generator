@@ -522,13 +522,10 @@ enum _Entities with EntityNode<_Entities> {
   // Generator-read (ownership derivation); runtime consumers arrive with the
   // tree-store surface.
   // ignore: unused_field
+  // The graph declares OWNERSHIP only — an unlisted row is a root. Reviews
+  // live inside their product (an id-keyed map field), so the generator
+  // derives surgical tree ops (`addReview`, `updateReview`…).
   static final graph = EntityGraph({
-    cart,
-    cartWrite,
-    coverage,
-    inFlight,
-    // OWNERSHIP: reviews live inside their product (an id-keyed map field) —
-    // the generator derives surgical tree ops (`addReview`, `updateReview`…).
     product({review}),
   });
 }
