@@ -5590,13 +5590,16 @@ extension on Ledger {
     localProductsStore = store(
       _Regents.localProducts.regent as Store<ProductId, Product, ProductMsg>,
     );
+    IdScope.tag(localProductsStore, Ids.product);
     productsStore = store(
       _Regents.products.regent as Store<ProductId, Product, ProductMsg>,
     );
+    IdScope.tag(productsStore, Ids.product);
     sellerThreadsStore = store(
       _Regents.sellerThreads.regent
           as Store<SellerChatId, SellerThread, SellerChatMsg>,
     );
+    IdScope.tag(sellerThreadsStore, Ids.sellerChat);
     guard(_Regents.cartWriteGate.regent as Guard<CartMsg>);
     cartWriteStore = unit(
       _Regents.cartWrite.regent as Unit<CartWrite, CartMsg>,
@@ -5656,9 +5659,10 @@ extension on Ledger {
 /// Canon's `product` identity face: `of` reads the ambient
 /// typed id, `navOf` mints the deictic handle for the verbs.
 abstract final class ProductID {
-  static ProductId of(BuildContext context) => IdScope.of<ProductId>(context);
+  static ProductId of(BuildContext context) =>
+      IdScope.of<ProductId>(context, Ids.product);
   static IdNav<ProductId> navOf(BuildContext context) =>
-      IdScope.navOf<ProductId>(context);
+      IdScope.navOf<ProductId>(context, Ids.product);
   static ProductId screenOf(BuildContext context) =>
       IdScope.screenOf<ProductId>(context);
   static ProductId itemOf(BuildContext context) =>
@@ -5668,7 +5672,9 @@ abstract final class ProductID {
   /// EVIDENCE this identity type-check (`ProductOn`);
   /// null when the claim misses the live chain.
   static IdNav<ProductId>? on(BuildContext context, ProductOn which) =>
-      Screen.on(which as On) == null ? null : IdScope.navOf<ProductId>(context);
+      Screen.on(which as On) == null
+      ? null
+      : IdScope.navOf<ProductId>(context, Ids.product);
 }
 
 /// Deictic forward verbs for the `product` identity —
@@ -5695,9 +5701,9 @@ extension ProductIdNav on IdNav<ProductId> {
 /// typed id, `navOf` mints the deictic handle for the verbs.
 abstract final class SellerChatID {
   static SellerChatId of(BuildContext context) =>
-      IdScope.of<SellerChatId>(context);
+      IdScope.of<SellerChatId>(context, Ids.sellerChat);
   static IdNav<SellerChatId> navOf(BuildContext context) =>
-      IdScope.navOf<SellerChatId>(context);
+      IdScope.navOf<SellerChatId>(context, Ids.sellerChat);
   static SellerChatId screenOf(BuildContext context) =>
       IdScope.screenOf<SellerChatId>(context);
   static SellerChatId itemOf(BuildContext context) =>
@@ -5726,9 +5732,10 @@ extension SellerChatIdNav on IdNav<SellerChatId> {
 /// Canon's `seller` identity face: `of` reads the ambient
 /// typed id, `navOf` mints the deictic handle for the verbs.
 abstract final class SellerID {
-  static SellerId of(BuildContext context) => IdScope.of<SellerId>(context);
+  static SellerId of(BuildContext context) =>
+      IdScope.of<SellerId>(context, Ids.seller);
   static IdNav<SellerId> navOf(BuildContext context) =>
-      IdScope.navOf<SellerId>(context);
+      IdScope.navOf<SellerId>(context, Ids.seller);
   static SellerId screenOf(BuildContext context) =>
       IdScope.screenOf<SellerId>(context);
   static SellerId itemOf(BuildContext context) =>
@@ -5738,7 +5745,9 @@ abstract final class SellerID {
   /// EVIDENCE this identity type-check (`SellerOn`);
   /// null when the claim misses the live chain.
   static IdNav<SellerId>? on(BuildContext context, SellerOn which) =>
-      Screen.on(which as On) == null ? null : IdScope.navOf<SellerId>(context);
+      Screen.on(which as On) == null
+      ? null
+      : IdScope.navOf<SellerId>(context, Ids.seller);
 }
 
 /// Deictic forward verbs for the `seller` identity —

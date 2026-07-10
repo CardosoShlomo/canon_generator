@@ -630,7 +630,9 @@ extension on Ledger {
     localTodosStore = store(
       _Regents.localTodos.regent as Store<TodoId, Todo, TodoMsg>,
     );
+    IdScope.tag(localTodosStore, Ids.todo);
     todosStore = store(_Regents.todos.regent as Store<TodoId, Todo, TodoMsg>);
+    IdScope.tag(todosStore, Ids.todo);
     _Screens.graph.navigations.listen((n) {
       final (screen, id) = n.destination;
       if (screen == _Screens.todo) {
@@ -660,9 +662,10 @@ extension on Ledger {
 /// Canon's `todo` identity face: `of` reads the ambient
 /// typed id, `navOf` mints the deictic handle for the verbs.
 abstract final class TodoID {
-  static TodoId of(BuildContext context) => IdScope.of<TodoId>(context);
+  static TodoId of(BuildContext context) =>
+      IdScope.of<TodoId>(context, Ids.todo);
   static IdNav<TodoId> navOf(BuildContext context) =>
-      IdScope.navOf<TodoId>(context);
+      IdScope.navOf<TodoId>(context, Ids.todo);
   static TodoId screenOf(BuildContext context) =>
       IdScope.screenOf<TodoId>(context);
   static TodoId itemOf(BuildContext context) => IdScope.itemOf<TodoId>(context);

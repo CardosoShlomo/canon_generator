@@ -59,6 +59,8 @@ class RegistryGenerator extends GeneratorForAnnotation<Regents> {
     // Reverse (gated-direction) verbs, keyed by the COMPONENT node:
     // (typed key, node name, emitted verb lines).
     final reverseNavs = <String, (String, String, List<String>)>{};
+    // Each node's enum TYPE text (`Ids`) — the faces pass the node value.
+    final nodeTypeOf = <String, String>{};
     String? navUnitRow;
 
     // Every `read(const X())` in an enrolled guard must name a citizen of
@@ -241,6 +243,7 @@ class RegistryGenerator extends GeneratorForAnnotation<Regents> {
         if (screens.isNotEmpty || compVerbs.isNotEmpty) {
           idNavs[keyNode] =
               (typedKey ?? keyType, nodeName, screens, compVerbs);
+          nodeTypeOf[keyNode] = info.node!.type!.getDisplayString();
         }
         // The REVERSE projection — the gated direction: from a COMPONENT's
         // identity to the composite's screens, the other component read
@@ -281,6 +284,8 @@ class RegistryGenerator extends GeneratorForAnnotation<Regents> {
             reverseNavs.update(
                 _nodeId(comps[i])!, (r) => (r.$1, r.$2, [...r.$3, ...lines]),
                 ifAbsent: () => (compKey, compNames[i]!, lines));
+            nodeTypeOf[_nodeId(comps[i])!] =
+                comps[i]!.type!.getDisplayString();
           }
         }
       }
@@ -305,6 +310,12 @@ class RegistryGenerator extends GeneratorForAnnotation<Regents> {
       fields.add('  static late final StoreMemory<${args.join(', ')}> ${name}Store;');
       binds.add('    ${name}Store = _ledger.store($ref);');
       rowKind[name] = _RowKind.store;
+      // Tag the store with its grammar node: every scope it plants carries
+      // the node, so the typed ambient reads resolve by MATCH, not distance.
+      if (flutterBound && keyNode != null && nodeName != null) {
+        binds.add(
+            '    IdScope.tag(${name}Store, ${info.node!.type!.getDisplayString()}.$nodeName);');
+      }
       for (final (scrEnum, scr) in screens) {
         triggers.add((scrEnum, scr, name, ref, key));
         reads.add('  /// $name on screen `$scr` — the entry at its live nav id.');
@@ -473,11 +484,12 @@ class RegistryGenerator extends GeneratorForAnnotation<Regents> {
       if (flutterBound) {
         b.writeln('/// Canon\'s `$nodeName` identity face: `of` reads the ambient');
         b.writeln('/// typed id, `navOf` mints the deictic handle for the verbs.');
+        final node = '${nodeTypeOf[e.key]}.$nodeName';
         b.writeln('abstract final class ${_cap(nodeName)}ID {');
         b.writeln('  static $key of(BuildContext context) =>');
-        b.writeln('      IdScope.of<$key>(context);');
+        b.writeln('      IdScope.of<$key>(context, $node);');
         b.writeln('  static IdNav<$key> navOf(BuildContext context) =>');
-        b.writeln('      IdScope.navOf<$key>(context);');
+        b.writeln('      IdScope.navOf<$key>(context, $node);');
         b.writeln('  static $key screenOf(BuildContext context) =>');
         b.writeln('      IdScope.screenOf<$key>(context);');
         b.writeln('  static $key itemOf(BuildContext context) =>');
@@ -489,7 +501,7 @@ class RegistryGenerator extends GeneratorForAnnotation<Regents> {
           b.writeln('  static IdNav<$key>? on(BuildContext context, ${_cap(nodeName)}On which) =>');
           b.writeln('      Screen.on(which as On) == null');
           b.writeln('          ? null');
-          b.writeln('          : IdScope.navOf<$key>(context);');
+          b.writeln('          : IdScope.navOf<$key>(context, $node);');
         }
         b.writeln('}');
         b.writeln();
