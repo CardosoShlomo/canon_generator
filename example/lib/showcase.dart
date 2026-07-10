@@ -72,7 +72,7 @@ enum Sort { relevance, priceLow, priceHigh, newest }
 // key serialises in a URL) and, because `IdNode implements Codec`, each node can
 // be bound directly as a screen `id` AND as a registry key — the SAME node
 // across the screens and registries trees, which is what lets data inject by nav.
-@IDs()
+@canon
 enum Ids with IdNode {
   product(.uuid),
   review(.uuid),
@@ -501,7 +501,7 @@ final class WriteSupportsCart extends UnitProjection<CartWrite, CartState> {
 // Each row binds an entity TYPE to its id-node; the graph declares OWNERSHIP
 // (roots are the aggregate boundaries stores may attach to). Key node, key
 // type, and screen associations all derive from here.
-@entities
+@canon
 enum _Entities with EntityNode<_Entities> {
   // A KEYLESS row is a UNIT — cardinality one, the session is its identity
   // (the wire test: its facts arrive without an id).
@@ -540,7 +540,7 @@ enum _Entities with EntityNode<_Entities> {
 // generator hangs typed reads on `ledger`; because the `product` screen
 // binds the SAME node (via the entity), those reads inject by nav location
 // (`productsOnProduct()`).
-@regents
+@canon
 enum _Regents with RegentNode<_Regents> {
   // coverage first — the gate reads it
   catalogCovered(CatalogCovered()),
@@ -685,7 +685,7 @@ enum _Checkout with SubScreenNode<_Checkout> {
   });
 }
 
-@Screens(domain: 'https://shop.example')
+@canon
 enum _Screens with ScreenNode<_Screens> {
   splash(_S('Splash', Color(0xFF263238))),
   signIn(_S('Sign in', Color(0xFF37474F))),
@@ -724,6 +724,8 @@ enum _Screens with ScreenNode<_Screens> {
 
   static final graph = NavGraph(
     {
+      // The link/URL origin — a NODE of the tree, like everything else.
+      Domain('https://shop.example'),
       splash,
       signIn({otp}),
 

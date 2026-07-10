@@ -5,22 +5,23 @@ part 'welcome.canon.dart';
 
 // ── The WELCOME example: the classic todo app, whole-stack canon ──────────
 // Every canon idea in its smallest true form — compare it with the todo app
-// you already know. Four tiny enums are the ENTIRE spec:
+// you already know. Four tiny enums under ONE annotation (`@canon` — the
+// mixin says which tier each enum is) are the ENTIRE spec:
 //
-//   @IDs      the identity space (typed ids, URL codecs)
-//   @entities what exists
-//   @regents  the LEDGER's citizens, in traversal order: a coverage unit,
+//   Ids       the identity space (typed ids, URL codecs)
+//   _Entities what exists
+//   _Regents  the LEDGER's citizens, in traversal order: a coverage unit,
 //             a veto standing above the rows it protects, a disk-cache
 //             shadow store, the main store — plus the merge edge that lets
 //             the shadow answer reads
-//   @screens  the navigation grammar (illegal moves don't compile)
+//   _Screens  the navigation grammar (illegal moves don't compile)
 //
 // State-side, the toggle is OPTIMISTIC with no wire ids: `CompleteTodo` is
 // intent AND prediction (one dispatch sends and folds instantly); the echo
 // settles it by state comparison; silence reverts it at the deadline.
 
 // ── Identity ──
-@IDs()
+@canon
 enum Ids with IdNode {
   todo(.uuid);
 
@@ -149,7 +150,7 @@ final class LocalTodoSupports extends Projection<Todo, TodoId, Todo> {
 }
 
 // ── Entities: what exists ──
-@entities
+@canon
 enum _Entities with EntityNode<_Entities> {
   todo(Todo, .todo),
   coverage(bool);
@@ -165,7 +166,7 @@ enum _Entities with EntityNode<_Entities> {
 }
 
 // ── Regents: the ledger's citizens, row order = traversal order ──
-@regents
+@canon
 enum _Regents with RegentNode<_Regents> {
   todosCovered(TodosCovered()),
   cachedTodosGate(CachedTodosGate()), // protects every row below
@@ -182,7 +183,7 @@ enum _Regents with RegentNode<_Regents> {
 }
 
 // ── Screens: the navigation grammar ──
-@screens
+@canon
 enum _Screens with ScreenNode<_Screens> {
   home(TodoListScreen()),
   todo(TodoScreen(), .todo); // detail, keyed by the typed id — URL-real
