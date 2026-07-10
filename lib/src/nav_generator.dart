@@ -582,6 +582,31 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     // same-typed components stay distinct). Record the index; a projection is NOT
     // flattened past its composite source (its id is one part of that record).
     final nodesOf = {for (final r in rows) r.name: r.idNodes};
+    // Deictic id markers: a chain TERMINATING at a screen that locks one
+    // component of a composite EVIDENCES the other component's identity
+    // claims — its On selector classes implement `<Node>On`, the compile-time
+    // gate of the generated `<Node>ID.on(context, chain)` (a chain proving
+    // nothing about the identity is a compile error, not a null).
+    final markersOf = <String, Set<String>>{}; // screen → marker interfaces
+    for (final r in rows) {
+      final nodes = nodesOf[r.name];
+      final names = namesOf[r.name];
+      if (nodes == null || nodes.length != 2 || names == null) continue;
+      for (var i = 0; i < 2; i++) {
+        final marker = '${_cap(names[i])}On';
+        (markersOf[r.name] ??= {}).add(marker); // the composite evidences both
+        for (final s in rows) {
+          final sn = nodesOf[s.name];
+          if (sn != null && sn.length == 1 && sn.single == nodes[1 - i]) {
+            (markersOf[s.name] ??= {}).add(marker);
+          }
+        }
+      }
+    }
+    String onImpl(String sc) {
+      final m = markersOf[sc];
+      return m == null ? '' : ' implements ${(m.toList()..sort()).join(', ')}';
+    }
     for (final ps in placements.values) {
       for (final n in ps) {
         final src = n.inheritSource;
@@ -1665,6 +1690,9 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     // different parent). A cyclic terminal also exposes .depth(n) -> OnDepth, the
     // only token carrying the depth FIELD (its method lives on the steps).
     final stepBuf = StringBuffer();
+    // Screens whose plain-`On` selector positions need a marker-carrying
+    // terminal class (`On<X>Term`) — collected during emission.
+    final leafOnScreens = <String>{};
     final stepEmitted = <String>{};
     // A single placement → its exact nav; a multi-placement screen → its sealed
     // `…Placement` (resolved by `Screen.on`; the selector carries no nav).
@@ -1711,7 +1739,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       // `.fragment` below); without view-state the forwarded param is dead.
       final vs = viewScreens[sc];
       final hasView = vs != null && (vs.query.isNotEmpty || vs.fragment.isNotEmpty);
-      stepBuf.writeln('final class $name extends ${onOf(nav, sc)} {');
+      stepBuf.writeln('final class $name extends ${onOf(nav, sc)}${onImpl(sc)} {');
       stepBuf.writeln(hasView
           ? '  const $name._(super.specs, super.ids, super.nav, [super.conds]) : super._();'
           : '  const $name._(super.specs, super.ids, super.nav) : super._();');
@@ -1731,8 +1759,11 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       for (final e in groups.entries) {
         final cNav = navTypeOf(e.value);
         final cStep = stepNameFor(e.value);
-        final ret = cStep ?? onOf(cNav, e.key);
-        final ctor = cStep ?? 'On';
+        final leaf = cStep == null && markersOf.containsKey(e.key);
+        if (leaf) leafOnScreens.add(e.key);
+        final ret = cStep ??
+            (leaf ? 'On${_cap(e.key)}Term<${onArgs(cNav, e.key)}>' : onOf(cNav, e.key));
+        final ctor = cStep ?? (leaf ? 'On${_cap(e.key)}Term' : 'On');
         // Single child → its exact nav; multi child → null (Screen.on resolves).
         final cArg = e.value.length == 1
             ? 'const ${placementName(e.value.single)}._()'
@@ -1761,8 +1792,14 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
             continue;
           }
           final gcNav = placementName(gc);
-          stepBuf.writeln('  ${onOf(gcNav, gc.screen)} ${gc.screen}(${idOf[c.screen]} id) =>'
-              ' On._([...specs, ${sv(c.screen)}, ${sv(gc.screen)}], [...ids, id, null], const $gcNav._());');
+          final gcLeaf = markersOf.containsKey(gc.screen);
+          if (gcLeaf) leafOnScreens.add(gc.screen);
+          final gcRet = gcLeaf
+              ? 'On${_cap(gc.screen)}Term<${onArgs(gcNav, gc.screen)}>'
+              : onOf(gcNav, gc.screen);
+          final gcCtor = gcLeaf ? 'On${_cap(gc.screen)}Term' : 'On';
+          stepBuf.writeln('  $gcRet ${gc.screen}(${idOf[c.screen]} id) =>'
+              ' $gcCtor._([...specs, ${sv(c.screen)}, ${sv(gc.screen)}], [...ids, id, null], const $gcNav._());');
         }
       }
       if (idOf[sc] != null) {
@@ -1801,8 +1838,13 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       final nav = navTypeOf(ms);
       final navArg = isSingle(r.name) ? 'const ${unionName(r.name)}._()' : 'null';
       final step = stepNameFor(ms);
-      final ret = step ?? onOf(nav, r.name);
-      final ctor = step ?? 'On';
+      final leaf = step == null && markersOf.containsKey(r.name);
+      if (leaf) leafOnScreens.add(r.name);
+      final ret = step ??
+          (leaf
+              ? 'On${_cap(r.name)}Term<${onArgs(nav, r.name)}>'
+              : onOf(nav, r.name));
+      final ctor = step ?? (leaf ? 'On${_cap(r.name)}Term' : 'On');
       // Always a getter (id = null matches any); `.x(id)` invokes the step's
       // call() to pin a specific id.
       b.writeln('  static $ret get ${r.name} => $ctor._([${sv(r.name)}], [null], $navArg);');
@@ -1868,6 +1910,22 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       emitStep(placements[r.name]!);
     }
     b.write(stepBuf);
+    // The deictic-claim markers + the marker-carrying terminal classes for
+    // screens whose selectors would otherwise be plain `On`.
+    final allIdMarkers = {for (final m in markersOf.values) ...m}.toList()
+      ..sort();
+    for (final m in allIdMarkers) {
+      b.writeln('/// Chains ending at a screen that EVIDENCES this identity —');
+      b.writeln('/// the compile-time gate of `${m.substring(0, m.length - 2)}ID.on(context, chain)`.');
+      b.writeln('abstract interface class $m {}');
+    }
+    for (final sc in leafOnScreens.toList()..sort()) {
+      b.writeln('final class On${_cap(sc)}Term<${onDecl()}> extends '
+          'On<${onNV()}>${onImpl(sc)} {');
+      b.writeln('  const On${_cap(sc)}Term._(super.specs, super.ids, super.nav,');
+      b.writeln('      [super.conds]) : super._();');
+      b.writeln('}');
+    }
 
     // The sealed root of every foreground-resolvable placement — exactly what
     // `Screen.at` / a view's `.at` resolve to, so a switch over them is

@@ -56,6 +56,9 @@ class RegistryGenerator extends GeneratorForAnnotation<Regents> {
     // component projections (enum, screen, component)).
     final idNavs = <String,
         (String, String, List<(String, String)>, List<(String, String, String)>)>{};
+    // Reverse (gated-direction) verbs, keyed by the COMPONENT node:
+    // (typed key, node name, emitted verb lines).
+    final reverseNavs = <String, (String, String, List<String>)>{};
     String? navUnitRow;
 
     // Every `read(const X())` in an enrolled guard must name a citizen of
@@ -220,21 +223,65 @@ class RegistryGenerator extends GeneratorForAnnotation<Regents> {
       final keyNode = _nodeId(info.node);
       final screens = screensByNode[keyNode] ?? const <(String, String)>[];
       final nodeName = info.node?.getField('_name')?.toStringValue();
-      if (keyNode != null && nodeName != null) {
+      if (keyNode != null && nodeName != null && !idNavs.containsKey(keyNode)) {
         // A composite node's components project: `id.user` reaches the
         // component's own screens (goUser from an adChat identity).
+        final comps = [info.node?.getField('n1'), info.node?.getField('n2')];
+        final compNames = [
+          for (final c in comps) c?.getField('_name')?.toStringValue()
+        ];
         final compVerbs = <(String, String, String)>[]; // enum, screen, component
-        for (final comp in [info.node?.getField('n1'), info.node?.getField('n2')]) {
-          final compName = comp?.getField('_name')?.toStringValue();
-          if (compName == null) continue;
+        for (var i = 0; i < 2; i++) {
+          if (compNames[i] == null) continue;
           for (final (en, scr)
-              in screensByNode[_nodeId(comp)] ?? const <(String, String)>[]) {
-            compVerbs.add((en, scr, compName));
+              in screensByNode[_nodeId(comps[i])] ?? const <(String, String)>[]) {
+            compVerbs.add((en, scr, compNames[i]!));
           }
         }
         if (screens.isNotEmpty || compVerbs.isNotEmpty) {
-          idNavs.putIfAbsent(keyNode,
-              () => (typedKey ?? keyType, nodeName, screens, compVerbs));
+          idNavs[keyNode] =
+              (typedKey ?? keyType, nodeName, screens, compVerbs);
+        }
+        // The REVERSE projection — the gated direction: from a COMPONENT's
+        // identity to the composite's screens, the other component read
+        // from the live chain (standing under an ad, a user item reaches
+        // the ad chat: `UserID.navOf(context).goAdChat()`).
+        if (screens.isNotEmpty && compNames[0] != null && compNames[1] != null) {
+          final compositeKey = typedKey ?? keyType;
+          final compositeSet =
+              screens.map((s) => '${s.$1}.${s.$2}').join(', ');
+          for (var i = 0; i < 2; i++) {
+            final other = comps[1 - i]!;
+            final otherName = compNames[1 - i]!;
+            final otherKey =
+                _typedNodeName(other) ?? _nodeValueType(other) ?? 'Object';
+            final atomics =
+                screensByNode[_nodeId(other)] ?? const <(String, String)>[];
+            final sources = {
+              for (final s in atomics) '${s.$1}.${s.$2}',
+              for (final s in screens) '${s.$1}.${s.$2}',
+            }.join(', ');
+            final lines = <String>[];
+            for (final (en, scr) in screens) {
+              lines.add('  void go${_cap(scr)}() {');
+              lines.add('    final e = $en.graph.stack.lastWhere(');
+              lines.add('        (e) => const {$sources}.contains(e.screen));');
+              lines.add(
+                  '    final other = const {$compositeSet}.contains(e.screen)');
+              lines.add('        ? (e.id as $compositeKey).$otherName');
+              lines.add('        : e.id as $otherKey;');
+              lines.add('    $en.graph.popTo(screen);');
+              lines.add(
+                  '    $en.graph.go($en.$scr, $compositeKey.of(${i == 0 ? 'id, other' : 'other, id'}), true);');
+              lines.add('  }');
+            }
+            final compKey = _typedNodeName(comps[i]!) ??
+                _nodeValueType(comps[i]!) ??
+                'Object';
+            reverseNavs.update(
+                _nodeId(comps[i])!, (r) => (r.$1, r.$2, [...r.$3, ...lines]),
+                ifAbsent: () => (compKey, compNames[i]!, lines));
+          }
         }
       }
 
@@ -402,8 +449,15 @@ class RegistryGenerator extends GeneratorForAnnotation<Regents> {
     // and takes the edge with edgeRequired enforcement — the id is the
     // scope's own, never passed at the call site.
     final navKeys = <String, String>{}; // typed key → node (collision guard)
+    // A component node with no store of its own still gets its face and
+    // reverse verbs (the identity exists in the grammar regardless).
+    for (final r in reverseNavs.entries) {
+      idNavs.putIfAbsent(
+          r.key, () => (r.value.$1, r.value.$2, const [], const []));
+    }
     for (final e in idNavs.entries) {
       final (key, nodeName, screens, compVerbs) = e.value;
+      final reverse = reverseNavs[e.key]?.$3 ?? const <String>[];
       final prior = navKeys[key];
       if (prior != null) {
         throw InvalidGenerationSourceError(
@@ -424,6 +478,15 @@ class RegistryGenerator extends GeneratorForAnnotation<Regents> {
         b.writeln('      IdScope.of<$key>(context);');
         b.writeln('  static IdNav<$key> navOf(BuildContext context) =>');
         b.writeln('      IdScope.navOf<$key>(context);');
+        if (reverseNavs.containsKey(e.key)) {
+          b.writeln('  /// The CLAIMED handle — compile-gated: only chains that');
+          b.writeln('  /// EVIDENCE this identity type-check (`${_cap(nodeName)}On`);');
+          b.writeln('  /// null when the claim misses the live chain.');
+          b.writeln('  static IdNav<$key>? on(BuildContext context, ${_cap(nodeName)}On which) =>');
+          b.writeln('      Screen.on(which as On) == null');
+          b.writeln('          ? null');
+          b.writeln('          : IdScope.navOf<$key>(context);');
+        }
         b.writeln('}');
         b.writeln();
       }
@@ -445,6 +508,9 @@ class RegistryGenerator extends GeneratorForAnnotation<Regents> {
         b.writeln('    $scrEnum.graph.popTo(screen);');
         b.writeln('    $scrEnum.graph.go($scrEnum.$scr, id.$comp, true);');
         b.writeln('  }');
+      }
+      for (final line in reverse) {
+        b.writeln(line);
       }
       b.writeln('}');
     }
