@@ -78,7 +78,7 @@ void main() {
     final id = ProductId('p1');
     r.ledger.dispatch(const SetQty(ProductId('p1'), 3));
     // Base never folds a promise…
-    expect(r.ledger.read(const Cart()).qty, isEmpty);
+    expect(r.ledger.at(const Cart()).base.qty, isEmpty);
     // …yet the merged read answers with it instantly (the dock's edge)…
     expect(r.cart.value.qty[id], 3);
     // …and the pending row holds the capture.
@@ -86,7 +86,7 @@ void main() {
 
     // The echo re-applies the promise as a no-op → confirmed, dock clean.
     r.ledger.dispatch(const QtySaved(ProductId('p1'), 3));
-    expect(r.ledger.read(const Cart()).qty[id], 3);
+    expect(r.ledger.at(const Cart()).base.qty[id], 3);
     expect(r.write.value.pending, isNull);
     expect(r.write.value.tampered, isFalse);
     expect(r.cart.value.qty[id], 3);

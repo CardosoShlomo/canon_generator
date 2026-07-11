@@ -590,7 +590,8 @@ final class _WLHomeTodo implements Hop<TodoNav> {
 /// The app-wide ledger, built from the `app` regency —
 /// the runtime splices its rows in order and wires its merge
 /// edges. `Screen.manager` binds the nav side. `ledger.dispatch(msg)` ·
-/// `ledger.on<…>(...)`; entities live on the public `<row>Store` globals.
+/// `ledger.on<…>(...)`; entities live on the typed `ledger.<row>`
+/// getters (sugar over `ledger.at(const Row())`).
 final ledger = Ledger.root(app);
 
 /// States a fact — dispatch is the ONLY verb, so it needs no prefix.
@@ -604,21 +605,21 @@ class TodoEnteredMsg extends Msg {
   final TodoId id;
 }
 
-final todosCoveredStore =
-    ledger.memory(const TodosCovered())! as UnitMemory<bool, TodoMsg>;
-final localTodosStore =
-    ledger.memory(const LocalTodos())! as StoreMemory<TodoId, Todo, TodoMsg>;
-final todosStore =
-    ledger.memory(const Todos())! as StoreMemory<TodoId, Todo, TodoMsg>;
+/// The typed data surface + nav wiring, hung on [Ledger] so
+/// `ledger.` is the one api — each getter is sugar over the
+/// position door (`at(const Row())`), named by the row class
+/// with its mechanical suffix stripped.
+extension AppLedger on Ledger {
+  UnitMemory<bool, TodoMsg> get todosCovered => at(const TodosCovered());
+  StoreMemory<TodoId, Todo, TodoMsg> get localTodos => at(const LocalTodos());
+  StoreMemory<TodoId, Todo, TodoMsg> get todos => at(const Todos());
 
-/// The generated nav-side wiring, hung on [Ledger] so `ledger.` is the one api.
-extension on Ledger {
   /// Tag the id scopes and wire navigation. Idempotent — `Screen.manager` calls it.
   void bind() {
     if (_bound) return;
     _bound = true;
-    IdScope.tag(localTodosStore, Ids.todo);
-    IdScope.tag(todosStore, Ids.todo);
+    IdScope.tag(localTodos, Ids.todo);
+    IdScope.tag(todos, Ids.todo);
     _Screens.graph.navigations.listen((n) {
       final (screen, id) = n.destination;
       if (screen == _Screens.todo) {
@@ -630,7 +631,7 @@ extension on Ledger {
   /// localTodos on screen `todo` — the entry at its live nav id.
   Todo? localTodosOnTodo() {
     for (final e in _Screens.graph.stack) {
-      if (e.screen == _Screens.todo) return localTodosStore[e.id as TodoId];
+      if (e.screen == _Screens.todo) return localTodos[e.id as TodoId];
     }
     return null;
   }
@@ -638,7 +639,7 @@ extension on Ledger {
   /// todos on screen `todo` — the entry at its live nav id.
   Todo? todosOnTodo() {
     for (final e in _Screens.graph.stack) {
-      if (e.screen == _Screens.todo) return todosStore[e.id as TodoId];
+      if (e.screen == _Screens.todo) return todos[e.id as TodoId];
     }
     return null;
   }

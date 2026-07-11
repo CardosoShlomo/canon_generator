@@ -557,9 +557,8 @@ void main() {
             generateFor: {'pkg|lib/spec.dart'},
             outputs: {
               'pkg|lib/spec.canon.dart': decodedMatches(allOf([
-                contains('final viewerStore ='),
-                contains('ledger.memory(const Viewer())!'),
-                contains('as UnitMemory<ViewerState?, ProfileMsg>'),
+                contains('UnitMemory<ViewerState?, ProfileMsg> get viewer =>'),
+                contains('at(const Viewer())'),
               ]))
             },
           ));
@@ -574,11 +573,11 @@ void main() {
               'pkg|lib/spec.canon.dart': decodedMatches(allOf([
                 // one api: the ledger BUILT from the graph + per-row globals
                 contains('final ledger = Ledger.root(app);'),
-                contains('extension on Ledger {'),
+                contains('extension AppLedger on Ledger {'),
                 contains('void bind() {'),
-                contains('final reviewStore ='),
-                contains('ledger.memory(const Review())!'),
-                contains('as StoreMemory<String, ReviewState, ReviewMsg>'),
+                contains(
+                    'StoreMemory<String, ReviewState, ReviewMsg> get review =>'),
+                contains('at(const Review())'),
                 // StoreMemory IS the read surface — no `review(key)` sugar
                 isNot(contains('ReviewState? review(String key)')),
                 // derived screen↔store association: profile shares Ids.author
@@ -590,7 +589,7 @@ void main() {
                 isNot(contains('inFlight')),
                 isNot(contains('surface(')),
                 contains('e.screen == _Screens.profile'),
-                contains('reviewStore[e.id as String]'),
+                contains('review[e.id as String]'),
                 // home has no id-node → no accessors at all
                 isNot(contains('OnHome')),
               ]))
@@ -607,7 +606,7 @@ void main() {
           'pkg|lib/spec.canon.dart': decodedMatches(allOf([
             isNot(contains('guard(')),
             isNot(contains('CachedGate')),
-            contains('final coveredStore ='),
+            contains('get covered =>'),
           ])),
         },
       ));
@@ -620,8 +619,8 @@ void main() {
         generateFor: {'pkg|lib/spec.dart'},
         outputs: {
           'pkg|lib/spec.canon.dart': decodedMatches(allOf([
-            contains('final viewerStore ='), // spliced from profileSegment
-            contains('final usersStore ='),
+            contains('get viewer =>'), // spliced from profileSegment
+            contains('get users =>'),
             isNot(contains('.merge(')),
             isNot(contains('.mergeStore(')),
           ])),
@@ -636,9 +635,8 @@ void main() {
         generateFor: {'pkg|lib/spec.dart'},
         outputs: {
           'pkg|lib/spec.canon.dart': decodedMatches(allOf([
-            contains('final ordersStore ='),
-            contains('ledger.memory(const OrdersCrud().store)!'),
-            contains('as StoreMemory<String, Order, Msg>'),
+            contains('StoreMemory<String, Order, Msg> get orders =>'),
+            contains('at(const OrdersCrud().store)'),
           ])),
         },
       ));

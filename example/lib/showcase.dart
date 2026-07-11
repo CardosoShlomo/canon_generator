@@ -32,7 +32,7 @@ part 'showcase.canon.dart';
 //      (`ProductID.of(context)` reads the ambient typed id itself)
 //      (the nearest ambient identity — item scope, else the screen's own;
 //      the fold enforces the edge). Ambient reads ride the same identity:
-//      `productsStore.entityOf(context)`, `inFlight.containsIdOf(context)`
+//      `ledger.products.entityOf(context)`, `inFlight.containsIdOf(context)`
 //  15. the GATED tier: a COMPOSITE identity (`sellerChat` = product ×
 //      seller) — `SellerChatID.of(context)` on its screen, component
 //      projections, and the CLAIMED handle
@@ -632,20 +632,20 @@ final class LocalProductSupports
 void demoBackend() {
   // The entry FACT is the wire's cue too: the same admitted feed the entry
   // gate shaped — no nav plumbing, no stack walking.
-  ledger.on<ProductEnteredMsg>().listen((e) {
+  ledger.at(.exit).msgs<ProductEnteredMsg>().listen((e) {
     dispatch(ProductLoaded(e.id, 'Product ${e.id}', 1999));
   });
   // The dock's wire half: the echo after a beat; the DEADLINE is a timer
   // HERE in effects — the ledger judges the fact, it never holds a Timer.
   // (A settled dock drops the late timeout at the gate.)
-  ledger.on<SetQty>().listen((p) async {
+  ledger.at(.exit).msgs<SetQty>().listen((p) async {
     Timer(const Duration(seconds: 3), () => dispatch(const QtyTimedOut()));
     await Future<void>.delayed(const Duration(milliseconds: 400));
     dispatch(QtySaved(p.productId, p.qty));
   });
   // The "server" answers a reviews request after a beat — long enough to watch
   // the derived `loading` status flip on and off.
-  ledger.on<GetReviews>().listen((req) async {
+  ledger.at(.exit).msgs<GetReviews>().listen((req) async {
     await Future<void>.delayed(const Duration(milliseconds: 700));
     final page = req.before == null ? 0 : 1;
     dispatch(ReviewsPage(
@@ -844,7 +844,7 @@ class _S extends StatelessWidget {
       );
 }
 
-// A keyed-store LIST, the EntityScope pattern. `productsStore.of(context)`
+// A keyed-store LIST, the EntityScope pattern. `ledger.products.of(context)`
 // yields the key SEQUENCE and rebuilds this strip ONLY when it changes —
 // add/remove/reorder (the engine's structure feed); a value change never
 // fires here. Each item sits under an `EntityScope` (self-keyed by the id),
@@ -854,7 +854,7 @@ class _ProductsStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ids = productsStore.of(context);
+    final ids = ledger.products.of(context);
     const style = TextStyle(color: Colors.white70, fontSize: 14);
     if (ids.isEmpty) {
       return const Text('products you visit collect here', style: style);
@@ -864,7 +864,7 @@ class _ProductsStrip extends StatelessWidget {
       runSpacing: 8,
       children: [
         for (final id in ids)
-          productsStore.item(id, child: const _ProductTile()),
+          ledger.products.item(id, child: const _ProductTile()),
       ],
     );
   }
@@ -927,7 +927,7 @@ class _SellerChatBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final thread = sellerThreadsStore.entityOf(context);
+    final thread = ledger.sellerThreads.entityOf(context);
     const style = TextStyle(color: Colors.white70, fontSize: 14);
     return Column(
       crossAxisAlignment: .start,
@@ -950,7 +950,7 @@ class _SellerChatBody extends StatelessWidget {
 
 // A REAL consuming screen — the payoff of sharing one @ids node across the
 // screens, entities, and stores trees. It takes NO id: `context.idOf(.product)`
-// is the AMBIENT identity (the live nav frame's), and `productsStore(id)
+// is the AMBIENT identity (the live nav frame's), and `ledger.products(id)
 // .of(context)` is the reactive per-key read — this widget rebuilds when THIS
 // product changes, not when any other does. No subscription, no setState, no
 // selector: the engine decided the granularity once.
@@ -962,13 +962,13 @@ class _Product extends StatelessWidget {
     final id = context.idOf(.product);
     // The keyed read at the AMBIENT id — the screen's own identity here;
     // under an item scope it would be the item's. One spelling, either way.
-    final product = productsStore.entityOf(context);
+    final product = ledger.products.entityOf(context);
     // Request status is an honest ROW: in the set from
     // `dispatch(GetReviews(...))` until the page folds it out.
     // Membership at the ambient id — the set's element type (ProductId)
     // states which identity the in-flight unit is keyed by.
-    final loading = reviewsInFlightStore.containsIdOf(context);
-    final cart = cartStore.of(context);
+    final loading = ledger.reviewsInFlight.containsIdOf(context);
+    final cart = ledger.cart.of(context);
     const style = TextStyle(color: Colors.white70, fontSize: 16);
     return _S(
       product?.name ?? 'Product',
@@ -982,7 +982,7 @@ class _Product extends StatelessWidget {
         const SizedBox(height: 8),
         FilledButton.tonal(
           // States a fact; the cart UNIT folds it. The badge below reads the
-          // unit reactively — `cartStore.of(context)`.
+          // unit reactively — `ledger.cart.of(context)`.
           onPressed: product == null
               ? null
               : () => dispatch(CartItemAdded(product.name)),

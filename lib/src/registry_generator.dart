@@ -108,8 +108,8 @@ class RegistryGenerator {
 
       if (row.brick) {
         // A CRUD brick: one row that IS a segment. Its authoritative store
-        // is the consumer surface — global-named after the brick class
-        // minus the `Crud` suffix (`OrdersCrud()` → `ordersStore`).
+        // is the consumer surface — the getter is named after the brick
+        // class minus the `Crud` suffix (`OrdersCrud()` → `ledger.orders`).
         final cls = held is InterfaceType ? held.element.name! : row.source;
         final base = cls.endsWith('Crud') && cls.length > 4
             ? cls.substring(0, cls.length - 4)
@@ -127,9 +127,8 @@ class RegistryGenerator {
         final info = _entityFor(name, entityType, entityByType, element,
             owner: 'brick');
         _checkKeyAgreement(name, entityType, keyType, info, element);
-        fields.add(
-            'final ${name}Store = ledger.memory(${row.source}.store)! as '
-            'StoreMemory<$keyType, $entityType, Msg>;');
+        fields.add('  StoreMemory<$keyType, $entityType, Msg> get $name => '
+            'at(${row.source}.store);');
         rowKind[name] = _RowKind.store;
         _emitStoreDerivations(
           name: name,
@@ -188,8 +187,8 @@ class RegistryGenerator {
               element: element);
         }
         _checkSealedM(name, held, v.typeArguments.last, element);
-        fields.add('final ${name}Store = ledger.memory(${row.source})! as '
-            'UnitMemory<${vArgs.join(', ')}>;');
+        fields.add('  UnitMemory<${vArgs.join(', ')}> get $name => '
+            'at(${row.source});');
         rowKind[name] = _RowKind.unit;
         // A NavUnit row makes the LEDGER own navigation: verbs route their
         // ops through the queue (gates may judge them), the unit folds, and
@@ -242,8 +241,8 @@ class RegistryGenerator {
       _checkSealedM(name, held, s.typeArguments.last, element);
 
       final (state, key) = (args[1], args[0]);
-      fields.add('final ${name}Store = ledger.memory(${row.source})! as '
-          'StoreMemory<${args.join(', ')}>;');
+      fields.add('  StoreMemory<${args.join(', ')}> get $name => '
+          'at(${row.source});');
       rowKind[name] = _RowKind.store;
       _emitStoreDerivations(
         name: name,
@@ -300,10 +299,10 @@ class RegistryGenerator {
       // events tap mirrors NavOps from every other door (gates, restores).
       binds.add('    $scrEnum.graph.routeOps((op) {');
       binds.add('      dispatch(op);');
-      binds.add('      final s = ${navUnitRow}Store.value;');
+      binds.add('      final s = $navUnitRow.value;');
       binds.add('      if (s != null) $scrEnum.graph.applyState(s);');
       binds.add('    });');
-      binds.add('    ${navUnitRow}Store.events.listen((e) {');
+      binds.add('    $navUnitRow.events.listen((e) {');
       binds.add('      final s = e.after;');
       binds.add('      if (s != null) $scrEnum.graph.applyState(s);');
       binds.add('    });');
@@ -316,7 +315,8 @@ class RegistryGenerator {
     b.writeln('/// The app-wide ledger, built from the `$graphVar` regency —');
     b.writeln('/// the runtime splices its rows in order and wires its merge');
     b.writeln('/// edges. `Screen.manager` binds the nav side. `ledger.dispatch(msg)` ·');
-    b.writeln('/// `ledger.on<…>(...)`; entities live on the public `<row>Store` globals.');
+    b.writeln('/// `ledger.on<…>(...)`; entities live on the typed `ledger.<row>`');
+    b.writeln('/// getters (sugar over `ledger.at(const Row())`).');
     b.writeln('final ledger = Ledger.root($graphVar);');
     b.writeln();
     b.writeln('/// States a fact — dispatch is the ONLY verb, so it needs no prefix.');
@@ -335,15 +335,18 @@ class RegistryGenerator {
       b.writeln('}');
     }
     b.writeln();
-    // The live stores are top-level publics, looked up on the built ledger
-    // by INSTANCE identity — the const re-spelling of a row's constructor
-    // expression is the row, by canonicalization.
+    b.writeln('/// The typed data surface + nav wiring, hung on [Ledger] so');
+    b.writeln('/// `ledger.` is the one api — each getter is sugar over the');
+    b.writeln('/// position door (`at(const Row())`), named by the row class');
+    b.writeln('/// with its mechanical suffix stripped.');
+    b.writeln('extension ${_cap(graphVar)}Ledger on Ledger {');
+    // The live memories, looked up by INSTANCE identity — the const
+    // re-spelling of a row's constructor expression is the row, by
+    // canonicalization.
     for (final f in fields) {
       b.writeln(f);
     }
     b.writeln();
-    b.writeln('/// The generated nav-side wiring, hung on [Ledger] so `ledger.` is the one api.');
-    b.writeln('extension on Ledger {');
     b.writeln('  /// Tag the id scopes and wire navigation. Idempotent — `Screen.manager` calls it.');
     b.writeln('  void bind() {');
     b.writeln('    if (_bound) return;');
@@ -525,7 +528,7 @@ class RegistryGenerator {
     // the node, so the typed ambient reads resolve by MATCH, not distance.
     if (flutterBound && keyNode != null && nodeName != null) {
       binds.add(
-          '    IdScope.tag(${name}Store, ${info.node!.type!.getDisplayString()}.$nodeName);');
+          '    IdScope.tag($name, ${info.node!.type!.getDisplayString()}.$nodeName);');
     }
     for (final (scrEnum, scr) in screens) {
       triggers.add((scrEnum, scr, name, keyType));
@@ -533,7 +536,7 @@ class RegistryGenerator {
       reads.add('  static $state? ${name}On${_cap(scr)}() {');
       reads.add('    for (final e in $scrEnum.graph.stack) {');
       reads.add(
-          '      if (e.screen == $scrEnum.$scr) return ${name}Store[e.id as $keyType];');
+          '      if (e.screen == $scrEnum.$scr) return $name[e.id as $keyType];');
       reads.add('    }');
       reads.add('    return null;');
       reads.add('  }');
@@ -656,8 +659,12 @@ class RegistryGenerator {
       t is InterfaceType &&
       t.element.library.uri.toString().startsWith('package:regent/');
 
-  /// A row's global name: the held CLASS name, decapitalized
-  /// (`BrowseDeck()` → `browseDeck`).
+  /// A row's getter name: the held CLASS name, decapitalized, with one
+  /// trailing MECHANICAL suffix stripped — `Store`/`Unit`/`Machine`/`Saga`
+  /// name the row's kind, which the surface already states, so
+  /// `FriendshipsStore()` → `ledger.friendships`, `AuthMachine()` →
+  /// `ledger.auth`, `NavUnit()` → `ledger.nav`. Semantic tails
+  /// (`BrowseDeck`, `InterestPages`) stay.
   String _rowName(DartType? held, String source, Element element) {
     final el = held is InterfaceType ? held.element : null;
     final cls = el?.name;
@@ -666,17 +673,34 @@ class RegistryGenerator {
           'row `$source` has no resolvable class name.',
           element: element);
     }
+    for (final suffix in const ['Store', 'Unit', 'Machine', 'Saga']) {
+      if (cls.endsWith(suffix) && cls.length > suffix.length) {
+        return _decap(cls.substring(0, cls.length - suffix.length));
+      }
+    }
     return _decap(cls);
   }
 
+  /// Ledger's own members — a derived getter may not shadow them.
+  static const _reserved = {
+    'store', 'unit', 'guard', 'graph', 'at', 'snapshot',
+    'dispatch', 'veto', 'close', 'bind',
+  };
+
   void _claimName(Map<String, String> taken, String name, String source,
       Element element) {
+    if (_reserved.contains(name)) {
+      throw InvalidGenerationSourceError(
+          'row `$source` derives the getter name `ledger.$name`, which is a '
+          'Ledger member — rename the class.',
+          element: element);
+    }
     final prior = taken[name];
     if (prior != null) {
       throw InvalidGenerationSourceError(
-          'rows `$prior` and `$source` both derive the global name '
-          '`${name}Store` — store names come from the row class; rename one '
-          'class.',
+          'rows `$prior` and `$source` both derive the getter name '
+          '`ledger.$name` — names come from the row class (one mechanical '
+          'suffix stripped); rename one class.',
           element: element);
     }
     taken[name] = source;

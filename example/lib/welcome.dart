@@ -201,7 +201,7 @@ class TodoListScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ids = todosStore.of(context); // key sequence — structural rebuilds
+    final ids = ledger.todos.of(context); // key sequence — structural rebuilds
     return Scaffold(
       appBar: AppBar(title: const Text('todos')),
       body: ListView(
@@ -209,7 +209,7 @@ class TodoListScreen extends StatelessWidget {
           // The item PLANT: scopes one todo (data + identity) over its tile —
           // self-keyed, per-key rebuilds, and the subtree needs no arguments.
           for (final id in ids)
-            todosStore.item(id, child: const _TodoTile()),
+            ledger.todos.item(id, child: const _TodoTile()),
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -250,7 +250,7 @@ class TodoScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     // The screen PLANTS its identity: both reads are ambient — the typed id
     // and the entity at it — no constructor threading anywhere.
-    final todo = todosStore.entityOf(context);
+    final todo = ledger.todos.entityOf(context);
     return Scaffold(
       appBar: AppBar(
         title: Text(todo?.title ?? '…'),

@@ -5529,7 +5529,8 @@ Enum _termOf(On sel) =>
 /// The app-wide ledger, built from the `app` regency —
 /// the runtime splices its rows in order and wires its merge
 /// edges. `Screen.manager` binds the nav side. `ledger.dispatch(msg)` ·
-/// `ledger.on<…>(...)`; entities live on the public `<row>Store` globals.
+/// `ledger.on<…>(...)`; entities live on the typed `ledger.<row>`
+/// getters (sugar over `ledger.at(const Row())`).
 final ledger = Ledger.root(app);
 
 /// States a fact — dispatch is the ONLY verb, so it needs no prefix.
@@ -5549,36 +5550,31 @@ class SellerChatEnteredMsg extends Msg {
   final SellerChatId id;
 }
 
-final catalogCoveredStore =
-    ledger.memory(const CatalogCovered())! as UnitMemory<bool, ProductMsg>;
-final reviewsInFlightStore =
-    ledger.memory(const ReviewsInFlight())!
-        as UnitMemory<Set<ProductId>, ReviewsInFlightMsg>;
-final localProductsStore =
-    ledger.memory(const LocalProducts())!
-        as StoreMemory<ProductId, Product, ProductMsg>;
-final productsStore =
-    ledger.memory(const Products())!
-        as StoreMemory<ProductId, Product, ProductMsg>;
-final sellerThreadsStore =
-    ledger.memory(const SellerThreads())!
-        as StoreMemory<SellerChatId, SellerThread, SellerChatMsg>;
-final cartWriteUnitStore =
-    ledger.memory(const CartWriteUnit())! as UnitMemory<CartWrite, CartMsg>;
-final cartStore =
-    ledger.memory(const Cart())! as UnitMemory<CartState, CartMsg>;
-final navUnitStore =
-    ledger.memory(const NavUnit())! as UnitMemory<NavState?, NavOp>;
+/// The typed data surface + nav wiring, hung on [Ledger] so
+/// `ledger.` is the one api — each getter is sugar over the
+/// position door (`at(const Row())`), named by the row class
+/// with its mechanical suffix stripped.
+extension AppLedger on Ledger {
+  UnitMemory<bool, ProductMsg> get catalogCovered => at(const CatalogCovered());
+  UnitMemory<Set<ProductId>, ReviewsInFlightMsg> get reviewsInFlight =>
+      at(const ReviewsInFlight());
+  StoreMemory<ProductId, Product, ProductMsg> get localProducts =>
+      at(const LocalProducts());
+  StoreMemory<ProductId, Product, ProductMsg> get products =>
+      at(const Products());
+  StoreMemory<SellerChatId, SellerThread, SellerChatMsg> get sellerThreads =>
+      at(const SellerThreads());
+  UnitMemory<CartWrite, CartMsg> get cartWrite => at(const CartWriteUnit());
+  UnitMemory<CartState, CartMsg> get cart => at(const Cart());
+  UnitMemory<NavState?, NavOp> get nav => at(const NavUnit());
 
-/// The generated nav-side wiring, hung on [Ledger] so `ledger.` is the one api.
-extension on Ledger {
   /// Tag the id scopes and wire navigation. Idempotent — `Screen.manager` calls it.
   void bind() {
     if (_bound) return;
     _bound = true;
-    IdScope.tag(localProductsStore, Ids.product);
-    IdScope.tag(productsStore, Ids.product);
-    IdScope.tag(sellerThreadsStore, Ids.sellerChat);
+    IdScope.tag(localProducts, Ids.product);
+    IdScope.tag(products, Ids.product);
+    IdScope.tag(sellerThreads, Ids.sellerChat);
     _Screens.graph.navigations.listen((n) {
       final (screen, id) = n.destination;
       if (screen == _Screens.product) {
@@ -5590,10 +5586,10 @@ extension on Ledger {
     });
     _Screens.graph.routeOps((op) {
       dispatch(op);
-      final s = navUnitStore.value;
+      final s = nav.value;
       if (s != null) _Screens.graph.applyState(s);
     });
-    navUnitStore.events.listen((e) {
+    nav.events.listen((e) {
       final s = e.after;
       if (s != null) _Screens.graph.applyState(s);
     });
@@ -5603,8 +5599,7 @@ extension on Ledger {
   /// localProducts on screen `product` — the entry at its live nav id.
   Product? localProductsOnProduct() {
     for (final e in _Screens.graph.stack) {
-      if (e.screen == _Screens.product)
-        return localProductsStore[e.id as ProductId];
+      if (e.screen == _Screens.product) return localProducts[e.id as ProductId];
     }
     return null;
   }
@@ -5612,7 +5607,7 @@ extension on Ledger {
   /// products on screen `product` — the entry at its live nav id.
   Product? productsOnProduct() {
     for (final e in _Screens.graph.stack) {
-      if (e.screen == _Screens.product) return productsStore[e.id as ProductId];
+      if (e.screen == _Screens.product) return products[e.id as ProductId];
     }
     return null;
   }
@@ -5621,7 +5616,7 @@ extension on Ledger {
   SellerThread? sellerThreadsOnSellerChat() {
     for (final e in _Screens.graph.stack) {
       if (e.screen == _Screens.sellerChat)
-        return sellerThreadsStore[e.id as SellerChatId];
+        return sellerThreads[e.id as SellerChatId];
     }
     return null;
   }
