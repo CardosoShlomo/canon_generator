@@ -5,7 +5,6 @@ import 'src/canon_mark.dart';
 import 'src/entities_generator.dart';
 import 'src/ids_generator.dart';
 import 'src/nav_generator.dart';
-import 'src/registry_generator.dart';
 
 export 'src/canon_mark.dart' show CanonGenerator;
 export 'src/entities_generator.dart' show EntitiesGenerator;
