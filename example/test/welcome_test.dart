@@ -25,10 +25,10 @@ void main() {
     // The intent folds instantly (it states the TARGET)…
     dispatch(TodoAdded(TodoId('002'), 'Brew tea'));
     dispatch(const CompleteTodo(TodoId('002'), done: true));
-    expect(ledger.todos[TodoId('002')]!.done, isTrue);
+    expect(todos.mem[TodoId('002')]!.done, isTrue);
     // …and the echo lands as a no-op re-statement of the same fact.
     dispatch(const TodoToggled(TodoId('002'), done: true));
-    expect(ledger.todos[TodoId('002')]!.done, isTrue);
+    expect(todos.mem[TodoId('002')]!.done, isTrue);
 
     Screen.pop();
     await tester.pumpAndSettle();

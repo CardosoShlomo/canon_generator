@@ -589,9 +589,9 @@ final class _WLHomeTodo implements Hop<TodoNav> {
 // ignore_for_file: unused_element
 /// The app-wide ledger, built from the `app` regency —
 /// the runtime splices its rows in order and wires its merge
-/// edges. `Screen.manager` binds the nav side. `ledger.dispatch(msg)` ·
-/// `ledger.on<…>(...)`; entities live on the typed `ledger.<row>`
-/// getters (sugar over `ledger.at(const Row())`).
+/// edges. `Screen.manager` binds the nav side. Reads hang on the
+/// row CLASSES (`extension <Row>Reads`) — name your rows with const
+/// globals (`const todos = Todos();`) and read `todos.of(context)`.
 final ledger = Ledger.root(app);
 
 /// States a fact — dispatch is the ONLY verb, so it needs no prefix.
@@ -605,43 +605,105 @@ class TodoEnteredMsg extends Msg {
   final TodoId id;
 }
 
-/// The typed data surface + nav wiring, hung on [Ledger] so
-/// `ledger.` is the one api — each getter is sugar over the
-/// position door (`at(const Row())`), named by the row class
-/// with its mechanical suffix stripped.
-extension AppLedger on Ledger {
-  UnitMemory<bool, TodoMsg> get todosCovered => at(const TodosCovered());
-  StoreMemory<TodoId, Todo, TodoMsg> get localTodos => at(const LocalTodos());
-  StoreMemory<TodoId, Todo, TodoMsg> get todos => at(const Todos());
+/// Reads for a `TodosCovered` row — sugar over `ledger.at(this)`.
+extension TodosCoveredReads on TodosCovered {
+  UnitMemory<bool, TodoMsg> get mem => ledger.at(this);
 
-  /// Tag the id scopes and wire navigation. Idempotent — `Screen.manager` calls it.
+  /// The state, now — merge-resolved.
+  bool get state => mem.state;
+
+  Stream<void> get changes => mem.changes;
+  Stream<UnitEvent<bool, TodoMsg>> get events => mem.events;
+
+  /// The value, reactively — rebuilds on every change.
+  bool of(BuildContext context) => mem.of(context);
+}
+
+/// Reads for a `LocalTodos` row — sugar over `ledger.at(this)`.
+extension LocalTodosReads on LocalTodos {
+  StoreMemory<TodoId, Todo, TodoMsg> get mem => ledger.at(this);
+
+  /// The keyed collection, merge-resolved.
+  IdentifiableMap<TodoId, Todo> get entities => mem.entities;
+  Iterable<Todo> get values => mem.values;
+  List<TodoId> get ids => mem.ids;
+  Todo? operator [](TodoId key) => mem[key];
+
+  Stream<TodoId> get changes => mem.changes;
+  Stream<void> get structure => mem.structure;
+  Stream<StoreEvent<TodoId, Todo, TodoMsg>> get events => mem.events;
+
+  /// The key SEQUENCE, reactively — structural rebuilds only.
+  List<TodoId> of(BuildContext context) => mem.of(context);
+
+  /// One entity, reactively — id omitted reads the AMBIENT identity.
+  Todo? entityOf(BuildContext context, [TodoId? id]) =>
+      mem.entityOf(context, id);
+
+  /// Plants the item scope over [child] — the list-tile spelling.
+  Widget item(TodoId id, {required Widget child}) => mem.item(id, child: child);
+
+  /// The enclosing item scope's id, when planted from THIS row.
+  TodoId? idOf(BuildContext context) => mem.idOf(context);
+
+  /// The entry on screen `todo`, at its live nav id.
+  Todo? onTodo() {
+    for (final e in _Screens.graph.stack) {
+      if (e.screen == _Screens.todo) return mem[e.id as TodoId];
+    }
+    return null;
+  }
+}
+
+/// Reads for a `Todos` row — sugar over `ledger.at(this)`.
+extension TodosReads on Todos {
+  StoreMemory<TodoId, Todo, TodoMsg> get mem => ledger.at(this);
+
+  /// The keyed collection, merge-resolved.
+  IdentifiableMap<TodoId, Todo> get entities => mem.entities;
+  Iterable<Todo> get values => mem.values;
+  List<TodoId> get ids => mem.ids;
+  Todo? operator [](TodoId key) => mem[key];
+
+  Stream<TodoId> get changes => mem.changes;
+  Stream<void> get structure => mem.structure;
+  Stream<StoreEvent<TodoId, Todo, TodoMsg>> get events => mem.events;
+
+  /// The key SEQUENCE, reactively — structural rebuilds only.
+  List<TodoId> of(BuildContext context) => mem.of(context);
+
+  /// One entity, reactively — id omitted reads the AMBIENT identity.
+  Todo? entityOf(BuildContext context, [TodoId? id]) =>
+      mem.entityOf(context, id);
+
+  /// Plants the item scope over [child] — the list-tile spelling.
+  Widget item(TodoId id, {required Widget child}) => mem.item(id, child: child);
+
+  /// The enclosing item scope's id, when planted from THIS row.
+  TodoId? idOf(BuildContext context) => mem.idOf(context);
+
+  /// The entry on screen `todo`, at its live nav id.
+  Todo? onTodo() {
+    for (final e in _Screens.graph.stack) {
+      if (e.screen == _Screens.todo) return mem[e.id as TodoId];
+    }
+    return null;
+  }
+}
+
+/// The nav-side wiring. Idempotent — `Screen.manager` calls it.
+extension AppLedger on Ledger {
   void bind() {
     if (_bound) return;
     _bound = true;
-    IdScope.tag(localTodos, Ids.todo);
-    IdScope.tag(todos, Ids.todo);
+    IdScope.tag(ledger.at(localTodos), Ids.todo);
+    IdScope.tag(ledger.at(todos), Ids.todo);
     _Screens.graph.navigations.listen((n) {
       final (screen, id) = n.destination;
       if (screen == _Screens.todo) {
         dispatch(TodoEnteredMsg(id as TodoId));
       }
     });
-  }
-
-  /// localTodos on screen `todo` — the entry at its live nav id.
-  Todo? localTodosOnTodo() {
-    for (final e in _Screens.graph.stack) {
-      if (e.screen == _Screens.todo) return localTodos[e.id as TodoId];
-    }
-    return null;
-  }
-
-  /// todos on screen `todo` — the entry at its live nav id.
-  Todo? todosOnTodo() {
-    for (final e in _Screens.graph.stack) {
-      if (e.screen == _Screens.todo) return todos[e.id as TodoId];
-    }
-    return null;
   }
 }
 

@@ -32,7 +32,7 @@ part 'showcase.canon.dart';
 //      (`ProductID.of(context)` reads the ambient typed id itself)
 //      (the nearest ambient identity — item scope, else the screen's own;
 //      the fold enforces the edge). Ambient reads ride the same identity:
-//      `ledger.products.entityOf(context)`, `inFlight.containsIdOf(context)`
+//      `products.entityOf(context)`, `inFlight.containsIdOf(context)`
 //  15. the GATED tier: a COMPOSITE identity (`sellerChat` = product ×
 //      seller) — `SellerChatID.of(context)` on its screen, component
 //      projections, and the CLAIMED handle
@@ -537,12 +537,22 @@ enum _Entities with EntityNode<_Entities> {
 // generator hangs typed reads on `ledger`; because the `product` screen
 // binds the SAME node (via the entity), those reads inject by nav location
 // (`productsOnProduct()`).
-@canon
+// The rows get NAMES — consumer-owned const globals (the audit list):
+// `read(catalogCovered)` in a judge, `products.of(context)` in a build,
+// `super(products, localProducts)` in a projection.
+const catalogCovered = CatalogCovered();
+const reviewsInFlight = ReviewsInFlight();
+const localProducts = LocalProducts();
+const products = Products();
+const sellerThreads = SellerThreads();
+const cartWrite = CartWriteUnit();
+const cart = Cart();
+
 // The app as a const VALUE — set order is traversal order.
 @canon
 const app = Regency({
   // coverage first — the gate reads it
-  CatalogCovered(),
+  catalogCovered,
   // the gates: once the live catalog has covered, cache facts drop here;
   // the entry gate fans out asks; the dedupe veto drops duplicate asks —
   // every row below sees only admitted messages (placement IS protection)
@@ -550,20 +560,20 @@ const app = Regency({
   ProductEntryGate(),
   DedupeGetReviews(),
   // the in-flight row — the dedupe gate reads it
-  ReviewsInFlight(),
+  reviewsInFlight,
   // the disk-cache SHADOW — absent-only folds, supports main via the merge
-  LocalProducts(),
-  Products(),
+  localProducts,
+  products,
   // the composite-keyed thread — its id node powers the gated identity tier
-  SellerThreads(),
+  sellerThreads,
   // 16. BELOW the row it feeds: its mint re-enters at index 0, so the
   // thread row above folds the derivation — the upward door, lawfully
   ThreadGate(),
   // the write dock — below every other reader: the prediction reaches them
   // all, then the gate mints the capture; base never folds the promise
   CartWriteGate(),
-  CartWriteUnit(),
-  Cart(),
+  cartWrite,
+  cart,
   // 12. the stack — the session's LAST reader: it folds only navigation
   // that survived every judge above; replay carries the session whole
   NavUnit(),
@@ -844,7 +854,7 @@ class _S extends StatelessWidget {
       );
 }
 
-// A keyed-store LIST, the EntityScope pattern. `ledger.products.of(context)`
+// A keyed-store LIST, the EntityScope pattern. `products.of(context)`
 // yields the key SEQUENCE and rebuilds this strip ONLY when it changes —
 // add/remove/reorder (the engine's structure feed); a value change never
 // fires here. Each item sits under an `EntityScope` (self-keyed by the id),
@@ -854,7 +864,7 @@ class _ProductsStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ids = ledger.products.of(context);
+    final ids = products.of(context);
     const style = TextStyle(color: Colors.white70, fontSize: 14);
     if (ids.isEmpty) {
       return const Text('products you visit collect here', style: style);
@@ -864,7 +874,7 @@ class _ProductsStrip extends StatelessWidget {
       runSpacing: 8,
       children: [
         for (final id in ids)
-          ledger.products.item(id, child: const _ProductTile()),
+          products.item(id, child: const _ProductTile()),
       ],
     );
   }
@@ -927,7 +937,7 @@ class _SellerChatBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final thread = ledger.sellerThreads.entityOf(context);
+    final thread = sellerThreads.entityOf(context);
     const style = TextStyle(color: Colors.white70, fontSize: 14);
     return Column(
       crossAxisAlignment: .start,
@@ -962,13 +972,13 @@ class _Product extends StatelessWidget {
     final id = context.idOf(.product);
     // The keyed read at the AMBIENT id — the screen's own identity here;
     // under an item scope it would be the item's. One spelling, either way.
-    final product = ledger.products.entityOf(context);
+    final product = products.entityOf(context);
     // Request status is an honest ROW: in the set from
     // `dispatch(GetReviews(...))` until the page folds it out.
     // Membership at the ambient id — the set's element type (ProductId)
     // states which identity the in-flight unit is keyed by.
-    final loading = ledger.reviewsInFlight.containsIdOf(context);
-    final cart = ledger.cart.of(context);
+    final loading = reviewsInFlight.containsIdOf(context);
+    final cartState = cart.of(context);
     const style = TextStyle(color: Colors.white70, fontSize: 16);
     return _S(
       product?.name ?? 'Product',
@@ -982,19 +992,19 @@ class _Product extends StatelessWidget {
         const SizedBox(height: 8),
         FilledButton.tonal(
           // States a fact; the cart UNIT folds it. The badge below reads the
-          // unit reactively — `ledger.cart.of(context)`.
+          // unit reactively — `cart.of(context)`.
           onPressed: product == null
               ? null
               : () => dispatch(CartItemAdded(product.name)),
-          child: Text('add to cart (${cart.count})'),
+          child: Text('add to cart (${cartState.count})'),
         ),
         const SizedBox(height: 8),
         FilledButton.tonal(
           // OPTIMISTIC via the write dock: an ABSOLUTE target quantity. The
           // merged read shows it NOW; the echo confirms; silence reverts at
           // the deadline fact.
-          onPressed: () => dispatch(SetQty(id, (cart.qty[id] ?? 0) + 1)),
-          child: Text('qty ${cart.qty[id] ?? 0} +'),
+          onPressed: () => dispatch(SetQty(id, (cartState.qty[id] ?? 0) + 1)),
+          child: Text('qty ${cartState.qty[id] ?? 0} +'),
         ),
         const SizedBox(height: 8),
         // OWNED children: reviews live INSIDE the product (the entity graph's

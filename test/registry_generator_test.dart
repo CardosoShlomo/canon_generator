@@ -554,8 +554,9 @@ void main() {
             generateFor: {'pkg|lib/spec.dart'},
             outputs: {
               'pkg|lib/spec.canon.dart': decodedMatches(allOf([
-                contains('UnitMemory<ViewerState?, ProfileMsg> get viewer =>'),
-                contains('at(const Viewer())'),
+                contains('extension ViewerReads on Viewer {'),
+                contains(
+                    'UnitMemory<ViewerState?, ProfileMsg> get mem => ledger.at(this);'),
               ]))
             },
           ));
@@ -572,13 +573,13 @@ void main() {
                 contains('final ledger = Ledger.root(app);'),
                 contains('extension AppLedger on Ledger {'),
                 contains('void bind() {'),
+                contains('extension ReviewReads on Review {'),
                 contains(
-                    'StoreMemory<String, ReviewState, ReviewMsg> get review =>'),
-                contains('at(const Review())'),
+                    'StoreMemory<String, ReviewState, ReviewMsg> get mem => ledger.at(this);'),
                 // StoreMemory IS the read surface — no `review(key)` sugar
                 isNot(contains('ReviewState? review(String key)')),
                 // derived screen↔store association: profile shares Ids.author
-                contains('ReviewState? reviewOnProfile()'),
+                contains('ReviewState? onProfile()'),
                 // Door 2: the committed-navigation trigger consults the twin
                 contains('graph.navigations.listen('),
                 contains('class ProfileEnteredMsg extends Msg'),
@@ -586,7 +587,7 @@ void main() {
                 isNot(contains('inFlight')),
                 isNot(contains('surface(')),
                 contains('e.screen == _Screens.profile'),
-                contains('review[e.id as String]'),
+                contains('mem[e.id as String]'),
                 // home has no id-node → no accessors at all
                 isNot(contains('OnHome')),
               ]))
@@ -603,7 +604,7 @@ void main() {
           'pkg|lib/spec.canon.dart': decodedMatches(allOf([
             isNot(contains('guard(')),
             isNot(contains('CachedGate')),
-            contains('get covered =>'),
+            contains('extension CoveredReads on Covered {'),
           ])),
         },
       ));
@@ -616,8 +617,8 @@ void main() {
         generateFor: {'pkg|lib/spec.dart'},
         outputs: {
           'pkg|lib/spec.canon.dart': decodedMatches(allOf([
-            contains('get viewer =>'), // spliced from profileSegment
-            contains('get users =>'),
+            contains('extension ViewerReads on Viewer {'), // spliced segment
+            contains('extension UsersReads on Users {'),
             isNot(contains('.merge(')),
             isNot(contains('.mergeStore(')),
           ])),

@@ -5528,9 +5528,9 @@ Enum _termOf(On sel) =>
 // ignore_for_file: unused_element
 /// The app-wide ledger, built from the `app` regency —
 /// the runtime splices its rows in order and wires its merge
-/// edges. `Screen.manager` binds the nav side. `ledger.dispatch(msg)` ·
-/// `ledger.on<…>(...)`; entities live on the typed `ledger.<row>`
-/// getters (sugar over `ledger.at(const Row())`).
+/// edges. `Screen.manager` binds the nav side. Reads hang on the
+/// row CLASSES (`extension <Row>Reads`) — name your rows with const
+/// globals (`const todos = Todos();`) and read `todos.of(context)`.
 final ledger = Ledger.root(app);
 
 /// States a fact — dispatch is the ONLY verb, so it needs no prefix.
@@ -5550,31 +5550,201 @@ class SellerChatEnteredMsg extends Msg {
   final SellerChatId id;
 }
 
-/// The typed data surface + nav wiring, hung on [Ledger] so
-/// `ledger.` is the one api — each getter is sugar over the
-/// position door (`at(const Row())`), named by the row class
-/// with its mechanical suffix stripped.
-extension AppLedger on Ledger {
-  UnitMemory<bool, ProductMsg> get catalogCovered => at(const CatalogCovered());
-  UnitMemory<Set<ProductId>, ReviewsInFlightMsg> get reviewsInFlight =>
-      at(const ReviewsInFlight());
-  StoreMemory<ProductId, Product, ProductMsg> get localProducts =>
-      at(const LocalProducts());
-  StoreMemory<ProductId, Product, ProductMsg> get products =>
-      at(const Products());
-  StoreMemory<SellerChatId, SellerThread, SellerChatMsg> get sellerThreads =>
-      at(const SellerThreads());
-  UnitMemory<CartWrite, CartMsg> get cartWrite => at(const CartWriteUnit());
-  UnitMemory<CartState, CartMsg> get cart => at(const Cart());
-  UnitMemory<NavState?, NavOp> get nav => at(const NavUnit());
+/// Reads for a `CatalogCovered` row — sugar over `ledger.at(this)`.
+extension CatalogCoveredReads on CatalogCovered {
+  UnitMemory<bool, ProductMsg> get mem => ledger.at(this);
 
-  /// Tag the id scopes and wire navigation. Idempotent — `Screen.manager` calls it.
+  /// The state, now — merge-resolved.
+  bool get state => mem.state;
+
+  Stream<void> get changes => mem.changes;
+  Stream<UnitEvent<bool, ProductMsg>> get events => mem.events;
+
+  /// The value, reactively — rebuilds on every change.
+  bool of(BuildContext context) => mem.of(context);
+}
+
+/// Reads for a `ReviewsInFlight` row — sugar over `ledger.at(this)`.
+extension ReviewsInFlightReads on ReviewsInFlight {
+  UnitMemory<Set<ProductId>, ReviewsInFlightMsg> get mem => ledger.at(this);
+
+  /// The state, now — merge-resolved.
+  Set<ProductId> get state => mem.state;
+
+  Stream<void> get changes => mem.changes;
+  Stream<UnitEvent<Set<ProductId>, ReviewsInFlightMsg>> get events =>
+      mem.events;
+
+  /// The value, reactively — rebuilds on every change.
+  Set<ProductId> of(BuildContext context) => mem.of(context);
+
+  /// Membership of the ambient id — the in-flight idiom.
+  bool containsIdOf(BuildContext context) => mem.containsIdOf(context);
+}
+
+/// Reads for a `LocalProducts` row — sugar over `ledger.at(this)`.
+extension LocalProductsReads on LocalProducts {
+  StoreMemory<ProductId, Product, ProductMsg> get mem => ledger.at(this);
+
+  /// The keyed collection, merge-resolved.
+  IdentifiableMap<ProductId, Product> get entities => mem.entities;
+  Iterable<Product> get values => mem.values;
+  List<ProductId> get ids => mem.ids;
+  Product? operator [](ProductId key) => mem[key];
+
+  Stream<ProductId> get changes => mem.changes;
+  Stream<void> get structure => mem.structure;
+  Stream<StoreEvent<ProductId, Product, ProductMsg>> get events => mem.events;
+
+  /// The key SEQUENCE, reactively — structural rebuilds only.
+  List<ProductId> of(BuildContext context) => mem.of(context);
+
+  /// One entity, reactively — id omitted reads the AMBIENT identity.
+  Product? entityOf(BuildContext context, [ProductId? id]) =>
+      mem.entityOf(context, id);
+
+  /// Plants the item scope over [child] — the list-tile spelling.
+  Widget item(ProductId id, {required Widget child}) =>
+      mem.item(id, child: child);
+
+  /// The enclosing item scope's id, when planted from THIS row.
+  ProductId? idOf(BuildContext context) => mem.idOf(context);
+
+  /// The entry on screen `product`, at its live nav id.
+  Product? onProduct() {
+    for (final e in _Screens.graph.stack) {
+      if (e.screen == _Screens.product) return mem[e.id as ProductId];
+    }
+    return null;
+  }
+}
+
+/// Reads for a `Products` row — sugar over `ledger.at(this)`.
+extension ProductsReads on Products {
+  StoreMemory<ProductId, Product, ProductMsg> get mem => ledger.at(this);
+
+  /// The keyed collection, merge-resolved.
+  IdentifiableMap<ProductId, Product> get entities => mem.entities;
+  Iterable<Product> get values => mem.values;
+  List<ProductId> get ids => mem.ids;
+  Product? operator [](ProductId key) => mem[key];
+
+  Stream<ProductId> get changes => mem.changes;
+  Stream<void> get structure => mem.structure;
+  Stream<StoreEvent<ProductId, Product, ProductMsg>> get events => mem.events;
+
+  /// The key SEQUENCE, reactively — structural rebuilds only.
+  List<ProductId> of(BuildContext context) => mem.of(context);
+
+  /// One entity, reactively — id omitted reads the AMBIENT identity.
+  Product? entityOf(BuildContext context, [ProductId? id]) =>
+      mem.entityOf(context, id);
+
+  /// Plants the item scope over [child] — the list-tile spelling.
+  Widget item(ProductId id, {required Widget child}) =>
+      mem.item(id, child: child);
+
+  /// The enclosing item scope's id, when planted from THIS row.
+  ProductId? idOf(BuildContext context) => mem.idOf(context);
+
+  /// The entry on screen `product`, at its live nav id.
+  Product? onProduct() {
+    for (final e in _Screens.graph.stack) {
+      if (e.screen == _Screens.product) return mem[e.id as ProductId];
+    }
+    return null;
+  }
+}
+
+/// Reads for a `SellerThreads` row — sugar over `ledger.at(this)`.
+extension SellerThreadsReads on SellerThreads {
+  StoreMemory<SellerChatId, SellerThread, SellerChatMsg> get mem =>
+      ledger.at(this);
+
+  /// The keyed collection, merge-resolved.
+  IdentifiableMap<SellerChatId, SellerThread> get entities => mem.entities;
+  Iterable<SellerThread> get values => mem.values;
+  List<SellerChatId> get ids => mem.ids;
+  SellerThread? operator [](SellerChatId key) => mem[key];
+
+  Stream<SellerChatId> get changes => mem.changes;
+  Stream<void> get structure => mem.structure;
+  Stream<StoreEvent<SellerChatId, SellerThread, SellerChatMsg>> get events =>
+      mem.events;
+
+  /// The key SEQUENCE, reactively — structural rebuilds only.
+  List<SellerChatId> of(BuildContext context) => mem.of(context);
+
+  /// One entity, reactively — id omitted reads the AMBIENT identity.
+  SellerThread? entityOf(BuildContext context, [SellerChatId? id]) =>
+      mem.entityOf(context, id);
+
+  /// Plants the item scope over [child] — the list-tile spelling.
+  Widget item(SellerChatId id, {required Widget child}) =>
+      mem.item(id, child: child);
+
+  /// The enclosing item scope's id, when planted from THIS row.
+  SellerChatId? idOf(BuildContext context) => mem.idOf(context);
+
+  /// The entry on screen `sellerChat`, at its live nav id.
+  SellerThread? onSellerChat() {
+    for (final e in _Screens.graph.stack) {
+      if (e.screen == _Screens.sellerChat) return mem[e.id as SellerChatId];
+    }
+    return null;
+  }
+}
+
+/// Reads for a `CartWriteUnit` row — sugar over `ledger.at(this)`.
+extension CartWriteUnitReads on CartWriteUnit {
+  UnitMemory<CartWrite, CartMsg> get mem => ledger.at(this);
+
+  /// The state, now — merge-resolved.
+  CartWrite get state => mem.state;
+
+  Stream<void> get changes => mem.changes;
+  Stream<UnitEvent<CartWrite, CartMsg>> get events => mem.events;
+
+  /// The value, reactively — rebuilds on every change.
+  CartWrite of(BuildContext context) => mem.of(context);
+}
+
+/// Reads for a `Cart` row — sugar over `ledger.at(this)`.
+extension CartReads on Cart {
+  UnitMemory<CartState, CartMsg> get mem => ledger.at(this);
+
+  /// The state, now — merge-resolved.
+  CartState get state => mem.state;
+
+  Stream<void> get changes => mem.changes;
+  Stream<UnitEvent<CartState, CartMsg>> get events => mem.events;
+
+  /// The value, reactively — rebuilds on every change.
+  CartState of(BuildContext context) => mem.of(context);
+}
+
+/// Reads for a `NavUnit` row — sugar over `ledger.at(this)`.
+extension NavUnitReads on NavUnit {
+  UnitMemory<NavState?, NavOp> get mem => ledger.at(this);
+
+  /// The state, now — merge-resolved.
+  NavState? get state => mem.state;
+
+  Stream<void> get changes => mem.changes;
+  Stream<UnitEvent<NavState?, NavOp>> get events => mem.events;
+
+  /// The value, reactively — rebuilds on every change.
+  NavState? of(BuildContext context) => mem.of(context);
+}
+
+/// The nav-side wiring. Idempotent — `Screen.manager` calls it.
+extension AppLedger on Ledger {
   void bind() {
     if (_bound) return;
     _bound = true;
-    IdScope.tag(localProducts, Ids.product);
-    IdScope.tag(products, Ids.product);
-    IdScope.tag(sellerThreads, Ids.sellerChat);
+    IdScope.tag(ledger.at(localProducts), Ids.product);
+    IdScope.tag(ledger.at(products), Ids.product);
+    IdScope.tag(ledger.at(sellerThreads), Ids.sellerChat);
     _Screens.graph.navigations.listen((n) {
       final (screen, id) = n.destination;
       if (screen == _Screens.product) {
@@ -5586,39 +5756,14 @@ extension AppLedger on Ledger {
     });
     _Screens.graph.routeOps((op) {
       dispatch(op);
-      final s = nav.state;
+      final s = ledger.at(const NavUnit()).state;
       if (s != null) _Screens.graph.applyState(s);
     });
-    nav.events.listen((e) {
+    ledger.at(const NavUnit()).events.listen((e) {
       final s = e.after;
       if (s != null) _Screens.graph.applyState(s);
     });
     dispatch(SeedOp(_Screens.graph.navState));
-  }
-
-  /// localProducts on screen `product` — the entry at its live nav id.
-  Product? localProductsOnProduct() {
-    for (final e in _Screens.graph.stack) {
-      if (e.screen == _Screens.product) return localProducts[e.id as ProductId];
-    }
-    return null;
-  }
-
-  /// products on screen `product` — the entry at its live nav id.
-  Product? productsOnProduct() {
-    for (final e in _Screens.graph.stack) {
-      if (e.screen == _Screens.product) return products[e.id as ProductId];
-    }
-    return null;
-  }
-
-  /// sellerThreads on screen `sellerChat` — the entry at its live nav id.
-  SellerThread? sellerThreadsOnSellerChat() {
-    for (final e in _Screens.graph.stack) {
-      if (e.screen == _Screens.sellerChat)
-        return sellerThreads[e.id as SellerChatId];
-    }
-    return null;
   }
 }
 

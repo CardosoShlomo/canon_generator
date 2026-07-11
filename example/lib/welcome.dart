@@ -140,12 +140,12 @@ final class CachedTodosGate extends Veto<CachedTodosMsg> {
   const CachedTodosGate();
   @override
   bool block(CachedTodosMsg msg, ReadStore read) =>
-      read(const TodosCovered());
+      read(todosCovered);
 }
 
 /// The projection IS the merge edge — it carries its endpoints.
 final class LocalTodoSupports extends Projection<Todo, TodoId, Todo> {
-  const LocalTodoSupports() : super(const Todos(), const LocalTodos());
+  const LocalTodoSupports() : super(todos, localTodos);
   @override
   Todo resolve(Todo? row, Todo local) => row ?? local;
 }
@@ -164,14 +164,20 @@ enum _Entities with EntityNode<_Entities> {
 }
 
 // ── The REGENCY: the app's state tier as a const value ──
-// Set order is traversal order — placement is protection; the merges set
-// lists bare projections (each carries its own endpoints).
+// The rows get NAMES — consumer-owned const globals (the audit list);
+// `read(todosCovered)` in a judge, `todos.of(context)` in a build (the
+// generated per-class extension), `super(todos, localTodos)` in a
+// projection. Set order is traversal order — placement is protection.
+const todosCovered = TodosCovered();
+const localTodos = LocalTodos();
+const todos = Todos();
+
 @canon
 const app = Regency({
-  TodosCovered(),
+  todosCovered,
   CachedTodosGate(), // protects every row below
-  LocalTodos(),
-  Todos(),
+  localTodos,
+  todos,
 }, merges: {LocalTodoSupports()});
 
 // ── Screens: the navigation grammar ──
@@ -201,7 +207,7 @@ class TodoListScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ids = ledger.todos.of(context); // key sequence — structural rebuilds
+    final ids = todos.of(context); // key sequence — structural rebuilds
     return Scaffold(
       appBar: AppBar(title: const Text('todos')),
       body: ListView(
@@ -209,7 +215,7 @@ class TodoListScreen extends StatelessWidget {
           // The item PLANT: scopes one todo (data + identity) over its tile —
           // self-keyed, per-key rebuilds, and the subtree needs no arguments.
           for (final id in ids)
-            ledger.todos.item(id, child: const _TodoTile()),
+            todos.item(id, child: const _TodoTile()),
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -250,7 +256,7 @@ class TodoScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     // The screen PLANTS its identity: both reads are ambient — the typed id
     // and the entity at it — no constructor threading anywhere.
-    final todo = ledger.todos.entityOf(context);
+    final todo = todos.entityOf(context);
     return Scaffold(
       appBar: AppBar(
         title: Text(todo?.title ?? '…'),
