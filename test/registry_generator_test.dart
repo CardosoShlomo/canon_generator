@@ -473,9 +473,10 @@ const app = Regency({
 });
 ''';
 
-// A CRUD brick row: one row that is a whole segment — the generator names
-// its authoritative store after the brick class minus the Crud suffix.
-const _brickSpec = '''
+// A NAMED regency row — an app dialect subclassing Regency. It is OPAQUE
+// to the generator: the runtime mounts its rows; consumers read its parts
+// by instance identity, so NOTHING is emitted for it.
+const _namedRegencySpec = '''
 import 'package:canon/canon.dart';
 
 part 'spec.canon.dart';
@@ -488,17 +489,13 @@ enum Ids with IdNode {
 
 class Order {}
 sealed class OrderMsg {}
-class OrdersLoaded extends OrderMsg with ListMsg<Order> {
+class OrdersLoaded extends OrderMsg {
   const OrdersLoaded(this.items);
   final List<Order> items;
 }
-class CachedOrders extends OrderMsg with CacheMsg<Order> {
-  const CachedOrders(this.items);
-  final List<Order> items;
-}
 
-class OrdersCrud extends ListCrud<String, Order, OrdersLoaded, CachedOrders> {
-  const OrdersCrud();
+class OrdersDialect extends Regency {
+  const OrdersDialect() : super(const {});
 }
 
 @entities
@@ -515,7 +512,7 @@ enum _Entities with EntityNode<_Entities> {
 }
 
 @canon
-const app = Regency({OrdersCrud()});
+const app = Regency({OrdersDialect()});
 ''';
 
 void main() {
@@ -627,16 +624,16 @@ void main() {
         },
       ));
 
-  test('a CRUD brick row names its store after the brick class',
+  test('a NAMED regency row is opaque — the runtime mounts it, nothing emits',
       () => testBuilder(
         PartBuilder([CanonGenerator()], '.canon.dart'),
-        {...assets, 'pkg|lib/spec.dart': _brickSpec},
+        {...assets, 'pkg|lib/spec.dart': _namedRegencySpec},
         rootPackage: 'pkg',
         generateFor: {'pkg|lib/spec.dart'},
         outputs: {
           'pkg|lib/spec.canon.dart': decodedMatches(allOf([
-            contains('StoreMemory<String, Order, Msg> get orders =>'),
-            contains('at(const OrdersCrud().store)'),
+            contains('final ledger = Ledger.root(app);'),
+            isNot(contains('OrdersDialect')),
           ])),
         },
       ));

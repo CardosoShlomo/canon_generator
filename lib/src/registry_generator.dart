@@ -19,13 +19,12 @@ class _EntityInfo {
 }
 
 /// One row of the flattened graph: the spec expression as written (its
-/// const re-spelling IS the instance, by canonicalization), the held type,
-/// and whether the row is a CRUD brick (a whole segment with a `store`).
+/// const re-spelling IS the instance, by canonicalization) and the held
+/// type.
 class _Row {
-  _Row(this.source, this.type, {this.brick = false});
+  _Row(this.source, this.type);
   final String source;
   final DartType type;
-  final bool brick;
 }
 
 /// Reads the `@canon` REGENCY — the app as a const value:
@@ -41,14 +40,15 @@ class _Row {
 /// ```
 ///
 /// and emits the typed DATA surface. The RUNTIME owns the structure —
-/// `Ledger.root(app)` splices rows (and nested graphs, and bricks) in order
+/// `Ledger.root(app)` splices rows (and nested regencies) in order
 /// and wires the merge edges the projections carry — so the generated code
 /// only names things: the `ledger` global, one `<row>Store` global per
 /// reader row (looked up by instance identity), the id tags, the entry
-/// facts, and the nav wiring. Store names derive from the row CLASS
-/// (`Todos()` → `todosStore`); a brick row (`TodosCrud()`) names its
-/// authoritative store (`todosStore`). Everything else derives from the
-/// `@entities` graph through each store's entity type.
+/// facts, and the nav wiring. Getter names derive from the row CLASS
+/// (`Todos()` → `ledger.todos`); a NAMED regency row is opaque — the
+/// runtime mounts its rows, and consumers read its parts by instance
+/// identity (`ledger.at(const MomentPaged().store)`). Everything else
+/// derives from the `@entities` graph through each store's entity type.
 class RegistryGenerator {
   Future<String> generateForGraph(
       TopLevelVariableElement element, BuildStep buildStep) async {
@@ -105,47 +105,6 @@ class RegistryGenerator {
 
     for (final row in rows) {
       final held = row.type;
-
-      if (row.brick) {
-        // A CRUD brick: one row that IS a segment. Its authoritative store
-        // is the consumer surface — the getter is named after the brick
-        // class minus the `Crud` suffix (`OrdersCrud()` → `ledger.orders`).
-        final cls = held is InterfaceType ? held.element.name! : row.source;
-        final base = cls.endsWith('Crud') && cls.length > 4
-            ? cls.substring(0, cls.length - 4)
-            : cls;
-        final name = _decap(base);
-        _claimName(takenNames, name, row.source, element);
-        final crudArgs = await _crudArgs(held, buildStep);
-        if (crudArgs == null) {
-          throw InvalidGenerationSourceError(
-              'brick row `${row.source}` does not resolve its Crud slots — '
-              'declare it as a named subclass of a Crud preset.',
-              element: element);
-        }
-        final (keyType, entityType) = (crudArgs[0], crudArgs[1]);
-        final info = _entityFor(name, entityType, entityByType, element,
-            owner: 'brick');
-        _checkKeyAgreement(name, entityType, keyType, info, element);
-        fields.add('  StoreMemory<$keyType, $entityType, Msg> get $name => '
-            'at(${row.source}.store);');
-        rowKind[name] = _RowKind.store;
-        _emitStoreDerivations(
-          name: name,
-          keyType: keyType,
-          state: entityType,
-          info: info,
-          flutterBound: flutterBound,
-          binds: binds,
-          triggers: triggers,
-          reads: reads,
-          idNavs: idNavs,
-          reverseNavs: reverseNavs,
-          nodeTypeOf: nodeTypeOf,
-          screensByNode: screensByNode,
-        );
-        continue;
-      }
 
       // A UNIT row: holds a Unit<S, M> (cardinality one, keyless facts).
       final v = _matchedValue(held);
@@ -211,7 +170,7 @@ class RegistryGenerator {
       if (s == null) {
         throw InvalidGenerationSourceError(
             'row `${row.source}` must hold a Regent — a Store<K,E,M>, a '
-            'Unit<S,M>, a Guard/Veto, a Crud brick, or a nested Regency.',
+            'Unit<S,M>, a Guard/Veto, or a Regency (nested or named).',
             element: element);
       }
       final name = _rowName(held, row.source, element);
@@ -324,12 +283,23 @@ class RegistryGenerator {
     b.writeln('void dispatch(Msg msg) => ledger.dispatch(msg);');
     b.writeln('bool _bound = false;');
     // Scope-entry FACTS — one per id-keyed screen: a committed navigation
-    // dispatches it; guards judge asks/refetches from it.
+    // dispatches it; guards judge asks/refetches from it. When THIS library
+    // declares `sealed class <Node>AskMsg` (the key type minus `Id`), the
+    // entry fact joins it — a hand-written ask gate then types on the
+    // sealed group, exhaustively, across every screen the identity keys.
+    final sealedGroups = {
+      for (final c in library.classes)
+        if (c.isSealed) c.name,
+    };
     for (final e in entryScreens.entries) {
       final cls = '${e.key[0].toUpperCase()}${e.key.substring(1)}EnteredMsg';
+      final key = e.value.$2;
+      final ask =
+          '${key.endsWith('Id') ? key.substring(0, key.length - 2) : key}AskMsg';
+      final joins = sealedGroups.contains(ask) ? ' implements $ask' : '';
       b.writeln();
       b.writeln('/// The `${e.key}` screen was navigated to (never a render).');
-      b.writeln('class $cls extends Msg {');
+      b.writeln('class $cls extends Msg$joins {');
       b.writeln('  const $cls(this.id);');
       b.writeln('  final ${e.value.$2} id;');
       b.writeln('}');
@@ -547,9 +517,9 @@ class RegistryGenerator {
 
   /// The regency's rows FLATTENED: nested graphs splice (recursively, both
   /// inline `Regency({...})` and identifier references to other const
-  /// regencies); a Crud brick stays ONE row (marked). Each row keeps its
-  /// source text — the const re-spelling of that expression is the row's
-  /// identity.
+  /// regencies); a NAMED regency is opaque and contributes nothing. Each
+  /// row keeps its source text — the const re-spelling of that expression
+  /// is the row's identity.
   Future<List<_Row>> _flattenedRows(
       TopLevelVariableElement element, BuildStep buildStep) async {
     final rows = <_Row>[];
@@ -599,14 +569,15 @@ class RegistryGenerator {
   Future<void> _walkRow(Expression e, Element context, List<_Row> rows,
       BuildStep buildStep) async {
     final t = e.staticType;
-    if (_wears(t, 'Crud')) {
-      rows.add(_Row(_constSource(e), t!, brick: true));
-      return;
-    }
     if (_wears(t, 'Regency')) {
       // A nested graph: inline creation recurses in place; an identifier
-      // resolves to its const variable and recurses there.
+      // resolves to its const variable and recurses there. A named REGENCY
+      // subclass is OPAQUE: the runtime mounts its rows; consumers read its
+      // parts by instance identity (`ledger.at(const MomentPaged().store)`),
+      // so nothing is emitted.
       if (e is InstanceCreationExpression) {
+        final el = t is InterfaceType ? t.element.name : null;
+        if (el != 'Regency') return; // an opaque named regency
         await _walkGraphExpr(e, context, rows, buildStep);
         return;
       }
@@ -745,7 +716,7 @@ class RegistryGenerator {
 
   /// The SHADOW LAW: no row reduces the unsealed root `Msg` — a
   /// cross-family row declares a sealed GROUP its facts implement. Rows
-  /// shipped by package:regent (brick citizens) are slot-typed and exempt.
+  /// shipped by package:regent are the engine's own and exempt.
   void _checkSealedM(
       String name, DartType? held, DartType mType, Element element) {
     if (_fromRegent(held)) return;
@@ -757,38 +728,6 @@ class RegistryGenerator {
           'its reduce is exhaustively pattern-matched.',
           element: element);
     }
-  }
-
-  /// The Crud supertype's [K, T, …] slot args as display strings, with the
-  /// syntactic extends-clause fallback for generated (InvalidType) keys.
-  Future<List<String>?> _crudArgs(DartType? t, BuildStep buildStep) async {
-    if (t is! InterfaceType) return null;
-    for (final s in [t, ...t.allSupertypes]) {
-      if (s.element.name == 'Crud' && s.typeArguments.length == 8) {
-        var args = [for (final a in s.typeArguments) a.getDisplayString()];
-        if (args.take(2).any((a) => a.contains('InvalidType'))) {
-          final syn = await _syntacticExtendsArgs(t, buildStep);
-          if (syn != null && syn.length >= 2) {
-            args = [...syn, ...args.skip(syn.length)];
-          }
-        }
-        return args;
-      }
-    }
-    return null;
-  }
-
-  /// The type args AS WRITTEN in [held]'s class `extends` clause.
-  Future<List<String>?> _syntacticExtendsArgs(
-      DartType? held, BuildStep buildStep) async {
-    final el = held is InterfaceType ? held.element : null;
-    if (el == null) return null;
-    final ast =
-        await buildStep.resolver.astNodeFor(el.firstFragment, resolve: false);
-    if (ast is! ClassDeclaration) return null;
-    final args = ast.extendsClause?.superclass.typeArguments?.arguments;
-    if (args == null) return null;
-    return [for (final a in args) a.toSource()];
   }
 
   /// The deictic verb name for screen [scr] presenting the [nodeName] node:
@@ -1071,7 +1010,7 @@ class RegistryGenerator {
 
   /// The build-time regent check: every `read(…)` argument inside a guard class
   /// held by a row must be a `const` construction of a class some row holds —
-  /// or a part read on a const brick (`read(const OrdersCrud().covered)`).
+  /// or a part read on a named regency (`read(const BlockedCrud().covered)`).
   /// (Exact-args identity stays a runtime law; the class-level and
   /// missing-`const` mistakes fail HERE, with the guard and row named.)
   Future<void> _validateReadRegents(TopLevelVariableElement element,
@@ -1084,9 +1023,8 @@ class RegistryGenerator {
           : null;
       if (el == null) continue;
       regentTypes.add(el);
-      if (!row.brick &&
-          el.allSupertypes.any(
-              (s) => s.element.name == 'Guard' && s.typeArguments.length == 1)) {
+      if (el.allSupertypes.any(
+          (s) => s.element.name == 'Guard' && s.typeArguments.length == 1)) {
         guards.add(el);
       }
     }
@@ -1097,8 +1035,8 @@ class RegistryGenerator {
       final visitor = _ReadCallVisitor();
       ast.visitChildren(visitor);
       for (final arg in visitor.readArgs) {
-        // A brick-part read — `crud.covered` on a const brick instance —
-        // resolves through the brick's memoized identity; trusted here.
+        // A part read on a named regency — resolves through the regency's
+        // memoized identity; trusted here.
         if (arg is PropertyAccess || arg is PrefixedIdentifier) continue;
         if (arg is! InstanceCreationExpression) {
           throw InvalidGenerationSourceError(
