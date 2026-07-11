@@ -1,3 +1,8 @@
+## 0.37.0
+
+- BREAKING: the `ledger.<name>` getter tier retired — reads are per-class extensions on consumer-named const row globals (`users.of(context)`).
+- Entity-holding units (state `implements Identifiable<K>`) gain `id` and the surgical `idOf(context)`.
+
 ## 0.36.0
 
 - BREAKING: the `@regents` enum retired — the ledger is a const value: `@canon const app = Regency({...}, merges: {...})`; store globals derive from the row classes.

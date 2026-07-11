@@ -160,10 +160,30 @@ class RegistryGenerator {
           b.writeln();
           b.writeln('  Stream<void> get changes => mem.changes;');
           b.writeln('  Stream<UnitEvent<${vArgs.join(', ')}>> get events => mem.events;');
+          final idKey =
+              await _identityKeyOf(v.typeArguments[0], buildStep);
+          final idNullable = vArgs[0].endsWith('?');
+          if (idKey != null) {
+            b.writeln();
+            b.writeln('  /// The identity the state carries, now.');
+            idNullable
+                ? b.writeln('  $idKey? get id => state?.id;')
+                : b.writeln('  $idKey get id => state.id;');
+          }
           if (flutterBound) {
             b.writeln();
             b.writeln('  /// The value, reactively — rebuilds on every change.');
             b.writeln('  ${vArgs[0]} of(BuildContext context) => mem.of(context);');
+            if (idKey != null) {
+              b.writeln();
+              b.writeln('  /// The identity, reactively — rebuilds only');
+              b.writeln('  /// when the id changes, never on field churn.');
+              idNullable
+                  ? b.writeln(
+                      '  $idKey? idOf(BuildContext context) => mem.idOf(context);')
+                  : b.writeln(
+                      '  $idKey idOf(BuildContext context) => mem.idOf(context)!;');
+            }
             if (vArgs[0].startsWith('Set<')) {
               b.writeln();
               b.writeln('  /// Membership of the ambient id — the in-flight idiom.');
@@ -662,6 +682,35 @@ class RegistryGenerator {
     if (e is Identifier) return e.toSource();
     final src = e.toSource();
     return src.startsWith('const ') ? src : 'const $src';
+  }
+
+  /// The `K` of `Identifiable<K>` on a unit's state type (nullability
+  /// stripped), or null when the state carries no identity. Generated key
+  /// types (UserId) are hidden from this builder's own resolver, so the
+  /// resolved walk falls back to the arg AS WRITTEN in the state class's
+  /// `with`/`implements` clause.
+  Future<String?> _identityKeyOf(DartType t, BuildStep buildStep) async {
+    if (t is! InterfaceType) return null;
+    for (final s in [t, ...t.allSupertypes]) {
+      if (s.element.name == 'Identifiable' && s.typeArguments.length == 1) {
+        final k = s.typeArguments.single;
+        if (k is! InvalidType) return k.getDisplayString();
+        final ast = await buildStep.resolver
+            .astNodeFor(t.element.firstFragment, resolve: false);
+        if (ast is! ClassDeclaration) return null;
+        for (final n in [
+          ...?ast.withClause?.mixinTypes,
+          ...?ast.implementsClause?.interfaces,
+        ]) {
+          final args = n.typeArguments?.arguments;
+          if (n.name.lexeme == 'Identifiable' && args?.length == 1) {
+            return args!.single.toSource();
+          }
+        }
+        return null;
+      }
+    }
+    return null;
   }
 
   bool _wears(DartType? t, String name) {
