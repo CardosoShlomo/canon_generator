@@ -124,18 +124,17 @@ void cached(List<Todo> list) {
 
 ```dart
 // canon — precedence is a ROW ORDER, checked by a law
-@regents
-enum _Regents with RegentNode<_Regents> {
-  todosCovered(TodosCovered()),        // has the authority spoken?
-  cachedTodosGate(CachedTodosGate()),  // drops late cache for rows below
-  localTodos(LocalTodos()),            // the shadow: fills ABSENCE only
-  todos(Todos());                      // main truth
-  static final merges = { todos.from(localTodos, const LocalTodoSupports()) };
-}
+@canon
+const app = Regency({
+  TodosCovered(),        // has the authority spoken?
+  CachedTodosGate(),     // drops late cache for rows below
+  LocalTodos(),          // the shadow: fills ABSENCE only
+  Todos(),               // main truth
+}, merges: {LocalTodoSupports()});
 
 // and the law that would catch the riverpod bug, executable:
-expect(replay(_Regents.values, [cache, serverList]),
-       equals(replay(_Regents.values, [serverList, cache])));
+expect(replay(app, [cache, serverList]),
+       equals(replay(app, [serverList, cache])));
 ```
 
 The riverpod flag is the same idea — "coverage" — as private mutable state
@@ -154,11 +153,11 @@ TodoTile(id: id, onToggle: (d) => ref.read(todosProvider.notifier)
 
 ```dart
 // canon — identity is ambient, node-verified
-todosStore.item(id, child: const _TodoTile());   // the one plant
+ledger.todos.item(id, child: const _TodoTile()); // the one plant
 // inside the tile / the detail screen:
 EntityScope.of<Todo>(context);                   // the entity
 dispatch(CompleteTodo(TodoID.of(context), done: v)); // write: id READ ambiently
-todosStore.entityOf(context);                    // detail: entity at the screen's id
+ledger.todos.entityOf(context);                  // detail: entity at the screen's id
 ```
 
 ## 5. Loading
@@ -170,7 +169,7 @@ final loading = ref.watch(todosLoadingProvider);   // one more provider
 
 ```dart
 // canon — presence in an in-flight ROW; replay-visible like everything else
-final loading = todosInFlightStore.containsIdOf(context);
+final loading = ledger.todosInFlight.containsIdOf(context);
 ```
 
 ## 6. Restoration & the web
@@ -190,8 +189,8 @@ link rebuilds the legal chain from the grammar.
 
 ```dart
 // canon — the ledger is a pure value; the whole app replays in a unit test
-final z = replay(_Regents.values, [cache, TodosLoaded(…), CompleteTodo(…)]);
-expect(z[_Regents.todos], …);   // and permutation laws state convergence
+final z = replay(app, [cache, TodosLoaded(…), CompleteTodo(…)]);
+expect(z[const Todos()], …);    // and permutation laws state convergence
 ```
 
 ---
@@ -201,7 +200,7 @@ expect(z[_Regents.todos], …);   // and permutation laws state convergence
 Where go_router + riverpod wins:
 
 - **Setup**: no build_runner, no enums, running in minutes. Canon's four
-  declarations (`@IDs` `@entities` `@regents` `@screens`) are ~60 lines of
+  declarations (`@IDs` `@entities` the regency `@screens`) are ~60 lines of
   ceremony before the first frame.
 - **Familiarity**: every Flutter dev reads a Notifier cold; canon's
   vocabulary (regents, gates, folds, plants) must be learned.

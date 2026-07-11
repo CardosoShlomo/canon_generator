@@ -12,7 +12,7 @@ part 'showcase.canon.dart';
 //
 //   1. facts as sealed families (a msg IS a source: its TYPE is its rank)
 //   2. stores & units: pure folds, nothing else lives in a memory
-//   3. the @regents enum: row order is traversal order; gates protect below
+//   3. the REGENCY: set order is traversal order; gates protect below
 //   4. gates judging via `read(const X())` — the ledger's own state by identity
 //   5. COVERAGE: recorded permission to treat absence as knowledge
 //   6. a shadow store + merge edge: disk cache answers until censored

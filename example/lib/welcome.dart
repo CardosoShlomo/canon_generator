@@ -10,7 +10,7 @@ part 'welcome.canon.dart';
 //
 //   Ids       the identity space (typed ids, URL codecs)
 //   _Entities what exists
-//   _Regents  the LEDGER's regents, in traversal order: a coverage unit,
+//   app       the REGENCY: the ledger's regents, in traversal order — a coverage unit,
 //             a veto standing above the rows it protects, a disk-cache
 //             shadow store, the main store — plus the merge edge that lets
 //             the shadow answer reads
