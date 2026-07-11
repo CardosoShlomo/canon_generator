@@ -2929,6 +2929,10 @@ final class Hop<N extends AnyNav> {
   /// segment; a navigable `Place` (a `Place`) overrides it with its
   /// full path, so `Screen.go` lands the whole placement.
   List<(Enum, Object?)> get chain => [(spec, id)];
+
+  /// The screen this hop lands on — the total projection
+  /// (the inverse needs an id, so it stays a Hop ctor).
+  Screen<Object?> get screen => Screen._forSpec(spec);
   static const splash = Hop<SplashNav>._(_Screens.splash, null, SplashNav._());
   static const signIn = Hop<SignInNav>._(_Screens.signIn, null, SignInNav._());
   static const signUp = Hop<SignUpNav>._(_Screens.signUp, null, SignUpNav._());
@@ -17913,6 +17917,8 @@ sealed class Place extends Url implements Hop<AnyNav> {
   Object? get id => chain.last.$2;
   @override
   AnyNav get nav => _atOf(_Screens.graph.current);
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   static _WLSplash get splash => _WLSplash._([_Screens.splash], [null]);
   static _WLSignIn get signIn => _WLSignIn._([_Screens.signIn], [null]);
   static _WLSignUp get signUp => _WLSignUp._([_Screens.signUp], [null]);
@@ -18736,6 +18742,8 @@ final class _WLSplash implements Hop<SplashNav> {
   Object? get id => _i.last;
   @override
   SplashNav get nav => const SplashNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -18755,6 +18763,8 @@ final class _WLSignIn implements Hop<SignInNav> {
   Object? get id => _i.last;
   @override
   SignInNav get nav => const SignInNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -18774,6 +18784,8 @@ final class _WLSignUp implements Hop<SignUpNav> {
   Object? get id => _i.last;
   @override
   SignUpNav get nav => const SignUpNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -18793,6 +18805,8 @@ final class _WLOnboarding implements Hop<OnboardingNav> {
   Object? get id => _i.last;
   @override
   OnboardingNav get nav => const OnboardingNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -18812,6 +18826,8 @@ final class _WLForgotPassword implements Hop<ForgotPasswordNav> {
   Object? get id => _i.last;
   @override
   ForgotPasswordNav get nav => const ForgotPasswordNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLForgotPasswordResetPassword resetPassword(String id) =>
       _WLForgotPasswordResetPassword._(
         [..._s, _Screens.resetPassword],
@@ -18836,6 +18852,8 @@ final class _WLForgotPasswordResetPassword implements Hop<ResetPasswordNav> {
   Object? get id => _i.last;
   @override
   ResetPasswordNav get nav => const ResetPasswordNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -18855,6 +18873,8 @@ final class _WLVerifyEmail implements Hop<VerifyEmailNav> {
   Object? get id => _i.last;
   @override
   VerifyEmailNav get nav => const VerifyEmailNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -18874,6 +18894,8 @@ final class _WLTwoFactor implements Hop<TwoFactorNav> {
   Object? get id => _i.last;
   @override
   TwoFactorNav get nav => const TwoFactorNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -18893,6 +18915,8 @@ final class _WLHome implements Hop<HomeNav> {
   Object? get id => _i.last;
   @override
   HomeNav get nav => const HomeNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLHomeFeed get feed => _WLHomeFeed._([..._s, _Screens.feed], [..._i, null]);
   _WLHomeStudio get studio =>
       _WLHomeStudio._([..._s, CreatorStudio.studio], [..._i, null]);
@@ -18915,6 +18939,8 @@ final class _WLHomeFeed implements Hop<FeedNav> {
   Object? get id => _i.last;
   @override
   FeedNav get nav => const FeedNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLHomeFeedPost post(String id) =>
       _WLHomeFeedPost._([..._s, _Screens.post], [..._i, id]);
   _WLHomeFeedPostPostComments postComments(String id) =>
@@ -18999,6 +19025,8 @@ final class _WLHomeFeedPost implements Hop<PostNav> {
   Object? get id => _i.last;
   @override
   PostNav get nav => const PostNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLHomeFeedPostComment comment(String id) =>
       _WLHomeFeedPostComment._([..._s, _Screens.comment], [..._i, id]);
   _WLHomeFeedPostPostAuthor postAuthor(String id) =>
@@ -19051,6 +19079,8 @@ final class _WLHomeFeedPostComment implements Hop<CommentNav> {
   Object? get id => _i.last;
   @override
   CommentNav get nav => const CommentNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -19070,6 +19100,8 @@ final class _WLHomeFeedPostPostAuthor implements Hop<PostAuthorNav> {
   Object? get id => _i.last;
   @override
   PostAuthorNav get nav => const PostAuthorNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -19089,6 +19121,8 @@ final class _WLHomeFeedPostPostComments implements Hop<PostCommentsNav> {
   Object? get id => _i.last;
   @override
   PostCommentsNav get nav => const PostCommentsNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -19108,6 +19142,8 @@ final class _WLHomeFeedPostPostLikes implements Hop<PostLikesNav> {
   Object? get id => _i.last;
   @override
   PostLikesNav get nav => const PostLikesNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -19127,6 +19163,8 @@ final class _WLHomeFeedPostEditPost implements Hop<EditPostNav> {
   Object? get id => _i.last;
   @override
   EditPostNav get nav => const EditPostNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -19146,6 +19184,8 @@ final class _WLHomeFeedPostRepost implements Hop<RepostNav> {
   Object? get id => _i.last;
   @override
   RepostNav get nav => const RepostNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -19165,6 +19205,8 @@ final class _WLHomeFeedStory implements Hop<StoryNav> {
   Object? get id => _i.last;
   @override
   StoryNav get nav => const StoryNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -19184,6 +19226,8 @@ final class _WLHomeFeedComposePost implements Hop<ComposePostNav> {
   Object? get id => _i.last;
   @override
   ComposePostNav get nav => const ComposePostNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -19203,6 +19247,8 @@ final class _WLHomeFeedUserProfile implements Hop<HomeFeedUserProfileNav> {
   Object? get id => _i.last;
   @override
   HomeFeedUserProfileNav get nav => const HomeFeedUserProfileNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -19222,6 +19268,8 @@ final class _WLHomeStudio implements Hop<StudioNav> {
   Object? get id => _i.last;
   @override
   StudioNav get nav => const StudioNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLHomeStudioAnalytics get analytics =>
       _WLHomeStudioAnalytics._([..._s, CreatorStudio.analytics], [..._i, null]);
   _WLHomeStudioScheduled get scheduled =>
@@ -19249,6 +19297,8 @@ final class _WLHomeStudioAnalytics implements Hop<AnalyticsNav> {
   Object? get id => _i.last;
   @override
   AnalyticsNav get nav => const AnalyticsNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLHomeStudioAnalyticsAudience get audience =>
       _WLHomeStudioAnalyticsAudience._(
         [..._s, CreatorStudio.audience],
@@ -19273,6 +19323,8 @@ final class _WLHomeStudioAnalyticsAudience implements Hop<AudienceNav> {
   Object? get id => _i.last;
   @override
   AudienceNav get nav => const AudienceNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -19292,6 +19344,8 @@ final class _WLHomeStudioScheduled implements Hop<ScheduledNav> {
   Object? get id => _i.last;
   @override
   ScheduledNav get nav => const ScheduledNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLHomeStudioScheduledScheduledPost scheduledPost(String id) =>
       _WLHomeStudioScheduledScheduledPost._(
         [..._s, CreatorStudio.scheduledPost],
@@ -19322,6 +19376,8 @@ final class _WLHomeStudioScheduledScheduledPost
   Object? get id => _i.last;
   @override
   ScheduledPostNav get nav => const ScheduledPostNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLHomeStudioScheduledScheduledPostEditScheduled get editScheduled =>
       _WLHomeStudioScheduledScheduledPostEditScheduled._(
         [..._s, CreatorStudio.editScheduled],
@@ -19347,6 +19403,8 @@ final class _WLHomeStudioScheduledScheduledPostEditScheduled
   Object? get id => _i.last;
   @override
   EditScheduledNav get nav => const EditScheduledNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -19366,6 +19424,8 @@ final class _WLHomeStudioMonetization implements Hop<MonetizationNav> {
   Object? get id => _i.last;
   @override
   MonetizationNav get nav => const MonetizationNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLHomeStudioMonetizationPayouts get payouts =>
       _WLHomeStudioMonetizationPayouts._(
         [..._s, CreatorStudio.payouts],
@@ -19390,6 +19450,8 @@ final class _WLHomeStudioMonetizationPayouts implements Hop<PayoutsNav> {
   Object? get id => _i.last;
   @override
   PayoutsNav get nav => const PayoutsNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -19409,6 +19471,8 @@ final class _WLDiscover implements Hop<DiscoverNav> {
   Object? get id => _i.last;
   @override
   DiscoverNav get nav => const DiscoverNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLDiscoverTrending get trending =>
       _WLDiscoverTrending._([..._s, _Screens.trending], [..._i, null]);
   _WLDiscoverTopics get topics =>
@@ -19457,6 +19521,8 @@ final class _WLDiscoverTrending implements Hop<TrendingNav> {
   Object? get id => _i.last;
   @override
   TrendingNav get nav => const TrendingNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLDiscoverTrendingHashtag hashtag(String id) =>
       _WLDiscoverTrendingHashtag._([..._s, _Screens.hashtag], [..._i, id]);
   _WLDiscoverTrendingTopic topic(String id) =>
@@ -19485,6 +19551,8 @@ final class _WLDiscoverTrendingHashtag implements Hop<HashtagNav> {
   Object? get id => _i.last;
   @override
   HashtagNav get nav => const HashtagNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -19504,6 +19572,8 @@ final class _WLDiscoverTrendingTopic implements Hop<TopicNav> {
   Object? get id => _i.last;
   @override
   TopicNav get nav => const TopicNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLDiscoverTrendingTopicSubtopic subtopic(String id) =>
       _WLDiscoverTrendingTopicSubtopic._(
         [..._s, _Screens.subtopic],
@@ -19528,6 +19598,8 @@ final class _WLDiscoverTrendingTopicSubtopic implements Hop<SubtopicNav> {
   Object? get id => _i.last;
   @override
   SubtopicNav get nav => const SubtopicNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -19549,6 +19621,8 @@ final class _WLDiscoverTrendingUserProfile
   @override
   DiscoverTrendingUserProfileNav get nav =>
       const DiscoverTrendingUserProfileNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -19568,6 +19642,8 @@ final class _WLDiscoverTopics implements Hop<TopicsNav> {
   Object? get id => _i.last;
   @override
   TopicsNav get nav => const TopicsNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -19587,6 +19663,8 @@ final class _WLDiscoverLiveNow implements Hop<LiveNowNav> {
   Object? get id => _i.last;
   @override
   LiveNowNav get nav => const LiveNowNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLDiscoverLiveNowLiveRoom liveRoom(String id) =>
       _WLDiscoverLiveNowLiveRoom._([..._s, _Screens.liveRoom], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
@@ -19608,6 +19686,8 @@ final class _WLDiscoverLiveNowLiveRoom implements Hop<LiveRoomNav> {
   Object? get id => _i.last;
   @override
   LiveRoomNav get nav => const LiveRoomNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -19627,6 +19707,8 @@ final class _WLDiscoverNearby implements Hop<NearbyNav> {
   Object? get id => _i.last;
   @override
   NearbyNav get nav => const NearbyNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -19646,6 +19728,8 @@ final class _WLDiscoverEvents implements Hop<EventsNav> {
   Object? get id => _i.last;
   @override
   EventsNav get nav => const EventsNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLDiscoverEventsEvent event(String id) =>
       _WLDiscoverEventsEvent._([..._s, Events.event], [..._i, id]);
   _WLDiscoverEventsEventAttendees attendees(String id) =>
@@ -19687,6 +19771,8 @@ final class _WLDiscoverEventsEvent implements Hop<EventNav> {
   Object? get id => _i.last;
   @override
   EventNav get nav => const EventNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLDiscoverEventsEventAttendees get attendees =>
       _WLDiscoverEventsEventAttendees._(
         [..._s, Events.attendees],
@@ -19718,6 +19804,8 @@ final class _WLDiscoverEventsEventAttendees implements Hop<AttendeesNav> {
   Object? get id => _i.last;
   @override
   AttendeesNav get nav => const AttendeesNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -19737,6 +19825,8 @@ final class _WLDiscoverEventsEventEditEvent implements Hop<EditEventNav> {
   Object? get id => _i.last;
   @override
   EditEventNav get nav => const EditEventNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -19756,6 +19846,8 @@ final class _WLDiscoverEventsEventTickets implements Hop<TicketsNav> {
   Object? get id => _i.last;
   @override
   TicketsNav get nav => const TicketsNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -19775,6 +19867,8 @@ final class _WLDiscoverEventsCreateEvent implements Hop<CreateEventNav> {
   Object? get id => _i.last;
   @override
   CreateEventNav get nav => const CreateEventNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -19794,6 +19888,8 @@ final class _WLMarketplace implements Hop<MarketplaceNav> {
   Object? get id => _i.last;
   @override
   MarketplaceNav get nav => const MarketplaceNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLMarketplaceCategories get categories =>
       _WLMarketplaceCategories._([..._s, _Screens.categories], [..._i, null]);
   _WLMarketplaceCart get cart =>
@@ -19840,6 +19936,8 @@ final class _WLMarketplaceCategories implements Hop<CategoriesNav> {
   Object? get id => _i.last;
   @override
   CategoriesNav get nav => const CategoriesNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLMarketplaceCategoriesCategory category(String id) =>
       _WLMarketplaceCategoriesCategory._(
         [..._s, _Screens.category],
@@ -19864,6 +19962,8 @@ final class _WLMarketplaceCategoriesCategory implements Hop<CategoryNav> {
   Object? get id => _i.last;
   @override
   CategoryNav get nav => const CategoryNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLMarketplaceCategoriesCategoryListing listing(String id) =>
       _WLMarketplaceCategoriesCategoryListing._(
         [..._s, _Screens.listing],
@@ -19893,6 +19993,8 @@ final class _WLMarketplaceCategoriesCategoryListing implements Hop<ListingNav> {
   Object? get id => _i.last;
   @override
   ListingNav get nav => const ListingNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLMarketplaceCategoriesCategoryListingEditListing get editListing =>
       _WLMarketplaceCategoriesCategoryListingEditListing._(
         [..._s, _Screens.editListing],
@@ -19930,6 +20032,8 @@ final class _WLMarketplaceCategoriesCategoryListingEditListing
   Object? get id => _i.last;
   @override
   EditListingNav get nav => const EditListingNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -19953,6 +20057,8 @@ final class _WLMarketplaceCategoriesCategoryListingSellerProfile
   Object? get id => _i.last;
   @override
   SellerProfileNav get nav => const SellerProfileNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -19976,6 +20082,8 @@ final class _WLMarketplaceCategoriesCategoryListingListingVariant
   Object? get id => _i.last;
   @override
   ListingVariantNav get nav => const ListingVariantNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -19995,6 +20103,8 @@ final class _WLMarketplaceCart implements Hop<CartNav> {
   Object? get id => _i.last;
   @override
   CartNav get nav => const CartNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLMarketplaceCartCheckout checkout(String id) =>
       _WLMarketplaceCartCheckout._([..._s, _Screens.checkout], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
@@ -20016,6 +20126,8 @@ final class _WLMarketplaceCartCheckout implements Hop<CheckoutNav> {
   Object? get id => _i.last;
   @override
   CheckoutNav get nav => const CheckoutNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLMarketplaceCartCheckoutOrderConfirmation orderConfirmation(String id) =>
       _WLMarketplaceCartCheckoutOrderConfirmation._(
         [..._s, _Screens.orderConfirmation],
@@ -20041,6 +20153,8 @@ final class _WLMarketplaceCartCheckoutOrderConfirmation
   Object? get id => _i.last;
   @override
   OrderConfirmationNav get nav => const OrderConfirmationNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -20060,6 +20174,8 @@ final class _WLMarketplaceMyOrders implements Hop<MyOrdersNav> {
   Object? get id => _i.last;
   @override
   MyOrdersNav get nav => const MyOrdersNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLMarketplaceMyOrdersOrder order(String id) =>
       _WLMarketplaceMyOrdersOrder._([..._s, _Screens.order], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
@@ -20081,6 +20197,8 @@ final class _WLMarketplaceMyOrdersOrder implements Hop<OrderNav> {
   Object? get id => _i.last;
   @override
   OrderNav get nav => const OrderNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -20100,6 +20218,8 @@ final class _WLMarketplaceWishlist implements Hop<WishlistNav> {
   Object? get id => _i.last;
   @override
   WishlistNav get nav => const WishlistNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -20119,6 +20239,8 @@ final class _WLMessages implements Hop<MessagesNav> {
   Object? get id => _i.last;
   @override
   MessagesNav get nav => const MessagesNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLMessagesChats get chats =>
       _WLMessagesChats._([..._s, _Screens.chats], [..._i, null]);
   _WLMessagesNewChat get newChat =>
@@ -20149,6 +20271,8 @@ final class _WLMessagesChats implements Hop<ChatsNav> {
   Object? get id => _i.last;
   @override
   ChatsNav get nav => const ChatsNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLMessagesChatsChat chat(String id) =>
       _WLMessagesChatsChat._([..._s, _Screens.chat], [..._i, id]);
   _WLMessagesChatsChatVoiceCall voiceCall(String id) =>
@@ -20175,6 +20299,8 @@ final class _WLMessagesChatsChat implements Hop<ChatNav> {
   Object? get id => _i.last;
   @override
   ChatNav get nav => const ChatNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLMessagesChatsChatThread thread(String id) =>
       _WLMessagesChatsChatThread._([..._s, _Screens.thread], [..._i, id]);
   _WLMessagesChatsChatVoiceCall get voiceCall =>
@@ -20206,6 +20332,8 @@ final class _WLMessagesChatsChatThread implements Hop<ThreadNav> {
   Object? get id => _i.last;
   @override
   ThreadNav get nav => const ThreadNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLMessagesChatsChatThreadMessage message(String id) =>
       _WLMessagesChatsChatThreadMessage._(
         [..._s, _Screens.message],
@@ -20230,6 +20358,8 @@ final class _WLMessagesChatsChatThreadMessage implements Hop<MessageNav> {
   Object? get id => _i.last;
   @override
   MessageNav get nav => const MessageNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLMessagesChatsChatThreadMessageMessageReply messageReply(String id) =>
       _WLMessagesChatsChatThreadMessageMessageReply._(
         [..._s, _Screens.messageReply],
@@ -20255,6 +20385,8 @@ final class _WLMessagesChatsChatThreadMessageMessageReply
   Object? get id => _i.last;
   @override
   MessageReplyNav get nav => const MessageReplyNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -20274,6 +20406,8 @@ final class _WLMessagesChatsChatVoiceCall implements Hop<VoiceCallNav> {
   Object? get id => _i.last;
   @override
   VoiceCallNav get nav => const VoiceCallNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -20295,6 +20429,8 @@ final class _WLMessagesChatsChatUserProfile
   @override
   MessagesChatsChatUserProfileNav get nav =>
       const MessagesChatsChatUserProfileNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -20314,6 +20450,8 @@ final class _WLMessagesNewChat implements Hop<NewChatNav> {
   Object? get id => _i.last;
   @override
   NewChatNav get nav => const NewChatNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -20333,6 +20471,8 @@ final class _WLMessagesGroupChat implements Hop<GroupChatNav> {
   Object? get id => _i.last;
   @override
   GroupChatNav get nav => const GroupChatNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLMessagesGroupChatGroupInfo get groupInfo =>
       _WLMessagesGroupChatGroupInfo._(
         [..._s, _Screens.groupInfo],
@@ -20357,6 +20497,8 @@ final class _WLMessagesGroupChatGroupInfo implements Hop<GroupInfoNav> {
   Object? get id => _i.last;
   @override
   GroupInfoNav get nav => const GroupInfoNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -20376,6 +20518,8 @@ final class _WLWallet implements Hop<WalletNav> {
   Object? get id => _i.last;
   @override
   WalletNav get nav => const WalletNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLWalletBalance get balance =>
       _WLWalletBalance._([..._s, _Screens.balance], [..._i, null]);
   _WLWalletAccounts get accounts =>
@@ -20407,6 +20551,8 @@ final class _WLWalletBalance implements Hop<BalanceNav> {
   Object? get id => _i.last;
   @override
   BalanceNav get nav => const BalanceNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -20426,6 +20572,8 @@ final class _WLWalletAccounts implements Hop<AccountsNav> {
   Object? get id => _i.last;
   @override
   AccountsNav get nav => const AccountsNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLWalletAccountsAccount account(String id) =>
       _WLWalletAccountsAccount._([..._s, _Screens.account], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
@@ -20447,6 +20595,8 @@ final class _WLWalletAccountsAccount implements Hop<AccountNav> {
   Object? get id => _i.last;
   @override
   AccountNav get nav => const AccountNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLWalletAccountsAccountTransactions get transactions =>
       _WLWalletAccountsAccountTransactions._(
         [..._s, _Screens.transactions],
@@ -20477,6 +20627,8 @@ final class _WLWalletAccountsAccountTransactions
   Object? get id => _i.last;
   @override
   TransactionsNav get nav => const TransactionsNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLWalletAccountsAccountTransactionsTransaction transaction(String id) =>
       _WLWalletAccountsAccountTransactionsTransaction._(
         [..._s, _Screens.transaction],
@@ -20502,6 +20654,8 @@ final class _WLWalletAccountsAccountTransactionsTransaction
   Object? get id => _i.last;
   @override
   TransactionNav get nav => const TransactionNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLWalletAccountsAccountTransactionsTransactionTransactionItem
   transactionItem(String id) =>
       _WLWalletAccountsAccountTransactionsTransactionTransactionItem._(
@@ -20531,6 +20685,8 @@ final class _WLWalletAccountsAccountTransactionsTransactionTransactionItem
   Object? get id => _i.last;
   @override
   TransactionItemNav get nav => const TransactionItemNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -20550,6 +20706,8 @@ final class _WLWalletAccountsAccountStatements implements Hop<StatementsNav> {
   Object? get id => _i.last;
   @override
   StatementsNav get nav => const StatementsNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLWalletAccountsAccountStatementsStatement statement(String id) =>
       _WLWalletAccountsAccountStatementsStatement._(
         [..._s, _Screens.statement],
@@ -20575,6 +20733,8 @@ final class _WLWalletAccountsAccountStatementsStatement
   Object? get id => _i.last;
   @override
   StatementNav get nav => const StatementNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -20594,6 +20754,8 @@ final class _WLWalletSendMoney implements Hop<SendMoneyNav> {
   Object? get id => _i.last;
   @override
   SendMoneyNav get nav => const SendMoneyNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -20613,6 +20775,8 @@ final class _WLWalletReceiveMoney implements Hop<ReceiveMoneyNav> {
   Object? get id => _i.last;
   @override
   ReceiveMoneyNav get nav => const ReceiveMoneyNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -20632,6 +20796,8 @@ final class _WLWalletPaymentMethods implements Hop<PaymentMethodsNav> {
   Object? get id => _i.last;
   @override
   PaymentMethodsNav get nav => const PaymentMethodsNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLWalletPaymentMethodsAddCard get addCard =>
       _WLWalletPaymentMethodsAddCard._(
         [..._s, _Screens.addCard],
@@ -20658,6 +20824,8 @@ final class _WLWalletPaymentMethodsAddCard implements Hop<AddCardNav> {
   Object? get id => _i.last;
   @override
   AddCardNav get nav => const AddCardNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -20677,6 +20845,8 @@ final class _WLWalletPaymentMethodsCard implements Hop<CardNav> {
   Object? get id => _i.last;
   @override
   CardNav get nav => const CardNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -20696,6 +20866,8 @@ final class _WLProfile implements Hop<ProfileNav> {
   Object? get id => _i.last;
   @override
   ProfileNav get nav => const ProfileNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLProfileUserProfile userProfile(String id) =>
       _WLProfileUserProfile._([..._s, _Screens.userProfile], [..._i, id]);
   _WLProfileFollowers followers(String id) =>
@@ -20733,6 +20905,8 @@ final class _WLProfileUserProfile implements Hop<ProfileUserProfileNav> {
   Object? get id => _i.last;
   @override
   ProfileUserProfileNav get nav => const ProfileUserProfileNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -20752,6 +20926,8 @@ final class _WLProfileFollowers implements Hop<FollowersNav> {
   Object? get id => _i.last;
   @override
   FollowersNav get nav => const FollowersNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLProfileFollowersConnection connection(String id) =>
       _WLProfileFollowersConnection._(
         [..._s, _Screens.connection],
@@ -20776,6 +20952,8 @@ final class _WLProfileFollowersConnection implements Hop<ConnectionNav> {
   Object? get id => _i.last;
   @override
   ConnectionNav get nav => const ConnectionNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLProfileFollowersConnectionMutualConnections get mutualConnections =>
       _WLProfileFollowersConnectionMutualConnections._(
         [..._s, _Screens.mutualConnections],
@@ -20801,6 +20979,8 @@ final class _WLProfileFollowersConnectionMutualConnections
   Object? get id => _i.last;
   @override
   MutualConnectionsNav get nav => const MutualConnectionsNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -20820,6 +21000,8 @@ final class _WLProfileFollowing implements Hop<FollowingNav> {
   Object? get id => _i.last;
   @override
   FollowingNav get nav => const FollowingNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -20839,6 +21021,8 @@ final class _WLProfileEditProfile implements Hop<EditProfileNav> {
   Object? get id => _i.last;
   @override
   EditProfileNav get nav => const EditProfileNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -20858,6 +21042,8 @@ final class _WLProfileAchievements implements Hop<AchievementsNav> {
   Object? get id => _i.last;
   @override
   AchievementsNav get nav => const AchievementsNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -20877,6 +21063,8 @@ final class _WLProfileBadges implements Hop<BadgesNav> {
   Object? get id => _i.last;
   @override
   BadgesNav get nav => const BadgesNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLProfileBadgesBadge badge(String id) =>
       _WLProfileBadgesBadge._([..._s, _Screens.badge], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
@@ -20898,6 +21086,8 @@ final class _WLProfileBadgesBadge implements Hop<BadgeNav> {
   Object? get id => _i.last;
   @override
   BadgeNav get nav => const BadgeNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -20917,6 +21107,8 @@ final class _WLProfileSavedPosts implements Hop<SavedPostsNav> {
   Object? get id => _i.last;
   @override
   SavedPostsNav get nav => const SavedPostsNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -20936,6 +21128,8 @@ final class _WLProfileDrafts implements Hop<DraftsNav> {
   Object? get id => _i.last;
   @override
   DraftsNav get nav => const DraftsNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -20955,6 +21149,8 @@ final class _WLProfileMyListings implements Hop<MyListingsNav> {
   Object? get id => _i.last;
   @override
   MyListingsNav get nav => const MyListingsNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -20974,6 +21170,8 @@ final class _WLNotifications implements Hop<NotificationsNav> {
   Object? get id => _i.last;
   @override
   NotificationsNav get nav => const NotificationsNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLNotificationsNotificationSettings get notificationSettings =>
       _WLNotificationsNotificationSettings._(
         [..._s, _Screens.notificationSettings],
@@ -20999,6 +21197,8 @@ final class _WLNotificationsNotificationSettings
   Object? get id => _i.last;
   @override
   NotificationSettingsNav get nav => const NotificationSettingsNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -21018,6 +21218,8 @@ final class _WLSearch implements Hop<SearchNav> {
   Object? get id => _i.last;
   @override
   SearchNav get nav => const SearchNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLSearchSearchResults get searchResults =>
       _WLSearchSearchResults._([..._s, _Screens.searchResults], [..._i, null]);
   _WLSearchQ query(Set<SearchQueryArg> q) =>
@@ -21079,6 +21281,8 @@ final class _WLSearchSearchResults implements Hop<SearchResultsNav> {
   Object? get id => _i.last;
   @override
   SearchResultsNav get nav => const SearchResultsNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -21098,6 +21302,8 @@ final class _WLSettings implements Hop<SettingsNav> {
   Object? get id => _i.last;
   @override
   SettingsNav get nav => const SettingsNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLSettingsAccountSettings get accountSettings =>
       _WLSettingsAccountSettings._(
         [..._s, _Screens.accountSettings],
@@ -21152,6 +21358,8 @@ final class _WLSettingsAccountSettings implements Hop<AccountSettingsNav> {
   Object? get id => _i.last;
   @override
   AccountSettingsNav get nav => const AccountSettingsNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -21171,6 +21379,8 @@ final class _WLSettingsSecurity implements Hop<SecurityNav> {
   Object? get id => _i.last;
   @override
   SecurityNav get nav => const SecurityNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLSettingsSecurityTwoFactorSettings get twoFactorSettings =>
       _WLSettingsSecurityTwoFactorSettings._(
         [..._s, _Screens.twoFactorSettings],
@@ -21196,6 +21406,8 @@ final class _WLSettingsSecurityTwoFactorSettings
   Object? get id => _i.last;
   @override
   TwoFactorSettingsNav get nav => const TwoFactorSettingsNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -21215,6 +21427,8 @@ final class _WLSettingsPrivacy implements Hop<PrivacyNav> {
   Object? get id => _i.last;
   @override
   PrivacyNav get nav => const PrivacyNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -21234,6 +21448,8 @@ final class _WLSettingsAppearance implements Hop<AppearanceNav> {
   Object? get id => _i.last;
   @override
   AppearanceNav get nav => const AppearanceNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -21253,6 +21469,8 @@ final class _WLSettingsLanguage implements Hop<LanguageNav> {
   Object? get id => _i.last;
   @override
   LanguageNav get nav => const LanguageNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -21272,6 +21490,8 @@ final class _WLSettingsConnectedApps implements Hop<ConnectedAppsNav> {
   Object? get id => _i.last;
   @override
   ConnectedAppsNav get nav => const ConnectedAppsNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -21291,6 +21511,8 @@ final class _WLSettingsAbout implements Hop<AboutNav> {
   Object? get id => _i.last;
   @override
   AboutNav get nav => const AboutNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLSettingsAboutHelp get help =>
       _WLSettingsAboutHelp._([..._s, _Screens.help], [..._i, null]);
   _WLSettingsAboutFeedback get feedback =>
@@ -21314,6 +21536,8 @@ final class _WLSettingsAboutHelp implements Hop<HelpNav> {
   Object? get id => _i.last;
   @override
   HelpNav get nav => const HelpNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLSettingsAboutHelpHelpCategory helpCategory(String id) =>
       _WLSettingsAboutHelpHelpCategory._(
         [..._s, _Screens.helpCategory],
@@ -21338,6 +21562,8 @@ final class _WLSettingsAboutHelpHelpCategory implements Hop<HelpCategoryNav> {
   Object? get id => _i.last;
   @override
   HelpCategoryNav get nav => const HelpCategoryNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLSettingsAboutHelpHelpCategoryFaq get faq =>
       _WLSettingsAboutHelpHelpCategoryFaq._(
         [..._s, _Screens.faq],
@@ -21362,6 +21588,8 @@ final class _WLSettingsAboutHelpHelpCategoryFaq implements Hop<FaqNav> {
   Object? get id => _i.last;
   @override
   FaqNav get nav => const FaqNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLSettingsAboutHelpHelpCategoryFaqFaqArticle faqArticle(String id) =>
       _WLSettingsAboutHelpHelpCategoryFaqFaqArticle._(
         [..._s, _Screens.faqArticle],
@@ -21387,6 +21615,8 @@ final class _WLSettingsAboutHelpHelpCategoryFaqFaqArticle
   Object? get id => _i.last;
   @override
   FaqArticleNav get nav => const FaqArticleNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -21406,6 +21636,8 @@ final class _WLSettingsAboutFeedback implements Hop<FeedbackNav> {
   Object? get id => _i.last;
   @override
   FeedbackNav get nav => const FeedbackNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -21425,6 +21657,8 @@ final class _WLSettingsBlockedUsers implements Hop<BlockedUsersNav> {
   Object? get id => _i.last;
   @override
   BlockedUsersNav get nav => const BlockedUsersNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -21444,6 +21678,8 @@ final class _WLSettingsDevices implements Hop<DevicesNav> {
   Object? get id => _i.last;
   @override
   DevicesNav get nav => const DevicesNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLSettingsDevicesDevice device(String id) =>
       _WLSettingsDevicesDevice._([..._s, _Screens.device], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
@@ -21465,6 +21701,8 @@ final class _WLSettingsDevicesDevice implements Hop<DeviceNav> {
   Object? get id => _i.last;
   @override
   DeviceNav get nav => const DeviceNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLSettingsDevicesDeviceSessions get sessions =>
       _WLSettingsDevicesDeviceSessions._(
         [..._s, _Screens.sessions],
@@ -21491,6 +21729,8 @@ final class _WLSettingsDevicesDeviceSessions implements Hop<SessionsNav> {
   Object? get id => _i.last;
   @override
   SessionsNav get nav => const SessionsNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -21510,6 +21750,8 @@ final class _WLSettingsDevicesDeviceSession implements Hop<SessionNav> {
   Object? get id => _i.last;
   @override
   SessionNav get nav => const SessionNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -21529,6 +21771,8 @@ final class _WLSettingsDataExport implements Hop<DataExportNav> {
   Object? get id => _i.last;
   @override
   DataExportNav get nav => const DataExportNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -21548,6 +21792,8 @@ final class _WLSettingsDeleteAccount implements Hop<DeleteAccountNav> {
   Object? get id => _i.last;
   @override
   DeleteAccountNav get nav => const DeleteAccountNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -21567,6 +21813,8 @@ final class _WLSettingsIntegrations implements Hop<IntegrationsNav> {
   Object? get id => _i.last;
   @override
   IntegrationsNav get nav => const IntegrationsNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLSettingsIntegrationsApiKeys get apiKeys =>
       _WLSettingsIntegrationsApiKeys._(
         [..._s, _Screens.apiKeys],
@@ -21591,6 +21839,8 @@ final class _WLSettingsIntegrationsApiKeys implements Hop<ApiKeysNav> {
   Object? get id => _i.last;
   @override
   ApiKeysNav get nav => const ApiKeysNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -21610,6 +21860,8 @@ final class _WLSettingsSupport implements Hop<SupportNav> {
   Object? get id => _i.last;
   @override
   SupportNav get nav => const SupportNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLSettingsSupportSupportTickets get supportTickets =>
       _WLSettingsSupportSupportTickets._(
         [..._s, Support.supportTickets],
@@ -21641,6 +21893,8 @@ final class _WLSettingsSupportSupportTickets implements Hop<SupportTicketsNav> {
   Object? get id => _i.last;
   @override
   SupportTicketsNav get nav => const SupportTicketsNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLSettingsSupportSupportTicketsSupportTicket supportTicket(String id) =>
       _WLSettingsSupportSupportTicketsSupportTicket._(
         [..._s, Support.supportTicket],
@@ -21666,6 +21920,8 @@ final class _WLSettingsSupportSupportTicketsSupportTicket
   Object? get id => _i.last;
   @override
   SupportTicketNav get nav => const SupportTicketNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -21685,6 +21941,8 @@ final class _WLSettingsSupportNewTicket implements Hop<NewTicketNav> {
   Object? get id => _i.last;
   @override
   NewTicketNav get nav => const NewTicketNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -21704,6 +21962,8 @@ final class _WLSettingsSupportKnowledgeBase implements Hop<KnowledgeBaseNav> {
   Object? get id => _i.last;
   @override
   KnowledgeBaseNav get nav => const KnowledgeBaseNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLSettingsSupportKnowledgeBaseArticle article(String id) =>
       _WLSettingsSupportKnowledgeBaseArticle._(
         [..._s, Support.article],
@@ -21728,6 +21988,8 @@ final class _WLSettingsSupportKnowledgeBaseArticle implements Hop<ArticleNav> {
   Object? get id => _i.last;
   @override
   ArticleNav get nav => const ArticleNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -21747,6 +22009,8 @@ final class _WLSettingsAdmin implements Hop<AdminNav> {
   Object? get id => _i.last;
   @override
   AdminNav get nav => const AdminNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLSettingsAdminAdminUsers get adminUsers =>
       _WLSettingsAdminAdminUsers._([..._s, Admin.adminUsers], [..._i, null]);
   _WLSettingsAdminAdminAuditLog get adminAuditLog =>
@@ -21780,6 +22044,8 @@ final class _WLSettingsAdminAdminUsers implements Hop<AdminUsersNav> {
   Object? get id => _i.last;
   @override
   AdminUsersNav get nav => const AdminUsersNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLSettingsAdminAdminUsersAdminUser adminUser(String id) =>
       _WLSettingsAdminAdminUsersAdminUser._(
         [..._s, Admin.adminUser],
@@ -21804,6 +22070,8 @@ final class _WLSettingsAdminAdminUsersAdminUser implements Hop<AdminUserNav> {
   Object? get id => _i.last;
   @override
   AdminUserNav get nav => const AdminUserNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLSettingsAdminAdminUsersAdminUserAdminRole adminRole(String id) =>
       _WLSettingsAdminAdminUsersAdminUserAdminRole._(
         [..._s, Admin.adminRole],
@@ -21829,6 +22097,8 @@ final class _WLSettingsAdminAdminUsersAdminUserAdminRole
   Object? get id => _i.last;
   @override
   AdminRoleNav get nav => const AdminRoleNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -21848,6 +22118,8 @@ final class _WLSettingsAdminAdminAuditLog implements Hop<AdminAuditLogNav> {
   Object? get id => _i.last;
   @override
   AdminAuditLogNav get nav => const AdminAuditLogNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -21868,6 +22140,8 @@ final class _WLSettingsAdminAdminFeatureFlags
   Object? get id => _i.last;
   @override
   AdminFeatureFlagsNav get nav => const AdminFeatureFlagsNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -21887,6 +22161,8 @@ final class _WLSettingsAdminWebhooks implements Hop<WebhooksNav> {
   Object? get id => _i.last;
   @override
   WebhooksNav get nav => const WebhooksNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLSettingsAdminWebhooksWebhook webhook(String id) =>
       _WLSettingsAdminWebhooksWebhook._([..._s, Admin.webhook], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
@@ -21908,6 +22184,8 @@ final class _WLSettingsAdminWebhooksWebhook implements Hop<WebhookNav> {
   Object? get id => _i.last;
   @override
   WebhookNav get nav => const WebhookNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -21927,6 +22205,8 @@ final class _WLWorkspace implements Hop<WorkspaceNav> {
   Object? get id => _i.last;
   @override
   WorkspaceNav get nav => const WorkspaceNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLWorkspaceProject project(String id) =>
       _WLWorkspaceProject._([..._s, _Screens.project], [..._i, id]);
   _WLWorkspaceQ query(Set<WorkspaceQueryArg> q) =>
@@ -21967,6 +22247,8 @@ final class _WLWorkspaceProject implements Hop<ProjectNav> {
   Object? get id => _i.last;
   @override
   ProjectNav get nav => const ProjectNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLWorkspaceProjectBoard board(String id) =>
       _WLWorkspaceProjectBoard._([..._s, _Screens.board], [..._i, id]);
   _WLWorkspaceProjectUserProfile userProfile(String id) =>
@@ -22016,6 +22298,8 @@ final class _WLWorkspaceProjectBoard implements Hop<BoardNav> {
   Object? get id => _i.last;
   @override
   BoardNav get nav => const BoardNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLWorkspaceProjectBoardTaskList taskList(String id) =>
       _WLWorkspaceProjectBoardTaskList._(
         [..._s, _Screens.taskList],
@@ -22061,6 +22345,8 @@ final class _WLWorkspaceProjectBoardTaskList implements Hop<TaskListNav> {
   Object? get id => _i.last;
   @override
   TaskListNav get nav => const TaskListNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLWorkspaceProjectBoardTaskListTask task(String id) =>
       _WLWorkspaceProjectBoardTaskListTask._(
         [..._s, _Screens.task],
@@ -22126,6 +22412,8 @@ final class _WLWorkspaceProjectBoardTaskListTask implements Hop<TaskNav> {
   Object? get id => _i.last;
   @override
   TaskNav get nav => const TaskNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLWorkspaceProjectBoardTaskListTaskSubtask subtask(String id) =>
       _WLWorkspaceProjectBoardTaskListTaskSubtask._(
         [..._s, _Screens.subtask],
@@ -22192,6 +22480,8 @@ final class _WLWorkspaceProjectBoardTaskListTaskSubtask
   Object? get id => _i.last;
   @override
   SubtaskNav get nav => const SubtaskNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLWorkspaceProjectBoardTaskListTaskSubtaskChecklistItem checklistItem(
     String id,
   ) => _WLWorkspaceProjectBoardTaskListTaskSubtaskChecklistItem._(
@@ -22221,6 +22511,8 @@ final class _WLWorkspaceProjectBoardTaskListTaskSubtaskChecklistItem
   Object? get id => _i.last;
   @override
   ChecklistItemNav get nav => const ChecklistItemNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -22241,6 +22533,8 @@ final class _WLWorkspaceProjectBoardTaskListTaskEditTask
   Object? get id => _i.last;
   @override
   EditTaskNav get nav => const EditTaskNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -22261,6 +22555,8 @@ final class _WLWorkspaceProjectBoardTaskListTaskTaskComment
   Object? get id => _i.last;
   @override
   TaskCommentNav get nav => const TaskCommentNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -22281,6 +22577,8 @@ final class _WLWorkspaceProjectBoardTaskListTaskAssignee
   Object? get id => _i.last;
   @override
   AssigneeNav get nav => const AssigneeNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -22300,6 +22598,8 @@ final class _WLWorkspaceProjectBoardTaskListTaskLabel implements Hop<LabelNav> {
   Object? get id => _i.last;
   @override
   LabelNav get nav => const LabelNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -22320,6 +22620,8 @@ final class _WLWorkspaceProjectBoardTaskListMilestone
   Object? get id => _i.last;
   @override
   MilestoneNav get nav => const MilestoneNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -22339,6 +22641,8 @@ final class _WLWorkspaceProjectBoardTaskListSprint implements Hop<SprintNav> {
   Object? get id => _i.last;
   @override
   SprintNav get nav => const SprintNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -22360,6 +22664,8 @@ final class _WLWorkspaceProjectUserProfile
   @override
   WorkspaceProjectUserProfileNav get nav =>
       const WorkspaceProjectUserProfileNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -22379,6 +22685,8 @@ final class _WLForum implements Hop<ForumNav> {
   Object? get id => _i.last;
   @override
   ForumNav get nav => const ForumNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLForumForumCategory forumCategory(String id) =>
       _WLForumForumCategory._([..._s, _Screens.forumCategory], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
@@ -22400,6 +22708,8 @@ final class _WLForumForumCategory implements Hop<ForumCategoryNav> {
   Object? get id => _i.last;
   @override
   ForumCategoryNav get nav => const ForumCategoryNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLForumForumCategoryForumThread forumThread(String id) =>
       _WLForumForumCategoryForumThread._(
         [..._s, _Screens.forumThread],
@@ -22450,6 +22760,8 @@ final class _WLForumForumCategoryForumThread implements Hop<ForumThreadNav> {
   Object? get id => _i.last;
   @override
   ForumThreadNav get nav => const ForumThreadNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLForumForumCategoryForumThreadForumReply forumReply(String id) =>
       _WLForumForumCategoryForumThreadForumReply._(
         [..._s, _Screens.forumReply],
@@ -22501,6 +22813,8 @@ final class _WLForumForumCategoryForumThreadForumReply
   Object? get id => _i.last;
   @override
   ForumReplyNav get nav => const ForumReplyNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLForumForumCategoryForumThreadForumReplyUserProfile userProfile(
     String id,
   ) => _WLForumForumCategoryForumThreadForumReplyUserProfile._(
@@ -22531,6 +22845,8 @@ final class _WLForumForumCategoryForumThreadForumReplyUserProfile
   @override
   ForumForumCategoryForumThreadForumReplyUserProfileNav get nav =>
       const ForumForumCategoryForumThreadForumReplyUserProfileNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -22551,6 +22867,8 @@ final class _WLForumForumCategoryForumThreadReportThread
   Object? get id => _i.last;
   @override
   ReportThreadNav get nav => const ReportThreadNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -22570,6 +22888,8 @@ final class _WLLearn implements Hop<LearnNav> {
   Object? get id => _i.last;
   @override
   LearnNav get nav => const LearnNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLLearnCourse course(String id) =>
       _WLLearnCourse._([..._s, _Screens.course], [..._i, id]);
   _WLLearnCourseCertificate certificate(String id) =>
@@ -22596,6 +22916,8 @@ final class _WLLearnCourse implements Hop<CourseNav> {
   Object? get id => _i.last;
   @override
   CourseNav get nav => const CourseNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLLearnCourseCourseModule courseModule(String id) =>
       _WLLearnCourseCourseModule._([..._s, _Screens.courseModule], [..._i, id]);
   _WLLearnCourseCertificate get certificate =>
@@ -22638,6 +22960,8 @@ final class _WLLearnCourseCourseModule implements Hop<CourseModuleNav> {
   Object? get id => _i.last;
   @override
   CourseModuleNav get nav => const CourseModuleNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLLearnCourseCourseModuleLesson lesson(String id) =>
       _WLLearnCourseCourseModuleLesson._([..._s, _Screens.lesson], [..._i, id]);
   _WLLearnCourseCourseModuleInstructor instructor(String id) =>
@@ -22664,6 +22988,8 @@ final class _WLLearnCourseCourseModuleLesson implements Hop<LessonNav> {
   Object? get id => _i.last;
   @override
   LessonNav get nav => const LessonNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLLearnCourseCourseModuleLessonQuiz quiz(String id) =>
       _WLLearnCourseCourseModuleLessonQuiz._(
         [..._s, _Screens.quiz],
@@ -22693,6 +23019,8 @@ final class _WLLearnCourseCourseModuleLessonQuiz implements Hop<QuizNav> {
   Object? get id => _i.last;
   @override
   QuizNav get nav => const QuizNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLLearnCourseCourseModuleLessonQuizQuestion question(String id) =>
       _WLLearnCourseCourseModuleLessonQuizQuestion._(
         [..._s, _Screens.question],
@@ -22723,6 +23051,8 @@ final class _WLLearnCourseCourseModuleLessonQuizQuestion
   Object? get id => _i.last;
   @override
   QuestionNav get nav => const QuestionNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLLearnCourseCourseModuleLessonQuizQuestionAnswer get answer =>
       _WLLearnCourseCourseModuleLessonQuizQuestionAnswer._(
         [..._s, _Screens.answer],
@@ -22748,6 +23078,8 @@ final class _WLLearnCourseCourseModuleLessonQuizQuestionAnswer
   Object? get id => _i.last;
   @override
   AnswerNav get nav => const AnswerNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -22768,6 +23100,8 @@ final class _WLLearnCourseCourseModuleLessonCourseReview
   Object? get id => _i.last;
   @override
   CourseReviewNav get nav => const CourseReviewNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -22787,6 +23121,8 @@ final class _WLLearnCourseCourseModuleInstructor implements Hop<InstructorNav> {
   Object? get id => _i.last;
   @override
   InstructorNav get nav => const InstructorNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -22806,6 +23142,8 @@ final class _WLLearnCourseCertificate implements Hop<CertificateNav> {
   Object? get id => _i.last;
   @override
   CertificateNav get nav => const CertificateNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -22825,6 +23163,8 @@ final class _WLShop implements Hop<ShopNav> {
   Object? get id => _i.last;
   @override
   ShopNav get nav => const ShopNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLShopShopDept shopDept(String id) =>
       _WLShopShopDept._([..._s, _Screens.shopDept], [..._i, id]);
   _WLShopCompareProducts get compareProducts => _WLShopCompareProducts._(
@@ -22850,6 +23190,8 @@ final class _WLShopShopDept implements Hop<ShopDeptNav> {
   Object? get id => _i.last;
   @override
   ShopDeptNav get nav => const ShopDeptNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLShopShopDeptShopCategory shopCategory(String id) =>
       _WLShopShopDeptShopCategory._(
         [..._s, _Screens.shopCategory],
@@ -22874,6 +23216,8 @@ final class _WLShopShopDeptShopCategory implements Hop<ShopCategoryNav> {
   Object? get id => _i.last;
   @override
   ShopCategoryNav get nav => const ShopCategoryNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLShopShopDeptShopCategoryShopSubcategory shopSubcategory(String id) =>
       _WLShopShopDeptShopCategoryShopSubcategory._(
         [..._s, _Screens.shopSubcategory],
@@ -22899,6 +23243,8 @@ final class _WLShopShopDeptShopCategoryShopSubcategory
   Object? get id => _i.last;
   @override
   ShopSubcategoryNav get nav => const ShopSubcategoryNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLShopShopDeptShopCategoryShopSubcategoryProduct product(String id) =>
       _WLShopShopDeptShopCategoryShopSubcategoryProduct._(
         [..._s, _Screens.product],
@@ -22951,6 +23297,8 @@ final class _WLShopShopDeptShopCategoryShopSubcategoryProduct
   Object? get id => _i.last;
   @override
   ProductNav get nav => const ProductNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLShopShopDeptShopCategoryShopSubcategoryProductProductVariant
   productVariant(String id) =>
       _WLShopShopDeptShopCategoryShopSubcategoryProductProductVariant._(
@@ -23018,6 +23366,8 @@ final class _WLShopShopDeptShopCategoryShopSubcategoryProductProductVariant
   Object? get id => _i.last;
   @override
   ProductVariantNav get nav => const ProductVariantNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -23041,6 +23391,8 @@ final class _WLShopShopDeptShopCategoryShopSubcategoryProductProductReview
   Object? get id => _i.last;
   @override
   ProductReviewNav get nav => const ProductReviewNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -23064,6 +23416,8 @@ final class _WLShopShopDeptShopCategoryShopSubcategoryProductBrand
   Object? get id => _i.last;
   @override
   BrandNav get nav => const BrandNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -23083,6 +23437,8 @@ final class _WLShopCompareProducts implements Hop<CompareProductsNav> {
   Object? get id => _i.last;
   @override
   CompareProductsNav get nav => const CompareProductsNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -23102,6 +23458,8 @@ final class _WLActivity implements Hop<ActivityNav> {
   Object? get id => _i.last;
   @override
   ActivityNav get nav => const ActivityNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLActivityWorkout workout(String id) =>
       _WLActivityWorkout._([..._s, _Screens.workout], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
@@ -23123,6 +23481,8 @@ final class _WLActivityWorkout implements Hop<WorkoutNav> {
   Object? get id => _i.last;
   @override
   WorkoutNav get nav => const WorkoutNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLActivityWorkoutExercise exercise(String id) =>
       _WLActivityWorkoutExercise._([..._s, _Screens.exercise], [..._i, id]);
   _WLActivityWorkoutQ query(Set<WorkoutQueryArg> q) => _WLActivityWorkoutQ(
@@ -23167,6 +23527,8 @@ final class _WLActivityWorkoutExercise implements Hop<ExerciseNav> {
   Object? get id => _i.last;
   @override
   ExerciseNav get nav => const ExerciseNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLActivityWorkoutExerciseExerciseSet exerciseSet(String id) =>
       _WLActivityWorkoutExerciseExerciseSet._(
         [..._s, _Screens.exerciseSet],
@@ -23192,6 +23554,8 @@ final class _WLActivityWorkoutExerciseExerciseSet
   Object? get id => _i.last;
   @override
   ExerciseSetNav get nav => const ExerciseSetNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
@@ -23211,6 +23575,8 @@ final class _WLDeepDemo implements Hop<DeepDemoNav> {
   Object? get id => _i.last;
   @override
   DeepDemoNav get nav => const DeepDemoNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLDeepDemoLevelA levelA(String id) =>
       _WLDeepDemoLevelA._([..._s, _Screens.levelA], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
@@ -23232,6 +23598,8 @@ final class _WLDeepDemoLevelA implements Hop<LevelANav> {
   Object? get id => _i.last;
   @override
   LevelANav get nav => const LevelANav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLDeepDemoLevelALevelB levelB(String id) =>
       _WLDeepDemoLevelALevelB._([..._s, _Screens.levelB], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
@@ -23253,6 +23621,8 @@ final class _WLDeepDemoLevelALevelB implements Hop<LevelBNav> {
   Object? get id => _i.last;
   @override
   LevelBNav get nav => const LevelBNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLDeepDemoLevelALevelBLevelC levelC(String id) =>
       _WLDeepDemoLevelALevelBLevelC._([..._s, _Screens.levelC], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
@@ -23274,6 +23644,8 @@ final class _WLDeepDemoLevelALevelBLevelC implements Hop<LevelCNav> {
   Object? get id => _i.last;
   @override
   LevelCNav get nav => const LevelCNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLDeepDemoLevelALevelBLevelCLevelD levelD(String id) =>
       _WLDeepDemoLevelALevelBLevelCLevelD._(
         [..._s, _Screens.levelD],
@@ -23298,6 +23670,8 @@ final class _WLDeepDemoLevelALevelBLevelCLevelD implements Hop<LevelDNav> {
   Object? get id => _i.last;
   @override
   LevelDNav get nav => const LevelDNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLDeepDemoLevelALevelBLevelCLevelDLevelE levelE(String id) =>
       _WLDeepDemoLevelALevelBLevelCLevelDLevelE._(
         [..._s, _Screens.levelE],
@@ -23323,6 +23697,8 @@ final class _WLDeepDemoLevelALevelBLevelCLevelDLevelE
   Object? get id => _i.last;
   @override
   LevelENav get nav => const LevelENav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLDeepDemoLevelALevelBLevelCLevelDLevelELevelF levelF(String id) =>
       _WLDeepDemoLevelALevelBLevelCLevelDLevelELevelF._(
         [..._s, _Screens.levelF],
@@ -23348,6 +23724,8 @@ final class _WLDeepDemoLevelALevelBLevelCLevelDLevelELevelF
   Object? get id => _i.last;
   @override
   LevelFNav get nav => const LevelFNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );

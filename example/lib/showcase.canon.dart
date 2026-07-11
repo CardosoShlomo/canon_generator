@@ -20,6 +20,9 @@ extension type const ReviewId(String _) implements String {
 extension type const SellerId(String _) implements String {
   static const Ids node = Ids.seller;
 }
+extension type const ShopperId(String _) implements String {
+  static const Ids node = Ids.shopper;
+}
 extension type const CategoryId(String _) implements String {
   static const Ids node = Ids.category;
 }
@@ -787,6 +790,10 @@ final class Hop<N extends AnyNav> {
   /// segment; a navigable `Place` (a `Place`) overrides it with its
   /// full path, so `Screen.go` lands the whole placement.
   List<(Enum, Object?)> get chain => [(spec, id)];
+
+  /// The screen this hop lands on — the total projection
+  /// (the inverse needs an id, so it stays a Hop ctor).
+  Screen<Object?> get screen => Screen._forSpec(spec);
   static const splash = Hop<SplashNav>._(_Screens.splash, null, SplashNav._());
   static const signIn = Hop<SignInNav>._(_Screens.signIn, null, SignInNav._());
   static Hop<OtpNav> otp(String id) =>
@@ -4063,6 +4070,8 @@ sealed class Place extends Url implements Hop<AnyNav> {
   Object? get id => chain.last.$2;
   @override
   AnyNav get nav => _atOf(_Screens.graph.current);
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   static _WLSplash get splash => _WLSplash._([_Screens.splash], [null]);
   static _WLSignIn get signIn => _WLSignIn._([_Screens.signIn], [null]);
   static _WLSignInOtp otp(String id) =>
@@ -4243,6 +4252,8 @@ final class _WLSplash implements Hop<SplashNav> {
   Object? get id => _i.last;
   @override
   SplashNav get nav => const SplashNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://shop.example', _s, _i),
   );
@@ -4262,6 +4273,8 @@ final class _WLSignIn implements Hop<SignInNav> {
   Object? get id => _i.last;
   @override
   SignInNav get nav => const SignInNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLSignInOtp otp(String id) =>
       _WLSignInOtp._([..._s, _Screens.otp], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
@@ -4283,6 +4296,8 @@ final class _WLSignInOtp implements Hop<OtpNav> {
   Object? get id => _i.last;
   @override
   OtpNav get nav => const OtpNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://shop.example', _s, _i),
   );
@@ -4302,6 +4317,8 @@ final class _WLHome implements Hop<HomeNav> {
   Object? get id => _i.last;
   @override
   HomeNav get nav => const HomeNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLHomeSearch get search =>
       _WLHomeSearch._([..._s, _Screens.search], [..._i, null]);
   _WLHomeCategory category(CategoryId id) =>
@@ -4329,6 +4346,8 @@ final class _WLHomeSearch implements Hop<SearchNav> {
   Object? get id => _i.last;
   @override
   SearchNav get nav => const SearchNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLHomeSearchProduct product(ProductId id) =>
       _WLHomeSearchProduct._([..._s, _Screens.product], [..._i, id]);
   _WLHomeSearchQ query(Set<SearchQueryArg> q) =>
@@ -4369,6 +4388,8 @@ final class _WLHomeSearchProduct implements Hop<HomeSearchProductNav> {
   Object? get id => _i.last;
   @override
   HomeSearchProductNav get nav => const HomeSearchProductNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLHomeSearchProductSeller seller(SellerId id) =>
       _WLHomeSearchProductSeller._([..._s, _Screens.seller], [..._i, id]);
   _WLHomeSearchProductQ query(Set<ProductQueryArg> q) => _WLHomeSearchProductQ(
@@ -4437,6 +4458,8 @@ final class _WLHomeSearchProductSeller
   Object? get id => _i.last;
   @override
   HomeSearchProductSellerNav get nav => const HomeSearchProductSellerNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLHomeSearchProductSellerSellerChat sellerChat(SellerChatId id) =>
       _WLHomeSearchProductSellerSellerChat._(
         [..._s, _Screens.sellerChat],
@@ -4463,6 +4486,8 @@ final class _WLHomeSearchProductSellerSellerChat
   @override
   HomeSearchProductSellerSellerChatNav get nav =>
       const HomeSearchProductSellerSellerChatNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://shop.example', _s, _i),
   );
@@ -4482,6 +4507,8 @@ final class _WLHomeCategory implements Hop<CategoryNav> {
   Object? get id => _i.last;
   @override
   CategoryNav get nav => const CategoryNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLHomeCategoryProduct product(ProductId id) =>
       _WLHomeCategoryProduct._([..._s, _Screens.product], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
@@ -4503,6 +4530,8 @@ final class _WLHomeCategoryProduct implements Hop<HomeCategoryProductNav> {
   Object? get id => _i.last;
   @override
   HomeCategoryProductNav get nav => const HomeCategoryProductNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLHomeCategoryProductSeller seller(SellerId id) =>
       _WLHomeCategoryProductSeller._([..._s, _Screens.seller], [..._i, id]);
   _WLHomeCategoryProductQ query(Set<ProductQueryArg> q) =>
@@ -4570,6 +4599,8 @@ final class _WLHomeCategoryProductSeller
   @override
   HomeCategoryProductSellerNav get nav =>
       const HomeCategoryProductSellerNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLHomeCategoryProductSellerSellerChat sellerChat(SellerChatId id) =>
       _WLHomeCategoryProductSellerSellerChat._(
         [..._s, _Screens.sellerChat],
@@ -4596,6 +4627,8 @@ final class _WLHomeCategoryProductSellerSellerChat
   @override
   HomeCategoryProductSellerSellerChatNav get nav =>
       const HomeCategoryProductSellerSellerChatNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://shop.example', _s, _i),
   );
@@ -4615,6 +4648,8 @@ final class _WLHomeScan implements Hop<ScanNav> {
   Object? get id => _i.last;
   @override
   ScanNav get nav => const ScanNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLHomeScanProduct product(ProductId id) =>
       _WLHomeScanProduct._([..._s, _Screens.product], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
@@ -4636,6 +4671,8 @@ final class _WLHomeScanProduct implements Hop<HomeScanProductNav> {
   Object? get id => _i.last;
   @override
   HomeScanProductNav get nav => const HomeScanProductNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLHomeScanProductSeller seller(SellerId id) =>
       _WLHomeScanProductSeller._([..._s, _Screens.seller], [..._i, id]);
   _WLHomeScanProductQ query(Set<ProductQueryArg> q) => _WLHomeScanProductQ(
@@ -4703,6 +4740,8 @@ final class _WLHomeScanProductSeller implements Hop<HomeScanProductSellerNav> {
   Object? get id => _i.last;
   @override
   HomeScanProductSellerNav get nav => const HomeScanProductSellerNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLHomeScanProductSellerSellerChat sellerChat(SellerChatId id) =>
       _WLHomeScanProductSellerSellerChat._(
         [..._s, _Screens.sellerChat],
@@ -4729,6 +4768,8 @@ final class _WLHomeScanProductSellerSellerChat
   @override
   HomeScanProductSellerSellerChatNav get nav =>
       const HomeScanProductSellerSellerChatNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://shop.example', _s, _i),
   );
@@ -4748,6 +4789,8 @@ final class _WLHomeWishlist implements Hop<WishlistNav> {
   Object? get id => _i.last;
   @override
   WishlistNav get nav => const WishlistNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLHomeWishlistProduct product(ProductId id) =>
       _WLHomeWishlistProduct._([..._s, _Screens.product], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
@@ -4769,6 +4812,8 @@ final class _WLHomeWishlistProduct implements Hop<HomeWishlistProductNav> {
   Object? get id => _i.last;
   @override
   HomeWishlistProductNav get nav => const HomeWishlistProductNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLHomeWishlistProductSeller seller(SellerId id) =>
       _WLHomeWishlistProductSeller._([..._s, _Screens.seller], [..._i, id]);
   _WLHomeWishlistProductQ query(Set<ProductQueryArg> q) =>
@@ -4836,6 +4881,8 @@ final class _WLHomeWishlistProductSeller
   @override
   HomeWishlistProductSellerNav get nav =>
       const HomeWishlistProductSellerNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLHomeWishlistProductSellerSellerChat sellerChat(SellerChatId id) =>
       _WLHomeWishlistProductSellerSellerChat._(
         [..._s, _Screens.sellerChat],
@@ -4862,6 +4909,8 @@ final class _WLHomeWishlistProductSellerSellerChat
   @override
   HomeWishlistProductSellerSellerChatNav get nav =>
       const HomeWishlistProductSellerSellerChatNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://shop.example', _s, _i),
   );
@@ -4881,6 +4930,8 @@ final class _WLHomeCart implements Hop<CartNav> {
   Object? get id => _i.last;
   @override
   CartNav get nav => const CartNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLHomeCartCheckout get checkout =>
       _WLHomeCartCheckout._([..._s, _Checkout.checkout], [..._i, null]);
   Uri toUri([String? domain]) => Uri.parse(
@@ -4902,6 +4953,8 @@ final class _WLHomeCartCheckout implements Hop<CheckoutNav> {
   Object? get id => _i.last;
   @override
   CheckoutNav get nav => const CheckoutNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLHomeCartCheckoutPayment get payment =>
       _WLHomeCartCheckoutPayment._([..._s, _Checkout.payment], [..._i, null]);
   Uri toUri([String? domain]) => Uri.parse(
@@ -4923,6 +4976,8 @@ final class _WLHomeCartCheckoutPayment implements Hop<PaymentNav> {
   Object? get id => _i.last;
   @override
   PaymentNav get nav => const PaymentNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLHomeCartCheckoutPaymentConfirmation confirmation(String id) =>
       _WLHomeCartCheckoutPaymentConfirmation._(
         [..._s, _Checkout.confirmation],
@@ -4948,6 +5003,8 @@ final class _WLHomeCartCheckoutPaymentConfirmation
   Object? get id => _i.last;
   @override
   ConfirmationNav get nav => const ConfirmationNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://shop.example', _s, _i),
   );
@@ -4967,6 +5024,8 @@ final class _WLAccount implements Hop<AccountNav> {
   Object? get id => _i.last;
   @override
   AccountNav get nav => const AccountNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLAccountOrders get orders =>
       _WLAccountOrders._([..._s, _Screens.orders], [..._i, null]);
   _WLAccountSettings get settings =>
@@ -4997,6 +5056,8 @@ final class _WLAccountOrders implements Hop<OrdersNav> {
   Object? get id => _i.last;
   @override
   OrdersNav get nav => const OrdersNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLAccountOrdersOrder order(OrderId id) =>
       _WLAccountOrdersOrder._([..._s, _Screens.order], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
@@ -5018,6 +5079,8 @@ final class _WLAccountOrdersOrder implements Hop<OrderNav> {
   Object? get id => _i.last;
   @override
   OrderNav get nav => const OrderNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLAccountOrdersOrderProduct product(ProductId id) =>
       _WLAccountOrdersOrderProduct._([..._s, _Screens.product], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
@@ -5041,6 +5104,8 @@ final class _WLAccountOrdersOrderProduct
   @override
   AccountOrdersOrderProductNav get nav =>
       const AccountOrdersOrderProductNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLAccountOrdersOrderProductSeller seller(SellerId id) =>
       _WLAccountOrdersOrderProductSeller._(
         [..._s, _Screens.seller],
@@ -5113,6 +5178,8 @@ final class _WLAccountOrdersOrderProductSeller
   @override
   AccountOrdersOrderProductSellerNav get nav =>
       const AccountOrdersOrderProductSellerNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLAccountOrdersOrderProductSellerSellerChat sellerChat(SellerChatId id) =>
       _WLAccountOrdersOrderProductSellerSellerChat._(
         [..._s, _Screens.sellerChat],
@@ -5139,6 +5206,8 @@ final class _WLAccountOrdersOrderProductSellerSellerChat
   @override
   AccountOrdersOrderProductSellerSellerChatNav get nav =>
       const AccountOrdersOrderProductSellerSellerChatNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://shop.example', _s, _i),
   );
@@ -5158,6 +5227,8 @@ final class _WLAccountSettings implements Hop<SettingsNav> {
   Object? get id => _i.last;
   @override
   SettingsNav get nav => const SettingsNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://shop.example', _s, _i),
   );
@@ -5177,6 +5248,8 @@ final class _WLAccountListing implements Hop<ListingNav> {
   Object? get id => _i.last;
   @override
   ListingNav get nav => const ListingNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLAccountListingEditListing get editListing =>
       _WLAccountListingEditListing._(
         [..._s, _Screens.editListing],
@@ -5201,6 +5274,8 @@ final class _WLAccountListingEditListing implements Hop<EditListingNav> {
   Object? get id => _i.last;
   @override
   EditListingNav get nav => const EditListingNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://shop.example', _s, _i),
   );
@@ -5539,13 +5614,15 @@ void dispatch(Msg msg) => ledger.dispatch(msg);
 bool _bound = false;
 
 /// The `product` screen was navigated to (never a render).
-class ProductEnteredMsg extends Msg {
+class ProductEnteredMsg extends Msg
+    with Identifiable<ProductId>
+    implements ProductAskMsg {
   const ProductEnteredMsg(this.id);
   final ProductId id;
 }
 
 /// The `sellerChat` screen was navigated to (never a render).
-class SellerChatEnteredMsg extends Msg {
+class SellerChatEnteredMsg extends Msg with Identifiable<SellerChatId> {
   const SellerChatEnteredMsg(this.id);
   final SellerChatId id;
 }
@@ -5693,6 +5770,27 @@ extension SellerThreadsReads on SellerThreads {
     }
     return null;
   }
+}
+
+/// Reads for a `Shopper` row — sugar over `ledger.at(this)`.
+extension ShopperReads on Shopper {
+  UnitMemory<ShopperState?, ShopperMsg> get mem => ledger.at(this);
+
+  /// The state, now — merge-resolved.
+  ShopperState? get state => mem.state;
+
+  Stream<void> get changes => mem.changes;
+  Stream<UnitEvent<ShopperState?, ShopperMsg>> get events => mem.events;
+
+  /// The identity the state carries, now.
+  ShopperId? get id => state?.id;
+
+  /// The value, reactively — rebuilds on every change.
+  ShopperState? of(BuildContext context) => mem.of(context);
+
+  /// The identity, reactively — rebuilds only
+  /// when the id changes, never on field churn.
+  ShopperId? idOf(BuildContext context) => mem.idOf(context);
 }
 
 /// Reads for a `CartWriteUnit` row — sugar over `ledger.at(this)`.

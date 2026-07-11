@@ -372,7 +372,7 @@ class RegistryGenerator {
       final joins = sealedGroups.contains(ask) ? ' implements $ask' : '';
       b.writeln();
       b.writeln('/// The `${e.key}` screen was navigated to (never a render).');
-      b.writeln('class $cls extends Msg$joins {');
+      b.writeln('class $cls extends Msg with Identifiable<$key>$joins {');
       b.writeln('  const $cls(this.id);');
       b.writeln('  final ${e.value.$2} id;');
       b.writeln('}');
@@ -630,6 +630,31 @@ class RegistryGenerator {
     }
   }
 
+  /// Recurses into a named `Regency` subclass whose const ctor grafts a
+  /// LITERAL row set (`: super({...})`); a computed row set keeps the
+  /// subclass opaque.
+  Future<void> _walkNamedRegency(DartType? t, Element context,
+      List<_Row> rows, BuildStep buildStep) async {
+    final el = t is InterfaceType ? t.element : null;
+    if (el == null) return;
+    final ast =
+        await buildStep.resolver.astNodeFor(el.firstFragment, resolve: true);
+    if (ast is! ClassDeclaration) return;
+    for (final member in ast.body.members) {
+      if (member is! ConstructorDeclaration) continue;
+      for (final init in member.initializers) {
+        if (init is! SuperConstructorInvocation) continue;
+        final arg = init.argumentList.arguments.firstOrNull;
+        if (arg is! SetOrMapLiteral) return;
+        for (final row in arg.elements) {
+          if (row is! Expression) continue;
+          await _walkRow(row, el, rows, buildStep);
+        }
+        return;
+      }
+    }
+  }
+
   Future<void> _walkRow(Expression e, Element context, List<_Row> rows,
       BuildStep buildStep) async {
     final t = e.staticType;
@@ -641,7 +666,13 @@ class RegistryGenerator {
       // so nothing is emitted.
       if (e is InstanceCreationExpression) {
         final el = t is InterfaceType ? t.element.name : null;
-        if (el != 'Regency') return; // an opaque named regency
+        if (el != 'Regency') {
+          // A named subclass: readable when its ctor grafts a literal
+          // `super({...})` — recurse there; anything else (a brick whose
+          // rows are computed) stays opaque and the runtime mounts it.
+          await _walkNamedRegency(t, context, rows, buildStep);
+          return;
+        }
         await _walkGraphExpr(e, context, rows, buildStep);
         return;
       }

@@ -1668,6 +1668,9 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       b.writeln('  /// segment; a navigable `Place` (a `Place`) overrides it with its');
       b.writeln('  /// full path, so `Screen.go` lands the whole placement.');
       b.writeln('  List<(Enum, Object?)> get chain => [(spec, id)];');
+      b.writeln('  /// The screen this hop lands on — the total projection');
+      b.writeln('  /// (the inverse needs an id, so it stays a Hop ctor).');
+      b.writeln('  Screen<Object?> get screen => Screen._forSpec(spec);');
       for (final r in rows) {
         if (!globalSafe(r.name)) continue; // id-behind targets: reach via chaining
         // Inherit-rescued kick-starts need a multi-step chain; a Hop is one go, so
@@ -2543,6 +2546,8 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
           chainBuf.writeln('  Object? get id => _i.last;');
           chainBuf.writeln('  @override');
           chainBuf.writeln('  $navT get nav => const $navT._();');
+          chainBuf.writeln('  @override');
+          chainBuf.writeln('  Screen<Object?> get screen => Screen._forSpec(spec);');
         }
         // Kick-start shortcuts are skipped when the screen is already a DIRECT
         // kid here (the accessor owns the name; the chained form remains), and
@@ -2671,6 +2676,8 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       b.writeln('  Object? get id => chain.last.\$2;');
       b.writeln('  @override');
       b.writeln('  AnyNav get nav => _atOf($spec.graph.current);');
+      b.writeln('  @override');
+      b.writeln('  Screen<Object?> get screen => Screen._forSpec(spec);');
       widgetStatics.values.forEach(b.writeln);
       b.writeln('}');
       b.writeln('/// A resolve-only branch (declared via `.link`/`slots`): URL-shaped DATA');

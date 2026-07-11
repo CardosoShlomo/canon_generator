@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:canon_flutter/canon_flutter.dart' show Stability;
 import 'package:canon_example/welcome.dart';
 
 void main() {

@@ -1,3 +1,9 @@
+## 0.38.0
+
+- Named `Regency` subclasses with a literal `super({...})` are readable — feature grafts get generated reads; computed row sets stay opaque.
+- Entry msgs mix in `Identifiable<K>` — a spec-side sealed ask group may too.
+- `Hop.screen` — the destination's screen, on every hop and place.
+
 ## 0.37.0
 
 - BREAKING: the `ledger.<name>` getter tier retired — reads are per-class extensions on consumer-named const row globals (`users.of(context)`).

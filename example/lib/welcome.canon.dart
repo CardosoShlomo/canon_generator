@@ -337,6 +337,10 @@ final class Hop<N extends AnyNav> {
   /// segment; a navigable `Place` (a `Place`) overrides it with its
   /// full path, so `Screen.go` lands the whole placement.
   List<(Enum, Object?)> get chain => [(spec, id)];
+
+  /// The screen this hop lands on — the total projection
+  /// (the inverse needs an id, so it stays a Hop ctor).
+  Screen<Object?> get screen => Screen._forSpec(spec);
   static const home = Hop<HomeNav>._(_Screens.home, null, HomeNav._());
   static Hop<TodoNav> todo(TodoId id) =>
       Hop._(_Screens.todo, id, const TodoNav._());
@@ -490,6 +494,8 @@ sealed class Place extends Url implements Hop<AnyNav> {
   Object? get id => chain.last.$2;
   @override
   AnyNav get nav => _atOf(_Screens.graph.current);
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   static _WLHome get home => _WLHome._([_Screens.home], [null]);
   static _WLHomeTodo todo(TodoId id) =>
       _WLHomeTodo._([_Screens.home, _Screens.todo], [null, id]);
@@ -562,6 +568,8 @@ final class _WLHome implements Hop<HomeNav> {
   Object? get id => _i.last;
   @override
   HomeNav get nav => const HomeNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   _WLHomeTodo todo(TodoId id) =>
       _WLHomeTodo._([..._s, _Screens.todo], [..._i, id]);
   Uri toUri(String domain) =>
@@ -582,6 +590,8 @@ final class _WLHomeTodo implements Hop<TodoNav> {
   Object? get id => _i.last;
   @override
   TodoNav get nav => const TodoNav._();
+  @override
+  Screen<Object?> get screen => Screen._forSpec(spec);
   Uri toUri(String domain) =>
       Uri.parse(_Screens.graph.encodeNavUrl(domain, _s, _i));
 }
@@ -600,7 +610,7 @@ void dispatch(Msg msg) => ledger.dispatch(msg);
 bool _bound = false;
 
 /// The `todo` screen was navigated to (never a render).
-class TodoEnteredMsg extends Msg {
+class TodoEnteredMsg extends Msg with Identifiable<TodoId> {
   const TodoEnteredMsg(this.id);
   final TodoId id;
 }

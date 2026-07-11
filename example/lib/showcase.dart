@@ -13,7 +13,8 @@ part 'showcase.canon.dart';
 //   1. facts as sealed families (a msg IS a source: its TYPE is its rank)
 //   2. stores & units: pure folds, nothing else lives in a memory
 //   3. the REGENCY: set order is traversal order; gates protect below
-//   4. gates judging via `read(const X())` — the ledger's own state by identity
+//   4. gates judging via `read(catalogCovered)` — the ledger's own state,
+//      named by the consumer's const row globals (the audit list)
 //   5. COVERAGE: recorded permission to treat absence as knowledge
 //   6. a shadow store + merge edge: disk cache answers until censored
 //   7. an IN-FLIGHT row + dedupe gate: duplicate asks drop at the queue
@@ -48,15 +49,24 @@ part 'showcase.canon.dart';
 //      from index 0 (unjournaled, re-derived on replay, depth-budgeted).
 //      `ThreadGate` mints `ThreadOpened` from the chat's entry fact and the
 //      thread row ABOVE it folds the derivation
+//  17. a FEATURE graft: `CartFeature extends Regency` — the dock's gate,
+//      rows, and merge travel as ONE spliceable row; a literal
+//      `super({...})` keeps the graft readable (generated reads intact)
+//  18. the IDENTITY unit read: `Shopper`'s state is `Identifiable`, so the
+//      generated `shopper.idOf(context)` subscribes to WHO is signed in —
+//      it never rebuilds on field churn (an order count bump), only on
+//      sign-in/out; `shopper.id` is the now-read twin
+//  19. `hop.screen` — every destination knows its screen (the total
+//      projection), so a tab bar is a list of hops and one `Screen.go`
 //
 // Most screens are a color + a row of nav buttons; `product` is a REAL
 // consuming screen, so this doubles as the runnable app you test on.
 //
 // What only the running app shows (it's all runtime): every `Screen.goX`
 // round-trips to a clean URL and back; browser back/forward and refresh restore
-// the exact stack (refresh keeps state, a cold link rebuilds it); and
-// `ledger.command(...)` applies an optimistic write instantly, then confirms or
-// rolls back on the server's reply. Run `showcase_app.dart` on web to watch it.
+// the exact stack (refresh keeps state, a cold link rebuilds it); and the cart
+// dock applies an optimistic write instantly, then settles it against the
+// server's echo. Run `showcase_app.dart` on web to watch it.
 
 // Search view-state: `?q=&sort=&minPrice=&maxPrice=`.
 enum _Filter with QueryKeyBase { q, sort, minPrice, maxPrice }
@@ -77,6 +87,7 @@ enum Ids with IdNode {
   product(.uuid),
   review(.uuid),
   seller(.username),
+  shopper(.username),
   category(.string),
   order(.uuid),
   listing(.uuid),
@@ -207,20 +218,28 @@ final class DedupeGetReviews extends Veto<GetReviews> {
 
   @override
   bool block(GetReviews msg, ReadStore read) =>
-      read(const ReviewsInFlight()).contains(msg.productId);
+      read(reviewsInFlight).contains(msg.productId);
 }
 
 /// 11. Scope entry is a FACT: a COMMITTED navigation to `product` dispatches
 /// the generated [ProductEnteredMsg] (never a render). Ask policy is this
 /// ordinary gate judging it: an unknown product with no ask in flight fans
 /// out the request — the imperative fetch-on-entry, gone.
-final class ProductEntryGate extends Guard<ProductEnteredMsg> {
+///
+/// The gate types on the ASK GROUP, not one msg: declare
+/// `sealed class ProductAskMsg` in this library and the generated entry
+/// fact of every product-keyed screen joins it (`implements`, by the name
+/// convention `<key type minus Id>AskMsg`) — the ask belongs to the
+/// IDENTITY, not to one screen.
+sealed class ProductAskMsg extends Msg with Identifiable<ProductId> {}
+
+final class ProductEntryGate extends Guard<ProductAskMsg> {
   const ProductEntryGate();
 
   @override
-  Set<Judgment> judge(ProductEnteredMsg msg, ReadStore read) =>
-      !read(const Products()).containsKey(msg.id) &&
-              !read(const ReviewsInFlight()).contains(msg.id)
+  Set<Judgment> judge(ProductAskMsg msg, ReadStore read) =>
+      !read(products).containsKey(msg.id) &&
+              !read(reviewsInFlight).contains(msg.id)
           ? {.forward(msg), .forward(GetReviews(msg.id))}
           : {.forward(msg)};
 }
@@ -292,6 +311,46 @@ final class SellerThreads
       switch (msg) {
         ThreadOpened(:final id) =>
           entities.upsert(SellerThread(id, (entities[id]?.opened ?? 0) + 1)),
+      };
+}
+
+// ── 18. The shopper: an IDENTITY unit ─────────────────────────────────
+// The session's account. The state IS an entity (`Identifiable`), so the
+// generator emits the identity reads beside the value ones:
+// `shopper.idOf(context)` rebuilds only when WHO changes — the order count
+// bumping on every purchase never wakes an id reader — and `shopper.id` is
+// the now-read. Who-is-here and her-profile are different subscriptions.
+class ShopperState with Identifiable<ShopperId> {
+  const ShopperState(this.id, {this.orderCount = 0});
+  @override
+  final ShopperId id;
+  final int orderCount;
+
+  @override
+  bool operator ==(Object o) =>
+      o is ShopperState && o.id == id && o.orderCount == orderCount;
+  @override
+  int get hashCode => Object.hash(id, orderCount);
+}
+
+sealed class ShopperMsg extends Msg {}
+
+class SignedInMsg extends ShopperMsg {
+  SignedInMsg(this.id);
+  final ShopperId id;
+}
+
+class OrderPlacedMsg extends ShopperMsg {}
+
+final class Shopper extends Unit<ShopperState?, ShopperMsg> {
+  const Shopper() : super(null);
+
+  @override
+  ShopperState? reduce(ShopperState? state, ShopperMsg msg) => switch (msg) {
+        SignedInMsg(:final id) => ShopperState(id),
+        OrderPlacedMsg() => state == null
+            ? null
+            : ShopperState(state.id, orderCount: state.orderCount + 1),
       };
 }
 
@@ -453,13 +512,13 @@ final class CartWriteGate extends Guard<CartMsg> {
         // ignores it. The capture is the dock's copy.
         return {
           .forward(msg),
-          .forward(CartPredictedMsg(p, read(const Cart()))),
+          .forward(CartPredictedMsg(p, read(cart))),
         };
       case final QtySaved echo:
-        final write = read(const CartWriteUnit());
+        final write = read(cartWrite);
         final p = write.pending;
         if (p == null) return {.forward(msg)};
-        final a = read(const Cart());
+        final a = read(cart);
         final b = const Cart().reduce(a, echo);
         final outcome = applyQty(b, p) == b
             ? WriteOutcome.confirmed
@@ -471,10 +530,10 @@ final class CartWriteGate extends Guard<CartMsg> {
           .forward(CartSettledMsg(outcome)),
         };
       case QtyTimedOut():
-        final write = read(const CartWriteUnit());
+        final write = read(cartWrite);
         final p = write.pending;
         if (p == null) return const {};
-        final a = read(const Cart());
+        final a = read(cart);
         final outcome = applyQty(a, p) == a
             ? WriteOutcome.confirmed
             : a == write.base
@@ -507,6 +566,7 @@ enum _Entities with EntityNode<_Entities> {
   // (the wire test: its facts arrive without an id).
   cart(CartState),
   cartWrite(CartWrite),
+  shopper(ShopperState),
   coverage(bool),
   inFlight(Set<ProductId>),
   product(Product, .product),
@@ -545,8 +605,23 @@ const reviewsInFlight = ReviewsInFlight();
 const localProducts = LocalProducts();
 const products = Products();
 const sellerThreads = SellerThreads();
+const shopper = Shopper();
 const cartWrite = CartWriteUnit();
 const cart = Cart();
+
+/// 17. A FEATURE graft: the checkout dock as ONE spliceable row — gate,
+/// dock, truth, and the dock's merge edge travel together. The literal
+/// `super({...})` keeps the graft readable to the generator (the rows keep
+/// their generated reads); a computed row set would stay opaque, which is
+/// how library-shipped bricks keep their laws their own.
+final class CartFeature extends Regency {
+  const CartFeature()
+      : super(const {
+          CartWriteGate(),
+          cartWrite,
+          cart,
+        }, merges: const {WriteSupportsCart()});
+}
 
 // The app as a const VALUE — set order is traversal order.
 @canon
@@ -569,20 +644,20 @@ const app = Regency({
   // 16. BELOW the row it feeds: its mint re-enters at index 0, so the
   // thread row above folds the derivation — the upward door, lawfully
   ThreadGate(),
-  // the write dock — below every other reader: the prediction reaches them
-  // all, then the gate mints the capture; base never folds the promise
-  CartWriteGate(),
-  cartWrite,
-  cart,
+  // 18. the identity unit
+  shopper,
+  // 17. the write dock as ONE feature graft — below every other reader:
+  // the prediction reaches them all, then the gate mints the capture;
+  // base never folds the promise
+  CartFeature(),
   // 12. the stack — the session's LAST reader: it folds only navigation
   // that survived every judge above; replay carries the session whole
   NavUnit(),
 }, merges: {
   // Merge edges — read-time projections, state is never copied: each
-  // projection carries its own endpoints (the dock's promise answers the
-  // cart's reads unit-from-unit; the shadow answers the catalog's gaps
-  // store-from-store).
-  WriteSupportsCart(),
+  // projection carries its own endpoints (the shadow answers the catalog's
+  // gaps store-from-store; the dock's own edge lives inside its graft, and
+  // graft merges resolve BEFORE this set).
   LocalProductSupports(),
 });
 
@@ -603,7 +678,7 @@ final class CatalogGate extends Veto<CatalogCacheMsg> {
 
   @override
   bool block(CatalogCacheMsg msg, ReadStore read) =>
-      read(const CatalogCovered());
+      read(catalogCovered);
 }
 
 /// The disk-cache SHADOW: cache facts fold here absent-only; live-family
@@ -640,6 +715,9 @@ final class LocalProductSupports
 // only verb: the same call states a fact, sends a request, and (via the
 // in-flight row) marks its key in flight.
 void demoBackend() {
+  // The session's account — 18. `shopper.idOf` readers wake here (WHO
+  // changed) and sleep through the order-count churn below.
+  dispatch(SignedInMsg(const ShopperId('ada')));
   // The entry FACT is the wire's cue too: the same admitted feed the entry
   // gate shaped — no nav plumbing, no stack walking.
   ledger.at(.exit).msgs<ProductEnteredMsg>().listen((e) {
@@ -695,7 +773,7 @@ enum _Screens with ScreenNode<_Screens> {
   signIn(_S('Sign in', Color(0xFF37474F))),
   otp(_S('OTP', Color(0xFF455A64)), .string),
 
-  home(_S('Home', Color(0xFF00897B))),
+  home(_S('Home', Color(0xFF00897B), body: [_TrunkTabs()])),
   search(_S('Search', Color(0xFF00ACC1), body: [_ProductsStrip()])),
   scan(_S('Scan', Color(0xFF039BE5))),
   category(_S('Category', Color(0xFF43A047)), Ids.category),
@@ -705,7 +783,8 @@ enum _Screens with ScreenNode<_Screens> {
       Ids.sellerChat),
 
   wishlist(_S('Wishlist', Color(0xFFF4511E))),
-  account(_S('Account', Color(0xFF6D4C41))),
+  account(_S('Account', Color(0xFF6D4C41),
+      body: [_ShopperBadge(), _TrunkTabs()])),
   orders(_S('Orders', Color(0xFF757575))),
   order(_S('Order', Color(0xFF546E7A)), Ids.order),
   settings(_S('Settings', Color(0xFF7CB342))),
@@ -796,6 +875,47 @@ final Map<String, VoidCallback> _nav = {
 };
 
 // An extremely simple screen: a color, a title, optional data rows, nav buttons.
+/// 18. The identity read in a build: subscribes to WHO — the order count
+/// bumping (`OrderPlacedMsg`) rebuilds value readers, never this badge.
+class _ShopperBadge extends StatelessWidget {
+  const _ShopperBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    final id = shopper.idOf(context);
+    return Text(
+      id == null ? 'signed out' : 'signed in as $id',
+      style: const TextStyle(color: Colors.white70),
+    );
+  }
+}
+
+/// 19. A tab bar as DATA: each tab is a `Hop`, `hop.screen` names the tab
+/// (and answers "is it current"), `Screen.go(hop)` lands it — no per-tab
+/// switch mapping screens back to verbs.
+class _TrunkTabs extends StatelessWidget {
+  const _TrunkTabs();
+
+  static const _tabs = [Hop.home, Hop.account];
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(spacing: 8, children: [
+      for (final hop in _tabs)
+        OutlinedButton(
+          onPressed: () => Screen.go(hop),
+          child: Text(
+            hop.screen.name,
+            style: TextStyle(
+                color: context.screen == hop.screen
+                    ? Colors.white
+                    : Colors.white70),
+          ),
+        ),
+    ]);
+  }
+}
+
 class _S extends StatelessWidget {
   const _S(this.title, this.color, {this.body = const []});
   final String title;
