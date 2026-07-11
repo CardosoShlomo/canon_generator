@@ -1,6 +1,6 @@
 name: canon_generator
 description: "Code generator for canon — emits the typed Screen, Hop, and verb surface from the spec enum."
-version: 0.35.0
+version: 0.36.0
 repository: https://github.com/CardosoShlomo/canon_generator
 
 environment:
@@ -13,7 +13,6 @@ dependencies:
   canon: ^0.29.0
   canon_codec: ^0.3.0
   identifiable: ^0.6.0
-  regent: ^0.11.0
   source_gen: ^4.2.3
 
 dev_dependencies:

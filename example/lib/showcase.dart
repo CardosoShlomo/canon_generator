@@ -369,8 +369,8 @@ class CartSettledMsg extends CartMsg {
   final WriteOutcome outcome;
 }
 
-final class CartUnit extends Unit<CartState, CartMsg> {
-  const CartUnit() : super(const CartState());
+final class Cart extends Unit<CartState, CartMsg> {
+  const Cart() : super(const CartState());
 
   @override
   CartState reduce(CartState state, CartMsg msg) => switch (msg) {
@@ -453,14 +453,14 @@ final class CartWriteGate extends Guard<CartMsg> {
         // ignores it. The capture is the dock's copy.
         return {
           .forward(msg),
-          .forward(CartPredictedMsg(p, read(const CartUnit()))),
+          .forward(CartPredictedMsg(p, read(const Cart()))),
         };
       case final QtySaved echo:
         final write = read(const CartWriteUnit());
         final p = write.pending;
         if (p == null) return {.forward(msg)};
-        final a = read(const CartUnit());
-        final b = const CartUnit().reduce(a, echo);
+        final a = read(const Cart());
+        final b = const Cart().reduce(a, echo);
         final outcome = applyQty(b, p) == b
             ? WriteOutcome.confirmed
             : b == a
@@ -474,7 +474,7 @@ final class CartWriteGate extends Guard<CartMsg> {
         final write = read(const CartWriteUnit());
         final p = write.pending;
         if (p == null) return const {};
-        final a = read(const CartUnit());
+        final a = read(const Cart());
         final outcome = applyQty(a, p) == a
             ? WriteOutcome.confirmed
             : a == write.base
@@ -490,7 +490,7 @@ final class CartWriteGate extends Guard<CartMsg> {
 /// 10. The dock's merge edge — unit-from-unit: reads show the promise until
 /// it settles; base is never copied, never touched.
 final class WriteSupportsCart extends UnitProjection<CartWrite, CartState> {
-  const WriteSupportsCart();
+  const WriteSupportsCart() : super(const Cart(), const CartWriteUnit());
 
   @override
   CartState resolve(CartState value, CartWrite write) =>
@@ -538,46 +538,43 @@ enum _Entities with EntityNode<_Entities> {
 // binds the SAME node (via the entity), those reads inject by nav location
 // (`productsOnProduct()`).
 @canon
-enum _Regents with RegentNode<_Regents> {
+// The app as a const VALUE — set order is traversal order.
+@canon
+const app = Regency({
   // coverage first — the gate reads it
-  catalogCovered(CatalogCovered()),
+  CatalogCovered(),
   // the gates: once the live catalog has covered, cache facts drop here;
   // the entry gate fans out asks; the dedupe veto drops duplicate asks —
   // every row below sees only admitted messages (placement IS protection)
-  catalogGate(CatalogGate()),
-  productEntryGate(ProductEntryGate()),
-  dedupeGetReviews(DedupeGetReviews()),
+  CatalogGate(),
+  ProductEntryGate(),
+  DedupeGetReviews(),
   // the in-flight row — the dedupe gate reads it
-  reviewsInFlight(ReviewsInFlight()),
+  ReviewsInFlight(),
   // the disk-cache SHADOW — absent-only folds, supports main via the merge
-  localProducts(LocalProducts()),
-  products(Products()),
+  LocalProducts(),
+  Products(),
   // the composite-keyed thread — its id node powers the gated identity tier
-  sellerThreads(SellerThreads()),
+  SellerThreads(),
   // 16. BELOW the row it feeds: its mint re-enters at index 0, so the
   // thread row above folds the derivation — the upward door, lawfully
-  threadGate(ThreadGate()),
+  ThreadGate(),
   // the write dock — below every other reader: the prediction reaches them
   // all, then the gate mints the capture; base never folds the promise
-  cartWriteGate(CartWriteGate()),
-  cartWrite(CartWriteUnit()),
-  cart(CartUnit()),
+  CartWriteGate(),
+  CartWriteUnit(),
+  Cart(),
   // 12. the stack — the session's LAST reader: it folds only navigation
   // that survived every judge above; replay carries the session whole
-  nav(NavUnit());
-
-  const _Regents(this.regent);
-  @override
-  final Regent regent;
-
-  // Merge edges — read-time projections, state is never copied: the dock's
-  // promise answers the cart's reads (unit-from-unit), the shadow answers
-  // the catalog's gaps (store-from-store).
-  static final merges = {
-    cart.from(cartWrite, const WriteSupportsCart()),
-    products.from(localProducts, const LocalProductSupports()),
-  };
-}
+  NavUnit(),
+}, merges: {
+  // Merge edges — read-time projections, state is never copied: each
+  // projection carries its own endpoints (the dock's promise answers the
+  // cart's reads unit-from-unit; the shadow answers the catalog's gaps
+  // store-from-store).
+  WriteSupportsCart(),
+  LocalProductSupports(),
+});
 
 /// Has the LIVE catalog covered this session? (Any live product load counts.)
 final class CatalogCovered extends Unit<bool, ProductMsg> {
@@ -619,7 +616,7 @@ final class LocalProducts extends Store<ProductId, Product, ProductMsg> {
 /// Row-or-local: the main store's row wins; the shadow answers the gaps.
 final class LocalProductSupports
     extends Projection<Product, ProductId, Product> {
-  const LocalProductSupports();
+  const LocalProductSupports() : super(const Products(), const LocalProducts());
 
   @override
   Product resolve(Product? row, Product local) => row ?? local;

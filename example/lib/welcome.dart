@@ -143,8 +143,9 @@ final class CachedTodosGate extends Veto<CachedTodosMsg> {
       read(const TodosCovered());
 }
 
+/// The projection IS the merge edge — it carries its endpoints.
 final class LocalTodoSupports extends Projection<Todo, TodoId, Todo> {
-  const LocalTodoSupports();
+  const LocalTodoSupports() : super(const Todos(), const LocalTodos());
   @override
   Todo resolve(Todo? row, Todo local) => row ?? local;
 }
@@ -162,22 +163,16 @@ enum _Entities with EntityNode<_Entities> {
   final Ids? key;
 }
 
-// ── Regents: row order = traversal order ──
+// ── The REGENCY: the app's state tier as a const value ──
+// Set order is traversal order — placement is protection; the merges set
+// lists bare projections (each carries its own endpoints).
 @canon
-enum _Regents with RegentNode<_Regents> {
-  todosCovered(TodosCovered()),
-  cachedTodosGate(CachedTodosGate()), // protects every row below
-  localTodos(LocalTodos()),
-  todos(Todos());
-
-  const _Regents(this.regent);
-  @override
-  final Regent regent;
-
-  static final merges = {
-    todos.from(localTodos, const LocalTodoSupports()),
-  };
-}
+const app = Regency({
+  TodosCovered(),
+  CachedTodosGate(), // protects every row below
+  LocalTodos(),
+  Todos(),
+}, merges: {LocalTodoSupports()});
 
 // ── Screens: the navigation grammar ──
 @canon

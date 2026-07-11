@@ -15,91 +15,6 @@ extension type const TodoId(String _) implements String {
   static const Ids node = Ids.todo;
 }
 
-// ignore_for_file: unused_element
-/// The app-wide ledger — the single state + message api (from @regents).
-/// `Screen.manager` binds it. `ledger.dispatch(msg)` · `ledger.on<…>(...)` ·
-/// `ledger.command(...)`; entities live on the public `<row>Store`
-/// globals. `Screen` is nav; `ledger` is state-and-messages.
-final ledger = Ledger();
-
-/// States a fact — dispatch is the ONLY verb, so it needs no prefix.
-/// (`ledger.` keeps the rarer surfaces: `on`, `veto`, `guard`, `journal`.)
-void dispatch(Msg msg) => ledger.dispatch(msg);
-bool _bound = false;
-
-/// The `todo` screen was navigated to (never a render).
-class TodoEnteredMsg extends Msg {
-  const TodoEnteredMsg(this.id);
-  final TodoId id;
-}
-
-late final UnitMemory<bool, TodoMsg> todosCoveredStore;
-late final StoreMemory<TodoId, Todo, TodoMsg> localTodosStore;
-late final StoreMemory<TodoId, Todo, TodoMsg> todosStore;
-
-/// The generated data surface, hung on [Ledger] so `ledger.` is the one api.
-extension on Ledger {
-  /// Register the stores on the ledger. Idempotent — `Screen.manager` calls it.
-  void bind() {
-    if (_bound) return;
-    _bound = true;
-    todosCoveredStore = unit(
-      _Regents.todosCovered.regent as Unit<bool, TodoMsg>,
-    );
-    guard(_Regents.cachedTodosGate.regent as Guard<CachedTodosMsg>);
-    localTodosStore = store(
-      _Regents.localTodos.regent as Store<TodoId, Todo, TodoMsg>,
-    );
-    IdScope.tag(localTodosStore, Ids.todo);
-    todosStore = store(_Regents.todos.regent as Store<TodoId, Todo, TodoMsg>);
-    IdScope.tag(todosStore, Ids.todo);
-    _Screens.graph.navigations.listen((n) {
-      final (screen, id) = n.destination;
-      if (screen == _Screens.todo) {
-        dispatch(TodoEnteredMsg(id as TodoId));
-      }
-    });
-    todosStore.mergeStore(localTodosStore, const LocalTodoSupports());
-  }
-
-  /// localTodos on screen `todo` — the entry at its live nav id.
-  Todo? localTodosOnTodo() {
-    for (final e in _Screens.graph.stack) {
-      if (e.screen == _Screens.todo) return localTodosStore[e.id as TodoId];
-    }
-    return null;
-  }
-
-  /// todos on screen `todo` — the entry at its live nav id.
-  Todo? todosOnTodo() {
-    for (final e in _Screens.graph.stack) {
-      if (e.screen == _Screens.todo) return todosStore[e.id as TodoId];
-    }
-    return null;
-  }
-}
-
-/// Canon's `todo` identity face: `of` reads the ambient
-/// typed id, `navOf` mints the deictic handle for the verbs.
-abstract final class TodoID {
-  static TodoId of(BuildContext context) =>
-      IdScope.of<TodoId>(context, Ids.todo);
-  static IdNav<TodoId> navOf(BuildContext context) =>
-      IdScope.navOf<TodoId>(context, Ids.todo);
-  static TodoId screenOf(BuildContext context) =>
-      IdScope.screenOf<TodoId>(context);
-  static TodoId itemOf(BuildContext context) => IdScope.itemOf<TodoId>(context);
-}
-
-/// Deictic forward verbs for the `todo` identity —
-/// obtain via `TodoID.navOf(context)`; the id is ambient.
-extension TodoIdNav on IdNav<TodoId> {
-  void go() {
-    _Screens.graph.popTo(screen);
-    _Screens.graph.go(_Screens.todo, id, true);
-  }
-}
-
 // ignore_for_file: library_private_types_in_public_api
 // ignore_for_file: invalid_use_of_internal_member
 bool _chainIs(List<Enum> a, List<Enum> b) {
@@ -172,7 +87,6 @@ final class Screen<I> {
   /// stays — always pass it where a `RouterDelegate` goes.)
   static NavDelegate get manager {
     assert(_fresh);
-    ledger.bind();
     return _Screens.graph.delegate;
   }
 
@@ -670,4 +584,83 @@ final class _WLHomeTodo implements Hop<TodoNav> {
   TodoNav get nav => const TodoNav._();
   Uri toUri(String domain) =>
       Uri.parse(_Screens.graph.encodeNavUrl(domain, _s, _i));
+}
+
+// ignore_for_file: unused_element
+/// The app-wide ledger, built from the `app` regency —
+/// the runtime splices its rows in order and wires its merge
+/// edges. `Screen.manager` binds the nav side. `ledger.dispatch(msg)` ·
+/// `ledger.on<…>(...)`; entities live on the public `<row>Store` globals.
+final ledger = Ledger.root(app);
+
+/// States a fact — dispatch is the ONLY verb, so it needs no prefix.
+/// (`ledger.` keeps the rarer surfaces: `on`, `veto`, `guard`, `journal`.)
+void dispatch(Msg msg) => ledger.dispatch(msg);
+bool _bound = false;
+
+/// The `todo` screen was navigated to (never a render).
+class TodoEnteredMsg extends Msg {
+  const TodoEnteredMsg(this.id);
+  final TodoId id;
+}
+
+final todosCoveredStore =
+    ledger.memory(const TodosCovered())! as UnitMemory<bool, TodoMsg>;
+final localTodosStore =
+    ledger.memory(const LocalTodos())! as StoreMemory<TodoId, Todo, TodoMsg>;
+final todosStore =
+    ledger.memory(const Todos())! as StoreMemory<TodoId, Todo, TodoMsg>;
+
+/// The generated nav-side wiring, hung on [Ledger] so `ledger.` is the one api.
+extension on Ledger {
+  /// Tag the id scopes and wire navigation. Idempotent — `Screen.manager` calls it.
+  void bind() {
+    if (_bound) return;
+    _bound = true;
+    IdScope.tag(localTodosStore, Ids.todo);
+    IdScope.tag(todosStore, Ids.todo);
+    _Screens.graph.navigations.listen((n) {
+      final (screen, id) = n.destination;
+      if (screen == _Screens.todo) {
+        dispatch(TodoEnteredMsg(id as TodoId));
+      }
+    });
+  }
+
+  /// localTodos on screen `todo` — the entry at its live nav id.
+  Todo? localTodosOnTodo() {
+    for (final e in _Screens.graph.stack) {
+      if (e.screen == _Screens.todo) return localTodosStore[e.id as TodoId];
+    }
+    return null;
+  }
+
+  /// todos on screen `todo` — the entry at its live nav id.
+  Todo? todosOnTodo() {
+    for (final e in _Screens.graph.stack) {
+      if (e.screen == _Screens.todo) return todosStore[e.id as TodoId];
+    }
+    return null;
+  }
+}
+
+/// Canon's `todo` identity face: `of` reads the ambient
+/// typed id, `navOf` mints the deictic handle for the verbs.
+abstract final class TodoID {
+  static TodoId of(BuildContext context) =>
+      IdScope.of<TodoId>(context, Ids.todo);
+  static IdNav<TodoId> navOf(BuildContext context) =>
+      IdScope.navOf<TodoId>(context, Ids.todo);
+  static TodoId screenOf(BuildContext context) =>
+      IdScope.screenOf<TodoId>(context);
+  static TodoId itemOf(BuildContext context) => IdScope.itemOf<TodoId>(context);
+}
+
+/// Deictic forward verbs for the `todo` identity —
+/// obtain via `TodoID.navOf(context)`; the id is ambient.
+extension TodoIdNav on IdNav<TodoId> {
+  void go() {
+    _Screens.graph.popTo(screen);
+    _Screens.graph.go(_Screens.todo, id, true);
+  }
 }

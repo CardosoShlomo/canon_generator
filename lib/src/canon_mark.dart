@@ -1,4 +1,5 @@
 import 'package:analyzer/dart/element/element.dart';
+import 'package:analyzer/dart/element/type.dart';
 import 'package:build/build.dart';
 import 'package:canon/canon.dart' show Canon;
 import 'package:source_gen/source_gen.dart';
@@ -25,6 +26,20 @@ class CanonGenerator extends GeneratorForAnnotation<Canon> {
   @override
   Future<String?> generateForAnnotatedElement(
       Element element, ConstantReader annotation, BuildStep buildStep) async {
+    // The REGENCY: `@canon const app = Regency({...})` — the app's state
+    // tier as a const value; [RegistryGenerator] emits its data surface.
+    if (element is TopLevelVariableElement) {
+      final t = element.type;
+      final isRegency = t is InterfaceType &&
+          (t.element.name == 'Regency' ||
+              t.allSupertypes.any((s) => s.element.name == 'Regency'));
+      if (!isRegency) {
+        throw InvalidGenerationSourceError(
+            '@canon on a variable must hold a `Regency` (the app graph).',
+            element: element);
+      }
+      return RegistryGenerator().generateForGraph(element, buildStep);
+    }
     if (element is! EnumElement) {
       throw InvalidGenerationSourceError('@canon must annotate an enum',
           element: element);
@@ -38,8 +53,11 @@ class CanonGenerator extends GeneratorForAnnotation<Canon> {
           .generateForAnnotatedElement(element, annotation, buildStep);
     }
     if (wearsNode(element, 'RegentNode')) {
-      return RegistryGenerator()
-          .generateForAnnotatedElement(element, annotation, buildStep);
+      throw InvalidGenerationSourceError(
+          'the @regents enum retired — declare the ledger as a const value: '
+          '`@canon const app = Regency({...}, merges: {...});` (rows keep '
+          'their order; store names derive from the row classes).',
+          element: element);
     }
     if (wearsNode(element, 'ScreenNodeBase')) {
       final hasGraph =

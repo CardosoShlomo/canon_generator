@@ -63,235 +63,6 @@ extension ProductTreeOps on IdentifiableMap<ProductId, Product> {
   ) => updateById(owner, (o) => o.copyWith(reviews: o.reviews.removeById(id)));
 }
 
-// ignore_for_file: unused_element
-/// The app-wide ledger — the single state + message api (from @regents).
-/// `Screen.manager` binds it. `ledger.dispatch(msg)` · `ledger.on<…>(...)` ·
-/// `ledger.command(...)`; entities live on the public `<row>Store`
-/// globals. `Screen` is nav; `ledger` is state-and-messages.
-final ledger = Ledger();
-
-/// States a fact — dispatch is the ONLY verb, so it needs no prefix.
-/// (`ledger.` keeps the rarer surfaces: `on`, `veto`, `guard`, `journal`.)
-void dispatch(Msg msg) => ledger.dispatch(msg);
-bool _bound = false;
-
-/// The `product` screen was navigated to (never a render).
-class ProductEnteredMsg extends Msg {
-  const ProductEnteredMsg(this.id);
-  final ProductId id;
-}
-
-/// The `sellerChat` screen was navigated to (never a render).
-class SellerChatEnteredMsg extends Msg {
-  const SellerChatEnteredMsg(this.id);
-  final SellerChatId id;
-}
-
-late final UnitMemory<bool, ProductMsg> catalogCoveredStore;
-late final UnitMemory<Set<ProductId>, ReviewsInFlightMsg> reviewsInFlightStore;
-late final StoreMemory<ProductId, Product, ProductMsg> localProductsStore;
-late final StoreMemory<ProductId, Product, ProductMsg> productsStore;
-late final StoreMemory<SellerChatId, SellerThread, SellerChatMsg>
-sellerThreadsStore;
-late final UnitMemory<CartWrite, CartMsg> cartWriteStore;
-late final UnitMemory<CartState, CartMsg> cartStore;
-late final UnitMemory<NavState?, NavOp> navStore;
-
-/// The generated data surface, hung on [Ledger] so `ledger.` is the one api.
-extension on Ledger {
-  /// Register the stores on the ledger. Idempotent — `Screen.manager` calls it.
-  void bind() {
-    if (_bound) return;
-    _bound = true;
-    catalogCoveredStore = unit(
-      _Regents.catalogCovered.regent as Unit<bool, ProductMsg>,
-    );
-    guard(_Regents.catalogGate.regent as Guard<CatalogCacheMsg>);
-    guard(_Regents.productEntryGate.regent as Guard<ProductEnteredMsg>);
-    guard(_Regents.dedupeGetReviews.regent as Guard<GetReviews>);
-    reviewsInFlightStore = unit(
-      _Regents.reviewsInFlight.regent
-          as Unit<Set<ProductId>, ReviewsInFlightMsg>,
-    );
-    localProductsStore = store(
-      _Regents.localProducts.regent as Store<ProductId, Product, ProductMsg>,
-    );
-    IdScope.tag(localProductsStore, Ids.product);
-    productsStore = store(
-      _Regents.products.regent as Store<ProductId, Product, ProductMsg>,
-    );
-    IdScope.tag(productsStore, Ids.product);
-    sellerThreadsStore = store(
-      _Regents.sellerThreads.regent
-          as Store<SellerChatId, SellerThread, SellerChatMsg>,
-    );
-    IdScope.tag(sellerThreadsStore, Ids.sellerChat);
-    guard(_Regents.threadGate.regent as Guard<SellerChatEnteredMsg>);
-    guard(_Regents.cartWriteGate.regent as Guard<CartMsg>);
-    cartWriteStore = unit(
-      _Regents.cartWrite.regent as Unit<CartWrite, CartMsg>,
-    );
-    cartStore = unit(_Regents.cart.regent as Unit<CartState, CartMsg>);
-    navStore = unit(_Regents.nav.regent as Unit<NavState?, NavOp>);
-    _Screens.graph.navigations.listen((n) {
-      final (screen, id) = n.destination;
-      if (screen == _Screens.product) {
-        dispatch(ProductEnteredMsg(id as ProductId));
-      }
-      if (screen == _Screens.sellerChat) {
-        dispatch(SellerChatEnteredMsg(id as SellerChatId));
-      }
-    });
-    _Screens.graph.routeOps((op) {
-      dispatch(op);
-      final s = navStore.value;
-      if (s != null) _Screens.graph.applyState(s);
-    });
-    navStore.events.listen((e) {
-      final s = e.after;
-      if (s != null) _Screens.graph.applyState(s);
-    });
-    dispatch(SeedOp(_Screens.graph.navState));
-    cartStore.merge(cartWriteStore, const WriteSupportsCart());
-    productsStore.mergeStore(localProductsStore, const LocalProductSupports());
-  }
-
-  /// localProducts on screen `product` — the entry at its live nav id.
-  Product? localProductsOnProduct() {
-    for (final e in _Screens.graph.stack) {
-      if (e.screen == _Screens.product)
-        return localProductsStore[e.id as ProductId];
-    }
-    return null;
-  }
-
-  /// products on screen `product` — the entry at its live nav id.
-  Product? productsOnProduct() {
-    for (final e in _Screens.graph.stack) {
-      if (e.screen == _Screens.product) return productsStore[e.id as ProductId];
-    }
-    return null;
-  }
-
-  /// sellerThreads on screen `sellerChat` — the entry at its live nav id.
-  SellerThread? sellerThreadsOnSellerChat() {
-    for (final e in _Screens.graph.stack) {
-      if (e.screen == _Screens.sellerChat)
-        return sellerThreadsStore[e.id as SellerChatId];
-    }
-    return null;
-  }
-}
-
-/// Canon's `product` identity face: `of` reads the ambient
-/// typed id, `navOf` mints the deictic handle for the verbs.
-abstract final class ProductID {
-  static ProductId of(BuildContext context) =>
-      IdScope.of<ProductId>(context, Ids.product);
-  static IdNav<ProductId> navOf(BuildContext context) =>
-      IdScope.navOf<ProductId>(context, Ids.product);
-  static ProductId screenOf(BuildContext context) =>
-      IdScope.screenOf<ProductId>(context);
-  static ProductId itemOf(BuildContext context) =>
-      IdScope.itemOf<ProductId>(context);
-
-  /// The CLAIMED handle — compile-gated: only chains that
-  /// EVIDENCE this identity type-check (`ProductOn`);
-  /// null when the claim misses the live chain.
-  static IdNav<ProductId>? on(BuildContext context, ProductOn which) =>
-      Screen.on(which as On) == null
-      ? null
-      : IdScope.navOf<ProductId>(context, Ids.product);
-}
-
-/// Deictic forward verbs for the `product` identity —
-/// obtain via `ProductID.navOf(context)`; the id is ambient.
-extension ProductIdNav on IdNav<ProductId> {
-  void go() {
-    _Screens.graph.popTo(screen);
-    _Screens.graph.go(_Screens.product, id, true);
-  }
-
-  void goSellerChat() {
-    final e = _Screens.graph.stack.lastWhere(
-      (e) => const {_Screens.seller, _Screens.sellerChat}.contains(e.screen),
-    );
-    final other = const {_Screens.sellerChat}.contains(e.screen)
-        ? (e.id as SellerChatId).seller
-        : e.id as SellerId;
-    _Screens.graph.popTo(screen);
-    _Screens.graph.go(_Screens.sellerChat, SellerChatId.of(id, other), true);
-  }
-}
-
-/// Canon's `sellerChat` identity face: `of` reads the ambient
-/// typed id, `navOf` mints the deictic handle for the verbs.
-abstract final class SellerChatID {
-  static SellerChatId of(BuildContext context) =>
-      IdScope.of<SellerChatId>(context, Ids.sellerChat);
-  static IdNav<SellerChatId> navOf(BuildContext context) =>
-      IdScope.navOf<SellerChatId>(context, Ids.sellerChat);
-  static SellerChatId screenOf(BuildContext context) =>
-      IdScope.screenOf<SellerChatId>(context);
-  static SellerChatId itemOf(BuildContext context) =>
-      IdScope.itemOf<SellerChatId>(context);
-}
-
-/// Deictic forward verbs for the `sellerChat` identity —
-/// obtain via `SellerChatID.navOf(context)`; the id is ambient.
-extension SellerChatIdNav on IdNav<SellerChatId> {
-  void go() {
-    _Screens.graph.popTo(screen);
-    _Screens.graph.go(_Screens.sellerChat, id, true);
-  }
-
-  void goProduct() {
-    _Screens.graph.popTo(screen);
-    _Screens.graph.go(_Screens.product, id.product, true);
-  }
-
-  void goSeller() {
-    _Screens.graph.popTo(screen);
-    _Screens.graph.go(_Screens.seller, id.seller, true);
-  }
-}
-
-/// Canon's `seller` identity face: `of` reads the ambient
-/// typed id, `navOf` mints the deictic handle for the verbs.
-abstract final class SellerID {
-  static SellerId of(BuildContext context) =>
-      IdScope.of<SellerId>(context, Ids.seller);
-  static IdNav<SellerId> navOf(BuildContext context) =>
-      IdScope.navOf<SellerId>(context, Ids.seller);
-  static SellerId screenOf(BuildContext context) =>
-      IdScope.screenOf<SellerId>(context);
-  static SellerId itemOf(BuildContext context) =>
-      IdScope.itemOf<SellerId>(context);
-
-  /// The CLAIMED handle — compile-gated: only chains that
-  /// EVIDENCE this identity type-check (`SellerOn`);
-  /// null when the claim misses the live chain.
-  static IdNav<SellerId>? on(BuildContext context, SellerOn which) =>
-      Screen.on(which as On) == null
-      ? null
-      : IdScope.navOf<SellerId>(context, Ids.seller);
-}
-
-/// Deictic forward verbs for the `seller` identity —
-/// obtain via `SellerID.navOf(context)`; the id is ambient.
-extension SellerIdNav on IdNav<SellerId> {
-  void goSellerChat() {
-    final e = _Screens.graph.stack.lastWhere(
-      (e) => const {_Screens.product, _Screens.sellerChat}.contains(e.screen),
-    );
-    final other = const {_Screens.sellerChat}.contains(e.screen)
-        ? (e.id as SellerChatId).product
-        : e.id as ProductId;
-    _Screens.graph.popTo(screen);
-    _Screens.graph.go(_Screens.sellerChat, SellerChatId.of(other, id), true);
-  }
-}
-
 // ignore_for_file: library_private_types_in_public_api
 // ignore_for_file: invalid_use_of_internal_member
 Object? _idOf(Enum s) =>
@@ -411,7 +182,6 @@ final class Screen<I> {
   /// stays — always pass it where a `RouterDelegate` goes.)
   static NavDelegate get manager {
     assert(_fresh);
-    ledger.bind();
     return _Screens.graph.delegate;
   }
 
@@ -5754,3 +5524,214 @@ extension ScreenStackContext on BuildContext {
 
 Enum _termOf(On sel) =>
     sel.specs.isEmpty ? _Screens.graph.current : sel.specs.last;
+
+// ignore_for_file: unused_element
+/// The app-wide ledger, built from the `app` regency —
+/// the runtime splices its rows in order and wires its merge
+/// edges. `Screen.manager` binds the nav side. `ledger.dispatch(msg)` ·
+/// `ledger.on<…>(...)`; entities live on the public `<row>Store` globals.
+final ledger = Ledger.root(app);
+
+/// States a fact — dispatch is the ONLY verb, so it needs no prefix.
+/// (`ledger.` keeps the rarer surfaces: `on`, `veto`, `guard`, `journal`.)
+void dispatch(Msg msg) => ledger.dispatch(msg);
+bool _bound = false;
+
+/// The `product` screen was navigated to (never a render).
+class ProductEnteredMsg extends Msg {
+  const ProductEnteredMsg(this.id);
+  final ProductId id;
+}
+
+/// The `sellerChat` screen was navigated to (never a render).
+class SellerChatEnteredMsg extends Msg {
+  const SellerChatEnteredMsg(this.id);
+  final SellerChatId id;
+}
+
+final catalogCoveredStore =
+    ledger.memory(const CatalogCovered())! as UnitMemory<bool, ProductMsg>;
+final reviewsInFlightStore =
+    ledger.memory(const ReviewsInFlight())!
+        as UnitMemory<Set<ProductId>, ReviewsInFlightMsg>;
+final localProductsStore =
+    ledger.memory(const LocalProducts())!
+        as StoreMemory<ProductId, Product, ProductMsg>;
+final productsStore =
+    ledger.memory(const Products())!
+        as StoreMemory<ProductId, Product, ProductMsg>;
+final sellerThreadsStore =
+    ledger.memory(const SellerThreads())!
+        as StoreMemory<SellerChatId, SellerThread, SellerChatMsg>;
+final cartWriteUnitStore =
+    ledger.memory(const CartWriteUnit())! as UnitMemory<CartWrite, CartMsg>;
+final cartStore =
+    ledger.memory(const Cart())! as UnitMemory<CartState, CartMsg>;
+final navUnitStore =
+    ledger.memory(const NavUnit())! as UnitMemory<NavState?, NavOp>;
+
+/// The generated nav-side wiring, hung on [Ledger] so `ledger.` is the one api.
+extension on Ledger {
+  /// Tag the id scopes and wire navigation. Idempotent — `Screen.manager` calls it.
+  void bind() {
+    if (_bound) return;
+    _bound = true;
+    IdScope.tag(localProductsStore, Ids.product);
+    IdScope.tag(productsStore, Ids.product);
+    IdScope.tag(sellerThreadsStore, Ids.sellerChat);
+    _Screens.graph.navigations.listen((n) {
+      final (screen, id) = n.destination;
+      if (screen == _Screens.product) {
+        dispatch(ProductEnteredMsg(id as ProductId));
+      }
+      if (screen == _Screens.sellerChat) {
+        dispatch(SellerChatEnteredMsg(id as SellerChatId));
+      }
+    });
+    _Screens.graph.routeOps((op) {
+      dispatch(op);
+      final s = navUnitStore.value;
+      if (s != null) _Screens.graph.applyState(s);
+    });
+    navUnitStore.events.listen((e) {
+      final s = e.after;
+      if (s != null) _Screens.graph.applyState(s);
+    });
+    dispatch(SeedOp(_Screens.graph.navState));
+  }
+
+  /// localProducts on screen `product` — the entry at its live nav id.
+  Product? localProductsOnProduct() {
+    for (final e in _Screens.graph.stack) {
+      if (e.screen == _Screens.product)
+        return localProductsStore[e.id as ProductId];
+    }
+    return null;
+  }
+
+  /// products on screen `product` — the entry at its live nav id.
+  Product? productsOnProduct() {
+    for (final e in _Screens.graph.stack) {
+      if (e.screen == _Screens.product) return productsStore[e.id as ProductId];
+    }
+    return null;
+  }
+
+  /// sellerThreads on screen `sellerChat` — the entry at its live nav id.
+  SellerThread? sellerThreadsOnSellerChat() {
+    for (final e in _Screens.graph.stack) {
+      if (e.screen == _Screens.sellerChat)
+        return sellerThreadsStore[e.id as SellerChatId];
+    }
+    return null;
+  }
+}
+
+/// Canon's `product` identity face: `of` reads the ambient
+/// typed id, `navOf` mints the deictic handle for the verbs.
+abstract final class ProductID {
+  static ProductId of(BuildContext context) =>
+      IdScope.of<ProductId>(context, Ids.product);
+  static IdNav<ProductId> navOf(BuildContext context) =>
+      IdScope.navOf<ProductId>(context, Ids.product);
+  static ProductId screenOf(BuildContext context) =>
+      IdScope.screenOf<ProductId>(context);
+  static ProductId itemOf(BuildContext context) =>
+      IdScope.itemOf<ProductId>(context);
+
+  /// The CLAIMED handle — compile-gated: only chains that
+  /// EVIDENCE this identity type-check (`ProductOn`);
+  /// null when the claim misses the live chain.
+  static IdNav<ProductId>? on(BuildContext context, ProductOn which) =>
+      Screen.on(which as On) == null
+      ? null
+      : IdScope.navOf<ProductId>(context, Ids.product);
+}
+
+/// Deictic forward verbs for the `product` identity —
+/// obtain via `ProductID.navOf(context)`; the id is ambient.
+extension ProductIdNav on IdNav<ProductId> {
+  void go() {
+    _Screens.graph.popTo(screen);
+    _Screens.graph.go(_Screens.product, id, true);
+  }
+
+  void goSellerChat() {
+    final e = _Screens.graph.stack.lastWhere(
+      (e) => const {_Screens.seller, _Screens.sellerChat}.contains(e.screen),
+    );
+    final other = const {_Screens.sellerChat}.contains(e.screen)
+        ? (e.id as SellerChatId).seller
+        : e.id as SellerId;
+    _Screens.graph.popTo(screen);
+    _Screens.graph.go(_Screens.sellerChat, SellerChatId.of(id, other), true);
+  }
+}
+
+/// Canon's `sellerChat` identity face: `of` reads the ambient
+/// typed id, `navOf` mints the deictic handle for the verbs.
+abstract final class SellerChatID {
+  static SellerChatId of(BuildContext context) =>
+      IdScope.of<SellerChatId>(context, Ids.sellerChat);
+  static IdNav<SellerChatId> navOf(BuildContext context) =>
+      IdScope.navOf<SellerChatId>(context, Ids.sellerChat);
+  static SellerChatId screenOf(BuildContext context) =>
+      IdScope.screenOf<SellerChatId>(context);
+  static SellerChatId itemOf(BuildContext context) =>
+      IdScope.itemOf<SellerChatId>(context);
+}
+
+/// Deictic forward verbs for the `sellerChat` identity —
+/// obtain via `SellerChatID.navOf(context)`; the id is ambient.
+extension SellerChatIdNav on IdNav<SellerChatId> {
+  void go() {
+    _Screens.graph.popTo(screen);
+    _Screens.graph.go(_Screens.sellerChat, id, true);
+  }
+
+  void goProduct() {
+    _Screens.graph.popTo(screen);
+    _Screens.graph.go(_Screens.product, id.product, true);
+  }
+
+  void goSeller() {
+    _Screens.graph.popTo(screen);
+    _Screens.graph.go(_Screens.seller, id.seller, true);
+  }
+}
+
+/// Canon's `seller` identity face: `of` reads the ambient
+/// typed id, `navOf` mints the deictic handle for the verbs.
+abstract final class SellerID {
+  static SellerId of(BuildContext context) =>
+      IdScope.of<SellerId>(context, Ids.seller);
+  static IdNav<SellerId> navOf(BuildContext context) =>
+      IdScope.navOf<SellerId>(context, Ids.seller);
+  static SellerId screenOf(BuildContext context) =>
+      IdScope.screenOf<SellerId>(context);
+  static SellerId itemOf(BuildContext context) =>
+      IdScope.itemOf<SellerId>(context);
+
+  /// The CLAIMED handle — compile-gated: only chains that
+  /// EVIDENCE this identity type-check (`SellerOn`);
+  /// null when the claim misses the live chain.
+  static IdNav<SellerId>? on(BuildContext context, SellerOn which) =>
+      Screen.on(which as On) == null
+      ? null
+      : IdScope.navOf<SellerId>(context, Ids.seller);
+}
+
+/// Deictic forward verbs for the `seller` identity —
+/// obtain via `SellerID.navOf(context)`; the id is ambient.
+extension SellerIdNav on IdNav<SellerId> {
+  void goSellerChat() {
+    final e = _Screens.graph.stack.lastWhere(
+      (e) => const {_Screens.product, _Screens.sellerChat}.contains(e.screen),
+    );
+    final other = const {_Screens.sellerChat}.contains(e.screen)
+        ? (e.id as SellerChatId).product
+        : e.id as ProductId;
+    _Screens.graph.popTo(screen);
+    _Screens.graph.go(_Screens.sellerChat, SellerChatId.of(other, id), true);
+  }
+}

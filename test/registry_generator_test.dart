@@ -4,31 +4,47 @@ import 'package:canon_generator/canon_generator.dart';
 import 'package:source_gen/source_gen.dart';
 import 'package:test/test.dart';
 
-// ledger owns the @regents grammar + the citizen bases the generator
-// recognises.
+// regent owns the regent bases + the Regency graph the generator reads.
 const _regentStub = '''
-class Regents { const Regents(); }
-const regents = Regents();
-mixin RegentNode<Self extends RegentNode<Self>> on Enum {
-  Regent get regent;
-  RegentMerge<Self> from(Self source, Object projection) =>
-      RegentMerge<Self>(this as Self, [(source, projection)]);
-}
-class RegentMerge<Self extends RegentNode<Self>> {
-  const RegentMerge(this.target, this.edges);
-  final Self target;
-  final List<(Self, Object)> edges;
-  RegentMerge<Self> from(Self source, Object projection) =>
-      RegentMerge<Self>(target, [...edges, (source, projection)]);
-}
 abstract interface class AnyStore<S> {}
+abstract interface class AnyProjection {}
 abstract class Regent { const Regent(); }
 abstract class Store<K, E, M> extends Regent implements AnyStore<Map<K, E>> { const Store(); }
 abstract class Unit<S, M> extends Regent implements AnyStore<S> { const Unit(); }
-class Envelope { const Envelope(); }
 typedef ReadStore = S Function<S>(AnyStore<S> spec);
 abstract class Guard<M> extends Regent { const Guard(); }
 abstract class Veto<M> extends Guard<M> { const Veto(); }
+abstract class Projection<S, K, E> implements AnyProjection {
+  const Projection([this.target, this.source]);
+  final AnyStore<Object?>? target;
+  final AnyStore<Object?>? source;
+}
+abstract class UnitProjection<S, T> implements AnyProjection {
+  const UnitProjection([this.target, this.source]);
+  final AnyStore<Object?>? target;
+  final AnyStore<Object?>? source;
+}
+class Regency extends Regent {
+  const Regency(this.rows, {this.merges = const {}});
+  final Set<Regent> rows;
+  final Set<AnyProjection> merges;
+}
+mixin ListMsg<T> { List<T> get items; }
+mixin CacheMsg<T> { List<T> get items; }
+mixin AddMsg<T> { T get item; }
+mixin EchoOf<T> { T get item; }
+mixin RemoveMsg<K> { K get id; }
+abstract class Crud<K, T, L, C, A, E, R, G> extends Regency {
+  const Crud() : super(const {});
+  Store<K, T, Object> get store => throw UnimplementedError();
+}
+abstract class ListCrud<K, T, L, C> extends Crud<K, T, L, C, Never, Never, Never, Never> {
+  const ListCrud();
+}
+// The retired enum tier — kept only so the retirement guard can name it.
+mixin RegentNode<Self extends RegentNode<Self>> on Enum {
+  Regent get regent;
+}
 ''';
 
 // identifiable owns the @IDs + @entities grammars.
@@ -77,11 +93,14 @@ class EntityGraph {
 }
 ''';
 
-// canon is the facade — re-exports ledger + identifiable, so the spec imports only
-// `package:canon/canon.dart` and gets the nav grammar, `@regents`, and the engines.
+// canon is the facade — re-exports regent + identifiable, so the spec imports
+// only `package:canon/canon.dart` and gets the grammars and the engines.
 const _canonStub = '''
 export 'package:regent/regent.dart';
 export 'package:identifiable/identifiable.dart';
+
+class Canon { const Canon(); }
+const canon = Canon();
 
 abstract class Codec<T> { const Codec(); }
 class StringCodec extends Codec<String> { const StringCodec(); }
@@ -97,8 +116,8 @@ class NavGraph<S> {
 ''';
 
 // The three grammars connected: @ids nodes, @entities binding type↔node (+ the
-// ownership graph), and @regents holding only the reduces — key node, key type,
-// and screen association all DERIVE through the store's entity type.
+// ownership graph), and the REGENCY holding only the reduces — key node, key
+// type, and screen association all DERIVE through the store's entity type.
 const _spec = '''
 import 'package:canon/canon.dart';
 
@@ -140,18 +159,12 @@ enum _Screens with ScreenNode<_Screens> {
   static final graph = NavGraph<_Screens>();
 }
 
-@regents
-enum _Stores with RegentNode<_Stores> {
-  review(Review());
-
-  const _Stores(this.regent);
-  @override
-  final Regent regent;
-}
+@canon
+const app = Regency({Review()});
 ''';
 
 // The shared scaffolding of the guard specs: id node + entity space; each
-// spec below appends its own Review store + @regents enum.
+// spec below appends its own Review store + regency.
 const _guardBase = '''
 import 'package:canon/canon.dart';
 
@@ -191,13 +204,8 @@ class Review extends Store<int, ReviewState, ReviewMsg> {
   const Review();
 }
 
-@regents
-enum _Stores with RegentNode<_Stores> {
-  review(Review());
-  const _Stores(this.regent);
-  @override
-  final Regent regent;
-}
+@canon
+const app = Regency({Review()});
 ''';
 
 // A registry whose message type is NOT sealed — the reduce can't be exhaustive,
@@ -209,13 +217,8 @@ class Review extends Store<String, ReviewState, ReviewMsg> {
   const Review();
 }
 
-@regents
-enum _Stores with RegentNode<_Stores> {
-  review(Review());
-  const _Stores(this.regent);
-  @override
-  final Regent regent;
-}
+@canon
+const app = Regency({Review()});
 ''';
 
 // A store on an OWNED entity — comment lives inside review's aggregate, so a
@@ -227,13 +230,8 @@ class Comments extends Store<String, CommentState, CommentMsg> {
   const Comments();
 }
 
-@regents
-enum _Stores with RegentNode<_Stores> {
-  comments(Comments());
-  const _Stores(this.regent);
-  @override
-  final Regent regent;
-}
+@canon
+const app = Regency({Comments()});
 ''';
 
 // A store of a type that is no @entities row at all.
@@ -245,10 +243,23 @@ class Orphans extends Store<String, OrphanState, OrphanMsg> {
   const Orphans();
 }
 
-@regents
-enum _Stores with RegentNode<_Stores> {
-  orphans(Orphans());
-  const _Stores(this.regent);
+@canon
+const app = Regency({Orphans()});
+''';
+
+// The retired tier: a @canon @regents-style enum must fail with the
+// migration pointer.
+const _retiredEnumSpec = '''
+$_guardBase
+sealed class ReviewMsg {}
+class Review extends Store<String, ReviewState, ReviewMsg> {
+  const Review();
+}
+
+@canon
+enum _Regents with RegentNode<_Regents> {
+  review(Review());
+  const _Regents(this.regent);
   @override
   final Regent regent;
 }
@@ -281,9 +292,8 @@ enum Ids with IdNode {
 }
 ''';
 
-
 // A UNIT: keyless entity row + a Unit holding it — emits a UnitMemory
-// global bound via ledger.value.
+// global looked up by instance identity.
 const _unitSpec = '''
 import 'package:canon/canon.dart';
 
@@ -320,18 +330,13 @@ enum _Entities with EntityNode<_Entities> {
   static final graph = EntityGraph({review, viewer});
 }
 
-@regents
-enum _Stores with RegentNode<_Stores> {
-  viewer(Viewer());
-  const _Stores(this.regent);
-  @override
-  final Regent regent;
-}
+@canon
+const app = Regency({Viewer()});
 ''';
 
-// A MERGE EDGE in the graph: the keyed `user` surface consults the `viewer`
-// unit through a projection — the generator wires the memories in bind().
-const _mergeSpec = '''
+// A NESTED regency splices: its rows are rows of the one queue; merges live
+// on the projections themselves — the generator emits NO wiring.
+const _nestedSpec = '''
 import 'package:canon/canon.dart';
 
 part 'spec.canon.dart';
@@ -348,8 +353,8 @@ sealed class UserMsg {}
 sealed class ProfileMsg {}
 class Users extends Store<String, UserState, UserMsg> { const Users(); }
 class Viewer extends Unit<ViewerState?, ProfileMsg> { const Viewer(); }
-class ViewerSupportsUser {
-  const ViewerSupportsUser();
+class ViewerSupportsUser extends UnitProjection<ViewerState?, UserState> {
+  const ViewerSupportsUser() : super(const Users(), const Viewer());
 }
 
 @entities
@@ -369,18 +374,13 @@ enum _Entities with EntityNode<_Entities> {
   });
 }
 
-@regents
-enum _Stores with RegentNode<_Stores> {
-  users(Users()),
-  viewer(Viewer());
-  const _Stores(this.regent);
-  @override
-  final Regent regent;
+const profileSegment = Regency({Viewer()});
 
-  static final merges = {
-    users.from(viewer, const ViewerSupportsUser()),
-  };
-}
+@canon
+const app = Regency({
+  profileSegment,
+  Users(),
+}, merges: {ViewerSupportsUser()});
 ''';
 
 const _guardRowSpec = '''
@@ -403,7 +403,7 @@ class Users extends Store<String, UserState, UserMsg> { const Users(); }
 class Covered extends Unit<GateState?, GateMsg> { const Covered(); }
 class CachedGate extends Veto<CachedUsers> {
   const CachedGate();
-  bool block(Envelope env, CachedUsers msg, ReadStore read) =>
+  bool block(CachedUsers msg, ReadStore read) =>
       read(const Covered()) != null;
 }
 
@@ -421,18 +421,15 @@ enum _Entities with EntityNode<_Entities> {
   static final graph = EntityGraph({user, gate});
 }
 
-@regents
-enum _Regents with RegentNode<_Regents> {
-  covered(Covered()),
-  cachedGate(CachedGate()),
-  users(Users());
-  const _Regents(this.regent);
-  @override
-  final Regent regent;
-}
+@canon
+const app = Regency({
+  Covered(),
+  CachedGate(),
+  Users(),
+});
 ''';
 
-// A guard reading a citizen NO row holds — citizenship fails the build.
+// A guard reading a regent NO row holds — citizenship fails the build.
 const _strangerReadSpec = '''
 import 'package:canon/canon.dart';
 
@@ -452,7 +449,7 @@ class Users extends Store<String, UserState, UserMsg> { const Users(); }
 class Stranger extends Unit<int, UserMsg> { const Stranger(); }
 class CachedGate extends Veto<CachedUsers> {
   const CachedGate();
-  bool block(Envelope env, CachedUsers msg, ReadStore read) =>
+  bool block(CachedUsers msg, ReadStore read) =>
       read(const Stranger()) > 0;
 }
 
@@ -469,40 +466,44 @@ enum _Entities with EntityNode<_Entities> {
   static final graph = EntityGraph({user});
 }
 
-@regents
-enum _Regents with RegentNode<_Regents> {
-  cachedGate(CachedGate()),
-  users(Users());
-  const _Regents(this.regent);
-  @override
-  final Regent regent;
-}
+@canon
+const app = Regency({
+  CachedGate(),
+  Users(),
+});
 ''';
 
-const _guardMergeSpec = '''
+// A CRUD brick row: one row that is a whole segment — the generator names
+// its authoritative store after the brick class minus the Crud suffix.
+const _brickSpec = '''
 import 'package:canon/canon.dart';
 
 part 'spec.canon.dart';
 
 enum Ids with IdNode {
-  user(StringCodec());
+  order(StringCodec());
   const Ids(this.codec);
   final Codec codec;
 }
 
-class UserState {}
-sealed class UserMsg {}
-class CachedUsers extends UserMsg {}
-class Users extends Store<String, UserState, UserMsg> { const Users(); }
-class CachedGate extends Veto<CachedUsers> {
-  const CachedGate();
-  bool block(Envelope env, CachedUsers msg, ReadStore read) => true;
+class Order {}
+sealed class OrderMsg {}
+class OrdersLoaded extends OrderMsg with ListMsg<Order> {
+  const OrdersLoaded(this.items);
+  final List<Order> items;
 }
-class P { const P(); }
+class CachedOrders extends OrderMsg with CacheMsg<Order> {
+  const CachedOrders(this.items);
+  final List<Order> items;
+}
+
+class OrdersCrud extends ListCrud<String, Order, OrdersLoaded, CachedOrders> {
+  const OrdersCrud();
+}
 
 @entities
 enum _Entities with EntityNode<_Entities> {
-  user(UserState, Ids.user);
+  order(Order, Ids.order);
 
   const _Entities(this.type, [this.key]);
   @override
@@ -510,32 +511,23 @@ enum _Entities with EntityNode<_Entities> {
   @override
   final Ids? key;
 
-  static final graph = EntityGraph({user});
+  static final graph = EntityGraph({order});
 }
 
-@regents
-enum _Regents with RegentNode<_Regents> {
-  cachedGate(CachedGate()),
-  users(Users());
-  const _Regents(this.regent);
-  @override
-  final Regent regent;
-
-  static final merges = {
-    users.from(cachedGate, const P()),
-  };
-}
+@canon
+const app = Regency({OrdersCrud()});
 ''';
 
 void main() {
+  final assets = <String, String>{
+    'regent|lib/regent.dart': _regentStub,
+    'identifiable|lib/identifiable.dart': _identifiableStub,
+    'canon|lib/canon.dart': _canonStub,
+  };
+
   test('@IDs emits extension types, composites with named components', () => testBuilder(
         PartBuilder([IdsGenerator()], '.canon.dart'),
-        {
-          'regent|lib/regent.dart': _regentStub,
-          'identifiable|lib/identifiable.dart': _identifiableStub,
-          'canon|lib/canon.dart': _canonStub,
-          'pkg|lib/spec.dart': _idsSpec,
-        },
+        {...assets, 'pkg|lib/spec.dart': _idsSpec},
         rootPackage: 'pkg',
         generateFor: {'pkg|lib/spec.dart'},
         outputs: {
@@ -559,44 +551,34 @@ void main() {
 
   test('a UNIT row (Unit + keyless entity) emits a UnitMemory global',
       () => testBuilder(
-            PartBuilder([RegistryGenerator()], '.canon.dart'),
-            {
-              'regent|lib/regent.dart': _regentStub,
-              'identifiable|lib/identifiable.dart': _identifiableStub,
-              'canon|lib/canon.dart': _canonStub,
-              'pkg|lib/spec.dart': _unitSpec,
-            },
+            PartBuilder([CanonGenerator()], '.canon.dart'),
+            {...assets, 'pkg|lib/spec.dart': _unitSpec},
             rootPackage: 'pkg',
             generateFor: {'pkg|lib/spec.dart'},
             outputs: {
               'pkg|lib/spec.canon.dart': decodedMatches(allOf([
-                contains(
-                    'late final UnitMemory<ViewerState?, ProfileMsg> viewerStore;'),
-                contains('viewerStore = unit('),
+                contains('final viewerStore ='),
+                contains('ledger.memory(const Viewer())!'),
+                contains('as UnitMemory<ViewerState?, ProfileMsg>'),
               ]))
             },
           ));
 
   test('emits a typed Data surface; key type follows the @ids node codec',
       () => testBuilder(
-            PartBuilder([RegistryGenerator()], '.canon.dart'),
-            {
-              'regent|lib/regent.dart': _regentStub,
-              'identifiable|lib/identifiable.dart': _identifiableStub,
-              'canon|lib/canon.dart': _canonStub,
-              'pkg|lib/spec.dart': _spec,
-            },
+            PartBuilder([CanonGenerator()], '.canon.dart'),
+            {...assets, 'pkg|lib/spec.dart': _spec},
             rootPackage: 'pkg',
             generateFor: {'pkg|lib/spec.dart'},
             outputs: {
               'pkg|lib/spec.canon.dart': decodedMatches(allOf([
-                // one api: a global `ledger` + the public per-row store globals
-                contains('final ledger = Ledger();'),
+                // one api: the ledger BUILT from the graph + per-row globals
+                contains('final ledger = Ledger.root(app);'),
                 contains('extension on Ledger {'),
                 contains('void bind() {'),
-                contains(
-                    'late final StoreMemory<String, ReviewState, ReviewMsg> reviewStore;'),
-                contains('reviewStore = store('), // bind uses this.registry
+                contains('final reviewStore ='),
+                contains('ledger.memory(const Review())!'),
+                contains('as StoreMemory<String, ReviewState, ReviewMsg>'),
                 // StoreMemory IS the read surface — no `review(key)` sugar
                 isNot(contains('ReviewState? review(String key)')),
                 // derived screen↔store association: profile shares Ids.author
@@ -615,39 +597,49 @@ void main() {
             },
           ));
 
-  test('a GUARD row binds positionally; no facade is generated',
+  test('a GUARD row emits nothing — the runtime mounts it at its position',
       () => testBuilder(
-        PartBuilder([RegistryGenerator()], '.canon.dart'),
-        {
-          'regent|lib/regent.dart': _regentStub,
-          'identifiable|lib/identifiable.dart': _identifiableStub,
-          'canon|lib/canon.dart': _canonStub,
-          'pkg|lib/spec.dart': _guardRowSpec,
-        },
+        PartBuilder([CanonGenerator()], '.canon.dart'),
+        {...assets, 'pkg|lib/spec.dart': _guardRowSpec},
         rootPackage: 'pkg',
         generateFor: {'pkg|lib/spec.dart'},
         outputs: {
           'pkg|lib/spec.canon.dart': decodedMatches(allOf([
-            isNot(contains('class Stores {')), // the facade is gone
-            contains('guard('),
-            contains('as Guard<CachedUsers>'),
+            isNot(contains('guard(')),
+            isNot(contains('CachedGate')),
+            contains('final coveredStore ='),
           ])),
         },
       ));
 
-  test('a `merges` edge wires the memories in bind()', () => testBuilder(
-        PartBuilder([RegistryGenerator()], '.canon.dart'),
-        {
-          'regent|lib/regent.dart': _regentStub,
-          'identifiable|lib/identifiable.dart': _identifiableStub,
-          'canon|lib/canon.dart': _canonStub,
-          'pkg|lib/spec.dart': _mergeSpec,
-        },
+  test('a nested regency splices; merges emit NO wiring (the runtime owns it)',
+      () => testBuilder(
+        PartBuilder([CanonGenerator()], '.canon.dart'),
+        {...assets, 'pkg|lib/spec.dart': _nestedSpec},
         rootPackage: 'pkg',
         generateFor: {'pkg|lib/spec.dart'},
         outputs: {
-          'pkg|lib/spec.canon.dart': decodedMatches(contains(
-              'usersStore.merge(viewerStore, const ViewerSupportsUser());')),
+          'pkg|lib/spec.canon.dart': decodedMatches(allOf([
+            contains('final viewerStore ='), // spliced from profileSegment
+            contains('final usersStore ='),
+            isNot(contains('.merge(')),
+            isNot(contains('.mergeStore(')),
+          ])),
+        },
+      ));
+
+  test('a CRUD brick row names its store after the brick class',
+      () => testBuilder(
+        PartBuilder([CanonGenerator()], '.canon.dart'),
+        {...assets, 'pkg|lib/spec.dart': _brickSpec},
+        rootPackage: 'pkg',
+        generateFor: {'pkg|lib/spec.dart'},
+        outputs: {
+          'pkg|lib/spec.canon.dart': decodedMatches(allOf([
+            contains('final ordersStore ='),
+            contains('ledger.memory(const OrdersCrud().store)!'),
+            contains('as StoreMemory<String, Order, Msg>'),
+          ])),
         },
       ));
 
@@ -655,12 +647,7 @@ void main() {
     final logs = <String>[];
     await testBuilder(
       navBuilder(BuilderOptions.empty),
-      {
-        'regent|lib/regent.dart': _regentStub,
-        'identifiable|lib/identifiable.dart': _identifiableStub,
-        'canon|lib/canon.dart': _canonStub,
-        'pkg|lib/spec.dart': spec,
-      },
+      {...assets, 'pkg|lib/spec.dart': spec},
       rootPackage: 'pkg',
       generateFor: {'pkg|lib/spec.dart'},
       onLog: (r) => logs.add('${r.message}'),
@@ -677,12 +664,7 @@ void main() {
   test('an ownership edge emits surgical tree ops on the parent map', () =>
       testBuilder(
         PartBuilder([EntitiesGenerator()], '.canon.dart'),
-        {
-          'regent|lib/regent.dart': _regentStub,
-          'identifiable|lib/identifiable.dart': _identifiableStub,
-          'canon|lib/canon.dart': _canonStub,
-          'pkg|lib/spec.dart': '$_guardBase',
-        },
+        {...assets, 'pkg|lib/spec.dart': '$_guardBase'},
         rootPackage: 'pkg',
         generateFor: {'pkg|lib/spec.dart'},
         outputs: {
@@ -712,11 +694,12 @@ void main() {
         allOf(contains('ReviewMsg'), contains('sealed')));
   });
 
-  test('rejects a merge edge whose endpoint is a GUARD row', () async {
-    expect(await guardLogs(_guardMergeSpec), contains('STORE rows only'));
+  test('rejects the retired @regents enum with the migration pointer', () async {
+    expect(await guardLogs(_retiredEnumSpec),
+        allOf(contains('retired'), contains('Regency({...}')));
   });
 
-  test('rejects a guard reading a citizen no row holds', () async {
+  test('rejects a guard reading a regent no row holds', () async {
     expect(await guardLogs(_strangerReadSpec),
         allOf(contains('CachedGate'), contains('no row')));
   });

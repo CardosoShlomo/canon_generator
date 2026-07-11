@@ -18,5 +18,4 @@ Builder navBuilder(BuilderOptions options) => PartBuilder([
       IdsGenerator(),
       EntitiesGenerator(),
       NavGenerator(),
-      RegistryGenerator(),
     ], '.canon.dart');

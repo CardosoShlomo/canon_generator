@@ -1,3 +1,10 @@
+## 0.36.0
+
+- BREAKING: the `@regents` enum retired — the ledger is a const value: `@canon const app = Regency({...}, merges: {...})`; store globals derive from the row classes.
+- The runtime owns the structure (`Ledger.root` splices and wires merges); the generator emits the `ledger` global, instance-identity `<row>Store` globals, tags, entry facts, and nav wiring.
+- CRUD brick rows (`OrdersCrud()`): the brick's authoritative store is named after the class minus `Crud`; nested regencies splice.
+- The regent dependency dropped — the graph is read structurally.
+
 ## 0.35.0
 
 - canon ^0.29.0 + regent ^0.11.0 (judgments: guards return `.forward`/`.mint` launches).
