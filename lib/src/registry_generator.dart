@@ -299,7 +299,7 @@ class RegistryGenerator {
       // events tap mirrors NavOps from every other door (gates, restores).
       binds.add('    $scrEnum.graph.routeOps((op) {');
       binds.add('      dispatch(op);');
-      binds.add('      final s = $navUnitRow.value;');
+      binds.add('      final s = $navUnitRow.state;');
       binds.add('      if (s != null) $scrEnum.graph.applyState(s);');
       binds.add('    });');
       binds.add('    $navUnitRow.events.listen((e) {');

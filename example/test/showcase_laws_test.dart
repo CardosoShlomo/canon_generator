@@ -52,13 +52,13 @@ List<Object?> _replay(List<Msg> order) {
     r.ledger.dispatch(msg);
   }
   final snapshot = [
-    r.covered.value,
-    r.inFlight.value,
+    r.covered.state,
+    r.inFlight.state,
     {...r.local.entities},
     {...r.products.entities},
-    r.write.value,
-    r.cart.value,
-    r.nav.value,
+    r.write.state,
+    r.cart.state,
+    r.nav.state,
   ];
   r.ledger.close();
   return snapshot;
@@ -78,18 +78,18 @@ void main() {
     final id = ProductId('p1');
     r.ledger.dispatch(const SetQty(ProductId('p1'), 3));
     // Base never folds a promise…
-    expect(r.ledger.at(const Cart()).base.qty, isEmpty);
+    expect(r.ledger.at(const Cart()).folded.qty, isEmpty);
     // …yet the merged read answers with it instantly (the dock's edge)…
-    expect(r.cart.value.qty[id], 3);
+    expect(r.cart.state.qty[id], 3);
     // …and the pending row holds the capture.
-    expect(r.write.value.pending, isNotNull);
+    expect(r.write.state.pending, isNotNull);
 
     // The echo re-applies the promise as a no-op → confirmed, dock clean.
     r.ledger.dispatch(const QtySaved(ProductId('p1'), 3));
-    expect(r.ledger.at(const Cart()).base.qty[id], 3);
-    expect(r.write.value.pending, isNull);
-    expect(r.write.value.tampered, isFalse);
-    expect(r.cart.value.qty[id], 3);
+    expect(r.ledger.at(const Cart()).folded.qty[id], 3);
+    expect(r.write.state.pending, isNull);
+    expect(r.write.state.tampered, isFalse);
+    expect(r.cart.state.qty[id], 3);
     r.ledger.close();
   });
 
@@ -98,10 +98,10 @@ void main() {
     final id = ProductId('p1');
     r.ledger.dispatch(const SetQty(ProductId('p1'), 3));
     r.ledger.dispatch(const QtyTimedOut());
-    expect(r.write.value.pending, isNull);
-    expect(r.write.value.reverted, isTrue);
+    expect(r.write.state.pending, isNull);
+    expect(r.write.state.reverted, isTrue);
     // The merged read is back to base — the promise left no trace.
-    expect(r.cart.value.qty[id], isNull);
+    expect(r.cart.state.qty[id], isNull);
     r.ledger.close();
   });
 }

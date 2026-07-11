@@ -5586,7 +5586,7 @@ extension AppLedger on Ledger {
     });
     _Screens.graph.routeOps((op) {
       dispatch(op);
-      final s = nav.value;
+      final s = nav.state;
       if (s != null) _Screens.graph.applyState(s);
     });
     nav.events.listen((e) {
