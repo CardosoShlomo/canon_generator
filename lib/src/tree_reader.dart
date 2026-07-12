@@ -26,7 +26,7 @@ class PlacementNode {
   /// True when declared with `.forget` — a liveness-off boundary inside a keep.
   bool forget = false;
 
-  /// Set when this node IS a `.cycled`/`.stacked` back-edge.
+  /// Set when this node IS a `.again` back-edge.
   PlacementNode? again;
 
   /// Set when declared with `.inherit(ancestor)` — the single-source form. Left
@@ -142,7 +142,7 @@ class _Frame {
 /// Reads the grammar tree from the root enum's static `graph` field, following
 /// `graft(Sub.subtree)` / `graft(Sub.screen)` into sub-enums to build ONE
 /// virtual tree. Purely syntactic: enum-row invocations declare placements,
-/// `.cycled`/`.stacked` declare a back-edge, `.keep`/`.forget` toggle liveness,
+/// `.again` declares a back-edge, `.keep`/`.forget` toggle liveness,
 /// static expression-bodied helpers inline their body, and `graft` splices a
 /// foreign family's subtree (tagged with its own [PlacementNode.spec]).
 Future<TreeModel> readTree(EnumElement root, BuildStep buildStep) async {
@@ -292,7 +292,7 @@ Future<TreeModel> readTree(EnumElement root, BuildStep buildStep) async {
             [for (final a in ancestors) a.screen, name], ancestors.lastOrNull);
       case PrefixedIdentifier(
           :final prefix,
-          identifier: SimpleIdentifier(name: 'cycled' || 'stacked'),
+          identifier: SimpleIdentifier(name: 'again'),
         )
           when rows.contains(prefix.name):
         final target = ancestors.lastWhere((a) => a.screen == prefix.name,
@@ -361,21 +361,21 @@ Future<TreeModel> readTree(EnumElement root, BuildStep buildStep) async {
                 'bare `${placed.screen}.inherit(...)` for a leaf, or give it '
                 '`(...){...}` children.');
         return placed;
-      // `X.inherit(Y).cycled` / `.stacked` — a back-edge that ALSO binds its id
-      // via inherit. Place the inherit (sets the id source), then resolve the
+      // `X.inherit(Y).again` — a back-edge that ALSO binds its id via
+      // inherit. Place the inherit (sets the id source), then resolve the
       // same-screen ancestor as the back-edge target.
       case PropertyAccess(
           target: MethodInvocation(
             methodName: SimpleIdentifier(name: 'inherit'),
           ) &&
               final inheritCall,
-          propertyName: SimpleIdentifier(name: 'cycled' || 'stacked'),
+          propertyName: SimpleIdentifier(name: 'again'),
         ):
         final placed = await place(inheritCall, ancestors, frame);
         placed.again = ancestors.lastWhere((a) => a.screen == placed.screen,
             orElse: () => throw InvalidGenerationSourceError(
                 '"${placed.screen}.inherit(...).${expr.propertyName.name}" has no '
-                'same-screen ancestor to cycle back to',
+                'same-screen ancestor to recur under',
                 element: root));
         return placed;
       // `placement.fragment.path(tree)` — the PATH-scheme fragment. The tree is
@@ -466,7 +466,7 @@ Future<TreeModel> readTree(EnumElement root, BuildStep buildStep) async {
         return place(frame.helpers[name]!, ancestors, frame);
       default:
         throw InvalidGenerationSourceError(
-            'cannot read tree expression "$expr" — use enum rows, .cycled/.stacked, '
+            'cannot read tree expression "$expr" — use enum rows, .again, '
             'graft, or expression-bodied static helpers',
             element: root);
     }

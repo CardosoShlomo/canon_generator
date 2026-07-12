@@ -95,6 +95,11 @@ class RegistryGenerator {
     await _validateReadRegents(element, rows, buildStep);
 
     // The @entities space: entity TYPE name → its row info (node + ownedness).
+    // The enum is OPTIONAL — it earns existence only when it carries payload
+    // beyond restating the rows' type args (id-node bindings, ownership).
+    // Absent, the entity space derives from the rows themselves and the
+    // declaration checks stand down (nothing to cross-check against).
+    final hasEntities = _hasEntitiesEnum(library);
     final entityByType = await _entitiesByType(library, buildStep);
 
     // The screen↔registry association is DERIVED, not declared: a screen and a
@@ -134,7 +139,10 @@ class RegistryGenerator {
         final info = entityByType[stateKey];
         // NavState is the ENGINE's own unit entity — auto-admitted, never a
         // consumer declaration.
-        if (info == null && stateKey != 'NavState' && !_fromRegent(held)) {
+        if (hasEntities &&
+            info == null &&
+            stateKey != 'NavState' &&
+            !_fromRegent(held)) {
           throw InvalidGenerationSourceError(
               'unit `$cls` holds a Unit of `${vArgs[0]}`, which '
               'is not a row of the @entities enum — declare the UNIT entity '
@@ -232,8 +240,8 @@ class RegistryGenerator {
       // can never disagree. Matched on the alias-EXPANDED type name: the
       // store's supertype keeps a typedef (`AdChatItem`) while the row's Type
       // constant expands it (`ChatItem<AdChatId>`).
-      final info =
-          _entityFor(cls, args[1], entityByType, element, key: entityKey);
+      final info = _entityFor(cls, args[1], entityByType, element,
+          key: entityKey, enforced: hasEntities);
       _checkKeyAgreement(cls, args[1], args[0], info, element);
       _checkSealedM(cls, held, s.typeArguments.last, element);
 
@@ -312,10 +320,14 @@ class RegistryGenerator {
       binds.add('    });');
     }
 
+    // The screens enum, independent of triggers: nav wiring must not hinge
+    // on store-bound identities — a nav row in a store-less (or untyped-id)
+    // regency still owns navigation.
+    final screensEnum = _screensEnumName(library);
     // A ledger WITHOUT a nav row keeps navigation on the local fold — a
     // legitimate choice, but make it conscious: the journal is complete
     // except for movement.
-    if (navRowSource == null && triggers.isNotEmpty) {
+    if (navRowSource == null && screensEnum != null) {
       log.info(
           'the regency does not own navigation — add `NavUnit()` as the '
           'LAST row for whole-session replay and nav-judging gates.');
@@ -323,8 +335,8 @@ class RegistryGenerator {
     // The ledger OWNS navigation: verbs route through the queue, the
     // NavUnit row folds, the graph mirrors the folded state back — and is
     // (re)seeded so restores and system pops stay truth.
-    if (navRowSource != null && triggers.isNotEmpty) {
-      final scrEnum = triggers.first.$1;
+    if (navRowSource != null && screensEnum != null) {
+      final scrEnum = screensEnum;
       // Verb-routed ops mirror SYNCHRONOUSLY — dispatch folds the NavUnit on
       // the spine, so the folded state is readable on return and the verbs'
       // placement returns (pop's destination) stay truthful. The async
@@ -759,9 +771,12 @@ class RegistryGenerator {
 
   _EntityInfo _entityFor(String name, String entityType,
       Map<String, _EntityInfo> entityByType, Element element,
-      {String? key, String owner = 'store'}) {
+      {String? key, String owner = 'store', bool enforced = true}) {
     final info = entityByType[key ?? entityType];
     if (info == null) {
+      // No @entities enum in the library: the entity space derives from the
+      // rows themselves — a node-less, ownerless root.
+      if (!enforced) return _EntityInfo(entityType, null, owned: false);
       throw InvalidGenerationSourceError(
           '$owner "$name" holds `$entityType`, which is not a row '
           'of the @entities enum — declare the entity (type + id node) there.',
@@ -838,6 +853,35 @@ class RegistryGenerator {
 
   /// Map each id-node to the `(enumName, screenName)` of every `@screens` row
   /// that binds it as its `id` — the screens a node-keyed registry feeds.
+  /// The library's ROOT screens enum name (the one owning the static
+  /// `graph`), or null when the library has none — found by mixin, not by
+  /// triggers, so nav wiring works for regencies whose screens carry no
+  /// store-bound identities. Grafted sub-enums have no `graph` and never
+  /// match.
+  String? _screensEnumName(LibraryElement library) {
+    for (final en in library.enums) {
+      final isScreens = en.allSupertypes.any((t) =>
+          const {'ScreenNodeBase', 'ScreenNode'}.contains(t.element.name));
+      if (!isScreens) continue;
+      if (en.fields.any((f) => f.isStatic && f.name == 'graph')) {
+        return en.name;
+      }
+    }
+    return null;
+  }
+
+  /// Whether the library declares an `@entities` enum at all — absent, the
+  /// declaration checks stand down (the enum earns existence only when it
+  /// binds nodes or declares ownership).
+  bool _hasEntitiesEnum(LibraryElement library) {
+    for (final en in library.enums) {
+      if (en.allSupertypes.any((t) => t.element.name == 'EntityNode')) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   Map<String, List<(String, String)>> _screensByNode(LibraryElement library) {
     final map = <String, List<(String, String)>>{};
     for (final en in library.enums) {

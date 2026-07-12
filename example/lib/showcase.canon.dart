@@ -185,6 +185,7 @@ final class Screen<I> {
   /// stays — always pass it where a `RouterDelegate` goes.)
   static NavDelegate get manager {
     assert(_fresh);
+    ledger.bind();
     return _Screens.graph.delegate;
   }
 

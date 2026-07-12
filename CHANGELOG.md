@@ -1,3 +1,10 @@
+## 0.39.0
+
+- canon ^0.31.0: the grammar reads `.again` (`.cycled`/`.stacked` retired).
+- Nav wiring decoupled from store-bound triggers: a `NavUnit()` row wires `bind()` from the screens enum alone.
+- `@entities` is optional — absent, the entity space derives from the rows; the enum earns existence when it binds id nodes or declares ownership.
+- `Screen.manager` calls `ledger.bind()` for a const `Regency` spec.
+
 ## 0.38.0
 
 - Named `Regency` subclasses with a literal `super({...})` are readable — feature grafts get generated reads; computed row sets stay opaque.

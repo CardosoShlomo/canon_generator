@@ -36,8 +36,11 @@ error. Every `Hop` (and every navigable `Place`) knows its destination:
 one `Screen.go`. `bind()` node-tags every store, so ambient reads resolve
 by MATCH, never by distance. Build-time checks keep the spec honest:
 every `read(…)` in a guard must name a regent of the graph (a const
-construction or a const-global reference), every store's entity must be
-a row of `@entities`, and every row's message type must be sealed.
+construction or a const-global reference), every row's message type must
+be sealed, and where `@entities` exists the stores must agree with its
+rows. The enum itself is optional — it earns its place binding id nodes
+or declaring ownership; without it the entity space derives from the
+store rows.
 
 The example is the family's showcase (an ecommerce domain): `welcome.dart`
 is the minimal ledger, `showcase.dart` the full surface.

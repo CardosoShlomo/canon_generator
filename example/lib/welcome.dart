@@ -5,11 +5,11 @@ part 'welcome.canon.dart';
 
 // ── The WELCOME example: the classic todo app, whole-stack canon ──────────
 // Every canon idea in its smallest true form — compare it with the todo app
-// you already know. Four tiny enums under ONE annotation (`@canon` — the
-// mixin says which tier each enum is) are the ENTIRE spec:
+// you already know. Four tiny declarations under ONE annotation (`@canon` —
+// the mixin says which tier each is) are the ENTIRE spec:
 //
 //   Ids       the identity space (typed ids, URL codecs)
-//   _Entities what exists
+//   _Entities the id-node bindings (an app with none skips this enum)
 //   app       the REGENCY: the ledger's regents, in traversal order — a coverage unit,
 //             a veto standing above the rows it protects, a disk-cache
 //             shadow store, the main store — plus the merge edge that lets
@@ -192,7 +192,7 @@ enum _Screens with ScreenNode<_Screens> {
   @override
   final Ids? id;
 
-  static final graph = NavGraph(
+  static final graph = ScreenGraph(
     {
       home({todo}),
     },

@@ -261,11 +261,17 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       throw InvalidGenerationSourceError('the @screens enum must be library-private', element: element);
     }
 
-    // If the library also declares a @registries enum, the generated `Data`
-    // surface exists — the manager binds it (idempotently), so the app needs no
-    // explicit Data.bind()/Ledger() wiring.
-    final hasData = element.library.enums
-        .any((e) => e.allSupertypes.any((t) => t.element.name == 'RegentNode'));
+    // If the library also declares a regency (`@canon const app = Regency(...)`),
+    // the generated `bind()` exists — the manager calls it (idempotently), so
+    // the app needs no explicit wiring.
+    final hasData = element.library.topLevelVariables.any((v) {
+          final t = v.type;
+          return t is InterfaceType &&
+              (t.element.name == 'Regency' ||
+                  t.allSupertypes.any((s) => s.element.name == 'Regency'));
+        }) ||
+        element.library.enums.any(
+            (e) => e.allSupertypes.any((t) => t.element.name == 'RegentNode'));
 
     // Read the VIRTUAL tree first (follows grafts into sub-enums), then build
     // rows from every enum it spans — each tagged with its home enum (`spec`).
@@ -343,7 +349,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     }
     // A screen name is ONE screen across the virtual tree. It may be declared
     // once with a widget (the OWNER) and any number of times with a null widget
-    // (REFS — a sub-enum's bare row reused for in-family inherit/cycled). Collapse
+    // (REFS — a sub-enum's bare row reused for in-family inherit/again). Collapse
     // every name to its single owner row; refs vanish into it. Mirror the runtime
     // checks (screen_node `_canonicalize`): exactly one owner, no dangling ref,
     // and all declarations of a name must agree on id type.
@@ -927,9 +933,9 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       for (final p in [
         for (final n in placements[r.name]!)
           if (n.parent != null) n.parent!,
-        // A screen reached via a back-edge (.stacked/.cycled) is pushable from
-        // that edge's parent too — so e.g. parentOf.userProfile covers a
-        // userProfile screen pushing another (the .stacked self-recursion).
+        // A screen reached via a back-edge (.again) is pushable from that
+        // edge's parent too — so e.g. parentOf.userProfile covers a
+        // userProfile screen pushing another (the .again self-recursion).
         ...?backPreds[r.name],
       ]) {
         if (seen.add(p.path.join('/'))) ps.add(p);

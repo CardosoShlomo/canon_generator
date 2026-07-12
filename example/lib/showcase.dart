@@ -7,7 +7,7 @@ part 'showcase.canon.dart';
 
 // ── The SHOWCASE example ──────────────────────────────────────────────────
 // A compact e-commerce app whose grammar trees exercise EVERY canon
-// capability. Nav side: keep/forget, inherit, stacked/cycled, graft,
+// capability. Nav side: keep/forget, inherit, again, graft,
 // query/fragment, links. State side, the numbered TOUR:
 //
 //   1. facts as sealed families (a msg IS a source: its TYPE is its rank)
@@ -800,12 +800,12 @@ enum _Screens with ScreenNode<_Screens> {
   // `product` lives under several parents (search, category, wishlist, order,
   // scan) — multi-parent, so it has no global `goProduct`; reach it via
   // `parentOf` or a chain. It cycles back through its seller (collapsed by
-  // `.cycled`) and carries `?variant=` + `#tab=` view-state.
+  // `.again`) and carries `?variant=` + `#tab=` view-state.
   static _Screens _product() => product({
-        seller({product.cycled, sellerChat}),
+        seller({product.again, sellerChat}),
       }).query({_PV.variant(.string)}).fragment({_Tab.tab(.string)});
 
-  static final graph = NavGraph(
+  static final graph = ScreenGraph(
     {
       // The link/URL origin — a NODE of the tree, like everything else.
       Domain('https://shop.example'),
@@ -822,8 +822,8 @@ enum _Screens with ScreenNode<_Screens> {
           _Filter.sort(.enumValues(Sort.values)),
           _Filter.minPrice(.integer) & _Filter.maxPrice(.integer),
         }),
-        // `stacked`: drill category → subcategory in fresh frames.
-        category({category.stacked, _product()}),
+        // `again`: drill category → subcategory in fresh frames.
+        category({category.again, _product()}),
         // `forget`: the scanner subtree is rebuilt fresh on every visit.
         scan.forget({_product()}),
         wishlist({_product()}),

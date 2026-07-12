@@ -41,9 +41,7 @@ extension CodecUnion<T> on Codec<T> {
 Object? slot(Object? codec) => null;
 
 class NavGraph<S> {
-  NavGraph(Set<S> roots,
-      {required Object root,
-      required Object Function(S, Object?, Object?) pageOf});
+  NavGraph(Set<S> roots);
 }
 
 class Codec<T> {
@@ -89,7 +87,7 @@ mixin Identifiable<I> {
 }
 ''';
 
-// home -> item(String) -> about -> item.stacked  (item & about form a cycle).
+// home -> item(String) -> about -> item.again  (item & about form a cycle).
 const _spec = '''
 import 'package:canon/canon.dart';
 
@@ -107,10 +105,8 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 
   static final graph = NavGraph<_Screens>(
     {
-      home({item({about({item.stacked})})}),
+      home({item({about({item.again})})}),
     },
-    root: 0,
-    pageOf: (s, c, k) => 0,
   );
 }
 ''';
@@ -136,8 +132,6 @@ enum _Screens with ScreenNode<Object?, _Screens> {
       home({author}),
       author.links({slot(Codec.string)}),
     },
-    root: 0,
-    pageOf: (s, c, k) => 0,
   );
 }
 ''';
@@ -162,8 +156,6 @@ enum _Screens with ScreenNode<Object?, _Screens> {
       home({author}),
       author.links({slot(Codec.uuid | Codec.username)}),
     },
-    root: 0,
-    pageOf: (s, c, k) => 0,
   );
 }
 ''';
@@ -188,8 +180,6 @@ enum _Screens with ScreenNode<Object?, _Screens> {
       home({author}),
       author.links({slot(Codec.literal('me') | Codec.uuid | Codec.username)}),
     },
-    root: 0,
-    pageOf: (s, c, k) => 0,
   );
 }
 ''';
@@ -215,8 +205,6 @@ enum _Screens with ScreenNode<Object?, _Screens> {
       home,
       author({slot(Codec.literal('me') | Codec.username)}),
     },
-    root: 0,
-    pageOf: (s, c, k) => 0,
   );
 }
 ''';
@@ -242,8 +230,6 @@ enum _Screens with ScreenNode<Object?, _Screens> {
       home,
       feed.query({_Keys.category(Codec.string), _Keys.radius(Codec.integer)}),
     },
-    root: 0,
-    pageOf: (s, c, k) => 0,
   );
 }
 ''';
@@ -269,8 +255,6 @@ enum _Screens with ScreenNode<Object?, _Screens> {
       home({author}),
       author.links({slot(Codec.uuid | Codec.username)}),
     },
-    root: 0,
-    pageOf: (s, c, k) => 0,
   );
 }
 ''';
@@ -300,8 +284,6 @@ enum _Screens with ScreenNode<Object?, _Screens> {
       feed.query({_Keys.category(Codec.string) & (_Keys.radius(Codec.integer) | _Keys.size(Codec.integer))})
           .fragment({_Frag.tab(Codec.string) | _Frag.pane(Codec.string)}),
     },
-    root: 0,
-    pageOf: (s, c, k) => 0,
   );
 }
 ''';
@@ -329,8 +311,6 @@ enum _Screens with ScreenNode<Object?, _Screens> {
       home,
       feed.query({_Q.category(Codec.string)}).fragment({_F.tab(Codec.string)}),
     },
-    root: 0,
-    pageOf: (s, c, k) => 0,
   );
 }
 ''';
@@ -359,8 +339,6 @@ enum _Screens with ScreenNode<Object?, _Screens> {
       home({account.link({slot(Codec.string)})}),
       profile({account}),
     },
-    root: 0,
-    pageOf: (s, c, k) => 0,
   );
 }
 ''';
@@ -391,8 +369,6 @@ enum _Screens with ScreenNode<Object?, _Screens> {
       profile({account.link({slot(Codec.uuid)})}),
       settings({account}),
     },
-    root: 0,
-    pageOf: (s, c, k) => 0,
   );
 }
 ''';
@@ -421,8 +397,6 @@ enum _Screens with ScreenNode<Object?, _Screens> {
       home({item.query({_Keys.tag(Codec.string)})}),
       feed({item}),
     },
-    root: 0,
-    pageOf: (s, c, k) => 0,
   );
 }
 ''';
@@ -447,8 +421,6 @@ enum _Screens with ScreenNode<Object?, _Screens> {
     {
       home({author()}),
     },
-    root: 0,
-    pageOf: (s, c, k) => 0,
   );
 }
 ''';
@@ -473,8 +445,6 @@ enum _Screens with ScreenNode<Object?, _Screens> {
     {
       home({account, account.link({slot(Codec.string)})}),
     },
-    root: 0,
-    pageOf: (s, c, k) => 0,
   );
 }
 ''';
@@ -502,8 +472,6 @@ enum _Screens with ScreenNode<Object?, _Screens> {
       home({account({slot(Codec.string)})}),
       settings({detail({slot(Codec.username)})}),
     },
-    root: 0,
-    pageOf: (s, c, k) => 0,
   );
 }
 ''';
@@ -538,8 +506,6 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 
   static final graph = NavGraph<_Screens>(
     {home, feed},
-    root: 0,
-    pageOf: (s, c, k) => 0,
   );
 }
 ''';
@@ -565,8 +531,6 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 
   static final graph = NavGraph<_Screens>(
     {home({product, order})},
-    root: 0,
-    pageOf: (s, c, k) => 0,
   );
 }
 ''';
@@ -590,8 +554,6 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 
   static final graph = NavGraph<_Screens>(
     {home({editImage, page})},
-    root: 0,
-    pageOf: (s, c, k) => 0,
   );
 }
 ''';
@@ -615,8 +577,6 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 
   static final graph = NavGraph<_Screens>(
     {home({product({editProduct.inherit(product)})})},
-    root: 0,
-    pageOf: (s, c, k) => 0,
   );
 }
 ''';
@@ -642,8 +602,6 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 
   static final graph = NavGraph<_Screens>(
     {home({section({product({editProduct.inherit(product)})})})},
-    root: 0,
-    pageOf: (s, c, k) => 0,
   );
 }
 ''';
@@ -669,8 +627,6 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 
   static final graph = NavGraph<_Screens>(
     {home({item({itemPreview({editItem.inherit(itemPreview)}).inherit(item)})})},
-    root: 0,
-    pageOf: (s, c, k) => 0,
   );
 }
 ''';
@@ -697,8 +653,6 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 
   static final graph = NavGraph<_Screens>(
     {home({profile({order({orderProfile.inherit(profile)})})})},
-    root: 0,
-    pageOf: (s, c, k) => 0,
   );
 }
 ''';
@@ -726,8 +680,6 @@ enum _Screens with ScreenNode<Object?, _Screens> {
       home({item({editItem.inherit(item)})}),
       feed({item({editItem.inherit(item)})}),
     },
-    root: 0,
-    pageOf: (s, c, k) => 0,
   );
 }
 ''';
@@ -753,8 +705,6 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 
   static final graph = NavGraph<_Screens>(
     {home({product({author({order.inherit(product, author)})})})},
-    root: 0,
-    pageOf: (s, c, k) => 0,
   );
 }
 ''';
@@ -778,8 +728,6 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 
   static final graph = NavGraph<_Screens>(
     {home({product({order.inherit(product)})})},
-    root: 0,
-    pageOf: (s, c, k) => 0,
   );
 }
 ''';
@@ -802,8 +750,6 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 
   static final graph = NavGraph<_Screens>(
     {home({order})},
-    root: 0,
-    pageOf: (s, c, k) => 0,
   );
 }
 ''';
@@ -828,8 +774,6 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 
   static final graph = NavGraph<_Screens>(
     {home({a({b({c({order.inherit(a, b, c)})})})})},
-    root: 0,
-    pageOf: (s, c, k) => 0,
   );
 }
 ''';
@@ -883,8 +827,6 @@ enum _Screens with ScreenNode<Object?, _Screens> {
     {
       home({profile}),
     },
-    root: 0,
-    pageOf: (s, c, k) => 0,
   );
 }
 ''';
@@ -920,8 +862,6 @@ enum _Screens with ScreenNode<Object?, _Screens> {
     {
       home({review({author.inherit(review)})}),
     },
-    root: 0,
-    pageOf: (s, c, k) => 0,
   );
 }
 ''';
@@ -974,8 +914,6 @@ enum _Screens with ScreenNode<Object?, _Screens> {
         }),
       }),
     },
-    root: 0,
-    pageOf: (s, c, k) => 0,
   );
 }
 ''';
@@ -1014,8 +952,6 @@ enum _Screens with ScreenNode<Object?, _Screens> {
     {
       home({review({author.inherit(review)})}),
     },
-    root: 0,
-    pageOf: (s, c, k) => 0,
   );
 }
 ''';
@@ -1041,8 +977,8 @@ enum _Screens with ScreenNode<Object?, _Screens> {
   final Codec? id;
 
   static _Screens _thread() =>
-      reply.inherit(author)({author.inherit(reply).cycled});
-  static _Screens _author() => author({author.stacked, _thread()});
+      reply.inherit(author)({author.inherit(reply).again});
+  static _Screens _author() => author({author.again, _thread()});
 
   static final graph = NavGraph<_Screens>(
     {
@@ -1050,12 +986,10 @@ enum _Screens with ScreenNode<Object?, _Screens> {
       catalog({
         author,
         reply({
-          author.inherit(reply)({author.stacked, reply.inherit(author).cycled}),
+          author.inherit(reply)({author.again, reply.inherit(author).again}),
         }),
       }),
     },
-    root: 0,
-    pageOf: (s, c, k) => 0,
   );
 }
 ''';
@@ -1081,8 +1015,6 @@ enum _Screens with ScreenNode<Object?, _Screens> {
       home({product}),
       product.links({slot(Codec.sku)}),
     },
-    root: 0,
-    pageOf: (s, c, k) => 0,
   );
 }
 ''';
@@ -1124,8 +1056,6 @@ enum _Screens with ScreenNode<Object?, _Screens> {
     {
       home({review({author.inherit(review)})}),
     },
-    root: 0,
-    pageOf: (s, c, k) => 0,
   );
 }
 ''';
@@ -1335,8 +1265,8 @@ void main() {
         spec: _deepInheritSpec,
       ));
 
-  test('parentOf includes back-edge parents (a .stacked self-recursion)', () =>
-      // _spec: home -> item -> about -> item.stacked. item is pushable from home
+  test('parentOf includes back-edge parents (a .again self-recursion)', () =>
+      // _spec: home -> item -> about -> item.again. item is pushable from home
       // (forward) AND from about (the back-edge), so parentOf.item must list both.
       _expectGenerated(
         allOf([
@@ -1848,4 +1778,35 @@ void main() {
         matches(RegExp(r'class HomeNav extends AnyPlacement\s+implements[^{]*AboutHomePopPlacement')),
         matches(RegExp(r'class AboutNav extends AnyPlacement\s+implements[^{]*AboutHomePopPlacement')),
       )));
+
+  test('a Regency const in the library wires ledger.bind() into the manager',
+      () async {
+    await _expectGenerated(contains('ledger.bind();'), spec: _regencySpec);
+    await _expectGenerated(isNot(contains('ledger.bind();')), spec: _flatSpec);
+  });
 }
+
+// A library that also declares its regency — the manager must bind it.
+const _regencySpec = '''
+import 'package:canon/canon.dart';
+
+part 'spec.canon.dart';
+
+class Regency { const Regency(); }
+
+const app = Regency();
+
+@screens
+enum _Screens with ScreenNode<Object?, _Screens> {
+  home(0),
+  feed(0);
+
+  const _Screens(this.widget, [this.id]);
+  final Object widget;
+  final Codec? id;
+
+  static final graph = NavGraph<_Screens>(
+    {home, feed},
+  );
+}
+''';
