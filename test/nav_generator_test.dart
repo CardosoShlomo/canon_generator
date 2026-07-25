@@ -732,6 +732,33 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 }
 ''';
 
+// The same partial composite, with product seated at TWO positions: the shared
+// ProductPlacement interface must declare the verb the leaves actually
+// implement — the shrunk component, never the whole record.
+const _compositePartialTwicespec = '''
+import 'package:canon/canon.dart';
+
+part 'spec.canon.dart';
+
+@screens
+enum _Screens with ScreenNode<Object?, _Screens> {
+  home(0),
+  shop(0),
+  product(0, Codec.string),
+  order(0, Record2Codec(Codec.string, Codec.integer));
+
+  const _Screens(this.widget, [this.id]);
+  final Object widget;
+  final Codec? id;
+
+  static _Screens _prod() => product({order.inherit(product)});
+
+  static final graph = NavGraph<_Screens>(
+    {home({_prod()}), shop({_prod()})},
+  );
+}
+''';
+
 // A composite-id screen with NO inherit: the verb takes the ATOMIC record id,
 // never the destructured components.
 const _compositeNoneSpec = '''
@@ -1151,6 +1178,16 @@ void main() {
               isNot(contains('goOrder((String, int) id)')),
             ]),
             spec: _compositePartialSpec,
+          ));
+
+  test('composite inherit at two positions: the placement declares the shrunk verb',
+      () => _expectGenerated(
+            allOf([
+              contains('sealed class ProductPlacement'),
+              contains('goOrder(int id);'), // the interface, shrunk like its leaves
+              isNot(contains('goOrder((String, int) id);')),
+            ]),
+            spec: _compositePartialTwicespec,
           ));
 
   test('composite id with no inherit: verb takes the atomic record id', () =>

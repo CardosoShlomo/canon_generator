@@ -2090,22 +2090,39 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       // The bare shared-verb SIGNATURES — declared on the sealed placement so a
       // `Screen.on(.x)` result can call them before any narrowing; each leaf
       // supplies the body (the real, placement-specific return).
+      // The parameters a child's verb takes AT ONE POSITION — exactly goVerb's
+      // rule: a composite edge shrinks to its unsupplied components, a whole
+      // inherited edge takes none, anything else takes the child's id.
+      String verbParams(PlacementNode c) {
+        final comp = compositeVerb(c);
+        if (comp != null) return comp.params;
+        final idT = idOf[c.screen];
+        return c.inheritSource != null || idT == null ? '' : '$idT id';
+      }
+
       List<String> sharedVerbSigs(List<PlacementNode> group) {
         final fwdShared = sharedFwd(group);
         final seen = <String>{};
-        return [
-          for (final n in group)
-            for (final c in n.children)
-              if (fwdShared.contains(c.screen) && seen.add(c.screen))
-                (() {
-                  final idT = idOf[c.screen];
-                  final params = c.inheritSource != null || idT == null ? '' : '$idT id';
-                  final ret = isSingle(c.screen)
-                      ? unionName(c.screen)
-                      : '${_cap(c.screen)}Placement';
-                  return '  $ret go${_cap(c.screen)}($params);';
-                })()
-        ];
+        final sigs = <String>[];
+        for (final n in group) {
+          for (final c in n.children) {
+            if (!fwdShared.contains(c.screen) || !seen.add(c.screen)) continue;
+            final params = verbParams(c);
+            // Positions may reach one child differently (inherited here, given
+            // an id there) — then no one signature is true of the group, and
+            // the verb stays on the leaves that can honestly declare it.
+            final agrees = group.every((m) {
+              final o = m.children.where((y) => y.screen == c.screen).firstOrNull;
+              return o == null || verbParams(o) == params;
+            });
+            if (!agrees) continue;
+            final ret = isSingle(c.screen)
+                ? unionName(c.screen)
+                : '${_cap(c.screen)}Placement';
+            sigs.add('  $ret go${_cap(c.screen)}($params);');
+          }
+        }
+        return sigs;
       }
       final leafMarkers = {for (final n in nodes) n: <String>{}};
       final markersToEmit = <String>{};
