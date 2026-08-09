@@ -278,8 +278,14 @@ class RegistryGenerator {
         b.writeln('  Stream<StoreEvent<${args.join(', ')}>> get events => mem.events;');
         if (flutterBound) {
           b.writeln();
-          b.writeln('  /// The key SEQUENCE, reactively — structural rebuilds only.');
-          b.writeln('  List<$key> of(BuildContext context) => mem.of(context);');
+          b.writeln('  /// The key SEQUENCE, reactively — structural rebuilds only;');
+          b.writeln('  /// value changes never fire, so scope rows with [item].');
+          b.writeln('  List<$key> idsOf(BuildContext context) => mem.idsOf(context);');
+          b.writeln();
+          b.writeln('  /// The ROWS, reactively — rebuilds on shape AND on ANY');
+          b.writeln('  /// row\'s value change.');
+          b.writeln('  List<$state> entitiesOf(BuildContext context) =>');
+          b.writeln('      mem.entitiesOf(context);');
           b.writeln();
           b.writeln('  /// One entity, reactively — id omitted reads the AMBIENT identity.');
           b.writeln('  $state? entityOf(BuildContext context, [$key? id]) =>');
@@ -360,7 +366,7 @@ class RegistryGenerator {
     b.writeln('/// the runtime splices its rows in order and wires its merge');
     b.writeln('/// edges. `Screen.manager` binds the nav side. Reads hang on the');
     b.writeln('/// row CLASSES (`extension <Row>Reads`) — name your rows with const');
-    b.writeln('/// globals (`const todos = Todos();`) and read `todos.of(context)`.');
+    b.writeln('/// globals (`const todos = Todos();`) and read `todos.idsOf(context)`.');
     b.writeln('final ledger = Ledger.root($graphVar);');
     b.writeln();
     b.writeln('/// States a fact — dispatch is the ONLY verb, so it needs no prefix.');

@@ -7,7 +7,8 @@ data surface from the REGENCY (`@canon const app = Regency({...})`): the
 the merge edges the projections carry) and one READ EXTENSION per row
 CLASS. The generator never invents a name — YOU name the rows as const
 globals (`const products = Products();`), and the extension makes those
-names the whole read surface: `products.of(context)` (reactive),
+names the whole read surface: `products.idsOf(context)` /
+`products.entitiesOf(context)` (reactive),
 `products.entities`/`values`/`ids`/`[]` (now), `products.changes`/
 `events`/`structure` (streams), `products.item(id, child: …)` and
 `products.entityOf(context)` (keyed); units get `state`/`of`, set units
