@@ -1,3 +1,8 @@
+## 0.40.0
+
+- canon_flutter ^0.13.0: a store facade forwards `idsOf` and `entitiesOf` rather than `of`.
+- Placement verbs shrink where a composite inherits.
+
 ## 0.39.0
 
 - canon ^0.31.0: the grammar reads `.again` (`.cycled`/`.stacked` retired).
