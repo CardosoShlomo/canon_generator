@@ -1,3 +1,7 @@
+## 0.41.0
+
+- Generated code uses Dart 3.13 primary constructors; min SDK ^3.13.0.
+
 ## 0.40.0
 
 - canon_flutter ^0.13.0: a store facade forwards `idsOf` and `entitiesOf` rather than `of`.

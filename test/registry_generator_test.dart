@@ -197,7 +197,8 @@ enum _Entities with EntityNode<_Entities> {
 
 // The store's key type (int) disagrees with the entity node's codec value-type
 // (String) — the derived key guard must reject it.
-const _mismatchSpec = '''
+const _mismatchSpec =
+    '''
 $_guardBase
 sealed class ReviewMsg {}
 class Review extends Store<int, ReviewState, ReviewMsg> {
@@ -210,7 +211,8 @@ const app = Regency({Review()});
 
 // A registry whose message type is NOT sealed — the reduce can't be exhaustive,
 // so the generator must reject it at build time.
-const _unsealedMsgSpec = '''
+const _unsealedMsgSpec =
+    '''
 $_guardBase
 class ReviewMsg {}
 class Review extends Store<String, ReviewState, ReviewMsg> {
@@ -223,7 +225,8 @@ const app = Regency({Review()});
 
 // A store on an OWNED entity — comment lives inside review's aggregate, so a
 // store of its own is illegal.
-const _ownedStoreSpec = '''
+const _ownedStoreSpec =
+    '''
 $_guardBase
 sealed class CommentMsg {}
 class Comments extends Store<String, CommentState, CommentMsg> {
@@ -235,7 +238,8 @@ const app = Regency({Comments()});
 ''';
 
 // A store of a type that is no @entities row at all.
-const _unknownEntitySpec = '''
+const _unknownEntitySpec =
+    '''
 $_guardBase
 class OrphanState {}
 sealed class OrphanMsg {}
@@ -249,7 +253,8 @@ const app = Regency({Orphans()});
 
 // The retired tier: a @canon @regents-style enum must fail with the
 // migration pointer.
-const _retiredEnumSpec = '''
+const _retiredEnumSpec =
+    '''
 $_guardBase
 sealed class ReviewMsg {}
 class Review extends Store<String, ReviewState, ReviewMsg> {
@@ -522,122 +527,153 @@ void main() {
     'canon|lib/canon.dart': _canonStub,
   };
 
-  test('@IDs emits extension types, composites with named components', () => testBuilder(
-        PartBuilder([IdsGenerator()], '.canon.dart'),
-        {...assets, 'pkg|lib/spec.dart': _idsSpec},
-        rootPackage: 'pkg',
-        generateFor: {'pkg|lib/spec.dart'},
-        outputs: {
-          'pkg|lib/spec.canon.dart': decodedMatches(allOf([
-            contains('extension type const ProductId(String _) implements String {'),
-            contains('extension type const AuthorId(String _) implements String {'),
+  test(
+    '@IDs emits extension types, composites with named components',
+    () => testBuilder(
+      PartBuilder([IdsGenerator()], '.canon.dart'),
+      {...assets, 'pkg|lib/spec.dart': _idsSpec},
+      rootPackage: 'pkg',
+      generateFor: {'pkg|lib/spec.dart'},
+      outputs: {
+        'pkg|lib/spec.canon.dart': decodedMatches(
+          allOf([
+            contains(
+              'extension type const ProductId(String _) implements String {',
+            ),
+            contains(
+              'extension type const AuthorId(String _) implements String {',
+            ),
             // the back-link: type → grammar node (codec rides on it)
             contains('static const Ids node = Ids.product;'),
             contains('static const Ids node = Ids.author;'),
             contains(
-                  'extension type const ReviewId((ProductId, AuthorId) _) {'),
-              contains('const ReviewId.of(ProductId product, AuthorId author)'),
-              contains(': this((product, author));'),
-              contains('ProductId get product => _.\$1;'),
-              contains('AuthorId get author => _.\$2;'),
+              'extension type const ReviewId((ProductId, AuthorId) _) {',
+            ),
+            contains('const ReviewId.of(ProductId product, AuthorId author)'),
+            contains(': this((product, author));'),
+            contains('ProductId get product => _.\$1;'),
+            contains('AuthorId get author => _.\$2;'),
+            contains('extension type const OrderId((ProductId, AuthorId) _) {'),
+          ]),
+        ),
+      },
+    ),
+  );
+
+  test(
+    'a UNIT row (Unit + keyless entity) emits a UnitMemory global',
+    () => testBuilder(
+      PartBuilder([CanonGenerator()], '.canon.dart'),
+      {...assets, 'pkg|lib/spec.dart': _unitSpec},
+      rootPackage: 'pkg',
+      generateFor: {'pkg|lib/spec.dart'},
+      outputs: {
+        'pkg|lib/spec.canon.dart': decodedMatches(
+          allOf([
+            contains('extension ViewerReads on Viewer {'),
             contains(
-                  'extension type const OrderId((ProductId, AuthorId) _) {'),
-          ]))
-        },
-      ));
+              'UnitMemory<ViewerState?, ProfileMsg> get mem => ledger.at(this);',
+            ),
+          ]),
+        ),
+      },
+    ),
+  );
 
-  test('a UNIT row (Unit + keyless entity) emits a UnitMemory global',
-      () => testBuilder(
-            PartBuilder([CanonGenerator()], '.canon.dart'),
-            {...assets, 'pkg|lib/spec.dart': _unitSpec},
-            rootPackage: 'pkg',
-            generateFor: {'pkg|lib/spec.dart'},
-            outputs: {
-              'pkg|lib/spec.canon.dart': decodedMatches(allOf([
-                contains('extension ViewerReads on Viewer {'),
-                contains(
-                    'UnitMemory<ViewerState?, ProfileMsg> get mem => ledger.at(this);'),
-              ]))
-            },
-          ));
+  test(
+    'emits a typed Data surface; key type follows the @ids node codec',
+    () => testBuilder(
+      PartBuilder([CanonGenerator()], '.canon.dart'),
+      {...assets, 'pkg|lib/spec.dart': _spec},
+      rootPackage: 'pkg',
+      generateFor: {'pkg|lib/spec.dart'},
+      outputs: {
+        'pkg|lib/spec.canon.dart': decodedMatches(
+          allOf([
+            // one api: the ledger BUILT from the graph + per-row globals
+            contains('final ledger = Ledger.root(app);'),
+            contains('extension AppLedger on Ledger {'),
+            contains('void bind() {'),
+            contains('extension ReviewReads on Review {'),
+            contains(
+              'StoreMemory<String, ReviewState, ReviewMsg> get mem => ledger.at(this);',
+            ),
+            // StoreMemory IS the read surface — no `review(key)` sugar
+            isNot(contains('ReviewState? review(String key)')),
+            // derived screen↔store association: profile shares Ids.author
+            contains('ReviewState? onProfile()'),
+            // Door 2: the committed-navigation trigger consults the twin
+            contains('graph.navigations.listen('),
+            contains('class const ProfileEnteredMsg(final String id)'),
+            contains('dispatch(ProfileEnteredMsg(id as String))'),
+            isNot(contains('inFlight')),
+            isNot(contains('surface(')),
+            contains('e.screen == _Screens.profile'),
+            contains('mem[e.id as String]'),
+            // home has no id-node → no accessors at all
+            isNot(contains('OnHome')),
+          ]),
+        ),
+      },
+    ),
+  );
 
-  test('emits a typed Data surface; key type follows the @ids node codec',
-      () => testBuilder(
-            PartBuilder([CanonGenerator()], '.canon.dart'),
-            {...assets, 'pkg|lib/spec.dart': _spec},
-            rootPackage: 'pkg',
-            generateFor: {'pkg|lib/spec.dart'},
-            outputs: {
-              'pkg|lib/spec.canon.dart': decodedMatches(allOf([
-                // one api: the ledger BUILT from the graph + per-row globals
-                contains('final ledger = Ledger.root(app);'),
-                contains('extension AppLedger on Ledger {'),
-                contains('void bind() {'),
-                contains('extension ReviewReads on Review {'),
-                contains(
-                    'StoreMemory<String, ReviewState, ReviewMsg> get mem => ledger.at(this);'),
-                // StoreMemory IS the read surface — no `review(key)` sugar
-                isNot(contains('ReviewState? review(String key)')),
-                // derived screen↔store association: profile shares Ids.author
-                contains('ReviewState? onProfile()'),
-                // Door 2: the committed-navigation trigger consults the twin
-                contains('graph.navigations.listen('),
-                contains('class ProfileEnteredMsg extends Msg'),
-                contains('dispatch(ProfileEnteredMsg(id as String))'),
-                isNot(contains('inFlight')),
-                isNot(contains('surface(')),
-                contains('e.screen == _Screens.profile'),
-                contains('mem[e.id as String]'),
-                // home has no id-node → no accessors at all
-                isNot(contains('OnHome')),
-              ]))
-            },
-          ));
-
-  test('a GUARD row emits nothing — the runtime mounts it at its position',
-      () => testBuilder(
-        PartBuilder([CanonGenerator()], '.canon.dart'),
-        {...assets, 'pkg|lib/spec.dart': _guardRowSpec},
-        rootPackage: 'pkg',
-        generateFor: {'pkg|lib/spec.dart'},
-        outputs: {
-          'pkg|lib/spec.canon.dart': decodedMatches(allOf([
+  test(
+    'a GUARD row emits nothing — the runtime mounts it at its position',
+    () => testBuilder(
+      PartBuilder([CanonGenerator()], '.canon.dart'),
+      {...assets, 'pkg|lib/spec.dart': _guardRowSpec},
+      rootPackage: 'pkg',
+      generateFor: {'pkg|lib/spec.dart'},
+      outputs: {
+        'pkg|lib/spec.canon.dart': decodedMatches(
+          allOf([
             isNot(contains('guard(')),
             isNot(contains('CachedGate')),
             contains('extension CoveredReads on Covered {'),
-          ])),
-        },
-      ));
+          ]),
+        ),
+      },
+    ),
+  );
 
-  test('a nested regency splices; merges emit NO wiring (the runtime owns it)',
-      () => testBuilder(
-        PartBuilder([CanonGenerator()], '.canon.dart'),
-        {...assets, 'pkg|lib/spec.dart': _nestedSpec},
-        rootPackage: 'pkg',
-        generateFor: {'pkg|lib/spec.dart'},
-        outputs: {
-          'pkg|lib/spec.canon.dart': decodedMatches(allOf([
+  test(
+    'a nested regency splices; merges emit NO wiring (the runtime owns it)',
+    () => testBuilder(
+      PartBuilder([CanonGenerator()], '.canon.dart'),
+      {...assets, 'pkg|lib/spec.dart': _nestedSpec},
+      rootPackage: 'pkg',
+      generateFor: {'pkg|lib/spec.dart'},
+      outputs: {
+        'pkg|lib/spec.canon.dart': decodedMatches(
+          allOf([
             contains('extension ViewerReads on Viewer {'), // spliced segment
             contains('extension UsersReads on Users {'),
             isNot(contains('.merge(')),
             isNot(contains('.mergeStore(')),
-          ])),
-        },
-      ));
+          ]),
+        ),
+      },
+    ),
+  );
 
-  test('a NAMED regency row is opaque — the runtime mounts it, nothing emits',
-      () => testBuilder(
-        PartBuilder([CanonGenerator()], '.canon.dart'),
-        {...assets, 'pkg|lib/spec.dart': _namedRegencySpec},
-        rootPackage: 'pkg',
-        generateFor: {'pkg|lib/spec.dart'},
-        outputs: {
-          'pkg|lib/spec.canon.dart': decodedMatches(allOf([
+  test(
+    'a NAMED regency row is opaque — the runtime mounts it, nothing emits',
+    () => testBuilder(
+      PartBuilder([CanonGenerator()], '.canon.dart'),
+      {...assets, 'pkg|lib/spec.dart': _namedRegencySpec},
+      rootPackage: 'pkg',
+      generateFor: {'pkg|lib/spec.dart'},
+      outputs: {
+        'pkg|lib/spec.canon.dart': decodedMatches(
+          allOf([
             contains('final ledger = Ledger.root(app);'),
             isNot(contains('OrdersDialect')),
-          ])),
-        },
-      ));
+          ]),
+        ),
+      },
+    ),
+  );
 
   Future<String> guardLogs(String spec) async {
     final logs = <String>[];
@@ -651,52 +687,78 @@ void main() {
     return logs.join('\n');
   }
 
-  test('rejects a store whose key type disagrees with its entity node',
-      () async {
-    expect(await guardLogs(_mismatchSpec),
-        allOf(contains('keys as'), contains("store's key type is `int`")));
-  });
+  test(
+    'rejects a store whose key type disagrees with its entity node',
+    () async {
+      expect(
+        await guardLogs(_mismatchSpec),
+        allOf(contains('keys as'), contains("store's key type is `int`")),
+      );
+    },
+  );
 
-  test('an ownership edge emits surgical tree ops on the parent map', () =>
-      testBuilder(
-        PartBuilder([EntitiesGenerator()], '.canon.dart'),
-        {...assets, 'pkg|lib/spec.dart': '$_guardBase'},
-        rootPackage: 'pkg',
-        generateFor: {'pkg|lib/spec.dart'},
-        outputs: {
-          'pkg|lib/spec.canon.dart': decodedMatches(allOf([
-            contains('extension ReviewStateTreeOps'
-                ' on IdentifiableMap<String, ReviewState>'),
+  test(
+    'an ownership edge emits surgical tree ops on the parent map',
+    () => testBuilder(
+      PartBuilder([EntitiesGenerator()], '.canon.dart'),
+      {...assets, 'pkg|lib/spec.dart': '$_guardBase'},
+      rootPackage: 'pkg',
+      generateFor: {'pkg|lib/spec.dart'},
+      outputs: {
+        'pkg|lib/spec.canon.dart': decodedMatches(
+          allOf([
+            contains(
+              'extension ReviewStateTreeOps'
+              ' on IdentifiableMap<String, ReviewState>',
+            ),
             contains('updateComment('),
             contains('o.copyWith(comments: o.comments.updateById(id, fn))'),
             contains('addComment('),
             contains('removeComment('),
-          ]))
-        },
-      ));
+          ]),
+        ),
+      },
+    ),
+  );
 
-  test('rejects a store on an OWNED entity — state lives in its root', () async {
-    expect(await guardLogs(_ownedStoreSpec),
-        allOf(contains('OWNED'), contains('root entity')));
-  });
+  test(
+    'rejects a store on an OWNED entity — state lives in its root',
+    () async {
+      expect(
+        await guardLogs(_ownedStoreSpec),
+        allOf(contains('OWNED'), contains('root entity')),
+      );
+    },
+  );
 
   test('rejects a store whose entity is no @entities row', () async {
-    expect(await guardLogs(_unknownEntitySpec),
-        allOf(contains('OrphanState'), contains('@entities')));
+    expect(
+      await guardLogs(_unknownEntitySpec),
+      allOf(contains('OrphanState'), contains('@entities')),
+    );
   });
 
   test('rejects a registry whose message type is not sealed', () async {
-    expect(await guardLogs(_unsealedMsgSpec),
-        allOf(contains('ReviewMsg'), contains('sealed')));
+    expect(
+      await guardLogs(_unsealedMsgSpec),
+      allOf(contains('ReviewMsg'), contains('sealed')),
+    );
   });
 
-  test('rejects the retired @regents enum with the migration pointer', () async {
-    expect(await guardLogs(_retiredEnumSpec),
-        allOf(contains('retired'), contains('Regency({...}')));
-  });
+  test(
+    'rejects the retired @regents enum with the migration pointer',
+    () async {
+      expect(
+        await guardLogs(_retiredEnumSpec),
+        allOf(contains('retired'), contains('Regency({...}')),
+      );
+    },
+  );
 
   test('rejects a guard reading a regent no row holds', () async {
-    expect(await guardLogs(_strangerReadSpec),
-        allOf(contains('CachedGate'), contains('no row')));
+    expect(
+      await guardLogs(_strangerReadSpec),
+      allOf(contains('CachedGate'), contains('no row')),
+    );
   });
 }

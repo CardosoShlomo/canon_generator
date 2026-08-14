@@ -207,7 +207,7 @@ class TodoListScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ids = todos.of(context); // key sequence — structural rebuilds
+    final ids = todos.idsOf(context); // key sequence — structural rebuilds
     return Scaffold(
       appBar: AppBar(title: const Text('todos')),
       body: ListView(

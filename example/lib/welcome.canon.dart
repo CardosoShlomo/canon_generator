@@ -25,10 +25,7 @@ bool _chainIs(List<Enum> a, List<Enum> b) {
   return true;
 }
 
-final class Screen<I> {
-  const Screen._(this._spec);
-  final Enum _spec;
-
+final class const Screen<I>._(final Enum _spec) {
   /// This screen's name, as written in the grammar enum — the
   /// readable identity of a stack entry (`Screen.stack.current.name`).
   String get name => _spec.name;
@@ -239,9 +236,7 @@ final class Screen<I> {
 /// The `Screen.root` facade — controls for the root (the history bottom):
 /// whether the launch position is a returnable root or a throwaway that
 /// exits on back.
-final class RootControls {
-  const RootControls._();
-
+final class const RootControls._() {
   /// Persist the launch/root position as returnable — back returns to it
   /// (then exits), and trunk-switches stack above it.
   void anchor() => _Screens.graph.anchor();
@@ -260,8 +255,7 @@ final class RootControls {
 
 /// The `Screen.replace` redirect facade — every verb mirrors `Screen`
 /// but commits as a history REPLACE (web `replaceState`).
-final class Replace {
-  const Replace._();
+final class const Replace._() {
   N go<N extends AnyNav>(Hop<N> hop) {
     _Screens.graph.markReplace();
     return Screen.go(hop);
@@ -294,9 +288,7 @@ final class Replace {
 }
 
 /// One committed navigation as typed [ScreenEntry] stacks.
-final class ScreenNavigation {
-  ScreenNavigation._(this._n);
-  final Navigation _n;
+final class ScreenNavigation._(final Navigation _n) {
   List<ScreenEntry> get from => [for (final e in _n.from) _entryOf(e.$1, e.$2)];
   List<ScreenEntry> get to => [for (final e in _n.to) _entryOf(e.$1, e.$2)];
   ScreenEntry get source => _entryOf(_n.source.$1, _n.source.$2);
@@ -309,31 +301,20 @@ final class ScreenNavigation {
 }
 
 /// One typed entry per screen — `switch` it for the screen-specific id.
-sealed class ScreenEntry {
-  const ScreenEntry();
-}
-
-final class HomeEntry extends ScreenEntry {
-  const HomeEntry();
-}
-
-final class TodoEntry extends ScreenEntry {
-  const TodoEntry(this.id);
-  final TodoId id;
-}
-
+sealed class const ScreenEntry();
+final class const HomeEntry() extends ScreenEntry;
+final class const TodoEntry(final TodoId id) extends ScreenEntry;
 ScreenEntry _entryOf(Enum s, Object? id) => switch (s) {
   _Screens.home => const HomeEntry(),
   _Screens.todo => TodoEntry(id as TodoId),
   _ => throw StateError('not a _Screens screen'),
 };
 
-final class Hop<N extends AnyNav> {
-  const Hop._(this.spec, this.id, this.nav);
-  final Enum spec;
-  final Object? id;
-  final N nav;
-
+final class const Hop<N extends AnyNav>._(
+  final Enum spec,
+  final Object? id,
+  final N nav,
+) {
   /// The root-down chain this hop replays. A single kick-start is one
   /// segment; a navigable `Place` (a `Place`) overrides it with its
   /// full path, so `Screen.go` lands the whole placement.
@@ -349,41 +330,38 @@ final class Hop<N extends AnyNav> {
 
 /// The root/boot placement: `Screen.current` returns it until the first
 /// commit. `if (Screen.current case Root()) ...` gates blob-null cold-boot UI.
-final class Root extends AnyPlacement {
-  const Root._() : super._();
+final class const Root._() extends AnyPlacement {
+  this : super._();
 }
 
-final class On<N extends AnyNav> {
-  const On._(this.specs, this.ids, this.nav, [this.conds = const []]);
-  final List<Enum> specs;
-  final List<Object?> ids;
-
-  /// The exact nav for a single-placement terminal; null for a multi-
-  /// placement one — `Screen.on` resolves it from the live chain.
-  final N? nav;
-
-  /// View-state conditions on the terminal screen (`.query`/`.fragment`).
-  final List<ViewCond> conds;
+final class const On<N extends AnyNav>._(
+  final List<Enum> specs,
+  final List<Object?> ids,
+  final N? nav, [
+  final List<ViewCond> conds = const [],
+]) {
   static OnHome get home =>
       OnHome._([_Screens.home], [null], const HomeNav._());
   static OnTodo get todo =>
       OnTodo._([_Screens.todo], [null], const TodoNav._());
 }
 
-final class OnHome extends On<HomeNav> {
-  const OnHome._(super.specs, super.ids, super.nav) : super._();
+final class const OnHome._(super.specs, super.ids, super.nav)
+    extends On<HomeNav> {
+  this : super._();
   OnTodo get todo =>
       OnTodo._([...specs, _Screens.todo], [...ids, null], const TodoNav._());
 }
 
-final class OnTodo extends On<TodoNav> {
-  const OnTodo._(super.specs, super.ids, super.nav) : super._();
+final class const OnTodo._(super.specs, super.ids, super.nav)
+    extends On<TodoNav> {
+  this : super._();
   OnTodo call(TodoId id) =>
       OnTodo._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
-sealed class AnyPlacement extends AnyNav {
-  const AnyPlacement._() : super._();
+sealed class const AnyPlacement._() extends AnyNav {
+  this : super._();
 }
 
 AnyPlacement _atOf(Enum s) {
@@ -395,14 +373,12 @@ AnyPlacement _atOf(Enum s) {
   };
 }
 
-abstract base class AnyNav {
-  const AnyNav._();
-}
+abstract base class const AnyNav._();
 
 sealed class PopDestPlacement {}
 
-final class CanPopNav extends AnyNav {
-  const CanPopNav._() : super._();
+final class const CanPopNav._() extends AnyNav {
+  this : super._();
   PopDestPlacement pop() {
     _Screens.graph.pop();
     return _resolvePopDest();
@@ -415,8 +391,8 @@ PopDestPlacement _resolvePopDest() {
   throw StateError('unresolved pop destination: $c');
 }
 
-final class HomeNav extends AnyPlacement implements PopDestPlacement {
-  const HomeNav._() : super._();
+final class const HomeNav._() extends AnyPlacement implements PopDestPlacement {
+  this : super._();
   HomeNav surface() {
     _Screens.graph.popTo(_Screens.home);
     return const HomeNav._();
@@ -429,8 +405,8 @@ final class HomeNav extends AnyPlacement implements PopDestPlacement {
   }
 }
 
-final class TodoNav extends AnyPlacement {
-  const TodoNav._() : super._();
+final class const TodoNav._() extends AnyPlacement {
+  this : super._();
   TodoNav surface() {
     _Screens.graph.popTo(_Screens.todo);
     return const TodoNav._();
@@ -469,13 +445,8 @@ void verifyScreens() {
 
 /// A URL the app understands: a [Place] or a [Link]. Build one with
 /// `Url.<route>…` and `.toUri([domain])`; `parseUrl` returns one.
-sealed class Url {
-  const Url([this.domain]);
+sealed class const Url([final String? domain]) {
   Uri toUri(String domain);
-
-  /// The inbound origin (`scheme://host[:port]`) when this came from
-  /// `parseUrl` (read it in `Screen.resolver`); null when built locally.
-  final String? domain;
   static _WLHome get home => _WLHome._([_Screens.home], [null]);
   static _WLHomeTodo todo(TodoId id) =>
       _WLHomeTodo._([_Screens.home, _Screens.todo], [null, id]);
@@ -485,8 +456,7 @@ sealed class Url {
 /// destination. Go-able: every `Place` is a [Hop], so `Screen.go(place)`
 /// replays its root-down chain and lands the placement. Built root-down
 /// (`Place.home.item(id)`); a parsed nav-mirror URL is one.
-sealed class Place extends Url implements Hop<AnyNav> {
-  const Place([super.domain]);
+sealed class const Place([super.domain]) extends Url implements Hop<AnyNav> {
   @override
   List<(Enum, Object?)> get chain;
   @override
@@ -505,23 +475,20 @@ sealed class Place extends Url implements Hop<AnyNav> {
 /// A resolve-only branch (declared via `.link`/`slots`): URL-shaped DATA
 /// the resolver interprets. NOT a position — no widget, never navigable.
 /// Shareable via `Link.<route>.toUri()`; read its fields in `Screen.resolver`.
-sealed class Link extends Url {
-  const Link([super.domain]);
-}
+sealed class const Link([super.domain]) extends Url {}
 
 /// The bare root `/` — a plain app-open (no specific destination).
-final class RootUrl extends Url {
-  const RootUrl([super.domain]);
+final class const RootUrl([super.domain]) extends Url {
   @override
   Uri toUri(String domain) => Uri.parse((domain) + '/');
 }
 
 /// A nav-mirror `Place` parsed from a URL (e.g. `/home/item/42`); carries
 /// the root-down chain so `Screen.go` lands it.
-final class _NavPlace extends Place {
-  const _NavPlace(this.chain, [super.domain]);
-  @override
-  final List<(Enum, Object?)> chain;
+final class const _NavPlace(
+  @override final List<(Enum, Object?)> chain, [
+  super.domain,
+]) extends Place {
   @override
   Uri toUri(String domain) => Uri.parse(
     _Screens.graph.encodeNavUrl(
@@ -555,10 +522,8 @@ Url? parseUrl(String url) {
   return null;
 }
 
-final class _WLHome implements Hop<HomeNav> {
-  const _WLHome._(this._s, this._i);
-  final List<Enum> _s;
-  final List<Object?> _i;
+final class const _WLHome._(final List<Enum> _s, final List<Object?> _i)
+    implements Hop<HomeNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -577,10 +542,8 @@ final class _WLHome implements Hop<HomeNav> {
       Uri.parse(_Screens.graph.encodeNavUrl(domain, _s, _i));
 }
 
-final class _WLHomeTodo implements Hop<TodoNav> {
-  const _WLHomeTodo._(this._s, this._i);
-  final List<Enum> _s;
-  final List<Object?> _i;
+final class const _WLHomeTodo._(final List<Enum> _s, final List<Object?> _i)
+    implements Hop<TodoNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -602,7 +565,7 @@ final class _WLHomeTodo implements Hop<TodoNav> {
 /// the runtime splices its rows in order and wires its merge
 /// edges. `Screen.manager` binds the nav side. Reads hang on the
 /// row CLASSES (`extension <Row>Reads`) — name your rows with const
-/// globals (`const todos = Todos();`) and read `todos.of(context)`.
+/// globals (`const todos = Todos();`) and read `todos.idsOf(context)`.
 final ledger = Ledger.root(app);
 
 /// States a fact — dispatch is the ONLY verb, so it needs no prefix.
@@ -611,10 +574,9 @@ void dispatch(Msg msg) => ledger.dispatch(msg);
 bool _bound = false;
 
 /// The `todo` screen was navigated to (never a render).
-class TodoEnteredMsg extends Msg with Identifiable<TodoId> {
-  const TodoEnteredMsg(this.id);
-  final TodoId id;
-}
+class const TodoEnteredMsg(final TodoId id)
+    extends Msg
+    with Identifiable<TodoId>;
 
 /// Reads for a `TodosCovered` row — sugar over `ledger.at(this)`.
 extension TodosCoveredReads on TodosCovered {
@@ -644,8 +606,13 @@ extension LocalTodosReads on LocalTodos {
   Stream<void> get structure => mem.structure;
   Stream<StoreEvent<TodoId, Todo, TodoMsg>> get events => mem.events;
 
-  /// The key SEQUENCE, reactively — structural rebuilds only.
-  List<TodoId> of(BuildContext context) => mem.of(context);
+  /// The key SEQUENCE, reactively — structural rebuilds only;
+  /// value changes never fire, so scope rows with [item].
+  List<TodoId> idsOf(BuildContext context) => mem.idsOf(context);
+
+  /// The ROWS, reactively — rebuilds on shape AND on ANY
+  /// row's value change.
+  List<Todo> entitiesOf(BuildContext context) => mem.entitiesOf(context);
 
   /// One entity, reactively — id omitted reads the AMBIENT identity.
   Todo? entityOf(BuildContext context, [TodoId? id]) =>
@@ -680,8 +647,13 @@ extension TodosReads on Todos {
   Stream<void> get structure => mem.structure;
   Stream<StoreEvent<TodoId, Todo, TodoMsg>> get events => mem.events;
 
-  /// The key SEQUENCE, reactively — structural rebuilds only.
-  List<TodoId> of(BuildContext context) => mem.of(context);
+  /// The key SEQUENCE, reactively — structural rebuilds only;
+  /// value changes never fire, so scope rows with [item].
+  List<TodoId> idsOf(BuildContext context) => mem.idsOf(context);
+
+  /// The ROWS, reactively — rebuilds on shape AND on ANY
+  /// row's value change.
+  List<Todo> entitiesOf(BuildContext context) => mem.entitiesOf(context);
 
   /// One entity, reactively — id omitted reads the AMBIENT identity.
   Todo? entityOf(BuildContext context, [TodoId? id]) =>

@@ -50,20 +50,25 @@ class _Row {
 /// derives from the `@entities` graph through each store's entity type.
 class RegistryGenerator {
   Future<String> generateForGraph(
-      TopLevelVariableElement element, BuildStep buildStep) async {
+    TopLevelVariableElement element,
+    BuildStep buildStep,
+  ) async {
     final graphVar = element.name!;
     if (graphVar == 'ledger') {
       throw InvalidGenerationSourceError(
-          'the @canon regency may not be named `ledger` — the generated '
-          'Ledger global claims that name; call the graph `app` (or any '
-          'other name).',
-          element: element);
+        'the @canon regency may not be named `ledger` — the generated '
+        'Ledger global claims that name; call the graph `app` (or any '
+        'other name).',
+        element: element,
+      );
     }
     final library = element.library;
     // The identity faces mention BuildContext — emit them only where the
     // Flutter binding is imported, so pure-Dart consumers stay pure.
-    final flutterBound = library.firstFragment.libraryImports.any((i) =>
-        i.importedLibrary?.uri.toString().contains('canon_flutter') ?? false);
+    final flutterBound = library.firstFragment.libraryImports.any(
+      (i) =>
+          i.importedLibrary?.uri.toString().contains('canon_flutter') ?? false,
+    );
 
     final rows = await _flattenedRows(element, buildStep);
 
@@ -80,8 +85,16 @@ class RegistryGenerator {
     // Deictic item navigation — per id NODE (every store on the node shares
     // one verb set): node identity → (typed key, node name, own screens,
     // component projections (enum, screen, component)).
-    final idNavs = <String,
-        (String, String, List<(String, String)>, List<(String, String, String)>)>{};
+    final idNavs =
+        <
+          String,
+          (
+            String,
+            String,
+            List<(String, String)>,
+            List<(String, String, String)>,
+          )
+        >{};
     // Reverse (gated-direction) verbs, keyed by the COMPONENT node:
     // (typed key, node name, emitted verb lines).
     final reverseNavs = <String, (String, String, List<String>)>{};
@@ -112,8 +125,9 @@ class RegistryGenerator {
       final cls = held is InterfaceType ? held.element.name : null;
       if (cls == null) {
         throw InvalidGenerationSourceError(
-            'row `${row.source}` has no resolvable class.',
-            element: element);
+          'row `${row.source}` has no resolvable class.',
+          element: element,
+        );
       }
 
       // A UNIT row: holds a Unit<S, M> (cardinality one, keyless facts).
@@ -129,7 +143,8 @@ class RegistryGenerator {
         }
         // S may be nullable (Unit<ViewerState?, …>) — the entity row is
         // the base type.
-        var stateKey = vArgs[0].contains('InvalidType') ||
+        var stateKey =
+            vArgs[0].contains('InvalidType') ||
                 v.typeArguments[0].getDisplayString() != vArgs[0]
             ? vArgs[0]
             : _expandedName(v.typeArguments[0]);
@@ -144,32 +159,39 @@ class RegistryGenerator {
             stateKey != 'NavState' &&
             !_fromRegent(held)) {
           throw InvalidGenerationSourceError(
-              'unit `$cls` holds a Unit of `${vArgs[0]}`, which '
-              'is not a row of the @entities enum — declare the UNIT entity '
-              '(type, no key) there.',
-              element: element);
+            'unit `$cls` holds a Unit of `${vArgs[0]}`, which '
+            'is not a row of the @entities enum — declare the UNIT entity '
+            '(type, no key) there.',
+            element: element,
+          );
         }
         if (info != null && info.node != null && !info.node!.isNull) {
           throw InvalidGenerationSourceError(
-              'unit `$cls`: `${vArgs[0]}` is a KEYED entity (it has an '
-              'id node) — a Unit may only hold a UNIT entity (a row '
-              'declared without a key).',
-              element: element);
+            'unit `$cls`: `${vArgs[0]}` is a KEYED entity (it has an '
+            'id node) — a Unit may only hold a UNIT entity (a row '
+            'declared without a key).',
+            element: element,
+          );
         }
         _checkSealedM(cls, held, v.typeArguments.last, element);
         if (seenClasses.add(cls)) {
           final b = StringBuffer();
-          b.writeln('/// Reads for a `$cls` row — sugar over `ledger.at(this)`.');
+          b.writeln(
+            '/// Reads for a `$cls` row — sugar over `ledger.at(this)`.',
+          );
           b.writeln('extension ${cls}Reads on $cls {');
-          b.writeln('  UnitMemory<${vArgs.join(', ')}> get mem => ledger.at(this);');
+          b.writeln(
+            '  UnitMemory<${vArgs.join(', ')}> get mem => ledger.at(this);',
+          );
           b.writeln();
           b.writeln('  /// The state, now — merge-resolved.');
           b.writeln('  ${vArgs[0]} get state => mem.state;');
           b.writeln();
           b.writeln('  Stream<void> get changes => mem.changes;');
-          b.writeln('  Stream<UnitEvent<${vArgs.join(', ')}>> get events => mem.events;');
-          final idKey =
-              await _identityKeyOf(v.typeArguments[0], buildStep);
+          b.writeln(
+            '  Stream<UnitEvent<${vArgs.join(', ')}>> get events => mem.events;',
+          );
+          final idKey = await _identityKeyOf(v.typeArguments[0], buildStep);
           final idNullable = vArgs[0].endsWith('?');
           if (idKey != null) {
             b.writeln();
@@ -180,21 +202,29 @@ class RegistryGenerator {
           }
           if (flutterBound) {
             b.writeln();
-            b.writeln('  /// The value, reactively — rebuilds on every change.');
-            b.writeln('  ${vArgs[0]} of(BuildContext context) => mem.of(context);');
+            b.writeln(
+              '  /// The value, reactively — rebuilds on every change.',
+            );
+            b.writeln(
+              '  ${vArgs[0]} of(BuildContext context) => mem.of(context);',
+            );
             if (idKey != null) {
               b.writeln();
               b.writeln('  /// The identity, reactively — rebuilds only');
               b.writeln('  /// when the id changes, never on field churn.');
               idNullable
                   ? b.writeln(
-                      '  $idKey? idOf(BuildContext context) => mem.idOf(context);')
+                      '  $idKey? idOf(BuildContext context) => mem.idOf(context);',
+                    )
                   : b.writeln(
-                      '  $idKey idOf(BuildContext context) => mem.idOf(context)!;');
+                      '  $idKey idOf(BuildContext context) => mem.idOf(context)!;',
+                    );
             }
             if (vArgs[0].startsWith('Set<')) {
               b.writeln();
-              b.writeln('  /// Membership of the ambient id — the in-flight idiom.');
+              b.writeln(
+                '  /// Membership of the ambient id — the in-flight idiom.',
+              );
               b.writeln('  bool containsIdOf(BuildContext context) =>');
               b.writeln('      mem.containsIdOf(context);');
             }
@@ -217,9 +247,10 @@ class RegistryGenerator {
       final s = _matched(held);
       if (s == null) {
         throw InvalidGenerationSourceError(
-            'row `${row.source}` must hold a Regent — a Store<K,E,M>, a '
-            'Unit<S,M>, a Guard/Veto, or a Regency (nested or named).',
-            element: element);
+          'row `${row.source}` must hold a Regent — a Store<K,E,M>, a '
+          'Unit<S,M>, a Guard/Veto, or a Regency (nested or named).',
+          element: element,
+        );
       }
       var args = [for (final a in s.typeArguments) a.getDisplayString()];
       // A store keyed by a GENERATED type (`Store<AdId, …>`) resolves to
@@ -240,8 +271,14 @@ class RegistryGenerator {
       // can never disagree. Matched on the alias-EXPANDED type name: the
       // store's supertype keeps a typedef (`AdChatItem`) while the row's Type
       // constant expands it (`ChatItem<AdChatId>`).
-      final info = _entityFor(cls, args[1], entityByType, element,
-          key: entityKey, enforced: hasEntities);
+      final info = _entityFor(
+        cls,
+        args[1],
+        entityByType,
+        element,
+        key: entityKey,
+        enforced: hasEntities,
+      );
       _checkKeyAgreement(cls, args[1], args[0], info, element);
       _checkSealedM(cls, held, s.typeArguments.last, element);
 
@@ -265,37 +302,57 @@ class RegistryGenerator {
         final b = StringBuffer();
         b.writeln('/// Reads for a `$cls` row — sugar over `ledger.at(this)`.');
         b.writeln('extension ${cls}Reads on $cls {');
-        b.writeln('  StoreMemory<${args.join(', ')}> get mem => ledger.at(this);');
+        b.writeln(
+          '  StoreMemory<${args.join(', ')}> get mem => ledger.at(this);',
+        );
         b.writeln();
         b.writeln('  /// The keyed collection, merge-resolved.');
-        b.writeln('  IdentifiableMap<$key, $state> get entities => mem.entities;');
+        b.writeln(
+          '  IdentifiableMap<$key, $state> get entities => mem.entities;',
+        );
         b.writeln('  Iterable<$state> get values => mem.values;');
         b.writeln('  List<$key> get ids => mem.ids;');
         b.writeln('  $state? operator []($key key) => mem[key];');
         b.writeln();
         b.writeln('  Stream<$key> get changes => mem.changes;');
         b.writeln('  Stream<void> get structure => mem.structure;');
-        b.writeln('  Stream<StoreEvent<${args.join(', ')}>> get events => mem.events;');
+        b.writeln(
+          '  Stream<StoreEvent<${args.join(', ')}>> get events => mem.events;',
+        );
         if (flutterBound) {
           b.writeln();
-          b.writeln('  /// The key SEQUENCE, reactively — structural rebuilds only;');
-          b.writeln('  /// value changes never fire, so scope rows with [item].');
-          b.writeln('  List<$key> idsOf(BuildContext context) => mem.idsOf(context);');
+          b.writeln(
+            '  /// The key SEQUENCE, reactively — structural rebuilds only;',
+          );
+          b.writeln(
+            '  /// value changes never fire, so scope rows with [item].',
+          );
+          b.writeln(
+            '  List<$key> idsOf(BuildContext context) => mem.idsOf(context);',
+          );
           b.writeln();
-          b.writeln('  /// The ROWS, reactively — rebuilds on shape AND on ANY');
+          b.writeln(
+            '  /// The ROWS, reactively — rebuilds on shape AND on ANY',
+          );
           b.writeln('  /// row\'s value change.');
           b.writeln('  List<$state> entitiesOf(BuildContext context) =>');
           b.writeln('      mem.entitiesOf(context);');
           b.writeln();
-          b.writeln('  /// One entity, reactively — id omitted reads the AMBIENT identity.');
+          b.writeln(
+            '  /// One entity, reactively — id omitted reads the AMBIENT identity.',
+          );
           b.writeln('  $state? entityOf(BuildContext context, [$key? id]) =>');
           b.writeln('      mem.entityOf(context, id);');
           b.writeln();
-          b.writeln('  /// Plants the item scope over [child] — the list-tile spelling.');
+          b.writeln(
+            '  /// Plants the item scope over [child] — the list-tile spelling.',
+          );
           b.writeln('  Widget item($key id, {required Widget child}) =>');
           b.writeln('      mem.item(id, child: child);');
           b.writeln();
-          b.writeln('  /// The enclosing item scope\'s id, when planted from THIS row.');
+          b.writeln(
+            '  /// The enclosing item scope\'s id, when planted from THIS row.',
+          );
           b.writeln('  $key? idOf(BuildContext context) => mem.idOf(context);');
         }
         for (final r in onScreenReads) {
@@ -335,8 +392,9 @@ class RegistryGenerator {
     // except for movement.
     if (navRowSource == null && screensEnum != null) {
       log.info(
-          'the regency does not own navigation — add `NavUnit()` as the '
-          'LAST row for whole-session replay and nav-judging gates.');
+        'the regency does not own navigation — add `NavUnit()` as the '
+        'LAST row for whole-session replay and nav-judging gates.',
+      );
     }
     // The ledger OWNS navigation: verbs route through the queue, the
     // NavUnit row folds, the graph mirrors the folded state back — and is
@@ -364,13 +422,23 @@ class RegistryGenerator {
     b.writeln('// ignore_for_file: unused_element');
     b.writeln('/// The app-wide ledger, built from the `$graphVar` regency —');
     b.writeln('/// the runtime splices its rows in order and wires its merge');
-    b.writeln('/// edges. `Screen.manager` binds the nav side. Reads hang on the');
-    b.writeln('/// row CLASSES (`extension <Row>Reads`) — name your rows with const');
-    b.writeln('/// globals (`const todos = Todos();`) and read `todos.idsOf(context)`.');
+    b.writeln(
+      '/// edges. `Screen.manager` binds the nav side. Reads hang on the',
+    );
+    b.writeln(
+      '/// row CLASSES (`extension <Row>Reads`) — name your rows with const',
+    );
+    b.writeln(
+      '/// globals (`const todos = Todos();`) and read `todos.idsOf(context)`.',
+    );
     b.writeln('final ledger = Ledger.root($graphVar);');
     b.writeln();
-    b.writeln('/// States a fact — dispatch is the ONLY verb, so it needs no prefix.');
-    b.writeln('/// (`ledger.` keeps the rarer surfaces: `on`, `veto`, `guard`, `journal`.)');
+    b.writeln(
+      '/// States a fact — dispatch is the ONLY verb, so it needs no prefix.',
+    );
+    b.writeln(
+      '/// (`ledger.` keeps the rarer surfaces: `on`, `veto`, `guard`, `journal`.)',
+    );
     b.writeln('void dispatch(Msg msg) => ledger.dispatch(msg);');
     b.writeln('bool _bound = false;');
     // Scope-entry FACTS — one per id-keyed screen: a committed navigation
@@ -390,17 +458,19 @@ class RegistryGenerator {
       final joins = sealedGroups.contains(ask) ? ' implements $ask' : '';
       b.writeln();
       b.writeln('/// The `${e.key}` screen was navigated to (never a render).');
-      b.writeln('class $cls extends Msg with Identifiable<$key>$joins {');
-      b.writeln('  const $cls(this.id);');
-      b.writeln('  final ${e.value.$2} id;');
-      b.writeln('}');
+      b.writeln(
+        'class const $cls(final ${e.value.$2} id) '
+        'extends Msg with Identifiable<$key>$joins;',
+      );
     }
     b.writeln();
     // The per-CLASS read extensions — the generator never invents a name.
     for (final ext in extensions) {
       b.writeln(ext);
     }
-    b.writeln('/// The nav-side wiring. Idempotent — `Screen.manager` calls it.');
+    b.writeln(
+      '/// The nav-side wiring. Idempotent — `Screen.manager` calls it.',
+    );
     b.writeln('extension ${_cap(graphVar)}Ledger on Ledger {');
     b.writeln('  void bind() {');
     b.writeln('    if (_bound) return;');
@@ -422,7 +492,9 @@ class RegistryGenerator {
     // reverse verbs (the identity exists in the grammar regardless).
     for (final r in reverseNavs.entries) {
       idNavs.putIfAbsent(
-          r.key, () => (r.value.$1, r.value.$2, const [], const []));
+        r.key,
+        () => (r.value.$1, r.value.$2, const [], const []),
+      );
     }
     for (final e in idNavs.entries) {
       final (key, nodeName, screens, compVerbs) = e.value;
@@ -430,9 +502,10 @@ class RegistryGenerator {
       final prior = navKeys[key];
       if (prior != null) {
         throw InvalidGenerationSourceError(
-            'id nodes `$prior` and `$nodeName` both key as `$key` — their '
-            'IdNav verb sets would collide; give the nodes @IDs typed ids.',
-            element: element);
+          'id nodes `$prior` and `$nodeName` both key as `$key` — their '
+          'IdNav verb sets would collide; give the nodes @IDs typed ids.',
+          element: element,
+        );
       }
       navKeys[key] = nodeName;
       b.writeln();
@@ -440,8 +513,12 @@ class RegistryGenerator {
       // marks canon's generated identity beside the `ProductId` value type.
       // Flutter-only (BuildContext), so gated on the binding being imported.
       if (flutterBound) {
-        b.writeln('/// Canon\'s `$nodeName` identity face: `of` reads the ambient');
-        b.writeln('/// typed id, `navOf` mints the deictic handle for the verbs.');
+        b.writeln(
+          '/// Canon\'s `$nodeName` identity face: `of` reads the ambient',
+        );
+        b.writeln(
+          '/// typed id, `navOf` mints the deictic handle for the verbs.',
+        );
         final node = '${nodeTypeOf[e.key]}.$nodeName';
         b.writeln('abstract final class ${_cap(nodeName)}ID {');
         b.writeln('  static $key of(BuildContext context) =>');
@@ -453,10 +530,16 @@ class RegistryGenerator {
         b.writeln('  static $key itemOf(BuildContext context) =>');
         b.writeln('      IdScope.itemOf<$key>(context);');
         if (reverseNavs.containsKey(e.key)) {
-          b.writeln('  /// The CLAIMED handle — compile-gated: only chains that');
-          b.writeln('  /// EVIDENCE this identity type-check (`${_cap(nodeName)}On`);');
+          b.writeln(
+            '  /// The CLAIMED handle — compile-gated: only chains that',
+          );
+          b.writeln(
+            '  /// EVIDENCE this identity type-check (`${_cap(nodeName)}On`);',
+          );
           b.writeln('  /// null when the claim misses the live chain.');
-          b.writeln('  static IdNav<$key>? on(BuildContext context, ${_cap(nodeName)}On which) =>');
+          b.writeln(
+            '  static IdNav<$key>? on(BuildContext context, ${_cap(nodeName)}On which) =>',
+          );
           b.writeln('      Screen.on(which as On) == null');
           b.writeln('          ? null');
           b.writeln('          : IdScope.navOf<$key>(context, $node);');
@@ -465,7 +548,9 @@ class RegistryGenerator {
         b.writeln();
       }
       b.writeln('/// Deictic forward verbs for the `$nodeName` identity —');
-      b.writeln('/// obtain via `${_cap(nodeName)}ID.navOf(context)`; the id is ambient.');
+      b.writeln(
+        '/// obtain via `${_cap(nodeName)}ID.navOf(context)`; the id is ambient.',
+      );
       b.writeln('extension ${_cap(nodeName)}IdNav on IdNav<$key> {');
       for (final (scrEnum, scr) in screens) {
         final verb = _entityVerb(scr, nodeName);
@@ -502,9 +587,11 @@ class RegistryGenerator {
     required List<String> binds,
     required List<(String, String, String)> triggers,
     required List<String> reads,
-    required Map<String,
-            (String, String, List<(String, String)>, List<(String, String, String)>)>
-        idNavs,
+    required Map<
+      String,
+      (String, String, List<(String, String)>, List<(String, String, String)>)
+    >
+    idNavs,
     required Map<String, (String, String, List<String>)> reverseNavs,
     required Map<String, String> nodeTypeOf,
     required Map<String, List<(String, String)>> screensByNode,
@@ -519,7 +606,7 @@ class RegistryGenerator {
       // component's own screens (goUser from an adChat identity).
       final comps = [info.node?.getField('n1'), info.node?.getField('n2')];
       final compNames = [
-        for (final c in comps) c?.getField('_name')?.toStringValue()
+        for (final c in comps) c?.getField('_name')?.toStringValue(),
       ];
       final compVerbs = <(String, String, String)>[]; // enum, screen, component
       for (var i = 0; i < 2; i++) {
@@ -557,20 +644,25 @@ class RegistryGenerator {
             lines.add('    final e = $en.graph.stack.lastWhere(');
             lines.add('        (e) => const {$sources}.contains(e.screen));');
             lines.add(
-                '    final other = const {$compositeSet}.contains(e.screen)');
+              '    final other = const {$compositeSet}.contains(e.screen)',
+            );
             lines.add('        ? (e.id as $compositeKey).$otherName');
             lines.add('        : e.id as $otherKey;');
             lines.add('    $en.graph.popTo(screen);');
             lines.add(
-                '    $en.graph.go($en.$scr, $compositeKey.of(${i == 0 ? 'id, other' : 'other, id'}), true);');
+              '    $en.graph.go($en.$scr, $compositeKey.of(${i == 0 ? 'id, other' : 'other, id'}), true);',
+            );
             lines.add('  }');
           }
-          final compKey = _typedNodeName(comps[i]!) ??
+          final compKey =
+              _typedNodeName(comps[i]!) ??
               _nodeValueType(comps[i]!) ??
               'Object';
           reverseNavs.update(
-              _nodeId(comps[i])!, (r) => (r.$1, r.$2, [...r.$3, ...lines]),
-              ifAbsent: () => (compKey, compNames[i]!, lines));
+            _nodeId(comps[i])!,
+            (r) => (r.$1, r.$2, [...r.$3, ...lines]),
+            ifAbsent: () => (compKey, compNames[i]!, lines),
+          );
           nodeTypeOf[_nodeId(comps[i])!] = comps[i]!.type!.getDisplayString();
         }
       }
@@ -578,8 +670,10 @@ class RegistryGenerator {
     // Tag the store with its grammar node: every scope it plants carries
     // the node, so the typed ambient reads resolve by MATCH, not distance.
     if (flutterBound && keyNode != null && nodeName != null) {
-      binds.add('    IdScope.tag(ledger.at($source), '
-          '${info.node!.type!.getDisplayString()}.$nodeName);');
+      binds.add(
+        '    IdScope.tag(ledger.at($source), '
+        '${info.node!.type!.getDisplayString()}.$nodeName);',
+      );
     }
     for (final (scrEnum, scr) in screens) {
       triggers.add((scrEnum, scr, keyType));
@@ -588,7 +682,8 @@ class RegistryGenerator {
       reads.add('  $state? on${_cap(scr)}() {');
       reads.add('    for (final e in $scrEnum.graph.stack) {');
       reads.add(
-          '      if (e.screen == $scrEnum.$scr) return mem[e.id as $keyType];');
+        '      if (e.screen == $scrEnum.$scr) return mem[e.id as $keyType];',
+      );
       reads.add('    }');
       reads.add('    return null;');
       reads.add('  }');
@@ -603,44 +698,58 @@ class RegistryGenerator {
   /// row keeps its source text — the const re-spelling of that expression
   /// is the row's identity.
   Future<List<_Row>> _flattenedRows(
-      TopLevelVariableElement element, BuildStep buildStep) async {
+    TopLevelVariableElement element,
+    BuildStep buildStep,
+  ) async {
     final rows = <_Row>[];
     await _walkGraphVar(element, rows, buildStep);
     return rows;
   }
 
-  Future<void> _walkGraphVar(TopLevelVariableElement variable, List<_Row> rows,
-      BuildStep buildStep) async {
-    final ast = await buildStep.resolver
-        .astNodeFor(variable.firstFragment, resolve: true);
+  Future<void> _walkGraphVar(
+    TopLevelVariableElement variable,
+    List<_Row> rows,
+    BuildStep buildStep,
+  ) async {
+    final ast = await buildStep.resolver.astNodeFor(
+      variable.firstFragment,
+      resolve: true,
+    );
     if (ast is! VariableDeclaration || ast.initializer == null) {
       throw InvalidGenerationSourceError(
-          'the @canon regency must be a const variable with a '
-          '`Regency({...})` initializer.',
-          element: variable);
+        'the @canon regency must be a const variable with a '
+        '`Regency({...})` initializer.',
+        element: variable,
+      );
     }
     await _walkGraphExpr(ast.initializer!, variable, rows, buildStep);
   }
 
-  Future<void> _walkGraphExpr(Expression expr, Element context, List<_Row> rows,
-      BuildStep buildStep) async {
+  Future<void> _walkGraphExpr(
+    Expression expr,
+    Element context,
+    List<_Row> rows,
+    BuildStep buildStep,
+  ) async {
     final creation = switch (expr) {
       InstanceCreationExpression() => expr,
       _ => null,
     };
     if (creation == null || !_wears(expr.staticType, 'Regency')) {
       throw InvalidGenerationSourceError(
-          'expected an inline `Regency({...})` here, got '
-          '`${expr.toSource()}` — a named regency subclass is not readable; '
-          'nest graphs as const variables instead.',
-          element: context);
+        'expected an inline `Regency({...})` here, got '
+        '`${expr.toSource()}` — a named regency subclass is not readable; '
+        'nest graphs as const variables instead.',
+        element: context,
+      );
     }
     final rowsArg =
         creation.argumentList.arguments.firstOrNull?.argumentExpression;
     if (rowsArg is! SetOrMapLiteral) {
       throw InvalidGenerationSourceError(
-          '`${expr.toSource()}` carries no row set literal.',
-          element: context);
+        '`${expr.toSource()}` carries no row set literal.',
+        element: context,
+      );
     }
     for (final e in rowsArg.elements) {
       if (e is! Expression) continue;
@@ -651,12 +760,18 @@ class RegistryGenerator {
   /// Recurses into a named `Regency` subclass whose const ctor grafts a
   /// LITERAL row set (`: super({...})`); a computed row set keeps the
   /// subclass opaque.
-  Future<void> _walkNamedRegency(DartType? t, Element context,
-      List<_Row> rows, BuildStep buildStep) async {
+  Future<void> _walkNamedRegency(
+    DartType? t,
+    Element context,
+    List<_Row> rows,
+    BuildStep buildStep,
+  ) async {
     final el = t is InterfaceType ? t.element : null;
     if (el == null) return;
-    final ast =
-        await buildStep.resolver.astNodeFor(el.firstFragment, resolve: true);
+    final ast = await buildStep.resolver.astNodeFor(
+      el.firstFragment,
+      resolve: true,
+    );
     if (ast is! ClassDeclaration) return;
     for (final member in ast.body.members) {
       if (member is! ConstructorDeclaration) continue;
@@ -673,8 +788,12 @@ class RegistryGenerator {
     }
   }
 
-  Future<void> _walkRow(Expression e, Element context, List<_Row> rows,
-      BuildStep buildStep) async {
+  Future<void> _walkRow(
+    Expression e,
+    Element context,
+    List<_Row> rows,
+    BuildStep buildStep,
+  ) async {
     final t = e.staticType;
     if (_wears(t, 'Regency')) {
       // A nested graph: inline creation recurses in place; an identifier
@@ -702,22 +821,22 @@ class RegistryGenerator {
       final lib = context.library;
       final target = name == null || lib == null
           ? null
-          : lib.topLevelVariables
-              .where((v) => v.name == name)
-              .firstOrNull;
+          : lib.topLevelVariables.where((v) => v.name == name).firstOrNull;
       if (target == null) {
         throw InvalidGenerationSourceError(
-            'nested regency `${e.toSource()}` does not resolve to a top-level '
-            'const variable of this library.',
-            element: context);
+          'nested regency `${e.toSource()}` does not resolve to a top-level '
+          'const variable of this library.',
+          element: context,
+        );
       }
       await _walkGraphVar(target, rows, buildStep);
       return;
     }
     if (t == null) {
       throw InvalidGenerationSourceError(
-          'row `${e.toSource()}` does not resolve — is it a const Regent?',
-          element: context);
+        'row `${e.toSource()}` does not resolve — is it a const Regent?',
+        element: context,
+      );
     }
     rows.add(_Row(_constSource(e), t));
   }
@@ -744,8 +863,10 @@ class RegistryGenerator {
       if (s.element.name == 'Identifiable' && s.typeArguments.length == 1) {
         final k = s.typeArguments.single;
         if (k is! InvalidType) return k.getDisplayString();
-        final ast = await buildStep.resolver
-            .astNodeFor(t.element.firstFragment, resolve: false);
+        final ast = await buildStep.resolver.astNodeFor(
+          t.element.firstFragment,
+          resolve: false,
+        );
         if (ast is! ClassDeclaration) return null;
         for (final n in [
           ...?ast.withClause?.mixinTypes,
@@ -775,43 +896,58 @@ class RegistryGenerator {
       t is InterfaceType &&
       t.element.library.uri.toString().startsWith('package:regent/');
 
-  _EntityInfo _entityFor(String name, String entityType,
-      Map<String, _EntityInfo> entityByType, Element element,
-      {String? key, String owner = 'store', bool enforced = true}) {
+  _EntityInfo _entityFor(
+    String name,
+    String entityType,
+    Map<String, _EntityInfo> entityByType,
+    Element element, {
+    String? key,
+    String owner = 'store',
+    bool enforced = true,
+  }) {
     final info = entityByType[key ?? entityType];
     if (info == null) {
       // No @entities enum in the library: the entity space derives from the
       // rows themselves — a node-less, ownerless root.
       if (!enforced) return _EntityInfo(entityType, null, owned: false);
       throw InvalidGenerationSourceError(
-          '$owner "$name" holds `$entityType`, which is not a row '
-          'of the @entities enum — declare the entity (type + id node) there.',
-          element: element);
+        '$owner "$name" holds `$entityType`, which is not a row '
+        'of the @entities enum — declare the entity (type + id node) there.',
+        element: element,
+      );
     }
     // The ownership guard: stores attach to aggregate ROOTS only.
     if (info.owned) {
       throw InvalidGenerationSourceError(
-          '$owner "$name": `$entityType` is OWNED in the entity graph — its '
-          'state lives inside its root\'s store; declare the store on the '
-          'root entity instead.',
-          element: element);
+        '$owner "$name": `$entityType` is OWNED in the entity graph — its '
+        'state lives inside its root\'s store; declare the store on the '
+        'root entity instead.',
+        element: element,
+      );
     }
     return info;
   }
 
   /// Key agreement: the node's value type (or its @IDs extension type) must
   /// be the store's K.
-  void _checkKeyAgreement(String name, String entityType, String keyType,
-      _EntityInfo info, Element element) {
+  void _checkKeyAgreement(
+    String name,
+    String entityType,
+    String keyType,
+    _EntityInfo info,
+    Element element,
+  ) {
     final idValueType = _nodeValueType(info.node);
     final typedKey = _typedNodeName(info.node);
     if (idValueType != null && idValueType != keyType && typedKey != keyType) {
-      final expected =
-          typedKey != null ? '`$typedKey` (or `$idValueType`)' : '`$idValueType`';
+      final expected = typedKey != null
+          ? '`$typedKey` (or `$idValueType`)'
+          : '`$idValueType`';
       throw InvalidGenerationSourceError(
-          'store "$name": `$entityType`\'s id-node keys as $expected, but the '
-          'store\'s key type is `$keyType`.',
-          element: element);
+        'store "$name": `$entityType`\'s id-node keys as $expected, but the '
+        'store\'s key type is `$keyType`.',
+        element: element,
+      );
     }
   }
 
@@ -819,15 +955,20 @@ class RegistryGenerator {
   /// cross-family row declares a sealed GROUP its facts implement. Rows
   /// shipped by package:regent are the engine's own and exempt.
   void _checkSealedM(
-      String name, DartType? held, DartType mType, Element element) {
+    String name,
+    DartType? held,
+    DartType mType,
+    Element element,
+  ) {
     if (_fromRegent(held)) return;
     final mEl = mType is InterfaceType ? mType.element : null;
     if (mEl is! ClassElement || !mEl.isSealed) {
       throw InvalidGenerationSourceError(
-          'row "$name" reduces `${mType.getDisplayString()}`, which must '
-          'be a `sealed` class (a sealed GROUP for cross-family rows) so '
-          'its reduce is exhaustively pattern-matched.',
-          element: element);
+        'row "$name" reduces `${mType.getDisplayString()}`, which must '
+        'be a `sealed` class (a sealed GROUP for cross-family rows) so '
+        'its reduce is exhaustively pattern-matched.',
+        element: element,
+      );
     }
   }
 
@@ -866,8 +1007,9 @@ class RegistryGenerator {
   /// match.
   String? _screensEnumName(LibraryElement library) {
     for (final en in library.enums) {
-      final isScreens = en.allSupertypes.any((t) =>
-          const {'ScreenNodeBase', 'ScreenNode'}.contains(t.element.name));
+      final isScreens = en.allSupertypes.any(
+        (t) => const {'ScreenNodeBase', 'ScreenNode'}.contains(t.element.name),
+      );
       if (!isScreens) continue;
       if (en.fields.any((f) => f.isStatic && f.name == 'graph')) {
         return en.name;
@@ -891,8 +1033,9 @@ class RegistryGenerator {
   Map<String, List<(String, String)>> _screensByNode(LibraryElement library) {
     final map = <String, List<(String, String)>>{};
     for (final en in library.enums) {
-      final isScreens = en.allSupertypes.any((t) =>
-          const {'ScreenNodeBase', 'ScreenNode'}.contains(t.element.name));
+      final isScreens = en.allSupertypes.any(
+        (t) => const {'ScreenNodeBase', 'ScreenNode'}.contains(t.element.name),
+      );
       if (!isScreens) continue;
       for (final f in en.fields) {
         if (!f.isEnumConstant) continue;
@@ -907,11 +1050,14 @@ class RegistryGenerator {
   /// The `@entities` space, keyed by entity TYPE name: each row's id-node and
   /// whether the static graph declares it OWNED (appears as a child anywhere).
   Future<Map<String, _EntityInfo>> _entitiesByType(
-      LibraryElement library, BuildStep buildStep) async {
+    LibraryElement library,
+    BuildStep buildStep,
+  ) async {
     EnumElement? entitiesEnum;
     for (final en in library.enums) {
-      final annotated =
-          en.allSupertypes.any((t) => t.element.name == 'EntityNode');
+      final annotated = en.allSupertypes.any(
+        (t) => t.element.name == 'EntityNode',
+      );
       if (annotated) {
         entitiesEnum = en;
         break;
@@ -934,8 +1080,11 @@ class RegistryGenerator {
       final key = expanded.contains('InvalidType')
           ? (written[f.name] ?? expanded)
           : expanded;
-      map[key] = _EntityInfo(f.name!, v?.getField('key'),
-          owned: owned.contains(f.name));
+      map[key] = _EntityInfo(
+        f.name!,
+        v?.getField('key'),
+        owned: owned.contains(f.name),
+      );
     }
     return map;
   }
@@ -943,9 +1092,13 @@ class RegistryGenerator {
   /// Each entity row's FIRST argument (the type literal) as source text —
   /// the syntactic identity that survives InvalidType.
   Future<Map<String, String>> _writtenRowTypes(
-      EnumElement entitiesEnum, BuildStep buildStep) async {
-    final ast = await buildStep.resolver
-        .astNodeFor(entitiesEnum.firstFragment, resolve: false);
+    EnumElement entitiesEnum,
+    BuildStep buildStep,
+  ) async {
+    final ast = await buildStep.resolver.astNodeFor(
+      entitiesEnum.firstFragment,
+      resolve: false,
+    );
     if (ast is! EnumDeclaration || ast.body is! BlockEnumBody) return const {};
     final map = <String, String>{};
     for (final c in (ast.body as BlockEnumBody).constants) {
@@ -969,9 +1122,13 @@ class RegistryGenerator {
   /// The `EntityGraph({...})` tree literal of [entitiesEnum]'s static `graph`,
   /// read syntactically (the graph is a non-const `final`).
   Future<SetOrMapLiteral?> _graphTree(
-      EnumElement entitiesEnum, BuildStep buildStep) async {
-    final ast = await buildStep.resolver
-        .astNodeFor(entitiesEnum.firstFragment, resolve: false);
+    EnumElement entitiesEnum,
+    BuildStep buildStep,
+  ) async {
+    final ast = await buildStep.resolver.astNodeFor(
+      entitiesEnum.firstFragment,
+      resolve: false,
+    );
     if (ast is! EnumDeclaration || ast.body is! BlockEnumBody) return null;
     Expression? graphExpr;
     for (final member in (ast.body as BlockEnumBody).members) {
@@ -994,17 +1151,17 @@ class RegistryGenerator {
   /// `row` · `row({children})` · `row.merge(src, proj)` (chainable) ·
   /// `row.merge(...)({children})`.
   String? _rowOf(Expression node) => switch (node) {
-        SimpleIdentifier(:final name) => name,
-        MethodInvocation(
-          target: final Expression target,
-          methodName: SimpleIdentifier(name: 'merge'),
-        ) =>
-          _rowOf(target),
-        MethodInvocation(target: null, methodName: SimpleIdentifier(:final name)) =>
-          name,
-        FunctionExpressionInvocation(:final function) => _rowOf(function),
-        _ => null,
-      };
+    SimpleIdentifier(:final name) => name,
+    MethodInvocation(
+      target: final Expression target,
+      methodName: SimpleIdentifier(name: 'merge'),
+    ) =>
+      _rowOf(target),
+    MethodInvocation(target: null, methodName: SimpleIdentifier(:final name)) =>
+      name,
+    FunctionExpressionInvocation(:final function) => _rowOf(function),
+    _ => null,
+  };
 
   /// A graph node's `{children}` literal, if it declares one.
   SetOrMapLiteral? _childrenOf(Expression node) {
@@ -1021,7 +1178,9 @@ class RegistryGenerator {
   /// The row names the entity graph declares as OWNED — every name appearing
   /// as a CHILD in the `static final graph = EntityGraph({...})` tree literal.
   Future<Set<String>> _ownedRows(
-      EnumElement entitiesEnum, BuildStep buildStep) async {
+    EnumElement entitiesEnum,
+    BuildStep buildStep,
+  ) async {
     final tree = await _graphTree(entitiesEnum, buildStep);
     if (tree == null) return const {};
 
@@ -1047,9 +1206,11 @@ class RegistryGenerator {
   /// `codec` (or `_codec` backing) field implements.
   String? _nodeValueType(DartObject? node) {
     var codecObj = node?.getField('codec');
-    if (codecObj == null || codecObj.isNull) codecObj = node?.getField('_codec');
-    final codecType =
-        (codecObj != null && !codecObj.isNull) ? codecObj.type : null;
+    if (codecObj == null || codecObj.isNull)
+      codecObj = node?.getField('_codec');
+    final codecType = (codecObj != null && !codecObj.isNull)
+        ? codecObj.type
+        : null;
     if (codecType is! InterfaceType) return null;
     for (final s in [codecType, ...codecType.allSupertypes]) {
       if (s.element.name == 'Codec' && s.typeArguments.length == 1) {
@@ -1064,8 +1225,12 @@ class RegistryGenerator {
   String? _typedNodeName(DartObject? node) {
     final el = node?.type?.element;
     if (el is! EnumElement) return null;
-    final annotated = el.metadata.annotations.any((a) => const {'IDs', 'Canon'}
-        .contains(a.computeConstantValue()?.type?.element?.name));
+    final annotated = el.metadata.annotations.any(
+      (a) => const {
+        'IDs',
+        'Canon',
+      }.contains(a.computeConstantValue()?.type?.element?.name),
+    );
     if (!annotated) return null;
     final raw = node?.getField('_name')?.toStringValue();
     if (raw == null) return null;
@@ -1105,11 +1270,15 @@ class RegistryGenerator {
   /// `extends` clause — the fallback when the resolver reports InvalidType
   /// (generated id types are hidden from this builder's own phase).
   Future<List<String>?> _syntacticUnitArgs(
-      DartType? held, BuildStep buildStep) async {
+    DartType? held,
+    BuildStep buildStep,
+  ) async {
     final el = held is InterfaceType ? held.element : null;
     if (el == null) return null;
-    final ast =
-        await buildStep.resolver.astNodeFor(el.firstFragment, resolve: false);
+    final ast = await buildStep.resolver.astNodeFor(
+      el.firstFragment,
+      resolve: false,
+    );
     if (ast is! ClassDeclaration) return null;
     final sup = ast.extendsClause?.superclass;
     final args = sup?.typeArguments?.arguments;
@@ -1123,11 +1292,15 @@ class RegistryGenerator {
   /// `extends` clause — the fallback when the resolver reports InvalidType
   /// (generated id types are hidden from this builder's own phase).
   Future<List<String>?> _syntacticStoreArgs(
-      DartType? held, BuildStep buildStep) async {
+    DartType? held,
+    BuildStep buildStep,
+  ) async {
     final el = held is InterfaceType ? held.element : null;
     if (el == null) return null;
-    final ast =
-        await buildStep.resolver.astNodeFor(el.firstFragment, resolve: false);
+    final ast = await buildStep.resolver.astNodeFor(
+      el.firstFragment,
+      resolve: false,
+    );
     if (ast is! ClassDeclaration) return null;
     final sup = ast.extendsClause?.superclass;
     final args = sup?.typeArguments?.arguments;
@@ -1142,8 +1315,11 @@ class RegistryGenerator {
   /// or a part read on a named regency (`read(const BlockedCrud().covered)`).
   /// (Exact-args identity stays a runtime law; the class-level and
   /// missing-`const` mistakes fail HERE, with the guard and row named.)
-  Future<void> _validateReadRegents(TopLevelVariableElement element,
-      List<_Row> rows, BuildStep buildStep) async {
+  Future<void> _validateReadRegents(
+    TopLevelVariableElement element,
+    List<_Row> rows,
+    BuildStep buildStep,
+  ) async {
     final regentTypes = <InterfaceElement>{};
     final guards = <InterfaceElement>[];
     for (final row in rows) {
@@ -1153,13 +1329,16 @@ class RegistryGenerator {
       if (el == null) continue;
       regentTypes.add(el);
       if (el.allSupertypes.any(
-          (s) => s.element.name == 'Guard' && s.typeArguments.length == 1)) {
+        (s) => s.element.name == 'Guard' && s.typeArguments.length == 1,
+      )) {
         guards.add(el);
       }
     }
     for (final guard in guards) {
-      final ast = await buildStep.resolver
-          .astNodeFor(guard.firstFragment, resolve: true);
+      final ast = await buildStep.resolver.astNodeFor(
+        guard.firstFragment,
+        resolve: true,
+      );
       if (ast is! ClassDeclaration) continue;
       final visitor = _ReadCallVisitor();
       ast.visitChildren(visitor);
@@ -1175,35 +1354,39 @@ class RegistryGenerator {
           final targetEl = target is InterfaceType ? target.element : null;
           if (targetEl == null || !regentTypes.contains(targetEl)) {
             throw InvalidGenerationSourceError(
-                'guard "${guard.name}" reads `${arg.toSource()}`, but no row '
-                'of the regency holds a ${targetEl?.name ?? arg.toSource()} — '
-                'every read names a regent of the graph.',
-                element: element);
+              'guard "${guard.name}" reads `${arg.toSource()}`, but no row '
+              'of the regency holds a ${targetEl?.name ?? arg.toSource()} — '
+              'every read names a regent of the graph.',
+              element: element,
+            );
           }
           continue;
         }
         if (arg is! InstanceCreationExpression) {
           throw InvalidGenerationSourceError(
-              'guard "${guard.name}" passes `${arg.toSource()}` to `read` — '
-              'name the regent with an inline `const <Class>(…)` or a const '
-              'global so the build can check it against the regency.',
-              element: element);
+            'guard "${guard.name}" passes `${arg.toSource()}` to `read` — '
+            'name the regent with an inline `const <Class>(…)` or a const '
+            'global so the build can check it against the regency.',
+            element: element,
+          );
         }
         if (!arg.isConst && !arg.inConstantContext) {
           throw InvalidGenerationSourceError(
-              'guard "${guard.name}" reads `${arg.toSource()}` without '
-              '`const` — a non-const expression is a fresh instance, never '
-              'the enrolled regent.',
-              element: element);
+            'guard "${guard.name}" reads `${arg.toSource()}` without '
+            '`const` — a non-const expression is a fresh instance, never '
+            'the enrolled regent.',
+            element: element,
+          );
         }
         final target = arg.staticType;
         final targetEl = target is InterfaceType ? target.element : null;
         if (targetEl == null || !regentTypes.contains(targetEl)) {
           throw InvalidGenerationSourceError(
-              'guard "${guard.name}" reads `${arg.toSource()}`, but no row '
-              'of the regency holds a ${targetEl?.name ?? arg.toSource()} — '
-              'every read names a regent of the graph.',
-              element: element);
+            'guard "${guard.name}" reads `${arg.toSource()}`, but no row '
+            'of the regency holds a ${targetEl?.name ?? arg.toSource()} — '
+            'every read names a regent of the graph.',
+            element: element,
+          );
         }
       }
     }

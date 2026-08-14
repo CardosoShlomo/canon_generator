@@ -984,7 +984,7 @@ class _ProductsStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ids = products.of(context);
+    final ids = products.idsOf(context);
     const style = TextStyle(color: Colors.white70, fontSize: 14);
     if (ids.isEmpty) {
       return const Text('products you visit collect here', style: style);

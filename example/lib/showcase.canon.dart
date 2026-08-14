@@ -14,24 +14,31 @@ part of 'showcase.dart';
 extension type const ProductId(String _) implements String {
   static const Ids node = Ids.product;
 }
+
 extension type const ReviewId(String _) implements String {
   static const Ids node = Ids.review;
 }
+
 extension type const SellerId(String _) implements String {
   static const Ids node = Ids.seller;
 }
+
 extension type const ShopperId(String _) implements String {
   static const Ids node = Ids.shopper;
 }
+
 extension type const CategoryId(String _) implements String {
   static const Ids node = Ids.category;
 }
+
 extension type const OrderId(String _) implements String {
   static const Ids node = Ids.order;
 }
+
 extension type const ListingId(String _) implements String {
   static const Ids node = Ids.listing;
 }
+
 extension type const SellerChatId((ProductId, SellerId) _) {
   const SellerChatId.of(ProductId product, SellerId seller)
     : this((product, seller));
@@ -78,10 +85,7 @@ bool _chainIs(List<Enum> a, List<Enum> b) {
   return true;
 }
 
-final class Screen<I> {
-  const Screen._(this._spec);
-  final Enum _spec;
-
+final class const Screen<I>._(final Enum _spec) {
   /// This screen's name, as written in the grammar enum — the
   /// readable identity of a stack entry (`Screen.stack.current.name`).
   String get name => _spec.name;
@@ -509,9 +513,7 @@ final class Screen<I> {
 /// The `Screen.root` facade — controls for the root (the history bottom):
 /// whether the launch position is a returnable root or a throwaway that
 /// exits on back.
-final class RootControls {
-  const RootControls._();
-
+final class const RootControls._() {
   /// Persist the launch/root position as returnable — back returns to it
   /// (then exits), and trunk-switches stack above it.
   void anchor() => _Screens.graph.anchor();
@@ -530,8 +532,7 @@ final class RootControls {
 
 /// The `Screen.replace` redirect facade — every verb mirrors `Screen`
 /// but commits as a history REPLACE (web `replaceState`).
-final class Replace {
-  const Replace._();
+final class const Replace._() {
   N go<N extends AnyNav>(Hop<N> hop) {
     _Screens.graph.markReplace();
     return Screen.go(hop);
@@ -644,9 +645,7 @@ final class Replace {
 }
 
 /// One committed navigation as typed [ScreenEntry] stacks.
-final class ScreenNavigation {
-  ScreenNavigation._(this._n);
-  final Navigation _n;
+final class ScreenNavigation._(final Navigation _n) {
   List<ScreenEntry> get from => [for (final e in _n.from) _entryOf(e.$1, e.$2)];
   List<ScreenEntry> get to => [for (final e in _n.to) _entryOf(e.$1, e.$2)];
   ScreenEntry get source => _entryOf(_n.source.$1, _n.source.$2);
@@ -659,103 +658,28 @@ final class ScreenNavigation {
 }
 
 /// One typed entry per screen — `switch` it for the screen-specific id.
-sealed class ScreenEntry {
-  const ScreenEntry();
-}
-
-final class SplashEntry extends ScreenEntry {
-  const SplashEntry();
-}
-
-final class SignInEntry extends ScreenEntry {
-  const SignInEntry();
-}
-
-final class OtpEntry extends ScreenEntry {
-  const OtpEntry(this.id);
-  final String id;
-}
-
-final class HomeEntry extends ScreenEntry {
-  const HomeEntry();
-}
-
-final class SearchEntry extends ScreenEntry {
-  const SearchEntry();
-}
-
-final class ScanEntry extends ScreenEntry {
-  const ScanEntry();
-}
-
-final class CategoryEntry extends ScreenEntry {
-  const CategoryEntry(this.id);
-  final CategoryId id;
-}
-
-final class ProductEntry extends ScreenEntry {
-  const ProductEntry(this.id);
-  final ProductId id;
-}
-
-final class SellerEntry extends ScreenEntry {
-  const SellerEntry(this.id);
-  final SellerId id;
-}
-
-final class SellerChatEntry extends ScreenEntry {
-  const SellerChatEntry(this.id);
-  final SellerChatId id;
-}
-
-final class WishlistEntry extends ScreenEntry {
-  const WishlistEntry();
-}
-
-final class AccountEntry extends ScreenEntry {
-  const AccountEntry();
-}
-
-final class OrdersEntry extends ScreenEntry {
-  const OrdersEntry();
-}
-
-final class OrderEntry extends ScreenEntry {
-  const OrderEntry(this.id);
-  final OrderId id;
-}
-
-final class SettingsEntry extends ScreenEntry {
-  const SettingsEntry();
-}
-
-final class ListingEntry extends ScreenEntry {
-  const ListingEntry(this.id);
-  final ListingId id;
-}
-
-final class EditListingEntry extends ScreenEntry {
-  const EditListingEntry(this.id);
-  final ListingId id;
-}
-
-final class CartEntry extends ScreenEntry {
-  const CartEntry();
-}
-
-final class CheckoutEntry extends ScreenEntry {
-  const CheckoutEntry();
-}
-
-final class PaymentEntry extends ScreenEntry {
-  const PaymentEntry();
-}
-
-final class ConfirmationEntry extends ScreenEntry {
-  const ConfirmationEntry(this.id);
-  final String id;
-}
-
+sealed class const ScreenEntry();
+final class const SplashEntry() extends ScreenEntry;
+final class const SignInEntry() extends ScreenEntry;
+final class const OtpEntry(final String id) extends ScreenEntry;
+final class const HomeEntry() extends ScreenEntry;
+final class const SearchEntry() extends ScreenEntry;
+final class const ScanEntry() extends ScreenEntry;
+final class const CategoryEntry(final CategoryId id) extends ScreenEntry;
+final class const ProductEntry(final ProductId id) extends ScreenEntry;
+final class const SellerEntry(final SellerId id) extends ScreenEntry;
+final class const SellerChatEntry(final SellerChatId id) extends ScreenEntry;
+final class const WishlistEntry() extends ScreenEntry;
+final class const AccountEntry() extends ScreenEntry;
+final class const OrdersEntry() extends ScreenEntry;
+final class const OrderEntry(final OrderId id) extends ScreenEntry;
+final class const SettingsEntry() extends ScreenEntry;
+final class const ListingEntry(final ListingId id) extends ScreenEntry;
+final class const EditListingEntry(final ListingId id) extends ScreenEntry;
+final class const CartEntry() extends ScreenEntry;
+final class const CheckoutEntry() extends ScreenEntry;
+final class const PaymentEntry() extends ScreenEntry;
+final class const ConfirmationEntry(final String id) extends ScreenEntry;
 ScreenEntry _entryOf(Enum s, Object? id) => switch (s) {
   _Screens.splash => const SplashEntry(),
   _Screens.signIn => const SignInEntry(),
@@ -781,12 +705,11 @@ ScreenEntry _entryOf(Enum s, Object? id) => switch (s) {
   _ => throw StateError('not a _Screens screen'),
 };
 
-final class Hop<N extends AnyNav> {
-  const Hop._(this.spec, this.id, this.nav);
-  final Enum spec;
-  final Object? id;
-  final N nav;
-
+final class const Hop<N extends AnyNav>._(
+  final Enum spec,
+  final Object? id,
+  final N nav,
+) {
   /// The root-down chain this hop replays. A single kick-start is one
   /// segment; a navigable `Place` (a `Place`) overrides it with its
   /// full path, so `Screen.go` lands the whole placement.
@@ -841,21 +764,16 @@ final class Hop<N extends AnyNav> {
 
 /// The root/boot placement: `Screen.current` returns it until the first
 /// commit. `if (Screen.current case Root()) ...` gates blob-null cold-boot UI.
-final class Root extends AnyPlacement {
-  const Root._() : super._();
+final class const Root._() extends AnyPlacement {
+  this : super._();
 }
 
-final class On<N extends AnyNav, V> {
-  const On._(this.specs, this.ids, this.nav, [this.conds = const []]);
-  final List<Enum> specs;
-  final List<Object?> ids;
-
-  /// The exact nav for a single-placement terminal; null for a multi-
-  /// placement one — `Screen.on` resolves it from the live chain.
-  final N? nav;
-
-  /// View-state conditions on the terminal screen (`.query`/`.fragment`).
-  final List<ViewCond> conds;
+final class const On<N extends AnyNav, V>._(
+  final List<Enum> specs,
+  final List<Object?> ids,
+  final N? nav, [
+  final List<ViewCond> conds = const [],
+]) {
   static On<SplashNav, AnyView> get splash =>
       On._([_Screens.splash], [null], const SplashNav._());
   static OnSignIn get signIn =>
@@ -914,13 +832,14 @@ final class On<N extends AnyNav, V> {
   static _ParentSel get parentOf => const _ParentSel._();
 }
 
-final class OnParentOf<N extends AnyNav, V> extends On<N, V> {
-  const OnParentOf._(this.parents, N nav) : super._(const [], const [], nav);
-  final Set<Enum> parents;
+final class const OnParentOf<N extends AnyNav, V>._(
+  final Set<Enum> parents,
+  N nav,
+) extends On<N, V> {
+  this : super._(const [], const [], nav);
 }
 
-final class _ParentSel {
-  const _ParentSel._();
+final class const _ParentSel._() {
   OnParentOf<CategoryNavParent, AnyView> get category => OnParentOf._(const {
     _Screens.category,
     _Screens.home,
@@ -935,16 +854,16 @@ final class _ParentSel {
   }, const ProductNavParent._());
 }
 
-final class CategoryNavParent extends AnyNav {
-  const CategoryNavParent._() : super._();
+final class const CategoryNavParent._() extends AnyNav {
+  this : super._();
   CategoryNav goCategory(CategoryId id) {
     _Screens.graph.go(_Screens.category, id, true);
     return const CategoryNav._();
   }
 }
 
-final class ProductNavParent extends AnyNav {
-  const ProductNavParent._() : super._();
+final class const ProductNavParent._() extends AnyNav {
+  this : super._();
   ProductPlacement goProduct(ProductId id) {
     _Screens.graph.go(_Screens.product, id, true);
     return _atOf(_Screens.product) as ProductPlacement;
@@ -956,25 +875,32 @@ final class ProductNavParent extends AnyNav {
   }
 }
 
-final class OnDepth<N extends AnyNav, V> extends On<N, V> {
-  const OnDepth._(super.specs, super.ids, this.depth, super.nav) : super._();
-  final int depth;
+final class const OnDepth<N extends AnyNav, V>._(
+  super.specs,
+  super.ids,
+  final int depth,
+  super.nav,
+) extends On<N, V> {
+  this : super._();
 }
 
-final class OnSignIn extends On<SignInNav, AnyView> {
-  const OnSignIn._(super.specs, super.ids, super.nav) : super._();
+final class const OnSignIn._(super.specs, super.ids, super.nav)
+    extends On<SignInNav, AnyView> {
+  this : super._();
   OnOtp get otp =>
       OnOtp._([...specs, _Screens.otp], [...ids, null], const OtpNav._());
 }
 
-final class OnOtp extends On<OtpNav, AnyView> {
-  const OnOtp._(super.specs, super.ids, super.nav) : super._();
+final class const OnOtp._(super.specs, super.ids, super.nav)
+    extends On<OtpNav, AnyView> {
+  this : super._();
   OnOtp call(String id) =>
       OnOtp._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
-final class OnHome extends On<HomeNav, AnyView> {
-  const OnHome._(super.specs, super.ids, super.nav) : super._();
+final class const OnHome._(super.specs, super.ids, super.nav)
+    extends On<HomeNav, AnyView> {
+  this : super._();
   OnSearch get search => OnSearch._(
     [...specs, _Screens.search],
     [...ids, null],
@@ -996,9 +922,9 @@ final class OnHome extends On<HomeNav, AnyView> {
       OnCart._([...specs, _Checkout.cart], [...ids, null], const CartNav._());
 }
 
-final class OnSearch extends On<SearchNav, SearchView> {
-  const OnSearch._(super.specs, super.ids, super.nav, [super.conds])
-    : super._();
+final class const OnSearch._(super.specs, super.ids, super.nav, [super.conds])
+    extends On<SearchNav, SearchView> {
+  this : super._();
   OnSearch query(Set<SearchQueryCond> cs) =>
       OnSearch._(specs, ids, nav, [...conds, ...cs]);
   OnHomeSearchProduct get product => OnHomeSearchProduct._(
@@ -1008,10 +934,13 @@ final class OnSearch extends On<SearchNav, SearchView> {
   );
 }
 
-final class OnHomeSearchProduct extends On<HomeSearchProductNav, ProductView>
-    implements SellerOn {
-  const OnHomeSearchProduct._(super.specs, super.ids, super.nav, [super.conds])
-    : super._();
+final class const OnHomeSearchProduct._(
+  super.specs,
+  super.ids,
+  super.nav, [
+  super.conds,
+]) extends On<HomeSearchProductNav, ProductView> implements SellerOn {
+  this : super._();
   OnHomeSearchProduct query(Set<ProductQueryCond> cs) =>
       OnHomeSearchProduct._(specs, ids, nav, [...conds, ...cs]);
   OnHomeSearchProduct fragment(Set<ProductFragmentCond> cs) =>
@@ -1029,11 +958,10 @@ final class OnHomeSearchProduct extends On<HomeSearchProductNav, ProductView>
       OnDepth._(specs, ids, d, nav);
 }
 
-final class OnHomeSearchProductSeller
+final class const OnHomeSearchProductSeller._(super.specs, super.ids, super.nav)
     extends On<HomeSearchProductSellerNav, AnyView>
     implements ProductOn {
-  const OnHomeSearchProductSeller._(super.specs, super.ids, super.nav)
-    : super._();
+  this : super._();
   OnHomeSearchProductSellerSellerChat get sellerChat =>
       OnHomeSearchProductSellerSellerChat._(
         [...specs, _Screens.sellerChat],
@@ -1049,11 +977,13 @@ final class OnHomeSearchProductSeller
       OnDepth._(specs, ids, d, nav);
 }
 
-final class OnHomeSearchProductSellerSellerChat
-    extends On<HomeSearchProductSellerSellerChatNav, AnyView>
+final class const OnHomeSearchProductSellerSellerChat._(
+  super.specs,
+  super.ids,
+  super.nav,
+) extends On<HomeSearchProductSellerSellerChatNav, AnyView>
     implements ProductOn, SellerOn {
-  const OnHomeSearchProductSellerSellerChat._(super.specs, super.ids, super.nav)
-    : super._();
+  this : super._();
   OnHomeSearchProductSellerSellerChat call(SellerChatId id) =>
       OnHomeSearchProductSellerSellerChat._(specs, [
         ...ids.sublist(0, ids.length - 1),
@@ -1061,8 +991,9 @@ final class OnHomeSearchProductSellerSellerChat
       ], nav);
 }
 
-final class OnCategory extends On<CategoryNav, AnyView> {
-  const OnCategory._(super.specs, super.ids, super.nav) : super._();
+final class const OnCategory._(super.specs, super.ids, super.nav)
+    extends On<CategoryNav, AnyView> {
+  this : super._();
   OnHomeCategoryProduct get product => OnHomeCategoryProduct._(
     [...specs, _Screens.product],
     [...ids, null],
@@ -1073,15 +1004,13 @@ final class OnCategory extends On<CategoryNav, AnyView> {
   OnDepth<CategoryNav, AnyView> depth(int d) => OnDepth._(specs, ids, d, nav);
 }
 
-final class OnHomeCategoryProduct
-    extends On<HomeCategoryProductNav, ProductView>
-    implements SellerOn {
-  const OnHomeCategoryProduct._(
-    super.specs,
-    super.ids,
-    super.nav, [
-    super.conds,
-  ]) : super._();
+final class const OnHomeCategoryProduct._(
+  super.specs,
+  super.ids,
+  super.nav, [
+  super.conds,
+]) extends On<HomeCategoryProductNav, ProductView> implements SellerOn {
+  this : super._();
   OnHomeCategoryProduct query(Set<ProductQueryCond> cs) =>
       OnHomeCategoryProduct._(specs, ids, nav, [...conds, ...cs]);
   OnHomeCategoryProduct fragment(Set<ProductFragmentCond> cs) =>
@@ -1099,11 +1028,12 @@ final class OnHomeCategoryProduct
       OnDepth._(specs, ids, d, nav);
 }
 
-final class OnHomeCategoryProductSeller
-    extends On<HomeCategoryProductSellerNav, AnyView>
-    implements ProductOn {
-  const OnHomeCategoryProductSeller._(super.specs, super.ids, super.nav)
-    : super._();
+final class const OnHomeCategoryProductSeller._(
+  super.specs,
+  super.ids,
+  super.nav,
+) extends On<HomeCategoryProductSellerNav, AnyView> implements ProductOn {
+  this : super._();
   OnHomeCategoryProductSellerSellerChat get sellerChat =>
       OnHomeCategoryProductSellerSellerChat._(
         [...specs, _Screens.sellerChat],
@@ -1119,14 +1049,13 @@ final class OnHomeCategoryProductSeller
       OnDepth._(specs, ids, d, nav);
 }
 
-final class OnHomeCategoryProductSellerSellerChat
-    extends On<HomeCategoryProductSellerSellerChatNav, AnyView>
+final class const OnHomeCategoryProductSellerSellerChat._(
+  super.specs,
+  super.ids,
+  super.nav,
+) extends On<HomeCategoryProductSellerSellerChatNav, AnyView>
     implements ProductOn, SellerOn {
-  const OnHomeCategoryProductSellerSellerChat._(
-    super.specs,
-    super.ids,
-    super.nav,
-  ) : super._();
+  this : super._();
   OnHomeCategoryProductSellerSellerChat call(SellerChatId id) =>
       OnHomeCategoryProductSellerSellerChat._(specs, [
         ...ids.sublist(0, ids.length - 1),
@@ -1134,8 +1063,9 @@ final class OnHomeCategoryProductSellerSellerChat
       ], nav);
 }
 
-final class OnScan extends On<ScanNav, AnyView> {
-  const OnScan._(super.specs, super.ids, super.nav) : super._();
+final class const OnScan._(super.specs, super.ids, super.nav)
+    extends On<ScanNav, AnyView> {
+  this : super._();
   OnHomeScanProduct get product => OnHomeScanProduct._(
     [...specs, _Screens.product],
     [...ids, null],
@@ -1143,10 +1073,13 @@ final class OnScan extends On<ScanNav, AnyView> {
   );
 }
 
-final class OnHomeScanProduct extends On<HomeScanProductNav, ProductView>
-    implements SellerOn {
-  const OnHomeScanProduct._(super.specs, super.ids, super.nav, [super.conds])
-    : super._();
+final class const OnHomeScanProduct._(
+  super.specs,
+  super.ids,
+  super.nav, [
+  super.conds,
+]) extends On<HomeScanProductNav, ProductView> implements SellerOn {
+  this : super._();
   OnHomeScanProduct query(Set<ProductQueryCond> cs) =>
       OnHomeScanProduct._(specs, ids, nav, [...conds, ...cs]);
   OnHomeScanProduct fragment(Set<ProductFragmentCond> cs) =>
@@ -1162,11 +1095,10 @@ final class OnHomeScanProduct extends On<HomeScanProductNav, ProductView>
       OnDepth._(specs, ids, d, nav);
 }
 
-final class OnHomeScanProductSeller
+final class const OnHomeScanProductSeller._(super.specs, super.ids, super.nav)
     extends On<HomeScanProductSellerNav, AnyView>
     implements ProductOn {
-  const OnHomeScanProductSeller._(super.specs, super.ids, super.nav)
-    : super._();
+  this : super._();
   OnHomeScanProductSellerSellerChat get sellerChat =>
       OnHomeScanProductSellerSellerChat._(
         [...specs, _Screens.sellerChat],
@@ -1182,11 +1114,13 @@ final class OnHomeScanProductSeller
       OnDepth._(specs, ids, d, nav);
 }
 
-final class OnHomeScanProductSellerSellerChat
-    extends On<HomeScanProductSellerSellerChatNav, AnyView>
+final class const OnHomeScanProductSellerSellerChat._(
+  super.specs,
+  super.ids,
+  super.nav,
+) extends On<HomeScanProductSellerSellerChatNav, AnyView>
     implements ProductOn, SellerOn {
-  const OnHomeScanProductSellerSellerChat._(super.specs, super.ids, super.nav)
-    : super._();
+  this : super._();
   OnHomeScanProductSellerSellerChat call(SellerChatId id) =>
       OnHomeScanProductSellerSellerChat._(specs, [
         ...ids.sublist(0, ids.length - 1),
@@ -1194,8 +1128,9 @@ final class OnHomeScanProductSellerSellerChat
       ], nav);
 }
 
-final class OnWishlist extends On<WishlistNav, AnyView> {
-  const OnWishlist._(super.specs, super.ids, super.nav) : super._();
+final class const OnWishlist._(super.specs, super.ids, super.nav)
+    extends On<WishlistNav, AnyView> {
+  this : super._();
   OnHomeWishlistProduct get product => OnHomeWishlistProduct._(
     [...specs, _Screens.product],
     [...ids, null],
@@ -1203,15 +1138,13 @@ final class OnWishlist extends On<WishlistNav, AnyView> {
   );
 }
 
-final class OnHomeWishlistProduct
-    extends On<HomeWishlistProductNav, ProductView>
-    implements SellerOn {
-  const OnHomeWishlistProduct._(
-    super.specs,
-    super.ids,
-    super.nav, [
-    super.conds,
-  ]) : super._();
+final class const OnHomeWishlistProduct._(
+  super.specs,
+  super.ids,
+  super.nav, [
+  super.conds,
+]) extends On<HomeWishlistProductNav, ProductView> implements SellerOn {
+  this : super._();
   OnHomeWishlistProduct query(Set<ProductQueryCond> cs) =>
       OnHomeWishlistProduct._(specs, ids, nav, [...conds, ...cs]);
   OnHomeWishlistProduct fragment(Set<ProductFragmentCond> cs) =>
@@ -1229,11 +1162,12 @@ final class OnHomeWishlistProduct
       OnDepth._(specs, ids, d, nav);
 }
 
-final class OnHomeWishlistProductSeller
-    extends On<HomeWishlistProductSellerNav, AnyView>
-    implements ProductOn {
-  const OnHomeWishlistProductSeller._(super.specs, super.ids, super.nav)
-    : super._();
+final class const OnHomeWishlistProductSeller._(
+  super.specs,
+  super.ids,
+  super.nav,
+) extends On<HomeWishlistProductSellerNav, AnyView> implements ProductOn {
+  this : super._();
   OnHomeWishlistProductSellerSellerChat get sellerChat =>
       OnHomeWishlistProductSellerSellerChat._(
         [...specs, _Screens.sellerChat],
@@ -1249,14 +1183,13 @@ final class OnHomeWishlistProductSeller
       OnDepth._(specs, ids, d, nav);
 }
 
-final class OnHomeWishlistProductSellerSellerChat
-    extends On<HomeWishlistProductSellerSellerChatNav, AnyView>
+final class const OnHomeWishlistProductSellerSellerChat._(
+  super.specs,
+  super.ids,
+  super.nav,
+) extends On<HomeWishlistProductSellerSellerChatNav, AnyView>
     implements ProductOn, SellerOn {
-  const OnHomeWishlistProductSellerSellerChat._(
-    super.specs,
-    super.ids,
-    super.nav,
-  ) : super._();
+  this : super._();
   OnHomeWishlistProductSellerSellerChat call(SellerChatId id) =>
       OnHomeWishlistProductSellerSellerChat._(specs, [
         ...ids.sublist(0, ids.length - 1),
@@ -1264,8 +1197,9 @@ final class OnHomeWishlistProductSellerSellerChat
       ], nav);
 }
 
-final class OnCart extends On<CartNav, AnyView> {
-  const OnCart._(super.specs, super.ids, super.nav) : super._();
+final class const OnCart._(super.specs, super.ids, super.nav)
+    extends On<CartNav, AnyView> {
+  this : super._();
   OnCheckout get checkout => OnCheckout._(
     [...specs, _Checkout.checkout],
     [...ids, null],
@@ -1273,8 +1207,9 @@ final class OnCart extends On<CartNav, AnyView> {
   );
 }
 
-final class OnCheckout extends On<CheckoutNav, AnyView> {
-  const OnCheckout._(super.specs, super.ids, super.nav) : super._();
+final class const OnCheckout._(super.specs, super.ids, super.nav)
+    extends On<CheckoutNav, AnyView> {
+  this : super._();
   OnPayment get payment => OnPayment._(
     [...specs, _Checkout.payment],
     [...ids, null],
@@ -1282,8 +1217,9 @@ final class OnCheckout extends On<CheckoutNav, AnyView> {
   );
 }
 
-final class OnPayment extends On<PaymentNav, AnyView> {
-  const OnPayment._(super.specs, super.ids, super.nav) : super._();
+final class const OnPayment._(super.specs, super.ids, super.nav)
+    extends On<PaymentNav, AnyView> {
+  this : super._();
   OnConfirmation get confirmation => OnConfirmation._(
     [...specs, _Checkout.confirmation],
     [...ids, null],
@@ -1291,16 +1227,17 @@ final class OnPayment extends On<PaymentNav, AnyView> {
   );
 }
 
-final class OnConfirmation extends On<ConfirmationNav, AnyView> {
-  const OnConfirmation._(super.specs, super.ids, super.nav) : super._();
+final class const OnConfirmation._(super.specs, super.ids, super.nav)
+    extends On<ConfirmationNav, AnyView> {
+  this : super._();
   OnConfirmation call(String id) =>
       OnConfirmation._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
-final class OnProduct extends On<ProductPlacement, ProductView>
+final class const OnProduct._(super.specs, super.ids, super.nav, [super.conds])
+    extends On<ProductPlacement, ProductView>
     implements SellerOn {
-  const OnProduct._(super.specs, super.ids, super.nav, [super.conds])
-    : super._();
+  this : super._();
   OnProduct query(Set<ProductQueryCond> cs) =>
       OnProduct._(specs, ids, nav, [...conds, ...cs]);
   OnProduct fragment(Set<ProductFragmentCond> cs) =>
@@ -1313,8 +1250,10 @@ final class OnProduct extends On<ProductPlacement, ProductView>
       OnDepth._(specs, ids, d, nav);
 }
 
-final class OnSeller extends On<SellerPlacement, AnyView> implements ProductOn {
-  const OnSeller._(super.specs, super.ids, super.nav) : super._();
+final class const OnSeller._(super.specs, super.ids, super.nav)
+    extends On<SellerPlacement, AnyView>
+    implements ProductOn {
+  this : super._();
   OnSellerChat get sellerChat =>
       OnSellerChat._([...specs, _Screens.sellerChat], [...ids, null], null);
   OnSeller call(SellerId id) =>
@@ -1323,15 +1262,17 @@ final class OnSeller extends On<SellerPlacement, AnyView> implements ProductOn {
       OnDepth._(specs, ids, d, nav);
 }
 
-final class OnSellerChat extends On<SellerChatPlacement, AnyView>
+final class const OnSellerChat._(super.specs, super.ids, super.nav)
+    extends On<SellerChatPlacement, AnyView>
     implements ProductOn, SellerOn {
-  const OnSellerChat._(super.specs, super.ids, super.nav) : super._();
+  this : super._();
   OnSellerChat call(SellerChatId id) =>
       OnSellerChat._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
-final class OnAccount extends On<AccountNav, AnyView> {
-  const OnAccount._(super.specs, super.ids, super.nav) : super._();
+final class const OnAccount._(super.specs, super.ids, super.nav)
+    extends On<AccountNav, AnyView> {
+  this : super._();
   OnOrders get orders => OnOrders._(
     [...specs, _Screens.orders],
     [...ids, null],
@@ -1354,14 +1295,16 @@ final class OnAccount extends On<AccountNav, AnyView> {
   );
 }
 
-final class OnOrders extends On<OrdersNav, AnyView> {
-  const OnOrders._(super.specs, super.ids, super.nav) : super._();
+final class const OnOrders._(super.specs, super.ids, super.nav)
+    extends On<OrdersNav, AnyView> {
+  this : super._();
   OnOrder get order =>
       OnOrder._([...specs, _Screens.order], [...ids, null], const OrderNav._());
 }
 
-final class OnOrder extends On<OrderNav, AnyView> {
-  const OnOrder._(super.specs, super.ids, super.nav) : super._();
+final class const OnOrder._(super.specs, super.ids, super.nav)
+    extends On<OrderNav, AnyView> {
+  this : super._();
   OnAccountOrdersOrderProduct get product => OnAccountOrdersOrderProduct._(
     [...specs, _Screens.product],
     [...ids, null],
@@ -1371,15 +1314,13 @@ final class OnOrder extends On<OrderNav, AnyView> {
       OnOrder._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
-final class OnAccountOrdersOrderProduct
-    extends On<AccountOrdersOrderProductNav, ProductView>
-    implements SellerOn {
-  const OnAccountOrdersOrderProduct._(
-    super.specs,
-    super.ids,
-    super.nav, [
-    super.conds,
-  ]) : super._();
+final class const OnAccountOrdersOrderProduct._(
+  super.specs,
+  super.ids,
+  super.nav, [
+  super.conds,
+]) extends On<AccountOrdersOrderProductNav, ProductView> implements SellerOn {
+  this : super._();
   OnAccountOrdersOrderProduct query(Set<ProductQueryCond> cs) =>
       OnAccountOrdersOrderProduct._(specs, ids, nav, [...conds, ...cs]);
   OnAccountOrdersOrderProduct fragment(Set<ProductFragmentCond> cs) =>
@@ -1399,11 +1340,12 @@ final class OnAccountOrdersOrderProduct
       OnDepth._(specs, ids, d, nav);
 }
 
-final class OnAccountOrdersOrderProductSeller
-    extends On<AccountOrdersOrderProductSellerNav, AnyView>
-    implements ProductOn {
-  const OnAccountOrdersOrderProductSeller._(super.specs, super.ids, super.nav)
-    : super._();
+final class const OnAccountOrdersOrderProductSeller._(
+  super.specs,
+  super.ids,
+  super.nav,
+) extends On<AccountOrdersOrderProductSellerNav, AnyView> implements ProductOn {
+  this : super._();
   OnAccountOrdersOrderProductSellerSellerChat get sellerChat =>
       OnAccountOrdersOrderProductSellerSellerChat._(
         [...specs, _Screens.sellerChat],
@@ -1419,14 +1361,13 @@ final class OnAccountOrdersOrderProductSeller
       OnDepth._(specs, ids, d, nav);
 }
 
-final class OnAccountOrdersOrderProductSellerSellerChat
-    extends On<AccountOrdersOrderProductSellerSellerChatNav, AnyView>
+final class const OnAccountOrdersOrderProductSellerSellerChat._(
+  super.specs,
+  super.ids,
+  super.nav,
+) extends On<AccountOrdersOrderProductSellerSellerChatNav, AnyView>
     implements ProductOn, SellerOn {
-  const OnAccountOrdersOrderProductSellerSellerChat._(
-    super.specs,
-    super.ids,
-    super.nav,
-  ) : super._();
+  this : super._();
   OnAccountOrdersOrderProductSellerSellerChat call(SellerChatId id) =>
       OnAccountOrdersOrderProductSellerSellerChat._(specs, [
         ...ids.sublist(0, ids.length - 1),
@@ -1434,14 +1375,16 @@ final class OnAccountOrdersOrderProductSellerSellerChat
       ], nav);
 }
 
-final class OnListing extends On<ListingNav, AnyView> {
-  const OnListing._(super.specs, super.ids, super.nav) : super._();
+final class const OnListing._(super.specs, super.ids, super.nav)
+    extends On<ListingNav, AnyView> {
+  this : super._();
   OnListing call(ListingId id) =>
       OnListing._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
-final class OnEditListing extends On<EditListingNav, AnyView> {
-  const OnEditListing._(super.specs, super.ids, super.nav) : super._();
+final class const OnEditListing._(super.specs, super.ids, super.nav)
+    extends On<EditListingNav, AnyView> {
+  this : super._();
   OnEditListing call(ListingId id) =>
       OnEditListing._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
@@ -1454,8 +1397,8 @@ abstract interface class ProductOn {}
 /// the compile-time gate of `SellerID.on(context, chain)`.
 abstract interface class SellerOn {}
 
-sealed class AnyPlacement extends AnyNav {
-  const AnyPlacement._() : super._();
+sealed class const AnyPlacement._() extends AnyNav {
+  this : super._();
 }
 
 AnyPlacement _atOf(Enum s) {
@@ -1488,9 +1431,7 @@ AnyPlacement _atOf(Enum s) {
   };
 }
 
-abstract base class AnyNav {
-  const AnyNav._();
-}
+abstract base class const AnyNav._();
 
 sealed class CategoryHomePopPlacement {}
 
@@ -1744,8 +1685,8 @@ _resolveAccountOrdersOrderProductSellerHomeCategoryProductSellerHomeScanProductS
 
 sealed class PopDestPlacement {}
 
-final class CanPopNav extends AnyNav {
-  const CanPopNav._() : super._();
+final class const CanPopNav._() extends AnyNav {
+  this : super._();
   PopDestPlacement pop() {
     _Screens.graph.pop();
     return _resolvePopDest();
@@ -1836,147 +1777,85 @@ PopDestPlacement _resolvePopDest() {
   throw StateError('unresolved pop destination: $c');
 }
 
-sealed class _SId {
-  const _SId();
-}
+sealed class const _SId();
+final class const SplashScreenId(@override final Object? id)
+    extends _SId
+    with Identifiable<Object?>;
+final class const SignInScreenId(@override final Object? id)
+    extends _SId
+    with Identifiable<Object?>;
+final class const OtpScreenId(@override final String id)
+    extends _SId
+    with Identifiable<String>;
+final class const HomeScreenId(@override final Object? id)
+    extends _SId
+    with Identifiable<Object?>;
+final class const SearchScreenId(@override final Object? id)
+    extends _SId
+    with Identifiable<Object?>;
+final class const ScanScreenId(@override final Object? id)
+    extends _SId
+    with Identifiable<Object?>;
+final class const CategoryScreenId(@override final CategoryId id)
+    extends _SId
+    with Identifiable<CategoryId>;
+final class const SellerScreenId(@override final SellerId id)
+    extends _SId
+    with Identifiable<SellerId>;
+final class const SellerChatScreenId(@override final SellerChatId id)
+    extends _SId
+    with Identifiable<SellerChatId>;
+final class const WishlistScreenId(@override final Object? id)
+    extends _SId
+    with Identifiable<Object?>;
+final class const AccountScreenId(@override final Object? id)
+    extends _SId
+    with Identifiable<Object?>;
+final class const OrdersScreenId(@override final Object? id)
+    extends _SId
+    with Identifiable<Object?>;
+final class const OrderScreenId(@override final OrderId id)
+    extends _SId
+    with Identifiable<OrderId>;
+final class const SettingsScreenId(@override final Object? id)
+    extends _SId
+    with Identifiable<Object?>;
+final class const ListingScreenId(@override final ListingId id)
+    extends _SId
+    with Identifiable<ListingId>;
+final class const EditListingScreenId(@override final ListingId id)
+    extends _SId
+    with Identifiable<ListingId>;
+final class const CartScreenId(@override final Object? id)
+    extends _SId
+    with Identifiable<Object?>;
+final class const CheckoutScreenId(@override final Object? id)
+    extends _SId
+    with Identifiable<Object?>;
+final class const PaymentScreenId(@override final Object? id)
+    extends _SId
+    with Identifiable<Object?>;
+final class const ConfirmationScreenId(@override final String id)
+    extends _SId
+    with Identifiable<String>;
 
-final class SplashScreenId extends _SId with Identifiable<Object?> {
-  const SplashScreenId(this.id);
-  @override
-  final Object? id;
-}
-
-final class SignInScreenId extends _SId with Identifiable<Object?> {
-  const SignInScreenId(this.id);
-  @override
-  final Object? id;
-}
-
-final class OtpScreenId extends _SId with Identifiable<String> {
-  const OtpScreenId(this.id);
-  @override
-  final String id;
-}
-
-final class HomeScreenId extends _SId with Identifiable<Object?> {
-  const HomeScreenId(this.id);
-  @override
-  final Object? id;
-}
-
-final class SearchScreenId extends _SId with Identifiable<Object?> {
-  const SearchScreenId(this.id);
-  @override
-  final Object? id;
-}
-
-final class ScanScreenId extends _SId with Identifiable<Object?> {
-  const ScanScreenId(this.id);
-  @override
-  final Object? id;
-}
-
-final class CategoryScreenId extends _SId with Identifiable<CategoryId> {
-  const CategoryScreenId(this.id);
-  @override
-  final CategoryId id;
-}
-
-final class SellerScreenId extends _SId with Identifiable<SellerId> {
-  const SellerScreenId(this.id);
-  @override
-  final SellerId id;
-}
-
-final class SellerChatScreenId extends _SId with Identifiable<SellerChatId> {
-  const SellerChatScreenId(this.id);
-  @override
-  final SellerChatId id;
-}
-
-final class WishlistScreenId extends _SId with Identifiable<Object?> {
-  const WishlistScreenId(this.id);
-  @override
-  final Object? id;
-}
-
-final class AccountScreenId extends _SId with Identifiable<Object?> {
-  const AccountScreenId(this.id);
-  @override
-  final Object? id;
-}
-
-final class OrdersScreenId extends _SId with Identifiable<Object?> {
-  const OrdersScreenId(this.id);
-  @override
-  final Object? id;
-}
-
-final class OrderScreenId extends _SId with Identifiable<OrderId> {
-  const OrderScreenId(this.id);
-  @override
-  final OrderId id;
-}
-
-final class SettingsScreenId extends _SId with Identifiable<Object?> {
-  const SettingsScreenId(this.id);
-  @override
-  final Object? id;
-}
-
-final class ListingScreenId extends _SId with Identifiable<ListingId> {
-  const ListingScreenId(this.id);
-  @override
-  final ListingId id;
-}
-
-final class EditListingScreenId extends _SId with Identifiable<ListingId> {
-  const EditListingScreenId(this.id);
-  @override
-  final ListingId id;
-}
-
-final class CartScreenId extends _SId with Identifiable<Object?> {
-  const CartScreenId(this.id);
-  @override
-  final Object? id;
-}
-
-final class CheckoutScreenId extends _SId with Identifiable<Object?> {
-  const CheckoutScreenId(this.id);
-  @override
-  final Object? id;
-}
-
-final class PaymentScreenId extends _SId with Identifiable<Object?> {
-  const PaymentScreenId(this.id);
-  @override
-  final Object? id;
-}
-
-final class ConfirmationScreenId extends _SId with Identifiable<String> {
-  const ConfirmationScreenId(this.id);
-  @override
-  final String id;
-}
-
-final class Keep {
-  const Keep._(this.spec);
-  final Enum spec;
+final class const Keep._(final Enum spec) {
   static const account = Keep._(_Screens.account);
   static const home = Keep._(_Screens.home);
 }
 
-final class SplashNav extends AnyPlacement {
-  const SplashNav._() : super._();
+final class const SplashNav._() extends AnyPlacement {
+  this : super._();
   SplashNav surface() {
     _Screens.graph.popTo(_Screens.splash);
     return const SplashNav._();
   }
 }
 
-final class SignInNav extends AnyPlacement implements PopDestPlacement {
-  const SignInNav._() : super._();
+final class const SignInNav._()
+    extends AnyPlacement
+    implements PopDestPlacement {
+  this : super._();
   SignInNav surface() {
     _Screens.graph.popTo(_Screens.signIn);
     return const SignInNav._();
@@ -1989,8 +1868,8 @@ final class SignInNav extends AnyPlacement implements PopDestPlacement {
   }
 }
 
-final class OtpNav extends AnyPlacement {
-  const OtpNav._() : super._();
+final class const OtpNav._() extends AnyPlacement {
+  this : super._();
   OtpNav surface() {
     _Screens.graph.popTo(_Screens.otp);
     return const OtpNav._();
@@ -2002,9 +1881,10 @@ final class OtpNav extends AnyPlacement {
   }
 }
 
-final class HomeNav extends AnyPlacement
+final class const HomeNav._()
+    extends AnyPlacement
     implements CategoryHomePopPlacement, PopDestPlacement {
-  const HomeNav._() : super._();
+  this : super._();
   HomeNav surface() {
     _Screens.graph.popTo(_Screens.home);
     return const HomeNav._();
@@ -2054,11 +1934,11 @@ final class HomeNav extends AnyPlacement
   }
 }
 
-final class HomeHop<N extends AnyNav> {
-  const HomeHop._(this.spec, this.id, this.nav);
-  final Enum spec;
-  final Object? id;
-  final N nav;
+final class const HomeHop<N extends AnyNav>._(
+  final Enum spec,
+  final Object? id,
+  final N nav,
+) {
   static const search = HomeHop<SearchNav>._(
     _Screens.search,
     null,
@@ -2075,12 +1955,13 @@ final class HomeHop<N extends AnyNav> {
   static const cart = HomeHop<CartNav>._(_Checkout.cart, null, CartNav._());
 }
 
-final class SearchNav extends AnyPlacement
+final class const SearchNav._()
+    extends AnyPlacement
     implements
         SearchView,
         AccountOrdersOrderProductSellerHomeCategoryProductSellerHomeScanProductSellerHomeSearchProductSellerHomeWishlistProductSellerSearchPopPlacement,
         PopDestPlacement {
-  const SearchNav._() : super._();
+  this : super._();
   SearchNav surface() {
     _Screens.graph.popTo(_Screens.search);
     return const SearchNav._();
@@ -2099,11 +1980,12 @@ final class SearchNav extends AnyPlacement
   }
 }
 
-final class ScanNav extends AnyPlacement
+final class const ScanNav._()
+    extends AnyPlacement
     implements
         AccountOrdersOrderProductSellerHomeCategoryProductSellerHomeScanProductSellerHomeSearchProductSellerHomeWishlistProductSellerScanPopPlacement,
         PopDestPlacement {
-  const ScanNav._() : super._();
+  this : super._();
   ScanNav surface() {
     _Screens.graph.popTo(_Screens.scan);
     return const ScanNav._();
@@ -2121,12 +2003,13 @@ final class ScanNav extends AnyPlacement
   }
 }
 
-final class CategoryNav extends AnyPlacement
+final class const CategoryNav._()
+    extends AnyPlacement
     implements
         CategoryHomePopPlacement,
         AccountOrdersOrderProductSellerCategoryHomeCategoryProductSellerHomeScanProductSellerHomeSearchProductSellerHomeWishlistProductSellerPopPlacement,
         PopDestPlacement {
-  const CategoryNav._() : super._();
+  this : super._();
   CategoryNav surface() {
     _Screens.graph.popTo(_Screens.category);
     return const CategoryNav._();
@@ -2166,10 +2049,10 @@ final class CategoryNav extends AnyPlacement
   }
 }
 
-final class CategoryPop<N extends AnyNav> {
-  const CategoryPop._(this.spec, this.nav);
-  final Enum spec;
-  final N? nav;
+final class const CategoryPop<N extends AnyNav>._(
+  final Enum spec,
+  final N? nav,
+) {
   static const home = CategoryPop<HomeNav>._(_Screens.home, HomeNav._());
   static const category = CategoryPop<CategoryNav>._(
     _Screens.category,
@@ -2177,11 +2060,11 @@ final class CategoryPop<N extends AnyNav> {
   );
 }
 
-final class CategoryHop<N extends AnyNav> {
-  const CategoryHop._(this.spec, this.id, this.nav);
-  final Enum spec;
-  final Object? id;
-  final N nav;
+final class const CategoryHop<N extends AnyNav>._(
+  final Enum spec,
+  final Object? id,
+  final N nav,
+) {
   static CategoryHop<CategoryNav> category(CategoryId id) =>
       CategoryHop._(_Screens.category, id, const CategoryNav._());
   static CategoryHop<HomeCategoryProductNav> product(ProductId id) =>
@@ -2214,9 +2097,10 @@ sealed class ProductPlacement implements AnyPlacement {
   int get depth;
 }
 
-final class HomeSearchProductNav extends AnyPlacement
+final class const HomeSearchProductNav._()
+    extends AnyPlacement
     implements ProductPlacement, ProductView, PopDestPlacement {
-  const HomeSearchProductNav._() : super._();
+  this : super._();
   HomeSearchProductNav surface() {
     _Screens.graph.popTo(_Screens.product);
     return const HomeSearchProductNav._();
@@ -2258,10 +2142,10 @@ final class HomeSearchProductNav extends AnyPlacement
   }
 }
 
-final class HomeSearchProductPop<N extends AnyNav> {
-  const HomeSearchProductPop._(this.spec, this.nav);
-  final Enum spec;
-  final N? nav;
+final class const HomeSearchProductPop<N extends AnyNav>._(
+  final Enum spec,
+  final N? nav,
+) {
   static const search = HomeSearchProductPop<SearchNav>._(
     _Screens.search,
     SearchNav._(),
@@ -2280,9 +2164,10 @@ final class HomeSearchProductPop<N extends AnyNav> {
   );
 }
 
-final class HomeCategoryProductNav extends AnyPlacement
+final class const HomeCategoryProductNav._()
+    extends AnyPlacement
     implements ProductPlacement, ProductView, PopDestPlacement {
-  const HomeCategoryProductNav._() : super._();
+  this : super._();
   HomeCategoryProductNav surface() {
     _Screens.graph.popTo(_Screens.product);
     return const HomeCategoryProductNav._();
@@ -2324,10 +2209,10 @@ final class HomeCategoryProductNav extends AnyPlacement
   }
 }
 
-final class HomeCategoryProductPop<N extends AnyNav> {
-  const HomeCategoryProductPop._(this.spec, this.nav);
-  final Enum spec;
-  final N? nav;
+final class const HomeCategoryProductPop<N extends AnyNav>._(
+  final Enum spec,
+  final N? nav,
+) {
   static const category = HomeCategoryProductPop<CategoryNav>._(
     _Screens.category,
     CategoryNav._(),
@@ -2346,9 +2231,10 @@ final class HomeCategoryProductPop<N extends AnyNav> {
   );
 }
 
-final class HomeScanProductNav extends AnyPlacement
+final class const HomeScanProductNav._()
+    extends AnyPlacement
     implements ProductPlacement, ProductView, PopDestPlacement {
-  const HomeScanProductNav._() : super._();
+  this : super._();
   HomeScanProductNav surface() {
     _Screens.graph.popTo(_Screens.product);
     return const HomeScanProductNav._();
@@ -2390,10 +2276,10 @@ final class HomeScanProductNav extends AnyPlacement
   }
 }
 
-final class HomeScanProductPop<N extends AnyNav> {
-  const HomeScanProductPop._(this.spec, this.nav);
-  final Enum spec;
-  final N? nav;
+final class const HomeScanProductPop<N extends AnyNav>._(
+  final Enum spec,
+  final N? nav,
+) {
   static const scan = HomeScanProductPop<ScanNav>._(_Screens.scan, ScanNav._());
   static const home = HomeScanProductPop<HomeNav>._(_Screens.home, HomeNav._());
   static const seller = HomeScanProductPop<SellerPlacement>._(
@@ -2406,9 +2292,10 @@ final class HomeScanProductPop<N extends AnyNav> {
   );
 }
 
-final class HomeWishlistProductNav extends AnyPlacement
+final class const HomeWishlistProductNav._()
+    extends AnyPlacement
     implements ProductPlacement, ProductView, PopDestPlacement {
-  const HomeWishlistProductNav._() : super._();
+  this : super._();
   HomeWishlistProductNav surface() {
     _Screens.graph.popTo(_Screens.product);
     return const HomeWishlistProductNav._();
@@ -2450,10 +2337,10 @@ final class HomeWishlistProductNav extends AnyPlacement
   }
 }
 
-final class HomeWishlistProductPop<N extends AnyNav> {
-  const HomeWishlistProductPop._(this.spec, this.nav);
-  final Enum spec;
-  final N? nav;
+final class const HomeWishlistProductPop<N extends AnyNav>._(
+  final Enum spec,
+  final N? nav,
+) {
   static const wishlist = HomeWishlistProductPop<WishlistNav>._(
     _Screens.wishlist,
     WishlistNav._(),
@@ -2472,9 +2359,10 @@ final class HomeWishlistProductPop<N extends AnyNav> {
   );
 }
 
-final class AccountOrdersOrderProductNav extends AnyPlacement
+final class const AccountOrdersOrderProductNav._()
+    extends AnyPlacement
     implements ProductPlacement, ProductView, PopDestPlacement {
-  const AccountOrdersOrderProductNav._() : super._();
+  this : super._();
   AccountOrdersOrderProductNav surface() {
     _Screens.graph.popTo(_Screens.product);
     return const AccountOrdersOrderProductNav._();
@@ -2521,10 +2409,10 @@ final class AccountOrdersOrderProductNav extends AnyPlacement
   }
 }
 
-final class AccountOrdersOrderProductPop<N extends AnyNav> {
-  const AccountOrdersOrderProductPop._(this.spec, this.nav);
-  final Enum spec;
-  final N? nav;
+final class const AccountOrdersOrderProductPop<N extends AnyNav>._(
+  final Enum spec,
+  final N? nav,
+) {
   static const order = AccountOrdersOrderProductPop<OrderNav>._(
     _Screens.order,
     OrderNav._(),
@@ -2603,7 +2491,8 @@ sealed class ProductSellerPlacement implements AnyPlacement {
   int get depth;
 }
 
-final class HomeSearchProductSellerNav extends AnyPlacement
+final class const HomeSearchProductSellerNav._()
+    extends AnyPlacement
     implements
         SellerPlacement,
         ProductSellerPlacement,
@@ -2613,7 +2502,7 @@ final class HomeSearchProductSellerNav extends AnyPlacement
         AccountOrdersOrderProductSellerHomeCategoryProductSellerHomeScanProductSellerHomeSearchProductSellerHomeWishlistProductSellerWishlistPopPlacement,
         AccountOrdersOrderProductSellerHomeCategoryProductSellerHomeScanProductSellerHomeSearchProductSellerHomeWishlistProductSellerOrderPopPlacement,
         PopDestPlacement {
-  const HomeSearchProductSellerNav._() : super._();
+  this : super._();
   HomeSearchProductSellerNav surface() {
     _Screens.graph.popTo(_Screens.seller);
     return const HomeSearchProductSellerNav._();
@@ -2663,10 +2552,10 @@ final class HomeSearchProductSellerNav extends AnyPlacement
   }
 }
 
-final class HomeSearchProductSellerPop<N extends AnyNav> {
-  const HomeSearchProductSellerPop._(this.spec, this.nav);
-  final Enum spec;
-  final N? nav;
+final class const HomeSearchProductSellerPop<N extends AnyNav>._(
+  final Enum spec,
+  final N? nav,
+) {
   static const product = HomeSearchProductSellerPop<ProductPlacement>._(
     _Screens.product,
     null,
@@ -2685,11 +2574,11 @@ final class HomeSearchProductSellerPop<N extends AnyNav> {
   );
 }
 
-final class HomeSearchProductSellerHop<N extends AnyNav> {
-  const HomeSearchProductSellerHop._(this.spec, this.id, this.nav);
-  final Enum spec;
-  final Object? id;
-  final N nav;
+final class const HomeSearchProductSellerHop<N extends AnyNav>._(
+  final Enum spec,
+  final Object? id,
+  final N nav,
+) {
   static HomeSearchProductSellerHop<HomeSearchProductNav> product(
     ProductId id,
   ) => HomeSearchProductSellerHop._(
@@ -2705,7 +2594,8 @@ final class HomeSearchProductSellerHop<N extends AnyNav> {
   );
 }
 
-final class HomeCategoryProductSellerNav extends AnyPlacement
+final class const HomeCategoryProductSellerNav._()
+    extends AnyPlacement
     implements
         SellerPlacement,
         ProductSellerPlacement,
@@ -2715,7 +2605,7 @@ final class HomeCategoryProductSellerNav extends AnyPlacement
         AccountOrdersOrderProductSellerHomeCategoryProductSellerHomeScanProductSellerHomeSearchProductSellerHomeWishlistProductSellerWishlistPopPlacement,
         AccountOrdersOrderProductSellerHomeCategoryProductSellerHomeScanProductSellerHomeSearchProductSellerHomeWishlistProductSellerOrderPopPlacement,
         PopDestPlacement {
-  const HomeCategoryProductSellerNav._() : super._();
+  this : super._();
   HomeCategoryProductSellerNav surface() {
     _Screens.graph.popTo(_Screens.seller);
     return const HomeCategoryProductSellerNav._();
@@ -2765,10 +2655,10 @@ final class HomeCategoryProductSellerNav extends AnyPlacement
   }
 }
 
-final class HomeCategoryProductSellerPop<N extends AnyNav> {
-  const HomeCategoryProductSellerPop._(this.spec, this.nav);
-  final Enum spec;
-  final N? nav;
+final class const HomeCategoryProductSellerPop<N extends AnyNav>._(
+  final Enum spec,
+  final N? nav,
+) {
   static const product = HomeCategoryProductSellerPop<ProductPlacement>._(
     _Screens.product,
     null,
@@ -2787,11 +2677,11 @@ final class HomeCategoryProductSellerPop<N extends AnyNav> {
   );
 }
 
-final class HomeCategoryProductSellerHop<N extends AnyNav> {
-  const HomeCategoryProductSellerHop._(this.spec, this.id, this.nav);
-  final Enum spec;
-  final Object? id;
-  final N nav;
+final class const HomeCategoryProductSellerHop<N extends AnyNav>._(
+  final Enum spec,
+  final Object? id,
+  final N nav,
+) {
   static HomeCategoryProductSellerHop<HomeCategoryProductNav> product(
     ProductId id,
   ) => HomeCategoryProductSellerHop._(
@@ -2807,7 +2697,8 @@ final class HomeCategoryProductSellerHop<N extends AnyNav> {
   );
 }
 
-final class HomeScanProductSellerNav extends AnyPlacement
+final class const HomeScanProductSellerNav._()
+    extends AnyPlacement
     implements
         SellerPlacement,
         ProductSellerPlacement,
@@ -2817,7 +2708,7 @@ final class HomeScanProductSellerNav extends AnyPlacement
         AccountOrdersOrderProductSellerHomeCategoryProductSellerHomeScanProductSellerHomeSearchProductSellerHomeWishlistProductSellerWishlistPopPlacement,
         AccountOrdersOrderProductSellerHomeCategoryProductSellerHomeScanProductSellerHomeSearchProductSellerHomeWishlistProductSellerOrderPopPlacement,
         PopDestPlacement {
-  const HomeScanProductSellerNav._() : super._();
+  this : super._();
   HomeScanProductSellerNav surface() {
     _Screens.graph.popTo(_Screens.seller);
     return const HomeScanProductSellerNav._();
@@ -2867,10 +2758,10 @@ final class HomeScanProductSellerNav extends AnyPlacement
   }
 }
 
-final class HomeScanProductSellerPop<N extends AnyNav> {
-  const HomeScanProductSellerPop._(this.spec, this.nav);
-  final Enum spec;
-  final N? nav;
+final class const HomeScanProductSellerPop<N extends AnyNav>._(
+  final Enum spec,
+  final N? nav,
+) {
   static const product = HomeScanProductSellerPop<ProductPlacement>._(
     _Screens.product,
     null,
@@ -2889,11 +2780,11 @@ final class HomeScanProductSellerPop<N extends AnyNav> {
   );
 }
 
-final class HomeScanProductSellerHop<N extends AnyNav> {
-  const HomeScanProductSellerHop._(this.spec, this.id, this.nav);
-  final Enum spec;
-  final Object? id;
-  final N nav;
+final class const HomeScanProductSellerHop<N extends AnyNav>._(
+  final Enum spec,
+  final Object? id,
+  final N nav,
+) {
   static HomeScanProductSellerHop<HomeScanProductNav> product(ProductId id) =>
       HomeScanProductSellerHop._(
         _Screens.product,
@@ -2908,7 +2799,8 @@ final class HomeScanProductSellerHop<N extends AnyNav> {
   );
 }
 
-final class HomeWishlistProductSellerNav extends AnyPlacement
+final class const HomeWishlistProductSellerNav._()
+    extends AnyPlacement
     implements
         SellerPlacement,
         ProductSellerPlacement,
@@ -2918,7 +2810,7 @@ final class HomeWishlistProductSellerNav extends AnyPlacement
         AccountOrdersOrderProductSellerHomeCategoryProductSellerHomeScanProductSellerHomeSearchProductSellerHomeWishlistProductSellerWishlistPopPlacement,
         AccountOrdersOrderProductSellerHomeCategoryProductSellerHomeScanProductSellerHomeSearchProductSellerHomeWishlistProductSellerOrderPopPlacement,
         PopDestPlacement {
-  const HomeWishlistProductSellerNav._() : super._();
+  this : super._();
   HomeWishlistProductSellerNav surface() {
     _Screens.graph.popTo(_Screens.seller);
     return const HomeWishlistProductSellerNav._();
@@ -2968,10 +2860,10 @@ final class HomeWishlistProductSellerNav extends AnyPlacement
   }
 }
 
-final class HomeWishlistProductSellerPop<N extends AnyNav> {
-  const HomeWishlistProductSellerPop._(this.spec, this.nav);
-  final Enum spec;
-  final N? nav;
+final class const HomeWishlistProductSellerPop<N extends AnyNav>._(
+  final Enum spec,
+  final N? nav,
+) {
   static const product = HomeWishlistProductSellerPop<ProductPlacement>._(
     _Screens.product,
     null,
@@ -2990,11 +2882,11 @@ final class HomeWishlistProductSellerPop<N extends AnyNav> {
   );
 }
 
-final class HomeWishlistProductSellerHop<N extends AnyNav> {
-  const HomeWishlistProductSellerHop._(this.spec, this.id, this.nav);
-  final Enum spec;
-  final Object? id;
-  final N nav;
+final class const HomeWishlistProductSellerHop<N extends AnyNav>._(
+  final Enum spec,
+  final Object? id,
+  final N nav,
+) {
   static HomeWishlistProductSellerHop<HomeWishlistProductNav> product(
     ProductId id,
   ) => HomeWishlistProductSellerHop._(
@@ -3010,7 +2902,8 @@ final class HomeWishlistProductSellerHop<N extends AnyNav> {
   );
 }
 
-final class AccountOrdersOrderProductSellerNav extends AnyPlacement
+final class const AccountOrdersOrderProductSellerNav._()
+    extends AnyPlacement
     implements
         SellerPlacement,
         ProductSellerPlacement,
@@ -3020,7 +2913,7 @@ final class AccountOrdersOrderProductSellerNav extends AnyPlacement
         AccountOrdersOrderProductSellerHomeCategoryProductSellerHomeScanProductSellerHomeSearchProductSellerHomeWishlistProductSellerWishlistPopPlacement,
         AccountOrdersOrderProductSellerHomeCategoryProductSellerHomeScanProductSellerHomeSearchProductSellerHomeWishlistProductSellerOrderPopPlacement,
         PopDestPlacement {
-  const AccountOrdersOrderProductSellerNav._() : super._();
+  this : super._();
   AccountOrdersOrderProductSellerNav surface() {
     _Screens.graph.popTo(_Screens.seller);
     return const AccountOrdersOrderProductSellerNav._();
@@ -3075,10 +2968,10 @@ final class AccountOrdersOrderProductSellerNav extends AnyPlacement
   }
 }
 
-final class AccountOrdersOrderProductSellerPop<N extends AnyNav> {
-  const AccountOrdersOrderProductSellerPop._(this.spec, this.nav);
-  final Enum spec;
-  final N? nav;
+final class const AccountOrdersOrderProductSellerPop<N extends AnyNav>._(
+  final Enum spec,
+  final N? nav,
+) {
   static const product = AccountOrdersOrderProductSellerPop<ProductPlacement>._(
     _Screens.product,
     null,
@@ -3101,11 +2994,11 @@ final class AccountOrdersOrderProductSellerPop<N extends AnyNav> {
   );
 }
 
-final class AccountOrdersOrderProductSellerHop<N extends AnyNav> {
-  const AccountOrdersOrderProductSellerHop._(this.spec, this.id, this.nav);
-  final Enum spec;
-  final Object? id;
-  final N nav;
+final class const AccountOrdersOrderProductSellerHop<N extends AnyNav>._(
+  final Enum spec,
+  final Object? id,
+  final N nav,
+) {
   static AccountOrdersOrderProductSellerHop<AccountOrdersOrderProductNav>
   product(ProductId id) => AccountOrdersOrderProductSellerHop._(
     _Screens.product,
@@ -3183,12 +3076,13 @@ sealed class ProductSellerSellerChatPlacement implements AnyPlacement {
   ProductSellerSellerChatPlacement surface();
 }
 
-final class HomeSearchProductSellerSellerChatNav extends AnyPlacement
+final class const HomeSearchProductSellerSellerChatNav._()
+    extends AnyPlacement
     implements
         SellerChatPlacement,
         SellerSellerChatPlacement,
         ProductSellerSellerChatPlacement {
-  const HomeSearchProductSellerSellerChatNav._() : super._();
+  this : super._();
   HomeSearchProductSellerSellerChatNav surface() {
     _Screens.graph.popTo(_Screens.sellerChat);
     return const HomeSearchProductSellerSellerChatNav._();
@@ -3220,10 +3114,10 @@ final class HomeSearchProductSellerSellerChatNav extends AnyPlacement
   }
 }
 
-final class HomeSearchProductSellerSellerChatPop<N extends AnyNav> {
-  const HomeSearchProductSellerSellerChatPop._(this.spec, this.nav);
-  final Enum spec;
-  final N? nav;
+final class const HomeSearchProductSellerSellerChatPop<N extends AnyNav>._(
+  final Enum spec,
+  final N? nav,
+) {
   static const seller = HomeSearchProductSellerSellerChatPop<SellerPlacement>._(
     _Screens.seller,
     null,
@@ -3243,12 +3137,13 @@ final class HomeSearchProductSellerSellerChatPop<N extends AnyNav> {
   );
 }
 
-final class HomeCategoryProductSellerSellerChatNav extends AnyPlacement
+final class const HomeCategoryProductSellerSellerChatNav._()
+    extends AnyPlacement
     implements
         SellerChatPlacement,
         SellerSellerChatPlacement,
         ProductSellerSellerChatPlacement {
-  const HomeCategoryProductSellerSellerChatNav._() : super._();
+  this : super._();
   HomeCategoryProductSellerSellerChatNav surface() {
     _Screens.graph.popTo(_Screens.sellerChat);
     return const HomeCategoryProductSellerSellerChatNav._();
@@ -3280,10 +3175,10 @@ final class HomeCategoryProductSellerSellerChatNav extends AnyPlacement
   }
 }
 
-final class HomeCategoryProductSellerSellerChatPop<N extends AnyNav> {
-  const HomeCategoryProductSellerSellerChatPop._(this.spec, this.nav);
-  final Enum spec;
-  final N? nav;
+final class const HomeCategoryProductSellerSellerChatPop<N extends AnyNav>._(
+  final Enum spec,
+  final N? nav,
+) {
   static const seller =
       HomeCategoryProductSellerSellerChatPop<SellerPlacement>._(
         _Screens.seller,
@@ -3304,12 +3199,13 @@ final class HomeCategoryProductSellerSellerChatPop<N extends AnyNav> {
   );
 }
 
-final class HomeScanProductSellerSellerChatNav extends AnyPlacement
+final class const HomeScanProductSellerSellerChatNav._()
+    extends AnyPlacement
     implements
         SellerChatPlacement,
         SellerSellerChatPlacement,
         ProductSellerSellerChatPlacement {
-  const HomeScanProductSellerSellerChatNav._() : super._();
+  this : super._();
   HomeScanProductSellerSellerChatNav surface() {
     _Screens.graph.popTo(_Screens.sellerChat);
     return const HomeScanProductSellerSellerChatNav._();
@@ -3341,10 +3237,10 @@ final class HomeScanProductSellerSellerChatNav extends AnyPlacement
   }
 }
 
-final class HomeScanProductSellerSellerChatPop<N extends AnyNav> {
-  const HomeScanProductSellerSellerChatPop._(this.spec, this.nav);
-  final Enum spec;
-  final N? nav;
+final class const HomeScanProductSellerSellerChatPop<N extends AnyNav>._(
+  final Enum spec,
+  final N? nav,
+) {
   static const seller = HomeScanProductSellerSellerChatPop<SellerPlacement>._(
     _Screens.seller,
     null,
@@ -3363,12 +3259,13 @@ final class HomeScanProductSellerSellerChatPop<N extends AnyNav> {
   );
 }
 
-final class HomeWishlistProductSellerSellerChatNav extends AnyPlacement
+final class const HomeWishlistProductSellerSellerChatNav._()
+    extends AnyPlacement
     implements
         SellerChatPlacement,
         SellerSellerChatPlacement,
         ProductSellerSellerChatPlacement {
-  const HomeWishlistProductSellerSellerChatNav._() : super._();
+  this : super._();
   HomeWishlistProductSellerSellerChatNav surface() {
     _Screens.graph.popTo(_Screens.sellerChat);
     return const HomeWishlistProductSellerSellerChatNav._();
@@ -3400,10 +3297,10 @@ final class HomeWishlistProductSellerSellerChatNav extends AnyPlacement
   }
 }
 
-final class HomeWishlistProductSellerSellerChatPop<N extends AnyNav> {
-  const HomeWishlistProductSellerSellerChatPop._(this.spec, this.nav);
-  final Enum spec;
-  final N? nav;
+final class const HomeWishlistProductSellerSellerChatPop<N extends AnyNav>._(
+  final Enum spec,
+  final N? nav,
+) {
   static const seller =
       HomeWishlistProductSellerSellerChatPop<SellerPlacement>._(
         _Screens.seller,
@@ -3424,12 +3321,13 @@ final class HomeWishlistProductSellerSellerChatPop<N extends AnyNav> {
   );
 }
 
-final class AccountOrdersOrderProductSellerSellerChatNav extends AnyPlacement
+final class const AccountOrdersOrderProductSellerSellerChatNav._()
+    extends AnyPlacement
     implements
         SellerChatPlacement,
         SellerSellerChatPlacement,
         ProductSellerSellerChatPlacement {
-  const AccountOrdersOrderProductSellerSellerChatNav._() : super._();
+  this : super._();
   AccountOrdersOrderProductSellerSellerChatNav surface() {
     _Screens.graph.popTo(_Screens.sellerChat);
     return const AccountOrdersOrderProductSellerSellerChatNav._();
@@ -3468,10 +3366,9 @@ final class AccountOrdersOrderProductSellerSellerChatNav extends AnyPlacement
   }
 }
 
-final class AccountOrdersOrderProductSellerSellerChatPop<N extends AnyNav> {
-  const AccountOrdersOrderProductSellerSellerChatPop._(this.spec, this.nav);
-  final Enum spec;
-  final N? nav;
+final class const AccountOrdersOrderProductSellerSellerChatPop<
+  N extends AnyNav
+>._(final Enum spec, final N? nav) {
   static const seller =
       AccountOrdersOrderProductSellerSellerChatPop<SellerPlacement>._(
         _Screens.seller,
@@ -3498,11 +3395,12 @@ final class AccountOrdersOrderProductSellerSellerChatPop<N extends AnyNav> {
       );
 }
 
-final class WishlistNav extends AnyPlacement
+final class const WishlistNav._()
+    extends AnyPlacement
     implements
         AccountOrdersOrderProductSellerHomeCategoryProductSellerHomeScanProductSellerHomeSearchProductSellerHomeWishlistProductSellerWishlistPopPlacement,
         PopDestPlacement {
-  const WishlistNav._() : super._();
+  this : super._();
   WishlistNav surface() {
     _Screens.graph.popTo(_Screens.wishlist);
     return const WishlistNav._();
@@ -3520,8 +3418,10 @@ final class WishlistNav extends AnyPlacement
   }
 }
 
-final class AccountNav extends AnyPlacement implements PopDestPlacement {
-  const AccountNav._() : super._();
+final class const AccountNav._()
+    extends AnyPlacement
+    implements PopDestPlacement {
+  this : super._();
   AccountNav surface() {
     _Screens.graph.popTo(_Screens.account);
     return const AccountNav._();
@@ -3563,11 +3463,11 @@ final class AccountNav extends AnyPlacement implements PopDestPlacement {
   }
 }
 
-final class AccountHop<N extends AnyNav> {
-  const AccountHop._(this.spec, this.id, this.nav);
-  final Enum spec;
-  final Object? id;
-  final N nav;
+final class const AccountHop<N extends AnyNav>._(
+  final Enum spec,
+  final Object? id,
+  final N nav,
+) {
   static const orders = AccountHop<OrdersNav>._(
     _Screens.orders,
     null,
@@ -3582,8 +3482,10 @@ final class AccountHop<N extends AnyNav> {
       AccountHop._(_Screens.listing, id, const ListingNav._());
 }
 
-final class OrdersNav extends AnyPlacement implements PopDestPlacement {
-  const OrdersNav._() : super._();
+final class const OrdersNav._()
+    extends AnyPlacement
+    implements PopDestPlacement {
+  this : super._();
   OrdersNav surface() {
     _Screens.graph.popTo(_Screens.orders);
     return const OrdersNav._();
@@ -3601,11 +3503,12 @@ final class OrdersNav extends AnyPlacement implements PopDestPlacement {
   }
 }
 
-final class OrderNav extends AnyPlacement
+final class const OrderNav._()
+    extends AnyPlacement
     implements
         AccountOrdersOrderProductSellerHomeCategoryProductSellerHomeScanProductSellerHomeSearchProductSellerHomeWishlistProductSellerOrderPopPlacement,
         PopDestPlacement {
-  const OrderNav._() : super._();
+  this : super._();
   OrderNav surface() {
     _Screens.graph.popTo(_Screens.order);
     return const OrderNav._();
@@ -3633,10 +3536,7 @@ final class OrderNav extends AnyPlacement
   }
 }
 
-final class OrderPop<N extends AnyNav> {
-  const OrderPop._(this.spec, this.nav);
-  final Enum spec;
-  final N? nav;
+final class const OrderPop<N extends AnyNav>._(final Enum spec, final N? nav) {
   static const orders = OrderPop<OrdersNav>._(_Screens.orders, OrdersNav._());
   static const account = OrderPop<AccountNav>._(
     _Screens.account,
@@ -3644,8 +3544,8 @@ final class OrderPop<N extends AnyNav> {
   );
 }
 
-final class SettingsNav extends AnyPlacement {
-  const SettingsNav._() : super._();
+final class const SettingsNav._() extends AnyPlacement {
+  this : super._();
   SettingsNav surface() {
     _Screens.graph.popTo(_Screens.settings);
     return const SettingsNav._();
@@ -3657,8 +3557,10 @@ final class SettingsNav extends AnyPlacement {
   }
 }
 
-final class ListingNav extends AnyPlacement implements PopDestPlacement {
-  const ListingNav._() : super._();
+final class const ListingNav._()
+    extends AnyPlacement
+    implements PopDestPlacement {
+  this : super._();
   ListingNav surface() {
     _Screens.graph.popTo(_Screens.listing);
     return const ListingNav._();
@@ -3676,8 +3578,8 @@ final class ListingNav extends AnyPlacement implements PopDestPlacement {
   }
 }
 
-final class EditListingNav extends AnyPlacement {
-  const EditListingNav._() : super._();
+final class const EditListingNav._() extends AnyPlacement {
+  this : super._();
   EditListingNav surface() {
     _Screens.graph.popTo(_Screens.editListing);
     return const EditListingNav._();
@@ -3699,10 +3601,10 @@ final class EditListingNav extends AnyPlacement {
   }
 }
 
-final class EditListingPop<N extends AnyNav> {
-  const EditListingPop._(this.spec, this.nav);
-  final Enum spec;
-  final N? nav;
+final class const EditListingPop<N extends AnyNav>._(
+  final Enum spec,
+  final N? nav,
+) {
   static const listing = EditListingPop<ListingNav>._(
     _Screens.listing,
     ListingNav._(),
@@ -3713,8 +3615,8 @@ final class EditListingPop<N extends AnyNav> {
   );
 }
 
-final class CartNav extends AnyPlacement implements PopDestPlacement {
-  const CartNav._() : super._();
+final class const CartNav._() extends AnyPlacement implements PopDestPlacement {
+  this : super._();
   CartNav surface() {
     _Screens.graph.popTo(_Checkout.cart);
     return const CartNav._();
@@ -3739,8 +3641,10 @@ final class CartNav extends AnyPlacement implements PopDestPlacement {
   }
 }
 
-final class CheckoutNav extends AnyPlacement implements PopDestPlacement {
-  const CheckoutNav._() : super._();
+final class const CheckoutNav._()
+    extends AnyPlacement
+    implements PopDestPlacement {
+  this : super._();
   CheckoutNav surface() {
     _Screens.graph.popTo(_Checkout.checkout);
     return const CheckoutNav._();
@@ -3774,16 +3678,18 @@ final class CheckoutNav extends AnyPlacement implements PopDestPlacement {
   }
 }
 
-final class CheckoutPop<N extends AnyNav> {
-  const CheckoutPop._(this.spec, this.nav);
-  final Enum spec;
-  final N? nav;
+final class const CheckoutPop<N extends AnyNav>._(
+  final Enum spec,
+  final N? nav,
+) {
   static const cart = CheckoutPop<CartNav>._(_Checkout.cart, CartNav._());
   static const home = CheckoutPop<HomeNav>._(_Screens.home, HomeNav._());
 }
 
-final class PaymentNav extends AnyPlacement implements PopDestPlacement {
-  const PaymentNav._() : super._();
+final class const PaymentNav._()
+    extends AnyPlacement
+    implements PopDestPlacement {
+  this : super._();
   PaymentNav surface() {
     _Screens.graph.popTo(_Checkout.payment);
     return const PaymentNav._();
@@ -3816,10 +3722,10 @@ final class PaymentNav extends AnyPlacement implements PopDestPlacement {
   }
 }
 
-final class PaymentPop<N extends AnyNav> {
-  const PaymentPop._(this.spec, this.nav);
-  final Enum spec;
-  final N? nav;
+final class const PaymentPop<N extends AnyNav>._(
+  final Enum spec,
+  final N? nav,
+) {
   static const checkout = PaymentPop<CheckoutNav>._(
     _Checkout.checkout,
     CheckoutNav._(),
@@ -3828,8 +3734,8 @@ final class PaymentPop<N extends AnyNav> {
   static const home = PaymentPop<HomeNav>._(_Screens.home, HomeNav._());
 }
 
-final class ConfirmationNav extends AnyPlacement {
-  const ConfirmationNav._() : super._();
+final class const ConfirmationNav._() extends AnyPlacement {
+  this : super._();
   ConfirmationNav surface() {
     _Screens.graph.popTo(_Checkout.confirmation);
     return const ConfirmationNav._();
@@ -3861,10 +3767,10 @@ final class ConfirmationNav extends AnyPlacement {
   }
 }
 
-final class ConfirmationPop<N extends AnyNav> {
-  const ConfirmationPop._(this.spec, this.nav);
-  final Enum spec;
-  final N? nav;
+final class const ConfirmationPop<N extends AnyNav>._(
+  final Enum spec,
+  final N? nav,
+) {
   static const payment = ConfirmationPop<PaymentNav>._(
     _Checkout.payment,
     PaymentNav._(),
@@ -3997,13 +3903,8 @@ bool _endsWith(List<Enum> chain, List<Enum> suffix) {
 
 /// A URL the app understands: a [Place] or a [Link]. Build one with
 /// `Url.<route>…` and `.toUri([domain])`; `parseUrl` returns one.
-sealed class Url {
-  const Url([this.domain]);
+sealed class const Url([final String? domain]) {
   Uri toUri([String? domain]);
-
-  /// The inbound origin (`scheme://host[:port]`) when this came from
-  /// `parseUrl` (read it in `Screen.resolver`); null when built locally.
-  final String? domain;
   static _WLSplash get splash => _WLSplash._([_Screens.splash], [null]);
   static _WLSignIn get signIn => _WLSignIn._([_Screens.signIn], [null]);
   static _WLSignInOtp otp(String id) =>
@@ -4061,8 +3962,7 @@ sealed class Url {
 /// destination. Go-able: every `Place` is a [Hop], so `Screen.go(place)`
 /// replays its root-down chain and lands the placement. Built root-down
 /// (`Place.home.item(id)`); a parsed nav-mirror URL is one.
-sealed class Place extends Url implements Hop<AnyNav> {
-  const Place([super.domain]);
+sealed class const Place([super.domain]) extends Url implements Hop<AnyNav> {
   @override
   List<(Enum, Object?)> get chain;
   @override
@@ -4128,14 +4028,12 @@ sealed class Place extends Url implements Hop<AnyNav> {
 /// A resolve-only branch (declared via `.link`/`slots`): URL-shaped DATA
 /// the resolver interprets. NOT a position — no widget, never navigable.
 /// Shareable via `Link.<route>.toUri()`; read its fields in `Screen.resolver`.
-sealed class Link extends Url {
-  const Link([super.domain]);
+sealed class const Link([super.domain]) extends Url {
   static _LXProduct get product => _LXProduct(const <Object?>[], const <int>[]);
 }
 
 /// The bare root `/` — a plain app-open (no specific destination).
-final class RootUrl extends Url {
-  const RootUrl([super.domain]);
+final class const RootUrl([super.domain]) extends Url {
   @override
   Uri toUri([String? domain]) =>
       Uri.parse((domain ?? 'https://shop.example') + '/');
@@ -4143,10 +4041,10 @@ final class RootUrl extends Url {
 
 /// A nav-mirror `Place` parsed from a URL (e.g. `/home/item/42`); carries
 /// the root-down chain so `Screen.go` lands it.
-final class _NavPlace extends Place {
-  const _NavPlace(this.chain, [super.domain]);
-  @override
-  final List<(Enum, Object?)> chain;
+final class const _NavPlace(
+  @override final List<(Enum, Object?)> chain, [
+  super.domain,
+]) extends Place {
   @override
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(
@@ -4159,9 +4057,9 @@ final class _NavPlace extends Place {
 
 sealed class ProductLink implements Url {}
 
-final class ProductByUuidLink extends Link implements ProductLink {
-  const ProductByUuidLink(this.uuid, [super.domain]);
-  final String uuid;
+final class const ProductByUuidLink(final String uuid, [super.domain])
+    extends Link
+    implements ProductLink {
   @override
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeLink(
@@ -4173,9 +4071,9 @@ final class ProductByUuidLink extends Link implements ProductLink {
   );
 }
 
-final class ProductByUsernameLink extends Link implements ProductLink {
-  const ProductByUsernameLink(this.username, [super.domain]);
-  final String username;
+final class const ProductByUsernameLink(final String username, [super.domain])
+    extends Link
+    implements ProductLink {
   @override
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeLink(
@@ -4215,20 +4113,14 @@ Url? parseUrl(String url) {
   return null;
 }
 
-class _LXProduct {
-  _LXProduct(this._p, this._b);
-  final List<Object?> _p;
-  final List<int> _b;
+class _LXProduct(final List<Object?> _p, final List<int> _b) {
   _LXProductSlot byUuid(String uuid) =>
       _LXProductSlot([..._p, uuid], [..._b, 0]);
   _LXProductSlot byUsername(String username) =>
       _LXProductSlot([..._p, username], [..._b, 1]);
 }
 
-class _LXProductSlot {
-  _LXProductSlot(this._p, this._b);
-  final List<Object?> _p;
-  final List<int> _b;
+class _LXProductSlot(final List<Object?> _p, final List<int> _b) {
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeLink(
       domain ?? 'https://shop.example',
@@ -4239,10 +4131,8 @@ class _LXProductSlot {
   );
 }
 
-final class _WLSplash implements Hop<SplashNav> {
-  const _WLSplash._(this._s, this._i);
-  final List<Enum> _s;
-  final List<Object?> _i;
+final class const _WLSplash._(final List<Enum> _s, final List<Object?> _i)
+    implements Hop<SplashNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -4260,10 +4150,8 @@ final class _WLSplash implements Hop<SplashNav> {
   );
 }
 
-final class _WLSignIn implements Hop<SignInNav> {
-  const _WLSignIn._(this._s, this._i);
-  final List<Enum> _s;
-  final List<Object?> _i;
+final class const _WLSignIn._(final List<Enum> _s, final List<Object?> _i)
+    implements Hop<SignInNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -4283,10 +4171,8 @@ final class _WLSignIn implements Hop<SignInNav> {
   );
 }
 
-final class _WLSignInOtp implements Hop<OtpNav> {
-  const _WLSignInOtp._(this._s, this._i);
-  final List<Enum> _s;
-  final List<Object?> _i;
+final class const _WLSignInOtp._(final List<Enum> _s, final List<Object?> _i)
+    implements Hop<OtpNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -4304,10 +4190,8 @@ final class _WLSignInOtp implements Hop<OtpNav> {
   );
 }
 
-final class _WLHome implements Hop<HomeNav> {
-  const _WLHome._(this._s, this._i);
-  final List<Enum> _s;
-  final List<Object?> _i;
+final class const _WLHome._(final List<Enum> _s, final List<Object?> _i)
+    implements Hop<HomeNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -4333,10 +4217,8 @@ final class _WLHome implements Hop<HomeNav> {
   );
 }
 
-final class _WLHomeSearch implements Hop<SearchNav> {
-  const _WLHomeSearch._(this._s, this._i);
-  final List<Enum> _s;
-  final List<Object?> _i;
+final class const _WLHomeSearch._(final List<Enum> _s, final List<Object?> _i)
+    implements Hop<SearchNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -4358,12 +4240,12 @@ final class _WLHomeSearch implements Hop<SearchNav> {
   );
 }
 
-class _WLHomeSearchQ {
-  _WLHomeSearchQ(this._s, this._i, this._q, this._f);
-  final List<Enum> _s;
-  final List<Object?> _i;
-  final Map<String, Object?> _q;
-  final Map<String, Object?> _f;
+class _WLHomeSearchQ(
+  final List<Enum> _s,
+  final List<Object?> _i,
+  final Map<String, Object?> _q,
+  final Map<String, Object?> _f,
+) {
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(
       domain ?? 'https://shop.example',
@@ -4375,10 +4257,10 @@ class _WLHomeSearchQ {
   );
 }
 
-final class _WLHomeSearchProduct implements Hop<HomeSearchProductNav> {
-  const _WLHomeSearchProduct._(this._s, this._i);
-  final List<Enum> _s;
-  final List<Object?> _i;
+final class const _WLHomeSearchProduct._(
+  final List<Enum> _s,
+  final List<Object?> _i,
+) implements Hop<HomeSearchProductNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -4408,12 +4290,12 @@ final class _WLHomeSearchProduct implements Hop<HomeSearchProductNav> {
   );
 }
 
-class _WLHomeSearchProductQ {
-  _WLHomeSearchProductQ(this._s, this._i, this._q, this._f);
-  final List<Enum> _s;
-  final List<Object?> _i;
-  final Map<String, Object?> _q;
-  final Map<String, Object?> _f;
+class _WLHomeSearchProductQ(
+  final List<Enum> _s,
+  final List<Object?> _i,
+  final Map<String, Object?> _q,
+  final Map<String, Object?> _f,
+) {
   _WLHomeSearchProductF fragment(Set<ProductFragmentArg> f) =>
       _WLHomeSearchProductF(_s, _i, _q, {for (final t in f) t.key: t.value});
   Uri toUri([String? domain]) => Uri.parse(
@@ -4427,12 +4309,12 @@ class _WLHomeSearchProductQ {
   );
 }
 
-class _WLHomeSearchProductF {
-  _WLHomeSearchProductF(this._s, this._i, this._q, this._f);
-  final List<Enum> _s;
-  final List<Object?> _i;
-  final Map<String, Object?> _q;
-  final Map<String, Object?> _f;
+class _WLHomeSearchProductF(
+  final List<Enum> _s,
+  final List<Object?> _i,
+  final Map<String, Object?> _q,
+  final Map<String, Object?> _f,
+) {
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(
       domain ?? 'https://shop.example',
@@ -4444,11 +4326,10 @@ class _WLHomeSearchProductF {
   );
 }
 
-final class _WLHomeSearchProductSeller
-    implements Hop<HomeSearchProductSellerNav> {
-  const _WLHomeSearchProductSeller._(this._s, this._i);
-  final List<Enum> _s;
-  final List<Object?> _i;
+final class const _WLHomeSearchProductSeller._(
+  final List<Enum> _s,
+  final List<Object?> _i,
+) implements Hop<HomeSearchProductSellerNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -4471,11 +4352,10 @@ final class _WLHomeSearchProductSeller
   );
 }
 
-final class _WLHomeSearchProductSellerSellerChat
-    implements Hop<HomeSearchProductSellerSellerChatNav> {
-  const _WLHomeSearchProductSellerSellerChat._(this._s, this._i);
-  final List<Enum> _s;
-  final List<Object?> _i;
+final class const _WLHomeSearchProductSellerSellerChat._(
+  final List<Enum> _s,
+  final List<Object?> _i,
+) implements Hop<HomeSearchProductSellerSellerChatNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -4494,10 +4374,8 @@ final class _WLHomeSearchProductSellerSellerChat
   );
 }
 
-final class _WLHomeCategory implements Hop<CategoryNav> {
-  const _WLHomeCategory._(this._s, this._i);
-  final List<Enum> _s;
-  final List<Object?> _i;
+final class const _WLHomeCategory._(final List<Enum> _s, final List<Object?> _i)
+    implements Hop<CategoryNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -4517,10 +4395,10 @@ final class _WLHomeCategory implements Hop<CategoryNav> {
   );
 }
 
-final class _WLHomeCategoryProduct implements Hop<HomeCategoryProductNav> {
-  const _WLHomeCategoryProduct._(this._s, this._i);
-  final List<Enum> _s;
-  final List<Object?> _i;
+final class const _WLHomeCategoryProduct._(
+  final List<Enum> _s,
+  final List<Object?> _i,
+) implements Hop<HomeCategoryProductNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -4548,12 +4426,12 @@ final class _WLHomeCategoryProduct implements Hop<HomeCategoryProductNav> {
   );
 }
 
-class _WLHomeCategoryProductQ {
-  _WLHomeCategoryProductQ(this._s, this._i, this._q, this._f);
-  final List<Enum> _s;
-  final List<Object?> _i;
-  final Map<String, Object?> _q;
-  final Map<String, Object?> _f;
+class _WLHomeCategoryProductQ(
+  final List<Enum> _s,
+  final List<Object?> _i,
+  final Map<String, Object?> _q,
+  final Map<String, Object?> _f,
+) {
   _WLHomeCategoryProductF fragment(Set<ProductFragmentArg> f) =>
       _WLHomeCategoryProductF(_s, _i, _q, {for (final t in f) t.key: t.value});
   Uri toUri([String? domain]) => Uri.parse(
@@ -4567,12 +4445,12 @@ class _WLHomeCategoryProductQ {
   );
 }
 
-class _WLHomeCategoryProductF {
-  _WLHomeCategoryProductF(this._s, this._i, this._q, this._f);
-  final List<Enum> _s;
-  final List<Object?> _i;
-  final Map<String, Object?> _q;
-  final Map<String, Object?> _f;
+class _WLHomeCategoryProductF(
+  final List<Enum> _s,
+  final List<Object?> _i,
+  final Map<String, Object?> _q,
+  final Map<String, Object?> _f,
+) {
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(
       domain ?? 'https://shop.example',
@@ -4584,11 +4462,10 @@ class _WLHomeCategoryProductF {
   );
 }
 
-final class _WLHomeCategoryProductSeller
-    implements Hop<HomeCategoryProductSellerNav> {
-  const _WLHomeCategoryProductSeller._(this._s, this._i);
-  final List<Enum> _s;
-  final List<Object?> _i;
+final class const _WLHomeCategoryProductSeller._(
+  final List<Enum> _s,
+  final List<Object?> _i,
+) implements Hop<HomeCategoryProductSellerNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -4612,11 +4489,10 @@ final class _WLHomeCategoryProductSeller
   );
 }
 
-final class _WLHomeCategoryProductSellerSellerChat
-    implements Hop<HomeCategoryProductSellerSellerChatNav> {
-  const _WLHomeCategoryProductSellerSellerChat._(this._s, this._i);
-  final List<Enum> _s;
-  final List<Object?> _i;
+final class const _WLHomeCategoryProductSellerSellerChat._(
+  final List<Enum> _s,
+  final List<Object?> _i,
+) implements Hop<HomeCategoryProductSellerSellerChatNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -4635,10 +4511,8 @@ final class _WLHomeCategoryProductSellerSellerChat
   );
 }
 
-final class _WLHomeScan implements Hop<ScanNav> {
-  const _WLHomeScan._(this._s, this._i);
-  final List<Enum> _s;
-  final List<Object?> _i;
+final class const _WLHomeScan._(final List<Enum> _s, final List<Object?> _i)
+    implements Hop<ScanNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -4658,10 +4532,10 @@ final class _WLHomeScan implements Hop<ScanNav> {
   );
 }
 
-final class _WLHomeScanProduct implements Hop<HomeScanProductNav> {
-  const _WLHomeScanProduct._(this._s, this._i);
-  final List<Enum> _s;
-  final List<Object?> _i;
+final class const _WLHomeScanProduct._(
+  final List<Enum> _s,
+  final List<Object?> _i,
+) implements Hop<HomeScanProductNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -4691,12 +4565,12 @@ final class _WLHomeScanProduct implements Hop<HomeScanProductNav> {
   );
 }
 
-class _WLHomeScanProductQ {
-  _WLHomeScanProductQ(this._s, this._i, this._q, this._f);
-  final List<Enum> _s;
-  final List<Object?> _i;
-  final Map<String, Object?> _q;
-  final Map<String, Object?> _f;
+class _WLHomeScanProductQ(
+  final List<Enum> _s,
+  final List<Object?> _i,
+  final Map<String, Object?> _q,
+  final Map<String, Object?> _f,
+) {
   _WLHomeScanProductF fragment(Set<ProductFragmentArg> f) =>
       _WLHomeScanProductF(_s, _i, _q, {for (final t in f) t.key: t.value});
   Uri toUri([String? domain]) => Uri.parse(
@@ -4710,12 +4584,12 @@ class _WLHomeScanProductQ {
   );
 }
 
-class _WLHomeScanProductF {
-  _WLHomeScanProductF(this._s, this._i, this._q, this._f);
-  final List<Enum> _s;
-  final List<Object?> _i;
-  final Map<String, Object?> _q;
-  final Map<String, Object?> _f;
+class _WLHomeScanProductF(
+  final List<Enum> _s,
+  final List<Object?> _i,
+  final Map<String, Object?> _q,
+  final Map<String, Object?> _f,
+) {
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(
       domain ?? 'https://shop.example',
@@ -4727,10 +4601,10 @@ class _WLHomeScanProductF {
   );
 }
 
-final class _WLHomeScanProductSeller implements Hop<HomeScanProductSellerNav> {
-  const _WLHomeScanProductSeller._(this._s, this._i);
-  final List<Enum> _s;
-  final List<Object?> _i;
+final class const _WLHomeScanProductSeller._(
+  final List<Enum> _s,
+  final List<Object?> _i,
+) implements Hop<HomeScanProductSellerNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -4753,11 +4627,10 @@ final class _WLHomeScanProductSeller implements Hop<HomeScanProductSellerNav> {
   );
 }
 
-final class _WLHomeScanProductSellerSellerChat
-    implements Hop<HomeScanProductSellerSellerChatNav> {
-  const _WLHomeScanProductSellerSellerChat._(this._s, this._i);
-  final List<Enum> _s;
-  final List<Object?> _i;
+final class const _WLHomeScanProductSellerSellerChat._(
+  final List<Enum> _s,
+  final List<Object?> _i,
+) implements Hop<HomeScanProductSellerSellerChatNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -4776,10 +4649,8 @@ final class _WLHomeScanProductSellerSellerChat
   );
 }
 
-final class _WLHomeWishlist implements Hop<WishlistNav> {
-  const _WLHomeWishlist._(this._s, this._i);
-  final List<Enum> _s;
-  final List<Object?> _i;
+final class const _WLHomeWishlist._(final List<Enum> _s, final List<Object?> _i)
+    implements Hop<WishlistNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -4799,10 +4670,10 @@ final class _WLHomeWishlist implements Hop<WishlistNav> {
   );
 }
 
-final class _WLHomeWishlistProduct implements Hop<HomeWishlistProductNav> {
-  const _WLHomeWishlistProduct._(this._s, this._i);
-  final List<Enum> _s;
-  final List<Object?> _i;
+final class const _WLHomeWishlistProduct._(
+  final List<Enum> _s,
+  final List<Object?> _i,
+) implements Hop<HomeWishlistProductNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -4830,12 +4701,12 @@ final class _WLHomeWishlistProduct implements Hop<HomeWishlistProductNav> {
   );
 }
 
-class _WLHomeWishlistProductQ {
-  _WLHomeWishlistProductQ(this._s, this._i, this._q, this._f);
-  final List<Enum> _s;
-  final List<Object?> _i;
-  final Map<String, Object?> _q;
-  final Map<String, Object?> _f;
+class _WLHomeWishlistProductQ(
+  final List<Enum> _s,
+  final List<Object?> _i,
+  final Map<String, Object?> _q,
+  final Map<String, Object?> _f,
+) {
   _WLHomeWishlistProductF fragment(Set<ProductFragmentArg> f) =>
       _WLHomeWishlistProductF(_s, _i, _q, {for (final t in f) t.key: t.value});
   Uri toUri([String? domain]) => Uri.parse(
@@ -4849,12 +4720,12 @@ class _WLHomeWishlistProductQ {
   );
 }
 
-class _WLHomeWishlistProductF {
-  _WLHomeWishlistProductF(this._s, this._i, this._q, this._f);
-  final List<Enum> _s;
-  final List<Object?> _i;
-  final Map<String, Object?> _q;
-  final Map<String, Object?> _f;
+class _WLHomeWishlistProductF(
+  final List<Enum> _s,
+  final List<Object?> _i,
+  final Map<String, Object?> _q,
+  final Map<String, Object?> _f,
+) {
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(
       domain ?? 'https://shop.example',
@@ -4866,11 +4737,10 @@ class _WLHomeWishlistProductF {
   );
 }
 
-final class _WLHomeWishlistProductSeller
-    implements Hop<HomeWishlistProductSellerNav> {
-  const _WLHomeWishlistProductSeller._(this._s, this._i);
-  final List<Enum> _s;
-  final List<Object?> _i;
+final class const _WLHomeWishlistProductSeller._(
+  final List<Enum> _s,
+  final List<Object?> _i,
+) implements Hop<HomeWishlistProductSellerNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -4894,11 +4764,10 @@ final class _WLHomeWishlistProductSeller
   );
 }
 
-final class _WLHomeWishlistProductSellerSellerChat
-    implements Hop<HomeWishlistProductSellerSellerChatNav> {
-  const _WLHomeWishlistProductSellerSellerChat._(this._s, this._i);
-  final List<Enum> _s;
-  final List<Object?> _i;
+final class const _WLHomeWishlistProductSellerSellerChat._(
+  final List<Enum> _s,
+  final List<Object?> _i,
+) implements Hop<HomeWishlistProductSellerSellerChatNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -4917,10 +4786,8 @@ final class _WLHomeWishlistProductSellerSellerChat
   );
 }
 
-final class _WLHomeCart implements Hop<CartNav> {
-  const _WLHomeCart._(this._s, this._i);
-  final List<Enum> _s;
-  final List<Object?> _i;
+final class const _WLHomeCart._(final List<Enum> _s, final List<Object?> _i)
+    implements Hop<CartNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -4940,10 +4807,10 @@ final class _WLHomeCart implements Hop<CartNav> {
   );
 }
 
-final class _WLHomeCartCheckout implements Hop<CheckoutNav> {
-  const _WLHomeCartCheckout._(this._s, this._i);
-  final List<Enum> _s;
-  final List<Object?> _i;
+final class const _WLHomeCartCheckout._(
+  final List<Enum> _s,
+  final List<Object?> _i,
+) implements Hop<CheckoutNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -4963,10 +4830,10 @@ final class _WLHomeCartCheckout implements Hop<CheckoutNav> {
   );
 }
 
-final class _WLHomeCartCheckoutPayment implements Hop<PaymentNav> {
-  const _WLHomeCartCheckoutPayment._(this._s, this._i);
-  final List<Enum> _s;
-  final List<Object?> _i;
+final class const _WLHomeCartCheckoutPayment._(
+  final List<Enum> _s,
+  final List<Object?> _i,
+) implements Hop<PaymentNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -4989,11 +4856,10 @@ final class _WLHomeCartCheckoutPayment implements Hop<PaymentNav> {
   );
 }
 
-final class _WLHomeCartCheckoutPaymentConfirmation
-    implements Hop<ConfirmationNav> {
-  const _WLHomeCartCheckoutPaymentConfirmation._(this._s, this._i);
-  final List<Enum> _s;
-  final List<Object?> _i;
+final class const _WLHomeCartCheckoutPaymentConfirmation._(
+  final List<Enum> _s,
+  final List<Object?> _i,
+) implements Hop<ConfirmationNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -5011,10 +4877,8 @@ final class _WLHomeCartCheckoutPaymentConfirmation
   );
 }
 
-final class _WLAccount implements Hop<AccountNav> {
-  const _WLAccount._(this._s, this._i);
-  final List<Enum> _s;
-  final List<Object?> _i;
+final class const _WLAccount._(final List<Enum> _s, final List<Object?> _i)
+    implements Hop<AccountNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -5043,10 +4907,10 @@ final class _WLAccount implements Hop<AccountNav> {
   );
 }
 
-final class _WLAccountOrders implements Hop<OrdersNav> {
-  const _WLAccountOrders._(this._s, this._i);
-  final List<Enum> _s;
-  final List<Object?> _i;
+final class const _WLAccountOrders._(
+  final List<Enum> _s,
+  final List<Object?> _i,
+) implements Hop<OrdersNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -5066,10 +4930,10 @@ final class _WLAccountOrders implements Hop<OrdersNav> {
   );
 }
 
-final class _WLAccountOrdersOrder implements Hop<OrderNav> {
-  const _WLAccountOrdersOrder._(this._s, this._i);
-  final List<Enum> _s;
-  final List<Object?> _i;
+final class const _WLAccountOrdersOrder._(
+  final List<Enum> _s,
+  final List<Object?> _i,
+) implements Hop<OrderNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -5089,11 +4953,10 @@ final class _WLAccountOrdersOrder implements Hop<OrderNav> {
   );
 }
 
-final class _WLAccountOrdersOrderProduct
-    implements Hop<AccountOrdersOrderProductNav> {
-  const _WLAccountOrdersOrderProduct._(this._s, this._i);
-  final List<Enum> _s;
-  final List<Object?> _i;
+final class const _WLAccountOrdersOrderProduct._(
+  final List<Enum> _s,
+  final List<Object?> _i,
+) implements Hop<AccountOrdersOrderProductNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -5125,12 +4988,12 @@ final class _WLAccountOrdersOrderProduct
   );
 }
 
-class _WLAccountOrdersOrderProductQ {
-  _WLAccountOrdersOrderProductQ(this._s, this._i, this._q, this._f);
-  final List<Enum> _s;
-  final List<Object?> _i;
-  final Map<String, Object?> _q;
-  final Map<String, Object?> _f;
+class _WLAccountOrdersOrderProductQ(
+  final List<Enum> _s,
+  final List<Object?> _i,
+  final Map<String, Object?> _q,
+  final Map<String, Object?> _f,
+) {
   _WLAccountOrdersOrderProductF fragment(Set<ProductFragmentArg> f) =>
       _WLAccountOrdersOrderProductF(_s, _i, _q, {
         for (final t in f) t.key: t.value,
@@ -5146,12 +5009,12 @@ class _WLAccountOrdersOrderProductQ {
   );
 }
 
-class _WLAccountOrdersOrderProductF {
-  _WLAccountOrdersOrderProductF(this._s, this._i, this._q, this._f);
-  final List<Enum> _s;
-  final List<Object?> _i;
-  final Map<String, Object?> _q;
-  final Map<String, Object?> _f;
+class _WLAccountOrdersOrderProductF(
+  final List<Enum> _s,
+  final List<Object?> _i,
+  final Map<String, Object?> _q,
+  final Map<String, Object?> _f,
+) {
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(
       domain ?? 'https://shop.example',
@@ -5163,11 +5026,10 @@ class _WLAccountOrdersOrderProductF {
   );
 }
 
-final class _WLAccountOrdersOrderProductSeller
-    implements Hop<AccountOrdersOrderProductSellerNav> {
-  const _WLAccountOrdersOrderProductSeller._(this._s, this._i);
-  final List<Enum> _s;
-  final List<Object?> _i;
+final class const _WLAccountOrdersOrderProductSeller._(
+  final List<Enum> _s,
+  final List<Object?> _i,
+) implements Hop<AccountOrdersOrderProductSellerNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -5191,11 +5053,10 @@ final class _WLAccountOrdersOrderProductSeller
   );
 }
 
-final class _WLAccountOrdersOrderProductSellerSellerChat
-    implements Hop<AccountOrdersOrderProductSellerSellerChatNav> {
-  const _WLAccountOrdersOrderProductSellerSellerChat._(this._s, this._i);
-  final List<Enum> _s;
-  final List<Object?> _i;
+final class const _WLAccountOrdersOrderProductSellerSellerChat._(
+  final List<Enum> _s,
+  final List<Object?> _i,
+) implements Hop<AccountOrdersOrderProductSellerSellerChatNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -5214,10 +5075,10 @@ final class _WLAccountOrdersOrderProductSellerSellerChat
   );
 }
 
-final class _WLAccountSettings implements Hop<SettingsNav> {
-  const _WLAccountSettings._(this._s, this._i);
-  final List<Enum> _s;
-  final List<Object?> _i;
+final class const _WLAccountSettings._(
+  final List<Enum> _s,
+  final List<Object?> _i,
+) implements Hop<SettingsNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -5235,10 +5096,10 @@ final class _WLAccountSettings implements Hop<SettingsNav> {
   );
 }
 
-final class _WLAccountListing implements Hop<ListingNav> {
-  const _WLAccountListing._(this._s, this._i);
-  final List<Enum> _s;
-  final List<Object?> _i;
+final class const _WLAccountListing._(
+  final List<Enum> _s,
+  final List<Object?> _i,
+) implements Hop<ListingNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -5261,10 +5122,10 @@ final class _WLAccountListing implements Hop<ListingNav> {
   );
 }
 
-final class _WLAccountListingEditListing implements Hop<EditListingNav> {
-  const _WLAccountListingEditListing._(this._s, this._i);
-  final List<Enum> _s;
-  final List<Object?> _i;
+final class const _WLAccountListingEditListing._(
+  final List<Enum> _s,
+  final List<Object?> _i,
+) implements Hop<EditListingNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -5286,19 +5147,12 @@ final class _WLAccountListingEditListing implements Hop<EditListingNav> {
 sealed class AnyView {}
 
 /// GLOBAL query condition terms — `.key` present / `.key(v)` equals / `.flag` true; `.not.…` negates (`.not.key` = absent).
-final class QueryCond<T> implements ViewCond {
-  const QueryCond._(
-    this.key,
-    this.expected, {
-    this.negate = false,
-    this.presence = false,
-  });
-  @override
-  final String key;
-  final Object? expected;
-  final bool negate;
-  final bool presence;
-
+final class const QueryCond<T>._(
+  @override final String key,
+  final Object? expected, {
+  final bool negate = false,
+  final bool presence = false,
+}) implements ViewCond {
   /// `.key(v)` — narrow a present term to an equals term, keeping any negation.
   QueryCond<T> call(T v) => QueryCond<T>._(key, v, negate: negate);
   @override
@@ -5320,8 +5174,7 @@ final class QueryCond<T> implements ViewCond {
   static const QueryNot not = QueryNot._();
 }
 
-final class QueryNot {
-  const QueryNot._();
+final class const QueryNot._() {
   QueryCond<String> get q =>
       const QueryCond._('q', null, presence: true, negate: true);
   QueryCond<Sort> get sort =>
@@ -5335,19 +5188,12 @@ final class QueryNot {
 }
 
 /// GLOBAL fragment condition terms — `.key` present / `.key(v)` equals / `.flag` true; `.not.…` negates (`.not.key` = absent).
-final class FragmentCond<T> implements ViewCond {
-  const FragmentCond._(
-    this.key,
-    this.expected, {
-    this.negate = false,
-    this.presence = false,
-  });
-  @override
-  final String key;
-  final Object? expected;
-  final bool negate;
-  final bool presence;
-
+final class const FragmentCond<T>._(
+  @override final String key,
+  final Object? expected, {
+  final bool negate = false,
+  final bool presence = false,
+}) implements ViewCond {
   /// `.key(v)` — narrow a present term to an equals term, keeping any negation.
   FragmentCond<T> call(T v) => FragmentCond<T>._(key, v, negate: negate);
   @override
@@ -5361,15 +5207,13 @@ final class FragmentCond<T> implements ViewCond {
   static const FragmentNot not = FragmentNot._();
 }
 
-final class FragmentNot {
-  const FragmentNot._();
+final class const FragmentNot._() {
   FragmentCond<String> get tab =>
       const FragmentCond._('tab', null, presence: true, negate: true);
 }
 
 /// Screen-local query view-state for `search` (read-only).
-class SearchQuery {
-  const SearchQuery._();
+class const SearchQuery._() {
   String? get q => _Screens.graph.viewGet(_Screens.search, 'q') as String?;
   Sort? get sort => _Screens.graph.viewGet(_Screens.search, 'sort') as Sort?;
   ({int minPrice, int maxPrice})? get group {
@@ -5384,8 +5228,8 @@ class SearchQuery {
 }
 
 /// Mutable [SearchQuery] — set a key (null clears / removes from URL).
-final class SearchQueryMut extends SearchQuery {
-  const SearchQueryMut._() : super._();
+final class const SearchQueryMut._() extends SearchQuery {
+  this : super._();
   set q(String? v) => _Screens.graph.viewSet(_Screens.search, 'q', v);
   set sort(Sort? v) => _Screens.graph.viewSet(_Screens.search, 'sort', v);
   set group(({int minPrice, int maxPrice})? v) {
@@ -5395,19 +5239,12 @@ final class SearchQueryMut extends SearchQuery {
 }
 
 /// `Search` query condition terms — `.key` present / `.key(v)` equals / `.flag` true; `.not.…` negates (`.not.key` = absent).
-final class SearchQueryCond<T> implements ViewCond {
-  const SearchQueryCond._(
-    this.key,
-    this.expected, {
-    this.negate = false,
-    this.presence = false,
-  });
-  @override
-  final String key;
-  final Object? expected;
-  final bool negate;
-  final bool presence;
-
+final class const SearchQueryCond<T>._(
+  @override final String key,
+  final Object? expected, {
+  final bool negate = false,
+  final bool presence = false,
+}) implements ViewCond {
   /// `.key(v)` — narrow a present term to an equals term, keeping any negation.
   SearchQueryCond<T> call(T v) => SearchQueryCond<T>._(key, v, negate: negate);
   @override
@@ -5427,8 +5264,7 @@ final class SearchQueryCond<T> implements ViewCond {
   static const SearchQueryNot not = SearchQueryNot._();
 }
 
-final class SearchQueryNot {
-  const SearchQueryNot._();
+final class const SearchQueryNot._() {
   SearchQueryCond<String> get q =>
       const SearchQueryCond._('q', null, presence: true, negate: true);
   SearchQueryCond<Sort> get sort =>
@@ -5440,10 +5276,7 @@ final class SearchQueryNot {
 }
 
 /// `Search` query build terms — `.key(v)` sets a value, `.flag` sets a flag. No `.not` (build, not match).
-final class SearchQueryArg {
-  const SearchQueryArg._(this.key, this.value);
-  final String key;
-  final Object? value;
+final class const SearchQueryArg._(final String key, final Object? value) {
   static SearchQueryArg q(String v) => SearchQueryArg._('q', v);
   static SearchQueryArg sort(Sort v) => SearchQueryArg._('sort', v);
   static SearchQueryArg minPrice(int v) => SearchQueryArg._('minPrice', v);
@@ -5457,45 +5290,36 @@ abstract interface class SearchView implements AnyView {
 }
 
 /// Screen-local query view-state for `product` (read-only).
-class ProductQuery {
-  const ProductQuery._();
+class const ProductQuery._() {
   String? get variant =>
       _Screens.graph.viewGet(_Screens.product, 'variant') as String?;
 }
 
 /// Mutable [ProductQuery] — set a key (null clears / removes from URL).
-final class ProductQueryMut extends ProductQuery {
-  const ProductQueryMut._() : super._();
+final class const ProductQueryMut._() extends ProductQuery {
+  this : super._();
   set variant(String? v) =>
       _Screens.graph.viewSet(_Screens.product, 'variant', v);
 }
 
 /// Screen-local fragment view-state for `product` (read-only).
-class ProductFragment {
-  const ProductFragment._();
+class const ProductFragment._() {
   String? get tab => _Screens.graph.viewGet(_Screens.product, 'tab') as String?;
 }
 
 /// Mutable [ProductFragment] — set a key (null clears / removes from URL).
-final class ProductFragmentMut extends ProductFragment {
-  const ProductFragmentMut._() : super._();
+final class const ProductFragmentMut._() extends ProductFragment {
+  this : super._();
   set tab(String? v) => _Screens.graph.viewSet(_Screens.product, 'tab', v);
 }
 
 /// `Product` query condition terms — `.key` present / `.key(v)` equals / `.flag` true; `.not.…` negates (`.not.key` = absent).
-final class ProductQueryCond<T> implements ViewCond {
-  const ProductQueryCond._(
-    this.key,
-    this.expected, {
-    this.negate = false,
-    this.presence = false,
-  });
-  @override
-  final String key;
-  final Object? expected;
-  final bool negate;
-  final bool presence;
-
+final class const ProductQueryCond<T>._(
+  @override final String key,
+  final Object? expected, {
+  final bool negate = false,
+  final bool presence = false,
+}) implements ViewCond {
   /// `.key(v)` — narrow a present term to an equals term, keeping any negation.
   ProductQueryCond<T> call(T v) =>
       ProductQueryCond<T>._(key, v, negate: negate);
@@ -5510,26 +5334,18 @@ final class ProductQueryCond<T> implements ViewCond {
   static const ProductQueryNot not = ProductQueryNot._();
 }
 
-final class ProductQueryNot {
-  const ProductQueryNot._();
+final class const ProductQueryNot._() {
   ProductQueryCond<String> get variant =>
       const ProductQueryCond._('variant', null, presence: true, negate: true);
 }
 
 /// `Product` fragment condition terms — `.key` present / `.key(v)` equals / `.flag` true; `.not.…` negates (`.not.key` = absent).
-final class ProductFragmentCond<T> implements ViewCond {
-  const ProductFragmentCond._(
-    this.key,
-    this.expected, {
-    this.negate = false,
-    this.presence = false,
-  });
-  @override
-  final String key;
-  final Object? expected;
-  final bool negate;
-  final bool presence;
-
+final class const ProductFragmentCond<T>._(
+  @override final String key,
+  final Object? expected, {
+  final bool negate = false,
+  final bool presence = false,
+}) implements ViewCond {
   /// `.key(v)` — narrow a present term to an equals term, keeping any negation.
   ProductFragmentCond<T> call(T v) =>
       ProductFragmentCond<T>._(key, v, negate: negate);
@@ -5544,25 +5360,18 @@ final class ProductFragmentCond<T> implements ViewCond {
   static const ProductFragmentNot not = ProductFragmentNot._();
 }
 
-final class ProductFragmentNot {
-  const ProductFragmentNot._();
+final class const ProductFragmentNot._() {
   ProductFragmentCond<String> get tab =>
       const ProductFragmentCond._('tab', null, presence: true, negate: true);
 }
 
 /// `Product` query build terms — `.key(v)` sets a value, `.flag` sets a flag. No `.not` (build, not match).
-final class ProductQueryArg {
-  const ProductQueryArg._(this.key, this.value);
-  final String key;
-  final Object? value;
+final class const ProductQueryArg._(final String key, final Object? value) {
   static ProductQueryArg variant(String v) => ProductQueryArg._('variant', v);
 }
 
 /// `Product` fragment build terms — `.key(v)` sets a value, `.flag` sets a flag. No `.not` (build, not match).
-final class ProductFragmentArg {
-  const ProductFragmentArg._(this.key, this.value);
-  final String key;
-  final Object? value;
+final class const ProductFragmentArg._(final String key, final Object? value) {
   static ProductFragmentArg tab(String v) => ProductFragmentArg._('tab', v);
 }
 
@@ -5606,7 +5415,7 @@ Enum _termOf(On sel) =>
 /// the runtime splices its rows in order and wires its merge
 /// edges. `Screen.manager` binds the nav side. Reads hang on the
 /// row CLASSES (`extension <Row>Reads`) — name your rows with const
-/// globals (`const todos = Todos();`) and read `todos.of(context)`.
+/// globals (`const todos = Todos();`) and read `todos.idsOf(context)`.
 final ledger = Ledger.root(app);
 
 /// States a fact — dispatch is the ONLY verb, so it needs no prefix.
@@ -5615,18 +5424,15 @@ void dispatch(Msg msg) => ledger.dispatch(msg);
 bool _bound = false;
 
 /// The `product` screen was navigated to (never a render).
-class ProductEnteredMsg extends Msg
+class const ProductEnteredMsg(final ProductId id)
+    extends Msg
     with Identifiable<ProductId>
-    implements ProductAskMsg {
-  const ProductEnteredMsg(this.id);
-  final ProductId id;
-}
+    implements ProductAskMsg;
 
 /// The `sellerChat` screen was navigated to (never a render).
-class SellerChatEnteredMsg extends Msg with Identifiable<SellerChatId> {
-  const SellerChatEnteredMsg(this.id);
-  final SellerChatId id;
-}
+class const SellerChatEnteredMsg(final SellerChatId id)
+    extends Msg
+    with Identifiable<SellerChatId>;
 
 /// Reads for a `CatalogCovered` row — sugar over `ledger.at(this)`.
 extension CatalogCoveredReads on CatalogCovered {
@@ -5674,8 +5480,13 @@ extension LocalProductsReads on LocalProducts {
   Stream<void> get structure => mem.structure;
   Stream<StoreEvent<ProductId, Product, ProductMsg>> get events => mem.events;
 
-  /// The key SEQUENCE, reactively — structural rebuilds only.
-  List<ProductId> of(BuildContext context) => mem.of(context);
+  /// The key SEQUENCE, reactively — structural rebuilds only;
+  /// value changes never fire, so scope rows with [item].
+  List<ProductId> idsOf(BuildContext context) => mem.idsOf(context);
+
+  /// The ROWS, reactively — rebuilds on shape AND on ANY
+  /// row's value change.
+  List<Product> entitiesOf(BuildContext context) => mem.entitiesOf(context);
 
   /// One entity, reactively — id omitted reads the AMBIENT identity.
   Product? entityOf(BuildContext context, [ProductId? id]) =>
@@ -5711,8 +5522,13 @@ extension ProductsReads on Products {
   Stream<void> get structure => mem.structure;
   Stream<StoreEvent<ProductId, Product, ProductMsg>> get events => mem.events;
 
-  /// The key SEQUENCE, reactively — structural rebuilds only.
-  List<ProductId> of(BuildContext context) => mem.of(context);
+  /// The key SEQUENCE, reactively — structural rebuilds only;
+  /// value changes never fire, so scope rows with [item].
+  List<ProductId> idsOf(BuildContext context) => mem.idsOf(context);
+
+  /// The ROWS, reactively — rebuilds on shape AND on ANY
+  /// row's value change.
+  List<Product> entitiesOf(BuildContext context) => mem.entitiesOf(context);
 
   /// One entity, reactively — id omitted reads the AMBIENT identity.
   Product? entityOf(BuildContext context, [ProductId? id]) =>
@@ -5750,8 +5566,14 @@ extension SellerThreadsReads on SellerThreads {
   Stream<StoreEvent<SellerChatId, SellerThread, SellerChatMsg>> get events =>
       mem.events;
 
-  /// The key SEQUENCE, reactively — structural rebuilds only.
-  List<SellerChatId> of(BuildContext context) => mem.of(context);
+  /// The key SEQUENCE, reactively — structural rebuilds only;
+  /// value changes never fire, so scope rows with [item].
+  List<SellerChatId> idsOf(BuildContext context) => mem.idsOf(context);
+
+  /// The ROWS, reactively — rebuilds on shape AND on ANY
+  /// row's value change.
+  List<SellerThread> entitiesOf(BuildContext context) =>
+      mem.entitiesOf(context);
 
   /// One entity, reactively — id omitted reads the AMBIENT identity.
   SellerThread? entityOf(BuildContext context, [SellerChatId? id]) =>
