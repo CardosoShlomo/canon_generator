@@ -3159,182 +3159,131 @@ final class const On<N extends AnyNav, V>._(
 }
 
 final class const OnParentOf<N extends AnyNav, V>._(
-  final Set<Enum> parents,
+  final Set<_Screens> parents,
   N nav,
 ) extends On<N, V> {
   this : super._(const [], const [], nav);
 }
 
 final class const _ParentSel._() {
-  OnParentOf<StoryNavParent, AnyView> get story => OnParentOf._(const {
-    _Screens.feed,
-    _Screens.story,
-  }, const StoryNavParent._());
+  OnParentOf<StoryNavParent, AnyView> get story =>
+      OnParentOf._(const {.feed, .story}, const StoryNavParent._());
   OnParentOf<PostNavParent, PostView> get post => OnParentOf._(const {
-    _Screens.comment,
-    _Screens.feed,
-    _Screens.post,
-    _Screens.postAuthor,
+    .comment,
+    .feed,
+    .post,
+    .postAuthor,
   }, const PostNavParent._());
-  OnParentOf<CommentNavParent, AnyView> get comment => OnParentOf._(const {
-    _Screens.comment,
-    _Screens.post,
-  }, const CommentNavParent._());
-  OnParentOf<PostAuthorNavParent, AnyView> get postAuthor => OnParentOf._(
-    const {_Screens.post, _Screens.postAuthor},
-    const PostAuthorNavParent._(),
-  );
+  OnParentOf<CommentNavParent, AnyView> get comment =>
+      OnParentOf._(const {.comment, .post}, const CommentNavParent._());
+  OnParentOf<PostAuthorNavParent, AnyView> get postAuthor =>
+      OnParentOf._(const {.post, .postAuthor}, const PostAuthorNavParent._());
   OnParentOf<TopicNavParent, AnyView> get topic => OnParentOf._(const {
-    _Screens.subtopic,
-    _Screens.topic,
-    _Screens.trending,
+    .subtopic,
+    .topic,
+    .trending,
   }, const TopicNavParent._());
-  OnParentOf<SubtopicNavParent, AnyView> get subtopic => OnParentOf._(const {
-    _Screens.subtopic,
-    _Screens.topic,
-  }, const SubtopicNavParent._());
-  OnParentOf<HashtagNavParent, AnyView> get hashtag => OnParentOf._(const {
-    _Screens.hashtag,
-    _Screens.trending,
-  }, const HashtagNavParent._());
-  OnParentOf<LiveRoomNavParent, AnyView> get liveRoom => OnParentOf._(const {
-    _Screens.liveNow,
-    _Screens.liveRoom,
-  }, const LiveRoomNavParent._());
-  OnParentOf<CategoryNavParent, AnyView> get category => OnParentOf._(const {
-    _Screens.categories,
-    _Screens.category,
-  }, const CategoryNavParent._());
+  OnParentOf<SubtopicNavParent, AnyView> get subtopic =>
+      OnParentOf._(const {.subtopic, .topic}, const SubtopicNavParent._());
+  OnParentOf<HashtagNavParent, AnyView> get hashtag =>
+      OnParentOf._(const {.hashtag, .trending}, const HashtagNavParent._());
+  OnParentOf<LiveRoomNavParent, AnyView> get liveRoom =>
+      OnParentOf._(const {.liveNow, .liveRoom}, const LiveRoomNavParent._());
+  OnParentOf<CategoryNavParent, AnyView> get category =>
+      OnParentOf._(const {.categories, .category}, const CategoryNavParent._());
   OnParentOf<ListingNavParent, AnyView> get listing => OnParentOf._(const {
-    _Screens.category,
-    _Screens.listing,
-    _Screens.sellerProfile,
+    .category,
+    .listing,
+    .sellerProfile,
   }, const ListingNavParent._());
   OnParentOf<ListingVariantNavParent, AnyView> get listingVariant =>
       OnParentOf._(const {
-        _Screens.listing,
-        _Screens.listingVariant,
+        .listing,
+        .listingVariant,
       }, const ListingVariantNavParent._());
   OnParentOf<SellerProfileNavParent, AnyView> get sellerProfile => OnParentOf._(
-    const {_Screens.listing, _Screens.sellerProfile},
+    const {.listing, .sellerProfile},
     const SellerProfileNavParent._(),
   );
-  OnParentOf<OrderNavParent, AnyView> get order => OnParentOf._(const {
-    _Screens.myOrders,
-    _Screens.order,
-  }, const OrderNavParent._());
-  OnParentOf<ChatNavParent, AnyView> get chat => OnParentOf._(const {
-    _Screens.chats,
-    _Screens.message,
-  }, const ChatNavParent._());
-  OnParentOf<ThreadNavParent, AnyView> get thread => OnParentOf._(const {
-    _Screens.chat,
-    _Screens.thread,
-  }, const ThreadNavParent._());
+  OnParentOf<OrderNavParent, AnyView> get order =>
+      OnParentOf._(const {.myOrders, .order}, const OrderNavParent._());
+  OnParentOf<ChatNavParent, AnyView> get chat =>
+      OnParentOf._(const {.chats, .message}, const ChatNavParent._());
+  OnParentOf<ThreadNavParent, AnyView> get thread =>
+      OnParentOf._(const {.chat, .thread}, const ThreadNavParent._());
   OnParentOf<MessageReplyNavParent, AnyView> get messageReply => OnParentOf._(
-    const {_Screens.message, _Screens.messageReply},
+    const {.message, .messageReply},
     const MessageReplyNavParent._(),
   );
-  OnParentOf<GroupChatNavParent, AnyView> get groupChat => OnParentOf._(const {
-    _Screens.groupChat,
-    _Screens.messages,
-  }, const GroupChatNavParent._());
-  OnParentOf<AccountNavParent, AnyView> get account => OnParentOf._(const {
-    _Screens.account,
-    _Screens.accounts,
-  }, const AccountNavParent._());
+  OnParentOf<GroupChatNavParent, AnyView> get groupChat =>
+      OnParentOf._(const {.groupChat, .messages}, const GroupChatNavParent._());
+  OnParentOf<AccountNavParent, AnyView> get account =>
+      OnParentOf._(const {.account, .accounts}, const AccountNavParent._());
   OnParentOf<TransactionNavParent, AnyView> get transaction => OnParentOf._(
-    const {_Screens.transaction, _Screens.transactions},
+    const {.transaction, .transactions},
     const TransactionNavParent._(),
   );
   OnParentOf<TransactionItemNavParent, AnyView> get transactionItem =>
       OnParentOf._(const {
-        _Screens.transaction,
-        _Screens.transactionItem,
+        .transaction,
+        .transactionItem,
       }, const TransactionItemNavParent._());
-  OnParentOf<UserProfileNavParent, AnyView> get userProfile =>
-      OnParentOf._(const {
-        _Screens.chat,
-        _Screens.feed,
-        _Screens.forumReply,
-        _Screens.profile,
-        _Screens.project,
-        _Screens.trending,
-      }, const UserProfileNavParent._());
+  OnParentOf<UserProfileNavParent, AnyView> get userProfile => OnParentOf._(
+    const {.chat, .feed, .forumReply, .profile, .project, .trending},
+    const UserProfileNavParent._(),
+  );
   OnParentOf<ConnectionNavParent, AnyView> get connection => OnParentOf._(
-    const {_Screens.connection, _Screens.followers},
+    const {.connection, .followers},
     const ConnectionNavParent._(),
   );
-  OnParentOf<BadgeNavParent, AnyView> get badge => OnParentOf._(const {
-    _Screens.badge,
-    _Screens.badges,
-  }, const BadgeNavParent._());
-  OnParentOf<SessionNavParent, AnyView> get session => OnParentOf._(const {
-    _Screens.device,
-    _Screens.session,
-  }, const SessionNavParent._());
-  OnParentOf<TaskNavParent, TaskView> get task => OnParentOf._(const {
-    _Screens.task,
-    _Screens.taskList,
-  }, const TaskNavParent._());
-  OnParentOf<SubtaskNavParent, AnyView> get subtask => OnParentOf._(const {
-    _Screens.subtask,
-    _Screens.task,
-  }, const SubtaskNavParent._());
+  OnParentOf<BadgeNavParent, AnyView> get badge =>
+      OnParentOf._(const {.badge, .badges}, const BadgeNavParent._());
+  OnParentOf<SessionNavParent, AnyView> get session =>
+      OnParentOf._(const {.device, .session}, const SessionNavParent._());
+  OnParentOf<TaskNavParent, TaskView> get task =>
+      OnParentOf._(const {.task, .taskList}, const TaskNavParent._());
+  OnParentOf<SubtaskNavParent, AnyView> get subtask =>
+      OnParentOf._(const {.subtask, .task}, const SubtaskNavParent._());
   OnParentOf<ChecklistItemNavParent, AnyView> get checklistItem => OnParentOf._(
-    const {_Screens.checklistItem, _Screens.subtask},
+    const {.checklistItem, .subtask},
     const ChecklistItemNavParent._(),
   );
   OnParentOf<ForumThreadNavParent, ForumThreadView> get forumThread =>
       OnParentOf._(const {
-        _Screens.forumCategory,
-        _Screens.forumThread,
+        .forumCategory,
+        .forumThread,
       }, const ForumThreadNavParent._());
   OnParentOf<ForumReplyNavParent, AnyView> get forumReply => OnParentOf._(
-    const {_Screens.forumReply, _Screens.forumThread},
+    const {.forumReply, .forumThread},
     const ForumReplyNavParent._(),
   );
-  OnParentOf<QuestionNavParent, AnyView> get question => OnParentOf._(const {
-    _Screens.question,
-    _Screens.quiz,
-  }, const QuestionNavParent._());
+  OnParentOf<QuestionNavParent, AnyView> get question =>
+      OnParentOf._(const {.question, .quiz}, const QuestionNavParent._());
   OnParentOf<ProductNavParent, ProductView> get product => OnParentOf._(const {
-    _Screens.product,
-    _Screens.shopSubcategory,
+    .product,
+    .shopSubcategory,
   }, const ProductNavParent._());
   OnParentOf<ProductVariantNavParent, AnyView> get productVariant =>
       OnParentOf._(const {
-        _Screens.product,
-        _Screens.productVariant,
+        .product,
+        .productVariant,
       }, const ProductVariantNavParent._());
   OnParentOf<ExerciseSetNavParent, AnyView> get exerciseSet => OnParentOf._(
-    const {_Screens.exercise, _Screens.exerciseSet},
+    const {.exercise, .exerciseSet},
     const ExerciseSetNavParent._(),
   );
-  OnParentOf<LevelANavParent, AnyView> get levelA => OnParentOf._(const {
-    _Screens.deepDemo,
-    _Screens.levelF,
-  }, const LevelANavParent._());
-  OnParentOf<LevelBNavParent, AnyView> get levelB => OnParentOf._(const {
-    _Screens.levelA,
-    _Screens.levelF,
-  }, const LevelBNavParent._());
-  OnParentOf<LevelCNavParent, AnyView> get levelC => OnParentOf._(const {
-    _Screens.levelB,
-    _Screens.levelF,
-  }, const LevelCNavParent._());
-  OnParentOf<LevelDNavParent, AnyView> get levelD => OnParentOf._(const {
-    _Screens.levelC,
-    _Screens.levelF,
-  }, const LevelDNavParent._());
-  OnParentOf<LevelENavParent, AnyView> get levelE => OnParentOf._(const {
-    _Screens.levelD,
-    _Screens.levelF,
-  }, const LevelENavParent._());
-  OnParentOf<LevelFNavParent, AnyView> get levelF => OnParentOf._(const {
-    _Screens.levelE,
-    _Screens.levelF,
-  }, const LevelFNavParent._());
+  OnParentOf<LevelANavParent, AnyView> get levelA =>
+      OnParentOf._(const {.deepDemo, .levelF}, const LevelANavParent._());
+  OnParentOf<LevelBNavParent, AnyView> get levelB =>
+      OnParentOf._(const {.levelA, .levelF}, const LevelBNavParent._());
+  OnParentOf<LevelCNavParent, AnyView> get levelC =>
+      OnParentOf._(const {.levelB, .levelF}, const LevelCNavParent._());
+  OnParentOf<LevelDNavParent, AnyView> get levelD =>
+      OnParentOf._(const {.levelC, .levelF}, const LevelDNavParent._());
+  OnParentOf<LevelENavParent, AnyView> get levelE =>
+      OnParentOf._(const {.levelD, .levelF}, const LevelENavParent._());
+  OnParentOf<LevelFNavParent, AnyView> get levelF =>
+      OnParentOf._(const {.levelE, .levelF}, const LevelFNavParent._());
 }
 
 final class const StoryNavParent._() extends AnyNav {
@@ -7071,22 +7020,22 @@ PopDestPlacement _resolvePopDest() {
   throw StateError('unresolved pop destination: $c');
 }
 
-final class const Keep._(final Enum spec) {
-  static const activity = Keep._(_Screens.activity);
-  static const deepDemo = Keep._(_Screens.deepDemo);
-  static const discover = Keep._(_Screens.discover);
-  static const forum = Keep._(_Screens.forum);
-  static const home = Keep._(_Screens.home);
-  static const learn = Keep._(_Screens.learn);
-  static const marketplace = Keep._(_Screens.marketplace);
-  static const messages = Keep._(_Screens.messages);
-  static const notifications = Keep._(_Screens.notifications);
-  static const profile = Keep._(_Screens.profile);
-  static const search = Keep._(_Screens.search);
-  static const settings = Keep._(_Screens.settings);
-  static const shop = Keep._(_Screens.shop);
-  static const wallet = Keep._(_Screens.wallet);
-  static const workspace = Keep._(_Screens.workspace);
+final class const Keep._(final _Screens spec) {
+  static const activity = Keep._(.activity);
+  static const deepDemo = Keep._(.deepDemo);
+  static const discover = Keep._(.discover);
+  static const forum = Keep._(.forum);
+  static const home = Keep._(.home);
+  static const learn = Keep._(.learn);
+  static const marketplace = Keep._(.marketplace);
+  static const messages = Keep._(.messages);
+  static const notifications = Keep._(.notifications);
+  static const profile = Keep._(.profile);
+  static const search = Keep._(.search);
+  static const settings = Keep._(.settings);
+  static const shop = Keep._(.shop);
+  static const wallet = Keep._(.wallet);
+  static const workspace = Keep._(.workspace);
 }
 
 final class const SplashNav._() extends AnyPlacement {
@@ -7334,21 +7283,21 @@ final class const FeedNav._()
 }
 
 final class const FeedHop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final Object? id,
   final N nav,
 ) {
   static FeedHop<PostNav> post(String id) =>
-      FeedHop._(_Screens.post, id, const PostNav._());
+      FeedHop._(.post, id, const PostNav._());
   static FeedHop<StoryNav> story(String id) =>
-      FeedHop._(_Screens.story, id, const StoryNav._());
+      FeedHop._(.story, id, const StoryNav._());
   static const composePost = FeedHop<ComposePostNav>._(
-    _Screens.composePost,
+    .composePost,
     null,
     ComposePostNav._(),
   );
   static FeedHop<HomeFeedUserProfileNav> userProfile(String id) =>
-      FeedHop._(_Screens.userProfile, id, const HomeFeedUserProfileNav._());
+      FeedHop._(.userProfile, id, const HomeFeedUserProfileNav._());
 }
 
 final class const ComposePostNav._() extends AnyPlacement {
@@ -7375,11 +7324,11 @@ final class const ComposePostNav._() extends AnyPlacement {
 }
 
 final class const ComposePostPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
-  static const feed = ComposePostPop<FeedNav>._(_Screens.feed, FeedNav._());
-  static const home = ComposePostPop<HomeNav>._(_Screens.home, HomeNav._());
+  static const feed = ComposePostPop<FeedNav>._(.feed, FeedNav._());
+  static const home = ComposePostPop<HomeNav>._(.home, HomeNav._());
 }
 
 final class const StoryNav._()
@@ -7419,10 +7368,13 @@ final class const StoryNav._()
   }
 }
 
-final class const StoryPop<N extends AnyNav>._(final Enum spec, final N? nav) {
-  static const feed = StoryPop<FeedNav>._(_Screens.feed, FeedNav._());
-  static const home = StoryPop<HomeNav>._(_Screens.home, HomeNav._());
-  static const story = StoryPop<StoryNav>._(_Screens.story, StoryNav._());
+final class const StoryPop<N extends AnyNav>._(
+  final _Screens spec,
+  final N? nav,
+) {
+  static const feed = StoryPop<FeedNav>._(.feed, FeedNav._());
+  static const home = StoryPop<HomeNav>._(.home, HomeNav._());
+  static const story = StoryPop<StoryNav>._(.story, StoryNav._());
 }
 
 final class const PostNav._()
@@ -7519,31 +7471,31 @@ final class const PostNav._()
   }
 }
 
-final class const PostPop<N extends AnyNav>._(final Enum spec, final N? nav) {
-  static const feed = PostPop<FeedNav>._(_Screens.feed, FeedNav._());
-  static const home = PostPop<HomeNav>._(_Screens.home, HomeNav._());
-  static const comment = PostPop<CommentNav>._(
-    _Screens.comment,
-    CommentNav._(),
-  );
-  static const post = PostPop<PostNav>._(_Screens.post, PostNav._());
+final class const PostPop<N extends AnyNav>._(
+  final _Screens spec,
+  final N? nav,
+) {
+  static const feed = PostPop<FeedNav>._(.feed, FeedNav._());
+  static const home = PostPop<HomeNav>._(.home, HomeNav._());
+  static const comment = PostPop<CommentNav>._(.comment, CommentNav._());
+  static const post = PostPop<PostNav>._(.post, PostNav._());
   static const postAuthor = PostPop<PostAuthorNav>._(
-    _Screens.postAuthor,
+    .postAuthor,
     PostAuthorNav._(),
   );
 }
 
 final class const PostHop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final Object? id,
   final N nav,
 ) {
   static PostHop<CommentNav> comment(String id) =>
-      PostHop._(_Screens.comment, id, const CommentNav._());
+      PostHop._(.comment, id, const CommentNav._());
   static PostHop<PostAuthorNav> postAuthor(String id) =>
-      PostHop._(_Screens.postAuthor, id, const PostAuthorNav._());
+      PostHop._(.postAuthor, id, const PostAuthorNav._());
   static PostHop<PostNav> post(String id) =>
-      PostHop._(_Screens.post, id, const PostNav._());
+      PostHop._(.post, id, const PostNav._());
 }
 
 final class const CommentNav._()
@@ -7603,27 +7555,24 @@ final class const CommentNav._()
 }
 
 final class const CommentPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
-  static const post = CommentPop<PostNav>._(_Screens.post, PostNav._());
-  static const feed = CommentPop<FeedNav>._(_Screens.feed, FeedNav._());
-  static const home = CommentPop<HomeNav>._(_Screens.home, HomeNav._());
-  static const comment = CommentPop<CommentNav>._(
-    _Screens.comment,
-    CommentNav._(),
-  );
+  static const post = CommentPop<PostNav>._(.post, PostNav._());
+  static const feed = CommentPop<FeedNav>._(.feed, FeedNav._());
+  static const home = CommentPop<HomeNav>._(.home, HomeNav._());
+  static const comment = CommentPop<CommentNav>._(.comment, CommentNav._());
 }
 
 final class const CommentHop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final Object? id,
   final N nav,
 ) {
   static CommentHop<CommentNav> comment(String id) =>
-      CommentHop._(_Screens.comment, id, const CommentNav._());
+      CommentHop._(.comment, id, const CommentNav._());
   static CommentHop<PostNav> post(String id) =>
-      CommentHop._(_Screens.post, id, const PostNav._());
+      CommentHop._(.post, id, const PostNav._());
 }
 
 final class const PostAuthorNav._()
@@ -7683,27 +7632,27 @@ final class const PostAuthorNav._()
 }
 
 final class const PostAuthorPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
-  static const post = PostAuthorPop<PostNav>._(_Screens.post, PostNav._());
-  static const feed = PostAuthorPop<FeedNav>._(_Screens.feed, FeedNav._());
-  static const home = PostAuthorPop<HomeNav>._(_Screens.home, HomeNav._());
+  static const post = PostAuthorPop<PostNav>._(.post, PostNav._());
+  static const feed = PostAuthorPop<FeedNav>._(.feed, FeedNav._());
+  static const home = PostAuthorPop<HomeNav>._(.home, HomeNav._());
   static const postAuthor = PostAuthorPop<PostAuthorNav>._(
-    _Screens.postAuthor,
+    .postAuthor,
     PostAuthorNav._(),
   );
 }
 
 final class const PostAuthorHop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final Object? id,
   final N nav,
 ) {
   static PostAuthorHop<PostAuthorNav> postAuthor(String id) =>
-      PostAuthorHop._(_Screens.postAuthor, id, const PostAuthorNav._());
+      PostAuthorHop._(.postAuthor, id, const PostAuthorNav._());
   static PostAuthorHop<PostNav> post(String id) =>
-      PostAuthorHop._(_Screens.post, id, const PostNav._());
+      PostAuthorHop._(.post, id, const PostNav._());
 }
 
 final class const PostCommentsNav._() extends AnyPlacement {
@@ -7735,12 +7684,12 @@ final class const PostCommentsNav._() extends AnyPlacement {
 }
 
 final class const PostCommentsPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
-  static const post = PostCommentsPop<PostNav>._(_Screens.post, PostNav._());
-  static const feed = PostCommentsPop<FeedNav>._(_Screens.feed, FeedNav._());
-  static const home = PostCommentsPop<HomeNav>._(_Screens.home, HomeNav._());
+  static const post = PostCommentsPop<PostNav>._(.post, PostNav._());
+  static const feed = PostCommentsPop<FeedNav>._(.feed, FeedNav._());
+  static const home = PostCommentsPop<HomeNav>._(.home, HomeNav._());
 }
 
 final class const PostLikesNav._() extends AnyPlacement {
@@ -7772,12 +7721,12 @@ final class const PostLikesNav._() extends AnyPlacement {
 }
 
 final class const PostLikesPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
-  static const post = PostLikesPop<PostNav>._(_Screens.post, PostNav._());
-  static const feed = PostLikesPop<FeedNav>._(_Screens.feed, FeedNav._());
-  static const home = PostLikesPop<HomeNav>._(_Screens.home, HomeNav._());
+  static const post = PostLikesPop<PostNav>._(.post, PostNav._());
+  static const feed = PostLikesPop<FeedNav>._(.feed, FeedNav._());
+  static const home = PostLikesPop<HomeNav>._(.home, HomeNav._());
 }
 
 final class const EditPostNav._() extends AnyPlacement {
@@ -7809,12 +7758,12 @@ final class const EditPostNav._() extends AnyPlacement {
 }
 
 final class const EditPostPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
-  static const post = EditPostPop<PostNav>._(_Screens.post, PostNav._());
-  static const feed = EditPostPop<FeedNav>._(_Screens.feed, FeedNav._());
-  static const home = EditPostPop<HomeNav>._(_Screens.home, HomeNav._());
+  static const post = EditPostPop<PostNav>._(.post, PostNav._());
+  static const feed = EditPostPop<FeedNav>._(.feed, FeedNav._());
+  static const home = EditPostPop<HomeNav>._(.home, HomeNav._());
 }
 
 final class const RepostNav._() extends AnyPlacement {
@@ -7845,10 +7794,13 @@ final class const RepostNav._() extends AnyPlacement {
   }
 }
 
-final class const RepostPop<N extends AnyNav>._(final Enum spec, final N? nav) {
-  static const post = RepostPop<PostNav>._(_Screens.post, PostNav._());
-  static const feed = RepostPop<FeedNav>._(_Screens.feed, FeedNav._());
-  static const home = RepostPop<HomeNav>._(_Screens.home, HomeNav._());
+final class const RepostPop<N extends AnyNav>._(
+  final _Screens spec,
+  final N? nav,
+) {
+  static const post = RepostPop<PostNav>._(.post, PostNav._());
+  static const feed = RepostPop<FeedNav>._(.feed, FeedNav._());
+  static const home = RepostPop<HomeNav>._(.home, HomeNav._());
 }
 
 final class const DiscoverNav._()
@@ -8016,20 +7968,16 @@ final class const TrendingNav._()
 }
 
 final class const TrendingHop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final Object? id,
   final N nav,
 ) {
   static TrendingHop<HashtagNav> hashtag(String id) =>
-      TrendingHop._(_Screens.hashtag, id, const HashtagNav._());
+      TrendingHop._(.hashtag, id, const HashtagNav._());
   static TrendingHop<TopicNav> topic(String id) =>
-      TrendingHop._(_Screens.topic, id, const TopicNav._());
+      TrendingHop._(.topic, id, const TopicNav._());
   static TrendingHop<DiscoverTrendingUserProfileNav> userProfile(String id) =>
-      TrendingHop._(
-        _Screens.userProfile,
-        id,
-        const DiscoverTrendingUserProfileNav._(),
-      );
+      TrendingHop._(.userProfile, id, const DiscoverTrendingUserProfileNav._());
 }
 
 final class const TopicsNav._() extends AnyPlacement {
@@ -8101,31 +8049,25 @@ final class const TopicNav._()
   }
 }
 
-final class const TopicPop<N extends AnyNav>._(final Enum spec, final N? nav) {
-  static const trending = TopicPop<TrendingNav>._(
-    _Screens.trending,
-    TrendingNav._(),
-  );
-  static const discover = TopicPop<DiscoverNav>._(
-    _Screens.discover,
-    DiscoverNav._(),
-  );
-  static const subtopic = TopicPop<SubtopicNav>._(
-    _Screens.subtopic,
-    SubtopicNav._(),
-  );
-  static const topic = TopicPop<TopicNav>._(_Screens.topic, TopicNav._());
+final class const TopicPop<N extends AnyNav>._(
+  final _Screens spec,
+  final N? nav,
+) {
+  static const trending = TopicPop<TrendingNav>._(.trending, TrendingNav._());
+  static const discover = TopicPop<DiscoverNav>._(.discover, DiscoverNav._());
+  static const subtopic = TopicPop<SubtopicNav>._(.subtopic, SubtopicNav._());
+  static const topic = TopicPop<TopicNav>._(.topic, TopicNav._());
 }
 
 final class const TopicHop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final Object? id,
   final N nav,
 ) {
   static TopicHop<SubtopicNav> subtopic(String id) =>
-      TopicHop._(_Screens.subtopic, id, const SubtopicNav._());
+      TopicHop._(.subtopic, id, const SubtopicNav._());
   static TopicHop<TopicNav> topic(String id) =>
-      TopicHop._(_Screens.topic, id, const TopicNav._());
+      TopicHop._(.topic, id, const TopicNav._());
 }
 
 final class const SubtopicNav._()
@@ -8185,33 +8127,33 @@ final class const SubtopicNav._()
 }
 
 final class const SubtopicPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
-  static const topic = SubtopicPop<TopicNav>._(_Screens.topic, TopicNav._());
+  static const topic = SubtopicPop<TopicNav>._(.topic, TopicNav._());
   static const trending = SubtopicPop<TrendingNav>._(
-    _Screens.trending,
+    .trending,
     TrendingNav._(),
   );
   static const discover = SubtopicPop<DiscoverNav>._(
-    _Screens.discover,
+    .discover,
     DiscoverNav._(),
   );
   static const subtopic = SubtopicPop<SubtopicNav>._(
-    _Screens.subtopic,
+    .subtopic,
     SubtopicNav._(),
   );
 }
 
 final class const SubtopicHop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final Object? id,
   final N nav,
 ) {
   static SubtopicHop<SubtopicNav> subtopic(String id) =>
-      SubtopicHop._(_Screens.subtopic, id, const SubtopicNav._());
+      SubtopicHop._(.subtopic, id, const SubtopicNav._());
   static SubtopicHop<TopicNav> topic(String id) =>
-      SubtopicHop._(_Screens.topic, id, const TopicNav._());
+      SubtopicHop._(.topic, id, const TopicNav._());
 }
 
 final class const HashtagNav._()
@@ -8252,21 +8194,12 @@ final class const HashtagNav._()
 }
 
 final class const HashtagPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
-  static const trending = HashtagPop<TrendingNav>._(
-    _Screens.trending,
-    TrendingNav._(),
-  );
-  static const discover = HashtagPop<DiscoverNav>._(
-    _Screens.discover,
-    DiscoverNav._(),
-  );
-  static const hashtag = HashtagPop<HashtagNav>._(
-    _Screens.hashtag,
-    HashtagNav._(),
-  );
+  static const trending = HashtagPop<TrendingNav>._(.trending, TrendingNav._());
+  static const discover = HashtagPop<DiscoverNav>._(.discover, DiscoverNav._());
+  static const hashtag = HashtagPop<HashtagNav>._(.hashtag, HashtagNav._());
 }
 
 final class const LiveNowNav._()
@@ -8328,19 +8261,16 @@ final class const LiveRoomNav._()
 }
 
 final class const LiveRoomPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
-  static const liveNow = LiveRoomPop<LiveNowNav>._(
-    _Screens.liveNow,
-    LiveNowNav._(),
-  );
+  static const liveNow = LiveRoomPop<LiveNowNav>._(.liveNow, LiveNowNav._());
   static const discover = LiveRoomPop<DiscoverNav>._(
-    _Screens.discover,
+    .discover,
     DiscoverNav._(),
   );
   static const liveRoom = LiveRoomPop<LiveRoomNav>._(
-    _Screens.liveRoom,
+    .liveRoom,
     LiveRoomNav._(),
   );
 }
@@ -8417,27 +8347,23 @@ final class const MarketplaceNav._()
 }
 
 final class const MarketplaceHop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final Object? id,
   final N nav,
 ) {
   static const categories = MarketplaceHop<CategoriesNav>._(
-    _Screens.categories,
+    .categories,
     null,
     CategoriesNav._(),
   );
-  static const cart = MarketplaceHop<CartNav>._(
-    _Screens.cart,
-    null,
-    CartNav._(),
-  );
+  static const cart = MarketplaceHop<CartNav>._(.cart, null, CartNav._());
   static const myOrders = MarketplaceHop<MyOrdersNav>._(
-    _Screens.myOrders,
+    .myOrders,
     null,
     MyOrdersNav._(),
   );
   static const wishlist = MarketplaceHop<WishlistNav>._(
-    _Screens.wishlist,
+    .wishlist,
     null,
     WishlistNav._(),
   );
@@ -8522,32 +8448,32 @@ final class const CategoryNav._()
 }
 
 final class const CategoryPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
   static const categories = CategoryPop<CategoriesNav>._(
-    _Screens.categories,
+    .categories,
     CategoriesNav._(),
   );
   static const marketplace = CategoryPop<MarketplaceNav>._(
-    _Screens.marketplace,
+    .marketplace,
     MarketplaceNav._(),
   );
   static const category = CategoryPop<CategoryNav>._(
-    _Screens.category,
+    .category,
     CategoryNav._(),
   );
 }
 
 final class const CategoryHop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final Object? id,
   final N nav,
 ) {
   static CategoryHop<CategoryNav> category(String id) =>
-      CategoryHop._(_Screens.category, id, const CategoryNav._());
+      CategoryHop._(.category, id, const CategoryNav._());
   static CategoryHop<ListingNav> listing(String id) =>
-      CategoryHop._(_Screens.listing, id, const ListingNav._());
+      CategoryHop._(.listing, id, const ListingNav._());
 }
 
 final class const ListingNav._()
@@ -8625,42 +8551,36 @@ final class const ListingNav._()
 }
 
 final class const ListingPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
-  static const category = ListingPop<CategoryNav>._(
-    _Screens.category,
-    CategoryNav._(),
-  );
+  static const category = ListingPop<CategoryNav>._(.category, CategoryNav._());
   static const categories = ListingPop<CategoriesNav>._(
-    _Screens.categories,
+    .categories,
     CategoriesNav._(),
   );
   static const marketplace = ListingPop<MarketplaceNav>._(
-    _Screens.marketplace,
+    .marketplace,
     MarketplaceNav._(),
   );
   static const sellerProfile = ListingPop<SellerProfileNav>._(
-    _Screens.sellerProfile,
+    .sellerProfile,
     SellerProfileNav._(),
   );
-  static const listing = ListingPop<ListingNav>._(
-    _Screens.listing,
-    ListingNav._(),
-  );
+  static const listing = ListingPop<ListingNav>._(.listing, ListingNav._());
 }
 
 final class const ListingHop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final Object? id,
   final N nav,
 ) {
   static ListingHop<SellerProfileNav> sellerProfile(String id) =>
-      ListingHop._(_Screens.sellerProfile, id, const SellerProfileNav._());
+      ListingHop._(.sellerProfile, id, const SellerProfileNav._());
   static ListingHop<ListingVariantNav> listingVariant(String id) =>
-      ListingHop._(_Screens.listingVariant, id, const ListingVariantNav._());
+      ListingHop._(.listingVariant, id, const ListingVariantNav._());
   static ListingHop<ListingNav> listing(String id) =>
-      ListingHop._(_Screens.listing, id, const ListingNav._());
+      ListingHop._(.listing, id, const ListingNav._());
 }
 
 final class const ListingVariantNav._()
@@ -8711,27 +8631,27 @@ final class const ListingVariantNav._()
 }
 
 final class const ListingVariantPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
   static const listing = ListingVariantPop<ListingNav>._(
-    _Screens.listing,
+    .listing,
     ListingNav._(),
   );
   static const category = ListingVariantPop<CategoryNav>._(
-    _Screens.category,
+    .category,
     CategoryNav._(),
   );
   static const categories = ListingVariantPop<CategoriesNav>._(
-    _Screens.categories,
+    .categories,
     CategoriesNav._(),
   );
   static const marketplace = ListingVariantPop<MarketplaceNav>._(
-    _Screens.marketplace,
+    .marketplace,
     MarketplaceNav._(),
   );
   static const listingVariant = ListingVariantPop<ListingVariantNav>._(
-    _Screens.listingVariant,
+    .listingVariant,
     ListingVariantNav._(),
   );
 }
@@ -8770,23 +8690,20 @@ final class const EditListingNav._() extends AnyPlacement {
 }
 
 final class const EditListingPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
-  static const listing = EditListingPop<ListingNav>._(
-    _Screens.listing,
-    ListingNav._(),
-  );
+  static const listing = EditListingPop<ListingNav>._(.listing, ListingNav._());
   static const category = EditListingPop<CategoryNav>._(
-    _Screens.category,
+    .category,
     CategoryNav._(),
   );
   static const categories = EditListingPop<CategoriesNav>._(
-    _Screens.categories,
+    .categories,
     CategoriesNav._(),
   );
   static const marketplace = EditListingPop<MarketplaceNav>._(
-    _Screens.marketplace,
+    .marketplace,
     MarketplaceNav._(),
   );
 }
@@ -8853,44 +8770,40 @@ final class const SellerProfileNav._()
 }
 
 final class const SellerProfilePop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
   static const listing = SellerProfilePop<ListingNav>._(
-    _Screens.listing,
+    .listing,
     ListingNav._(),
   );
   static const category = SellerProfilePop<CategoryNav>._(
-    _Screens.category,
+    .category,
     CategoryNav._(),
   );
   static const categories = SellerProfilePop<CategoriesNav>._(
-    _Screens.categories,
+    .categories,
     CategoriesNav._(),
   );
   static const marketplace = SellerProfilePop<MarketplaceNav>._(
-    _Screens.marketplace,
+    .marketplace,
     MarketplaceNav._(),
   );
   static const sellerProfile = SellerProfilePop<SellerProfileNav>._(
-    _Screens.sellerProfile,
+    .sellerProfile,
     SellerProfileNav._(),
   );
 }
 
 final class const SellerProfileHop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final Object? id,
   final N nav,
 ) {
   static SellerProfileHop<SellerProfileNav> sellerProfile(String id) =>
-      SellerProfileHop._(
-        _Screens.sellerProfile,
-        id,
-        const SellerProfileNav._(),
-      );
+      SellerProfileHop._(.sellerProfile, id, const SellerProfileNav._());
   static SellerProfileHop<ListingNav> listing(String id) =>
-      SellerProfileHop._(_Screens.listing, id, const ListingNav._());
+      SellerProfileHop._(.listing, id, const ListingNav._());
 }
 
 final class const CartNav._() extends AnyPlacement implements PopDestPlacement {
@@ -8944,12 +8857,12 @@ final class const CheckoutNav._()
 }
 
 final class const CheckoutPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
-  static const cart = CheckoutPop<CartNav>._(_Screens.cart, CartNav._());
+  static const cart = CheckoutPop<CartNav>._(.cart, CartNav._());
   static const marketplace = CheckoutPop<MarketplaceNav>._(
-    _Screens.marketplace,
+    .marketplace,
     MarketplaceNav._(),
   );
 }
@@ -8983,19 +8896,16 @@ final class const OrderConfirmationNav._() extends AnyPlacement {
 }
 
 final class const OrderConfirmationPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
   static const checkout = OrderConfirmationPop<CheckoutNav>._(
-    _Screens.checkout,
+    .checkout,
     CheckoutNav._(),
   );
-  static const cart = OrderConfirmationPop<CartNav>._(
-    _Screens.cart,
-    CartNav._(),
-  );
+  static const cart = OrderConfirmationPop<CartNav>._(.cart, CartNav._());
   static const marketplace = OrderConfirmationPop<MarketplaceNav>._(
-    _Screens.marketplace,
+    .marketplace,
     MarketplaceNav._(),
   );
 }
@@ -9058,16 +8968,16 @@ final class const OrderNav._()
   }
 }
 
-final class const OrderPop<N extends AnyNav>._(final Enum spec, final N? nav) {
-  static const myOrders = OrderPop<MyOrdersNav>._(
-    _Screens.myOrders,
-    MyOrdersNav._(),
-  );
+final class const OrderPop<N extends AnyNav>._(
+  final _Screens spec,
+  final N? nav,
+) {
+  static const myOrders = OrderPop<MyOrdersNav>._(.myOrders, MyOrdersNav._());
   static const marketplace = OrderPop<MarketplaceNav>._(
-    _Screens.marketplace,
+    .marketplace,
     MarketplaceNav._(),
   );
-  static const order = OrderPop<OrderNav>._(_Screens.order, OrderNav._());
+  static const order = OrderPop<OrderNav>._(.order, OrderNav._());
 }
 
 final class const WishlistNav._() extends AnyPlacement {
@@ -9136,22 +9046,18 @@ final class const MessagesNav._()
 }
 
 final class const MessagesHop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final Object? id,
   final N nav,
 ) {
-  static const chats = MessagesHop<ChatsNav>._(
-    _Screens.chats,
-    null,
-    ChatsNav._(),
-  );
+  static const chats = MessagesHop<ChatsNav>._(.chats, null, ChatsNav._());
   static const newChat = MessagesHop<NewChatNav>._(
-    _Screens.newChat,
+    .newChat,
     null,
     NewChatNav._(),
   );
   static MessagesHop<GroupChatNav> groupChat(String id) =>
-      MessagesHop._(_Screens.groupChat, id, const GroupChatNav._());
+      MessagesHop._(.groupChat, id, const GroupChatNav._());
 }
 
 final class const ChatsNav._()
@@ -9245,33 +9151,26 @@ final class const ChatNav._()
   }
 }
 
-final class const ChatPop<N extends AnyNav>._(final Enum spec, final N? nav) {
-  static const chats = ChatPop<ChatsNav>._(_Screens.chats, ChatsNav._());
-  static const messages = ChatPop<MessagesNav>._(
-    _Screens.messages,
-    MessagesNav._(),
-  );
-  static const message = ChatPop<MessageNav>._(
-    _Screens.message,
-    MessageNav._(),
-  );
-  static const thread = ChatPop<ThreadNav>._(_Screens.thread, ThreadNav._());
-  static const chat = ChatPop<ChatNav>._(_Screens.chat, ChatNav._());
+final class const ChatPop<N extends AnyNav>._(
+  final _Screens spec,
+  final N? nav,
+) {
+  static const chats = ChatPop<ChatsNav>._(.chats, ChatsNav._());
+  static const messages = ChatPop<MessagesNav>._(.messages, MessagesNav._());
+  static const message = ChatPop<MessageNav>._(.message, MessageNav._());
+  static const thread = ChatPop<ThreadNav>._(.thread, ThreadNav._());
+  static const chat = ChatPop<ChatNav>._(.chat, ChatNav._());
 }
 
 final class const ChatHop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final Object? id,
   final N nav,
 ) {
   static ChatHop<ThreadNav> thread(String id) =>
-      ChatHop._(_Screens.thread, id, const ThreadNav._());
+      ChatHop._(.thread, id, const ThreadNav._());
   static ChatHop<MessagesChatsChatUserProfileNav> userProfile(String id) =>
-      ChatHop._(
-        _Screens.userProfile,
-        id,
-        const MessagesChatsChatUserProfileNav._(),
-      );
+      ChatHop._(.userProfile, id, const MessagesChatsChatUserProfileNav._());
 }
 
 final class const ThreadNav._()
@@ -9332,29 +9231,26 @@ final class const ThreadNav._()
   }
 }
 
-final class const ThreadPop<N extends AnyNav>._(final Enum spec, final N? nav) {
-  static const chat = ThreadPop<ChatNav>._(_Screens.chat, ChatNav._());
-  static const chats = ThreadPop<ChatsNav>._(_Screens.chats, ChatsNav._());
-  static const messages = ThreadPop<MessagesNav>._(
-    _Screens.messages,
-    MessagesNav._(),
-  );
-  static const message = ThreadPop<MessageNav>._(
-    _Screens.message,
-    MessageNav._(),
-  );
-  static const thread = ThreadPop<ThreadNav>._(_Screens.thread, ThreadNav._());
+final class const ThreadPop<N extends AnyNav>._(
+  final _Screens spec,
+  final N? nav,
+) {
+  static const chat = ThreadPop<ChatNav>._(.chat, ChatNav._());
+  static const chats = ThreadPop<ChatsNav>._(.chats, ChatsNav._());
+  static const messages = ThreadPop<MessagesNav>._(.messages, MessagesNav._());
+  static const message = ThreadPop<MessageNav>._(.message, MessageNav._());
+  static const thread = ThreadPop<ThreadNav>._(.thread, ThreadNav._());
 }
 
 final class const ThreadHop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final Object? id,
   final N nav,
 ) {
   static ThreadHop<MessageNav> message(String id) =>
-      ThreadHop._(_Screens.message, id, const MessageNav._());
+      ThreadHop._(.message, id, const MessageNav._());
   static ThreadHop<ThreadNav> thread(String id) =>
-      ThreadHop._(_Screens.thread, id, const ThreadNav._());
+      ThreadHop._(.thread, id, const ThreadNav._());
 }
 
 final class const MessageNav._()
@@ -9419,31 +9315,25 @@ final class const MessageNav._()
 }
 
 final class const MessagePop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
-  static const thread = MessagePop<ThreadNav>._(_Screens.thread, ThreadNav._());
-  static const chat = MessagePop<ChatNav>._(_Screens.chat, ChatNav._());
-  static const chats = MessagePop<ChatsNav>._(_Screens.chats, ChatsNav._());
-  static const messages = MessagePop<MessagesNav>._(
-    _Screens.messages,
-    MessagesNav._(),
-  );
-  static const message = MessagePop<MessageNav>._(
-    _Screens.message,
-    MessageNav._(),
-  );
+  static const thread = MessagePop<ThreadNav>._(.thread, ThreadNav._());
+  static const chat = MessagePop<ChatNav>._(.chat, ChatNav._());
+  static const chats = MessagePop<ChatsNav>._(.chats, ChatsNav._());
+  static const messages = MessagePop<MessagesNav>._(.messages, MessagesNav._());
+  static const message = MessagePop<MessageNav>._(.message, MessageNav._());
 }
 
 final class const MessageHop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final Object? id,
   final N nav,
 ) {
   static MessageHop<MessageReplyNav> messageReply(String id) =>
-      MessageHop._(_Screens.messageReply, id, const MessageReplyNav._());
+      MessageHop._(.messageReply, id, const MessageReplyNav._());
   static MessageHop<ChatNav> chat(String id) =>
-      MessageHop._(_Screens.chat, id, const ChatNav._());
+      MessageHop._(.chat, id, const ChatNav._());
 }
 
 final class const MessageReplyNav._()
@@ -9499,28 +9389,22 @@ final class const MessageReplyNav._()
 }
 
 final class const MessageReplyPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
   static const message = MessageReplyPop<MessageNav>._(
-    _Screens.message,
+    .message,
     MessageNav._(),
   );
-  static const thread = MessageReplyPop<ThreadNav>._(
-    _Screens.thread,
-    ThreadNav._(),
-  );
-  static const chat = MessageReplyPop<ChatNav>._(_Screens.chat, ChatNav._());
-  static const chats = MessageReplyPop<ChatsNav>._(
-    _Screens.chats,
-    ChatsNav._(),
-  );
+  static const thread = MessageReplyPop<ThreadNav>._(.thread, ThreadNav._());
+  static const chat = MessageReplyPop<ChatNav>._(.chat, ChatNav._());
+  static const chats = MessageReplyPop<ChatsNav>._(.chats, ChatsNav._());
   static const messages = MessageReplyPop<MessagesNav>._(
-    _Screens.messages,
+    .messages,
     MessagesNav._(),
   );
   static const messageReply = MessageReplyPop<MessageReplyNav>._(
-    _Screens.messageReply,
+    .messageReply,
     MessageReplyNav._(),
   );
 }
@@ -9554,13 +9438,13 @@ final class const VoiceCallNav._() extends AnyPlacement {
 }
 
 final class const VoiceCallPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
-  static const chat = VoiceCallPop<ChatNav>._(_Screens.chat, ChatNav._());
-  static const chats = VoiceCallPop<ChatsNav>._(_Screens.chats, ChatsNav._());
+  static const chat = VoiceCallPop<ChatNav>._(.chat, ChatNav._());
+  static const chats = VoiceCallPop<ChatsNav>._(.chats, ChatsNav._());
   static const messages = VoiceCallPop<MessagesNav>._(
-    _Screens.messages,
+    .messages,
     MessagesNav._(),
   );
 }
@@ -9617,15 +9501,15 @@ final class const GroupChatNav._()
 }
 
 final class const GroupChatPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
   static const messages = GroupChatPop<MessagesNav>._(
-    _Screens.messages,
+    .messages,
     MessagesNav._(),
   );
   static const groupChat = GroupChatPop<GroupChatNav>._(
-    _Screens.groupChat,
+    .groupChat,
     GroupChatNav._(),
   );
 }
@@ -9654,15 +9538,15 @@ final class const GroupInfoNav._() extends AnyPlacement {
 }
 
 final class const GroupInfoPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
   static const groupChat = GroupInfoPop<GroupChatNav>._(
-    _Screens.groupChat,
+    .groupChat,
     GroupChatNav._(),
   );
   static const messages = GroupInfoPop<MessagesNav>._(
-    _Screens.messages,
+    .messages,
     MessagesNav._(),
   );
 }
@@ -9725,32 +9609,32 @@ final class const WalletNav._()
 }
 
 final class const WalletHop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final Object? id,
   final N nav,
 ) {
   static const balance = WalletHop<BalanceNav>._(
-    _Screens.balance,
+    .balance,
     null,
     BalanceNav._(),
   );
   static const accounts = WalletHop<AccountsNav>._(
-    _Screens.accounts,
+    .accounts,
     null,
     AccountsNav._(),
   );
   static const sendMoney = WalletHop<SendMoneyNav>._(
-    _Screens.sendMoney,
+    .sendMoney,
     null,
     SendMoneyNav._(),
   );
   static const receiveMoney = WalletHop<ReceiveMoneyNav>._(
-    _Screens.receiveMoney,
+    .receiveMoney,
     null,
     ReceiveMoneyNav._(),
   );
   static const paymentMethods = WalletHop<PaymentMethodsNav>._(
-    _Screens.paymentMethods,
+    .paymentMethods,
     null,
     PaymentMethodsNav._(),
   );
@@ -9857,37 +9741,31 @@ final class const AccountNav._()
 }
 
 final class const AccountPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
-  static const accounts = AccountPop<AccountsNav>._(
-    _Screens.accounts,
-    AccountsNav._(),
-  );
-  static const wallet = AccountPop<WalletNav>._(_Screens.wallet, WalletNav._());
-  static const account = AccountPop<AccountNav>._(
-    _Screens.account,
-    AccountNav._(),
-  );
+  static const accounts = AccountPop<AccountsNav>._(.accounts, AccountsNav._());
+  static const wallet = AccountPop<WalletNav>._(.wallet, WalletNav._());
+  static const account = AccountPop<AccountNav>._(.account, AccountNav._());
 }
 
 final class const AccountHop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final Object? id,
   final N nav,
 ) {
   static const transactions = AccountHop<TransactionsNav>._(
-    _Screens.transactions,
+    .transactions,
     null,
     TransactionsNav._(),
   );
   static const statements = AccountHop<StatementsNav>._(
-    _Screens.statements,
+    .statements,
     null,
     StatementsNav._(),
   );
   static AccountHop<AccountNav> account(String id) =>
-      AccountHop._(_Screens.account, id, const AccountNav._());
+      AccountHop._(.account, id, const AccountNav._());
 }
 
 final class const TransactionsNav._()
@@ -9927,21 +9805,18 @@ final class const TransactionsNav._()
 }
 
 final class const TransactionsPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
   static const account = TransactionsPop<AccountNav>._(
-    _Screens.account,
+    .account,
     AccountNav._(),
   );
   static const accounts = TransactionsPop<AccountsNav>._(
-    _Screens.accounts,
+    .accounts,
     AccountsNav._(),
   );
-  static const wallet = TransactionsPop<WalletNav>._(
-    _Screens.wallet,
-    WalletNav._(),
-  );
+  static const wallet = TransactionsPop<WalletNav>._(.wallet, WalletNav._());
 }
 
 final class const TransactionNav._()
@@ -10006,44 +9881,34 @@ final class const TransactionNav._()
 }
 
 final class const TransactionPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
   static const transactions = TransactionPop<TransactionsNav>._(
-    _Screens.transactions,
+    .transactions,
     TransactionsNav._(),
   );
-  static const account = TransactionPop<AccountNav>._(
-    _Screens.account,
-    AccountNav._(),
-  );
+  static const account = TransactionPop<AccountNav>._(.account, AccountNav._());
   static const accounts = TransactionPop<AccountsNav>._(
-    _Screens.accounts,
+    .accounts,
     AccountsNav._(),
   );
-  static const wallet = TransactionPop<WalletNav>._(
-    _Screens.wallet,
-    WalletNav._(),
-  );
+  static const wallet = TransactionPop<WalletNav>._(.wallet, WalletNav._());
   static const transaction = TransactionPop<TransactionNav>._(
-    _Screens.transaction,
+    .transaction,
     TransactionNav._(),
   );
 }
 
 final class const TransactionHop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final Object? id,
   final N nav,
 ) {
   static TransactionHop<TransactionItemNav> transactionItem(String id) =>
-      TransactionHop._(
-        _Screens.transactionItem,
-        id,
-        const TransactionItemNav._(),
-      );
+      TransactionHop._(.transactionItem, id, const TransactionItemNav._());
   static TransactionHop<TransactionNav> transaction(String id) =>
-      TransactionHop._(_Screens.transaction, id, const TransactionNav._());
+      TransactionHop._(.transaction, id, const TransactionNav._());
 }
 
 final class const TransactionItemNav._()
@@ -10099,31 +9964,28 @@ final class const TransactionItemNav._()
 }
 
 final class const TransactionItemPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
   static const transaction = TransactionItemPop<TransactionNav>._(
-    _Screens.transaction,
+    .transaction,
     TransactionNav._(),
   );
   static const transactions = TransactionItemPop<TransactionsNav>._(
-    _Screens.transactions,
+    .transactions,
     TransactionsNav._(),
   );
   static const account = TransactionItemPop<AccountNav>._(
-    _Screens.account,
+    .account,
     AccountNav._(),
   );
   static const accounts = TransactionItemPop<AccountsNav>._(
-    _Screens.accounts,
+    .accounts,
     AccountsNav._(),
   );
-  static const wallet = TransactionItemPop<WalletNav>._(
-    _Screens.wallet,
-    WalletNav._(),
-  );
+  static const wallet = TransactionItemPop<WalletNav>._(.wallet, WalletNav._());
   static const transactionItem = TransactionItemPop<TransactionItemNav>._(
-    _Screens.transactionItem,
+    .transactionItem,
     TransactionItemNav._(),
   );
 }
@@ -10187,17 +10049,17 @@ final class const PaymentMethodsNav._()
 }
 
 final class const PaymentMethodsHop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final Object? id,
   final N nav,
 ) {
   static const addCard = PaymentMethodsHop<AddCardNav>._(
-    _Screens.addCard,
+    .addCard,
     null,
     AddCardNav._(),
   );
   static PaymentMethodsHop<CardNav> card(String id) =>
-      PaymentMethodsHop._(_Screens.card, id, const CardNav._());
+      PaymentMethodsHop._(.card, id, const CardNav._());
 }
 
 final class const AddCardNav._() extends AnyPlacement {
@@ -10224,14 +10086,14 @@ final class const AddCardNav._() extends AnyPlacement {
 }
 
 final class const AddCardPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
   static const paymentMethods = AddCardPop<PaymentMethodsNav>._(
-    _Screens.paymentMethods,
+    .paymentMethods,
     PaymentMethodsNav._(),
   );
-  static const wallet = AddCardPop<WalletNav>._(_Screens.wallet, WalletNav._());
+  static const wallet = AddCardPop<WalletNav>._(.wallet, WalletNav._());
 }
 
 final class const CardNav._() extends AnyPlacement {
@@ -10257,12 +10119,15 @@ final class const CardNav._() extends AnyPlacement {
   }
 }
 
-final class const CardPop<N extends AnyNav>._(final Enum spec, final N? nav) {
+final class const CardPop<N extends AnyNav>._(
+  final _Screens spec,
+  final N? nav,
+) {
   static const paymentMethods = CardPop<PaymentMethodsNav>._(
-    _Screens.paymentMethods,
+    .paymentMethods,
     PaymentMethodsNav._(),
   );
-  static const wallet = CardPop<WalletNav>._(_Screens.wallet, WalletNav._());
+  static const wallet = CardPop<WalletNav>._(.wallet, WalletNav._());
 }
 
 final class const StatementsNav._()
@@ -10302,21 +10167,15 @@ final class const StatementsNav._()
 }
 
 final class const StatementsPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
-  static const account = StatementsPop<AccountNav>._(
-    _Screens.account,
-    AccountNav._(),
-  );
+  static const account = StatementsPop<AccountNav>._(.account, AccountNav._());
   static const accounts = StatementsPop<AccountsNav>._(
-    _Screens.accounts,
+    .accounts,
     AccountsNav._(),
   );
-  static const wallet = StatementsPop<WalletNav>._(
-    _Screens.wallet,
-    WalletNav._(),
-  );
+  static const wallet = StatementsPop<WalletNav>._(.wallet, WalletNav._());
 }
 
 final class const StatementNav._() extends AnyPlacement {
@@ -10353,25 +10212,19 @@ final class const StatementNav._() extends AnyPlacement {
 }
 
 final class const StatementPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
   static const statements = StatementPop<StatementsNav>._(
-    _Screens.statements,
+    .statements,
     StatementsNav._(),
   );
-  static const account = StatementPop<AccountNav>._(
-    _Screens.account,
-    AccountNav._(),
-  );
+  static const account = StatementPop<AccountNav>._(.account, AccountNav._());
   static const accounts = StatementPop<AccountsNav>._(
-    _Screens.accounts,
+    .accounts,
     AccountsNav._(),
   );
-  static const wallet = StatementPop<WalletNav>._(
-    _Screens.wallet,
-    WalletNav._(),
-  );
+  static const wallet = StatementPop<WalletNav>._(.wallet, WalletNav._());
 }
 
 final class const ProfileNav._()
@@ -10450,43 +10303,35 @@ final class const ProfileNav._()
 }
 
 final class const ProfileHop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final Object? id,
   final N nav,
 ) {
   static ProfileHop<ProfileUserProfileNav> userProfile(String id) =>
-      ProfileHop._(_Screens.userProfile, id, const ProfileUserProfileNav._());
+      ProfileHop._(.userProfile, id, const ProfileUserProfileNav._());
   static ProfileHop<FollowersNav> followers(String id) =>
-      ProfileHop._(_Screens.followers, id, const FollowersNav._());
+      ProfileHop._(.followers, id, const FollowersNav._());
   static ProfileHop<FollowingNav> following(String id) =>
-      ProfileHop._(_Screens.following, id, const FollowingNav._());
+      ProfileHop._(.following, id, const FollowingNav._());
   static const editProfile = ProfileHop<EditProfileNav>._(
-    _Screens.editProfile,
+    .editProfile,
     null,
     EditProfileNav._(),
   );
   static const achievements = ProfileHop<AchievementsNav>._(
-    _Screens.achievements,
+    .achievements,
     null,
     AchievementsNav._(),
   );
-  static const badges = ProfileHop<BadgesNav>._(
-    _Screens.badges,
-    null,
-    BadgesNav._(),
-  );
+  static const badges = ProfileHop<BadgesNav>._(.badges, null, BadgesNav._());
   static const savedPosts = ProfileHop<SavedPostsNav>._(
-    _Screens.savedPosts,
+    .savedPosts,
     null,
     SavedPostsNav._(),
   );
-  static const drafts = ProfileHop<DraftsNav>._(
-    _Screens.drafts,
-    null,
-    DraftsNav._(),
-  );
+  static const drafts = ProfileHop<DraftsNav>._(.drafts, null, DraftsNav._());
   static const myListings = ProfileHop<MyListingsNav>._(
-    _Screens.myListings,
+    .myListings,
     null,
     MyListingsNav._(),
   );
@@ -10557,17 +10402,11 @@ final class const HomeFeedUserProfileNav._()
 }
 
 final class const HomeFeedUserProfilePop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
-  static const feed = HomeFeedUserProfilePop<FeedNav>._(
-    _Screens.feed,
-    FeedNav._(),
-  );
-  static const home = HomeFeedUserProfilePop<HomeNav>._(
-    _Screens.home,
-    HomeNav._(),
-  );
+  static const feed = HomeFeedUserProfilePop<FeedNav>._(.feed, FeedNav._());
+  static const home = HomeFeedUserProfilePop<HomeNav>._(.home, HomeNav._());
 }
 
 final class const DiscoverTrendingUserProfileNav._()
@@ -10596,15 +10435,15 @@ final class const DiscoverTrendingUserProfileNav._()
 }
 
 final class const DiscoverTrendingUserProfilePop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
   static const trending = DiscoverTrendingUserProfilePop<TrendingNav>._(
-    _Screens.trending,
+    .trending,
     TrendingNav._(),
   );
   static const discover = DiscoverTrendingUserProfilePop<DiscoverNav>._(
-    _Screens.discover,
+    .discover,
     DiscoverNav._(),
   );
 }
@@ -10640,19 +10479,19 @@ final class const MessagesChatsChatUserProfileNav._()
 }
 
 final class const MessagesChatsChatUserProfilePop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
   static const chat = MessagesChatsChatUserProfilePop<ChatNav>._(
-    _Screens.chat,
+    .chat,
     ChatNav._(),
   );
   static const chats = MessagesChatsChatUserProfilePop<ChatsNav>._(
-    _Screens.chats,
+    .chats,
     ChatsNav._(),
   );
   static const messages = MessagesChatsChatUserProfilePop<MessagesNav>._(
-    _Screens.messages,
+    .messages,
     MessagesNav._(),
   );
 }
@@ -10698,15 +10537,15 @@ final class const WorkspaceProjectUserProfileNav._()
 }
 
 final class const WorkspaceProjectUserProfilePop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
   static const project = WorkspaceProjectUserProfilePop<ProjectNav>._(
-    _Screens.project,
+    .project,
     ProjectNav._(),
   );
   static const workspace = WorkspaceProjectUserProfilePop<WorkspaceNav>._(
-    _Screens.workspace,
+    .workspace,
     WorkspaceNav._(),
   );
 }
@@ -10750,25 +10589,25 @@ final class const ForumForumCategoryForumThreadForumReplyUserProfileNav._()
 
 final class const ForumForumCategoryForumThreadForumReplyUserProfilePop<
   N extends AnyNav
->._(final Enum spec, final N? nav) {
+>._(final _Screens spec, final N? nav) {
   static const forumReply =
       ForumForumCategoryForumThreadForumReplyUserProfilePop<ForumReplyNav>._(
-        _Screens.forumReply,
+        .forumReply,
         ForumReplyNav._(),
       );
   static const forumThread =
       ForumForumCategoryForumThreadForumReplyUserProfilePop<ForumThreadNav>._(
-        _Screens.forumThread,
+        .forumThread,
         ForumThreadNav._(),
       );
   static const forumCategory =
       ForumForumCategoryForumThreadForumReplyUserProfilePop<ForumCategoryNav>._(
-        _Screens.forumCategory,
+        .forumCategory,
         ForumCategoryNav._(),
       );
   static const forum =
       ForumForumCategoryForumThreadForumReplyUserProfilePop<ForumNav>._(
-        _Screens.forum,
+        .forum,
         ForumNav._(),
       );
 }
@@ -10856,32 +10695,29 @@ final class const ConnectionNav._()
 }
 
 final class const ConnectionPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
   static const followers = ConnectionPop<FollowersNav>._(
-    _Screens.followers,
+    .followers,
     FollowersNav._(),
   );
-  static const profile = ConnectionPop<ProfileNav>._(
-    _Screens.profile,
-    ProfileNav._(),
-  );
+  static const profile = ConnectionPop<ProfileNav>._(.profile, ProfileNav._());
   static const connection = ConnectionPop<ConnectionNav>._(
-    _Screens.connection,
+    .connection,
     ConnectionNav._(),
   );
 }
 
 final class const ConnectionHop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final Object? id,
   final N nav,
 ) {
   static ConnectionHop<ConnectionNav> connection(String id) =>
-      ConnectionHop._(_Screens.connection, id, const ConnectionNav._());
+      ConnectionHop._(.connection, id, const ConnectionNav._());
   static const mutualConnections = ConnectionHop<MutualConnectionsNav>._(
-    _Screens.mutualConnections,
+    .mutualConnections,
     null,
     MutualConnectionsNav._(),
   );
@@ -10916,19 +10752,19 @@ final class const MutualConnectionsNav._() extends AnyPlacement {
 }
 
 final class const MutualConnectionsPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
   static const connection = MutualConnectionsPop<ConnectionNav>._(
-    _Screens.connection,
+    .connection,
     ConnectionNav._(),
   );
   static const followers = MutualConnectionsPop<FollowersNav>._(
-    _Screens.followers,
+    .followers,
     FollowersNav._(),
   );
   static const profile = MutualConnectionsPop<ProfileNav>._(
-    _Screens.profile,
+    .profile,
     ProfileNav._(),
   );
 }
@@ -11017,13 +10853,13 @@ final class const BadgeNav._()
   }
 }
 
-final class const BadgePop<N extends AnyNav>._(final Enum spec, final N? nav) {
-  static const badges = BadgePop<BadgesNav>._(_Screens.badges, BadgesNav._());
-  static const profile = BadgePop<ProfileNav>._(
-    _Screens.profile,
-    ProfileNav._(),
-  );
-  static const badge = BadgePop<BadgeNav>._(_Screens.badge, BadgeNav._());
+final class const BadgePop<N extends AnyNav>._(
+  final _Screens spec,
+  final N? nav,
+) {
+  static const badges = BadgePop<BadgesNav>._(.badges, BadgesNav._());
+  static const profile = BadgePop<ProfileNav>._(.profile, ProfileNav._());
+  static const badge = BadgePop<BadgeNav>._(.badge, BadgeNav._());
 }
 
 final class const SavedPostsNav._() extends AnyPlacement {
@@ -11396,15 +11232,15 @@ final class const TwoFactorSettingsNav._() extends AnyPlacement {
 }
 
 final class const TwoFactorSettingsPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
   static const security = TwoFactorSettingsPop<SecurityNav>._(
-    _Screens.security,
+    .security,
     SecurityNav._(),
   );
   static const settings = TwoFactorSettingsPop<SettingsNav>._(
-    _Screens.settings,
+    .settings,
     SettingsNav._(),
   );
 }
@@ -11500,13 +11336,13 @@ final class const AboutNav._()
 }
 
 final class const AboutHop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final Object? id,
   final N nav,
 ) {
-  static const help = AboutHop<HelpNav>._(_Screens.help, null, HelpNav._());
+  static const help = AboutHop<HelpNav>._(.help, null, HelpNav._());
   static const feedback = AboutHop<FeedbackNav>._(
-    _Screens.feedback,
+    .feedback,
     null,
     FeedbackNav._(),
   );
@@ -11541,12 +11377,12 @@ final class const HelpNav._() extends AnyPlacement implements PopDestPlacement {
   }
 }
 
-final class const HelpPop<N extends AnyNav>._(final Enum spec, final N? nav) {
-  static const about = HelpPop<AboutNav>._(_Screens.about, AboutNav._());
-  static const settings = HelpPop<SettingsNav>._(
-    _Screens.settings,
-    SettingsNav._(),
-  );
+final class const HelpPop<N extends AnyNav>._(
+  final _Screens spec,
+  final N? nav,
+) {
+  static const about = HelpPop<AboutNav>._(.about, AboutNav._());
+  static const settings = HelpPop<SettingsNav>._(.settings, SettingsNav._());
 }
 
 final class const HelpCategoryNav._()
@@ -11592,16 +11428,13 @@ final class const HelpCategoryNav._()
 }
 
 final class const HelpCategoryPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
-  static const help = HelpCategoryPop<HelpNav>._(_Screens.help, HelpNav._());
-  static const about = HelpCategoryPop<AboutNav>._(
-    _Screens.about,
-    AboutNav._(),
-  );
+  static const help = HelpCategoryPop<HelpNav>._(.help, HelpNav._());
+  static const about = HelpCategoryPop<AboutNav>._(.about, AboutNav._());
   static const settings = HelpCategoryPop<SettingsNav>._(
-    _Screens.settings,
+    .settings,
     SettingsNav._(),
   );
 }
@@ -11645,17 +11478,17 @@ final class const FaqNav._() extends AnyPlacement implements PopDestPlacement {
   }
 }
 
-final class const FaqPop<N extends AnyNav>._(final Enum spec, final N? nav) {
+final class const FaqPop<N extends AnyNav>._(
+  final _Screens spec,
+  final N? nav,
+) {
   static const helpCategory = FaqPop<HelpCategoryNav>._(
-    _Screens.helpCategory,
+    .helpCategory,
     HelpCategoryNav._(),
   );
-  static const help = FaqPop<HelpNav>._(_Screens.help, HelpNav._());
-  static const about = FaqPop<AboutNav>._(_Screens.about, AboutNav._());
-  static const settings = FaqPop<SettingsNav>._(
-    _Screens.settings,
-    SettingsNav._(),
-  );
+  static const help = FaqPop<HelpNav>._(.help, HelpNav._());
+  static const about = FaqPop<AboutNav>._(.about, AboutNav._());
+  static const settings = FaqPop<SettingsNav>._(.settings, SettingsNav._());
 }
 
 final class const FaqArticleNav._() extends AnyPlacement {
@@ -11697,18 +11530,18 @@ final class const FaqArticleNav._() extends AnyPlacement {
 }
 
 final class const FaqArticlePop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
-  static const faq = FaqArticlePop<FaqNav>._(_Screens.faq, FaqNav._());
+  static const faq = FaqArticlePop<FaqNav>._(.faq, FaqNav._());
   static const helpCategory = FaqArticlePop<HelpCategoryNav>._(
-    _Screens.helpCategory,
+    .helpCategory,
     HelpCategoryNav._(),
   );
-  static const help = FaqArticlePop<HelpNav>._(_Screens.help, HelpNav._());
-  static const about = FaqArticlePop<AboutNav>._(_Screens.about, AboutNav._());
+  static const help = FaqArticlePop<HelpNav>._(.help, HelpNav._());
+  static const about = FaqArticlePop<AboutNav>._(.about, AboutNav._());
   static const settings = FaqArticlePop<SettingsNav>._(
-    _Screens.settings,
+    .settings,
     SettingsNav._(),
   );
 }
@@ -11737,12 +11570,12 @@ final class const FeedbackNav._() extends AnyPlacement {
 }
 
 final class const FeedbackPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
-  static const about = FeedbackPop<AboutNav>._(_Screens.about, AboutNav._());
+  static const about = FeedbackPop<AboutNav>._(.about, AboutNav._());
   static const settings = FeedbackPop<SettingsNav>._(
-    _Screens.settings,
+    .settings,
     SettingsNav._(),
   );
 }
@@ -11823,29 +11656,26 @@ final class const DeviceNav._()
   }
 }
 
-final class const DevicePop<N extends AnyNav>._(final Enum spec, final N? nav) {
-  static const devices = DevicePop<DevicesNav>._(
-    _Screens.devices,
-    DevicesNav._(),
-  );
-  static const settings = DevicePop<SettingsNav>._(
-    _Screens.settings,
-    SettingsNav._(),
-  );
+final class const DevicePop<N extends AnyNav>._(
+  final _Screens spec,
+  final N? nav,
+) {
+  static const devices = DevicePop<DevicesNav>._(.devices, DevicesNav._());
+  static const settings = DevicePop<SettingsNav>._(.settings, SettingsNav._());
 }
 
 final class const DeviceHop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final Object? id,
   final N nav,
 ) {
   static const sessions = DeviceHop<SessionsNav>._(
-    _Screens.sessions,
+    .sessions,
     null,
     SessionsNav._(),
   );
   static DeviceHop<SessionNav> session(String id) =>
-      DeviceHop._(_Screens.session, id, const SessionNav._());
+      DeviceHop._(.session, id, const SessionNav._());
 }
 
 final class const SessionsNav._() extends AnyPlacement {
@@ -11877,19 +11707,13 @@ final class const SessionsNav._() extends AnyPlacement {
 }
 
 final class const SessionsPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
-  static const device = SessionsPop<DeviceNav>._(
-    _Screens.device,
-    DeviceNav._(),
-  );
-  static const devices = SessionsPop<DevicesNav>._(
-    _Screens.devices,
-    DevicesNav._(),
-  );
+  static const device = SessionsPop<DeviceNav>._(.device, DeviceNav._());
+  static const devices = SessionsPop<DevicesNav>._(.devices, DevicesNav._());
   static const settings = SessionsPop<SettingsNav>._(
-    _Screens.settings,
+    .settings,
     SettingsNav._(),
   );
 }
@@ -11937,22 +11761,13 @@ final class const SessionNav._()
 }
 
 final class const SessionPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
-  static const device = SessionPop<DeviceNav>._(_Screens.device, DeviceNav._());
-  static const devices = SessionPop<DevicesNav>._(
-    _Screens.devices,
-    DevicesNav._(),
-  );
-  static const settings = SessionPop<SettingsNav>._(
-    _Screens.settings,
-    SettingsNav._(),
-  );
-  static const session = SessionPop<SessionNav>._(
-    _Screens.session,
-    SessionNav._(),
-  );
+  static const device = SessionPop<DeviceNav>._(.device, DeviceNav._());
+  static const devices = SessionPop<DevicesNav>._(.devices, DevicesNav._());
+  static const settings = SessionPop<SettingsNav>._(.settings, SettingsNav._());
+  static const session = SessionPop<SessionNav>._(.session, SessionNav._());
 }
 
 final class const DataExportNav._() extends AnyPlacement {
@@ -12032,18 +11847,14 @@ final class const ProjectNav._()
 }
 
 final class const ProjectHop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final Object? id,
   final N nav,
 ) {
   static ProjectHop<BoardNav> board(String id) =>
-      ProjectHop._(_Screens.board, id, const BoardNav._());
+      ProjectHop._(.board, id, const BoardNav._());
   static ProjectHop<WorkspaceProjectUserProfileNav> userProfile(String id) =>
-      ProjectHop._(
-        _Screens.userProfile,
-        id,
-        const WorkspaceProjectUserProfileNav._(),
-      );
+      ProjectHop._(.userProfile, id, const WorkspaceProjectUserProfileNav._());
 }
 
 final class const BoardNav._()
@@ -12078,13 +11889,13 @@ final class const BoardNav._()
   }
 }
 
-final class const BoardPop<N extends AnyNav>._(final Enum spec, final N? nav) {
-  static const project = BoardPop<ProjectNav>._(
-    _Screens.project,
-    ProjectNav._(),
-  );
+final class const BoardPop<N extends AnyNav>._(
+  final _Screens spec,
+  final N? nav,
+) {
+  static const project = BoardPop<ProjectNav>._(.project, ProjectNav._());
   static const workspace = BoardPop<WorkspaceNav>._(
-    _Screens.workspace,
+    .workspace,
     WorkspaceNav._(),
   );
 }
@@ -12156,31 +11967,28 @@ final class const TaskListNav._()
 }
 
 final class const TaskListPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
-  static const board = TaskListPop<BoardNav>._(_Screens.board, BoardNav._());
-  static const project = TaskListPop<ProjectNav>._(
-    _Screens.project,
-    ProjectNav._(),
-  );
+  static const board = TaskListPop<BoardNav>._(.board, BoardNav._());
+  static const project = TaskListPop<ProjectNav>._(.project, ProjectNav._());
   static const workspace = TaskListPop<WorkspaceNav>._(
-    _Screens.workspace,
+    .workspace,
     WorkspaceNav._(),
   );
 }
 
 final class const TaskListHop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final Object? id,
   final N nav,
 ) {
   static TaskListHop<TaskNav> task(String id) =>
-      TaskListHop._(_Screens.task, id, const TaskNav._());
+      TaskListHop._(.task, id, const TaskNav._());
   static TaskListHop<MilestoneNav> milestone(String id) =>
-      TaskListHop._(_Screens.milestone, id, const MilestoneNav._());
+      TaskListHop._(.milestone, id, const MilestoneNav._());
   static TaskListHop<SprintNav> sprint(String id) =>
-      TaskListHop._(_Screens.sprint, id, const SprintNav._());
+      TaskListHop._(.sprint, id, const SprintNav._());
 }
 
 final class const TaskNav._()
@@ -12270,36 +12078,33 @@ final class const TaskNav._()
   }
 }
 
-final class const TaskPop<N extends AnyNav>._(final Enum spec, final N? nav) {
-  static const taskList = TaskPop<TaskListNav>._(
-    _Screens.taskList,
-    TaskListNav._(),
-  );
-  static const board = TaskPop<BoardNav>._(_Screens.board, BoardNav._());
-  static const project = TaskPop<ProjectNav>._(
-    _Screens.project,
-    ProjectNav._(),
-  );
+final class const TaskPop<N extends AnyNav>._(
+  final _Screens spec,
+  final N? nav,
+) {
+  static const taskList = TaskPop<TaskListNav>._(.taskList, TaskListNav._());
+  static const board = TaskPop<BoardNav>._(.board, BoardNav._());
+  static const project = TaskPop<ProjectNav>._(.project, ProjectNav._());
   static const workspace = TaskPop<WorkspaceNav>._(
-    _Screens.workspace,
+    .workspace,
     WorkspaceNav._(),
   );
-  static const task = TaskPop<TaskNav>._(_Screens.task, TaskNav._());
+  static const task = TaskPop<TaskNav>._(.task, TaskNav._());
 }
 
 final class const TaskHop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final Object? id,
   final N nav,
 ) {
   static TaskHop<SubtaskNav> subtask(String id) =>
-      TaskHop._(_Screens.subtask, id, const SubtaskNav._());
+      TaskHop._(.subtask, id, const SubtaskNav._());
   static TaskHop<AssigneeNav> assignee(String id) =>
-      TaskHop._(_Screens.assignee, id, const AssigneeNav._());
+      TaskHop._(.assignee, id, const AssigneeNav._());
   static TaskHop<LabelNav> label(String id) =>
-      TaskHop._(_Screens.label, id, const LabelNav._());
+      TaskHop._(.label, id, const LabelNav._());
   static TaskHop<TaskNav> task(String id) =>
-      TaskHop._(_Screens.task, id, const TaskNav._());
+      TaskHop._(.task, id, const TaskNav._());
 }
 
 final class const SubtaskNav._()
@@ -12369,38 +12174,29 @@ final class const SubtaskNav._()
 }
 
 final class const SubtaskPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
-  static const task = SubtaskPop<TaskNav>._(_Screens.task, TaskNav._());
-  static const taskList = SubtaskPop<TaskListNav>._(
-    _Screens.taskList,
-    TaskListNav._(),
-  );
-  static const board = SubtaskPop<BoardNav>._(_Screens.board, BoardNav._());
-  static const project = SubtaskPop<ProjectNav>._(
-    _Screens.project,
-    ProjectNav._(),
-  );
+  static const task = SubtaskPop<TaskNav>._(.task, TaskNav._());
+  static const taskList = SubtaskPop<TaskListNav>._(.taskList, TaskListNav._());
+  static const board = SubtaskPop<BoardNav>._(.board, BoardNav._());
+  static const project = SubtaskPop<ProjectNav>._(.project, ProjectNav._());
   static const workspace = SubtaskPop<WorkspaceNav>._(
-    _Screens.workspace,
+    .workspace,
     WorkspaceNav._(),
   );
-  static const subtask = SubtaskPop<SubtaskNav>._(
-    _Screens.subtask,
-    SubtaskNav._(),
-  );
+  static const subtask = SubtaskPop<SubtaskNav>._(.subtask, SubtaskNav._());
 }
 
 final class const SubtaskHop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final Object? id,
   final N nav,
 ) {
   static SubtaskHop<ChecklistItemNav> checklistItem(String id) =>
-      SubtaskHop._(_Screens.checklistItem, id, const ChecklistItemNav._());
+      SubtaskHop._(.checklistItem, id, const ChecklistItemNav._());
   static SubtaskHop<SubtaskNav> subtask(String id) =>
-      SubtaskHop._(_Screens.subtask, id, const SubtaskNav._());
+      SubtaskHop._(.subtask, id, const SubtaskNav._());
 }
 
 final class const ChecklistItemNav._()
@@ -12461,32 +12257,29 @@ final class const ChecklistItemNav._()
 }
 
 final class const ChecklistItemPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
   static const subtask = ChecklistItemPop<SubtaskNav>._(
-    _Screens.subtask,
+    .subtask,
     SubtaskNav._(),
   );
-  static const task = ChecklistItemPop<TaskNav>._(_Screens.task, TaskNav._());
+  static const task = ChecklistItemPop<TaskNav>._(.task, TaskNav._());
   static const taskList = ChecklistItemPop<TaskListNav>._(
-    _Screens.taskList,
+    .taskList,
     TaskListNav._(),
   );
-  static const board = ChecklistItemPop<BoardNav>._(
-    _Screens.board,
-    BoardNav._(),
-  );
+  static const board = ChecklistItemPop<BoardNav>._(.board, BoardNav._());
   static const project = ChecklistItemPop<ProjectNav>._(
-    _Screens.project,
+    .project,
     ProjectNav._(),
   );
   static const workspace = ChecklistItemPop<WorkspaceNav>._(
-    _Screens.workspace,
+    .workspace,
     WorkspaceNav._(),
   );
   static const checklistItem = ChecklistItemPop<ChecklistItemNav>._(
-    _Screens.checklistItem,
+    .checklistItem,
     ChecklistItemNav._(),
   );
 }
@@ -12530,21 +12323,18 @@ final class const EditTaskNav._() extends AnyPlacement {
 }
 
 final class const EditTaskPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
-  static const task = EditTaskPop<TaskNav>._(_Screens.task, TaskNav._());
+  static const task = EditTaskPop<TaskNav>._(.task, TaskNav._());
   static const taskList = EditTaskPop<TaskListNav>._(
-    _Screens.taskList,
+    .taskList,
     TaskListNav._(),
   );
-  static const board = EditTaskPop<BoardNav>._(_Screens.board, BoardNav._());
-  static const project = EditTaskPop<ProjectNav>._(
-    _Screens.project,
-    ProjectNav._(),
-  );
+  static const board = EditTaskPop<BoardNav>._(.board, BoardNav._());
+  static const project = EditTaskPop<ProjectNav>._(.project, ProjectNav._());
   static const workspace = EditTaskPop<WorkspaceNav>._(
-    _Screens.workspace,
+    .workspace,
     WorkspaceNav._(),
   );
 }
@@ -12588,21 +12378,18 @@ final class const TaskCommentNav._() extends AnyPlacement {
 }
 
 final class const TaskCommentPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
-  static const task = TaskCommentPop<TaskNav>._(_Screens.task, TaskNav._());
+  static const task = TaskCommentPop<TaskNav>._(.task, TaskNav._());
   static const taskList = TaskCommentPop<TaskListNav>._(
-    _Screens.taskList,
+    .taskList,
     TaskListNav._(),
   );
-  static const board = TaskCommentPop<BoardNav>._(_Screens.board, BoardNav._());
-  static const project = TaskCommentPop<ProjectNav>._(
-    _Screens.project,
-    ProjectNav._(),
-  );
+  static const board = TaskCommentPop<BoardNav>._(.board, BoardNav._());
+  static const project = TaskCommentPop<ProjectNav>._(.project, ProjectNav._());
   static const workspace = TaskCommentPop<WorkspaceNav>._(
-    _Screens.workspace,
+    .workspace,
     WorkspaceNav._(),
   );
 }
@@ -12646,21 +12433,18 @@ final class const AssigneeNav._() extends AnyPlacement {
 }
 
 final class const AssigneePop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
-  static const task = AssigneePop<TaskNav>._(_Screens.task, TaskNav._());
+  static const task = AssigneePop<TaskNav>._(.task, TaskNav._());
   static const taskList = AssigneePop<TaskListNav>._(
-    _Screens.taskList,
+    .taskList,
     TaskListNav._(),
   );
-  static const board = AssigneePop<BoardNav>._(_Screens.board, BoardNav._());
-  static const project = AssigneePop<ProjectNav>._(
-    _Screens.project,
-    ProjectNav._(),
-  );
+  static const board = AssigneePop<BoardNav>._(.board, BoardNav._());
+  static const project = AssigneePop<ProjectNav>._(.project, ProjectNav._());
   static const workspace = AssigneePop<WorkspaceNav>._(
-    _Screens.workspace,
+    .workspace,
     WorkspaceNav._(),
   );
 }
@@ -12703,19 +12487,16 @@ final class const LabelNav._() extends AnyPlacement {
   }
 }
 
-final class const LabelPop<N extends AnyNav>._(final Enum spec, final N? nav) {
-  static const task = LabelPop<TaskNav>._(_Screens.task, TaskNav._());
-  static const taskList = LabelPop<TaskListNav>._(
-    _Screens.taskList,
-    TaskListNav._(),
-  );
-  static const board = LabelPop<BoardNav>._(_Screens.board, BoardNav._());
-  static const project = LabelPop<ProjectNav>._(
-    _Screens.project,
-    ProjectNav._(),
-  );
+final class const LabelPop<N extends AnyNav>._(
+  final _Screens spec,
+  final N? nav,
+) {
+  static const task = LabelPop<TaskNav>._(.task, TaskNav._());
+  static const taskList = LabelPop<TaskListNav>._(.taskList, TaskListNav._());
+  static const board = LabelPop<BoardNav>._(.board, BoardNav._());
+  static const project = LabelPop<ProjectNav>._(.project, ProjectNav._());
   static const workspace = LabelPop<WorkspaceNav>._(
-    _Screens.workspace,
+    .workspace,
     WorkspaceNav._(),
   );
 }
@@ -12754,20 +12535,17 @@ final class const MilestoneNav._() extends AnyPlacement {
 }
 
 final class const MilestonePop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
   static const taskList = MilestonePop<TaskListNav>._(
-    _Screens.taskList,
+    .taskList,
     TaskListNav._(),
   );
-  static const board = MilestonePop<BoardNav>._(_Screens.board, BoardNav._());
-  static const project = MilestonePop<ProjectNav>._(
-    _Screens.project,
-    ProjectNav._(),
-  );
+  static const board = MilestonePop<BoardNav>._(.board, BoardNav._());
+  static const project = MilestonePop<ProjectNav>._(.project, ProjectNav._());
   static const workspace = MilestonePop<WorkspaceNav>._(
-    _Screens.workspace,
+    .workspace,
     WorkspaceNav._(),
   );
 }
@@ -12805,18 +12583,15 @@ final class const SprintNav._() extends AnyPlacement {
   }
 }
 
-final class const SprintPop<N extends AnyNav>._(final Enum spec, final N? nav) {
-  static const taskList = SprintPop<TaskListNav>._(
-    _Screens.taskList,
-    TaskListNav._(),
-  );
-  static const board = SprintPop<BoardNav>._(_Screens.board, BoardNav._());
-  static const project = SprintPop<ProjectNav>._(
-    _Screens.project,
-    ProjectNav._(),
-  );
+final class const SprintPop<N extends AnyNav>._(
+  final _Screens spec,
+  final N? nav,
+) {
+  static const taskList = SprintPop<TaskListNav>._(.taskList, TaskListNav._());
+  static const board = SprintPop<BoardNav>._(.board, BoardNav._());
+  static const project = SprintPop<ProjectNav>._(.project, ProjectNav._());
   static const workspace = SprintPop<WorkspaceNav>._(
-    _Screens.workspace,
+    .workspace,
     WorkspaceNav._(),
   );
 }
@@ -12928,29 +12703,29 @@ final class const ForumThreadNav._()
 }
 
 final class const ForumThreadPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
   static const forumCategory = ForumThreadPop<ForumCategoryNav>._(
-    _Screens.forumCategory,
+    .forumCategory,
     ForumCategoryNav._(),
   );
-  static const forum = ForumThreadPop<ForumNav>._(_Screens.forum, ForumNav._());
+  static const forum = ForumThreadPop<ForumNav>._(.forum, ForumNav._());
   static const forumThread = ForumThreadPop<ForumThreadNav>._(
-    _Screens.forumThread,
+    .forumThread,
     ForumThreadNav._(),
   );
 }
 
 final class const ForumThreadHop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final Object? id,
   final N nav,
 ) {
   static ForumThreadHop<ForumReplyNav> forumReply(String id) =>
-      ForumThreadHop._(_Screens.forumReply, id, const ForumReplyNav._());
+      ForumThreadHop._(.forumReply, id, const ForumReplyNav._());
   static ForumThreadHop<ForumThreadNav> forumThread(String id) =>
-      ForumThreadHop._(_Screens.forumThread, id, const ForumThreadNav._());
+      ForumThreadHop._(.forumThread, id, const ForumThreadNav._());
 }
 
 final class const ForumReplyNav._()
@@ -13009,34 +12784,34 @@ final class const ForumReplyNav._()
 }
 
 final class const ForumReplyPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
   static const forumThread = ForumReplyPop<ForumThreadNav>._(
-    _Screens.forumThread,
+    .forumThread,
     ForumThreadNav._(),
   );
   static const forumCategory = ForumReplyPop<ForumCategoryNav>._(
-    _Screens.forumCategory,
+    .forumCategory,
     ForumCategoryNav._(),
   );
-  static const forum = ForumReplyPop<ForumNav>._(_Screens.forum, ForumNav._());
+  static const forum = ForumReplyPop<ForumNav>._(.forum, ForumNav._());
   static const forumReply = ForumReplyPop<ForumReplyNav>._(
-    _Screens.forumReply,
+    .forumReply,
     ForumReplyNav._(),
   );
 }
 
 final class const ForumReplyHop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final Object? id,
   final N nav,
 ) {
   static ForumReplyHop<ForumReplyNav> forumReply(String id) =>
-      ForumReplyHop._(_Screens.forumReply, id, const ForumReplyNav._());
+      ForumReplyHop._(.forumReply, id, const ForumReplyNav._());
   static ForumReplyHop<ForumForumCategoryForumThreadForumReplyUserProfileNav>
   userProfile(String id) => ForumReplyHop._(
-    _Screens.userProfile,
+    .userProfile,
     id,
     const ForumForumCategoryForumThreadForumReplyUserProfileNav._(),
   );
@@ -13071,21 +12846,18 @@ final class const ReportThreadNav._() extends AnyPlacement {
 }
 
 final class const ReportThreadPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
   static const forumThread = ReportThreadPop<ForumThreadNav>._(
-    _Screens.forumThread,
+    .forumThread,
     ForumThreadNav._(),
   );
   static const forumCategory = ReportThreadPop<ForumCategoryNav>._(
-    _Screens.forumCategory,
+    .forumCategory,
     ForumCategoryNav._(),
   );
-  static const forum = ReportThreadPop<ForumNav>._(
-    _Screens.forum,
-    ForumNav._(),
-  );
+  static const forum = ReportThreadPop<ForumNav>._(.forum, ForumNav._());
 }
 
 final class const LearnNav._()
@@ -13181,28 +12953,22 @@ final class const CourseModuleNav._()
 }
 
 final class const CourseModulePop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
-  static const course = CourseModulePop<CourseNav>._(
-    _Screens.course,
-    CourseNav._(),
-  );
-  static const learn = CourseModulePop<LearnNav>._(
-    _Screens.learn,
-    LearnNav._(),
-  );
+  static const course = CourseModulePop<CourseNav>._(.course, CourseNav._());
+  static const learn = CourseModulePop<LearnNav>._(.learn, LearnNav._());
 }
 
 final class const CourseModuleHop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final Object? id,
   final N nav,
 ) {
   static CourseModuleHop<LessonNav> lesson(String id) =>
-      CourseModuleHop._(_Screens.lesson, id, const LessonNav._());
+      CourseModuleHop._(.lesson, id, const LessonNav._());
   static CourseModuleHop<InstructorNav> instructor(String id) =>
-      CourseModuleHop._(_Screens.instructor, id, const InstructorNav._());
+      CourseModuleHop._(.instructor, id, const InstructorNav._());
 }
 
 final class const LessonNav._()
@@ -13252,24 +13018,27 @@ final class const LessonNav._()
   }
 }
 
-final class const LessonPop<N extends AnyNav>._(final Enum spec, final N? nav) {
+final class const LessonPop<N extends AnyNav>._(
+  final _Screens spec,
+  final N? nav,
+) {
   static const courseModule = LessonPop<CourseModuleNav>._(
-    _Screens.courseModule,
+    .courseModule,
     CourseModuleNav._(),
   );
-  static const course = LessonPop<CourseNav>._(_Screens.course, CourseNav._());
-  static const learn = LessonPop<LearnNav>._(_Screens.learn, LearnNav._());
+  static const course = LessonPop<CourseNav>._(.course, CourseNav._());
+  static const learn = LessonPop<LearnNav>._(.learn, LearnNav._());
 }
 
 final class const LessonHop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final Object? id,
   final N nav,
 ) {
   static LessonHop<QuizNav> quiz(String id) =>
-      LessonHop._(_Screens.quiz, id, const QuizNav._());
+      LessonHop._(.quiz, id, const QuizNav._());
   static LessonHop<CourseReviewNav> courseReview(String id) =>
-      LessonHop._(_Screens.courseReview, id, const CourseReviewNav._());
+      LessonHop._(.courseReview, id, const CourseReviewNav._());
 }
 
 final class const QuizNav._()
@@ -13319,14 +13088,17 @@ final class const QuizNav._()
   }
 }
 
-final class const QuizPop<N extends AnyNav>._(final Enum spec, final N? nav) {
-  static const lesson = QuizPop<LessonNav>._(_Screens.lesson, LessonNav._());
+final class const QuizPop<N extends AnyNav>._(
+  final _Screens spec,
+  final N? nav,
+) {
+  static const lesson = QuizPop<LessonNav>._(.lesson, LessonNav._());
   static const courseModule = QuizPop<CourseModuleNav>._(
-    _Screens.courseModule,
+    .courseModule,
     CourseModuleNav._(),
   );
-  static const course = QuizPop<CourseNav>._(_Screens.course, CourseNav._());
-  static const learn = QuizPop<LearnNav>._(_Screens.learn, LearnNav._());
+  static const course = QuizPop<CourseNav>._(.course, CourseNav._());
+  static const learn = QuizPop<LearnNav>._(.learn, LearnNav._());
 }
 
 final class const QuestionNav._()
@@ -13388,25 +13160,19 @@ final class const QuestionNav._()
 }
 
 final class const QuestionPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
-  static const quiz = QuestionPop<QuizNav>._(_Screens.quiz, QuizNav._());
-  static const lesson = QuestionPop<LessonNav>._(
-    _Screens.lesson,
-    LessonNav._(),
-  );
+  static const quiz = QuestionPop<QuizNav>._(.quiz, QuizNav._());
+  static const lesson = QuestionPop<LessonNav>._(.lesson, LessonNav._());
   static const courseModule = QuestionPop<CourseModuleNav>._(
-    _Screens.courseModule,
+    .courseModule,
     CourseModuleNav._(),
   );
-  static const course = QuestionPop<CourseNav>._(
-    _Screens.course,
-    CourseNav._(),
-  );
-  static const learn = QuestionPop<LearnNav>._(_Screens.learn, LearnNav._());
+  static const course = QuestionPop<CourseNav>._(.course, CourseNav._());
+  static const learn = QuestionPop<LearnNav>._(.learn, LearnNav._());
   static const question = QuestionPop<QuestionNav>._(
-    _Screens.question,
+    .question,
     QuestionNav._(),
   );
 }
@@ -13454,19 +13220,19 @@ final class const AnswerNav._() extends AnyPlacement {
   }
 }
 
-final class const AnswerPop<N extends AnyNav>._(final Enum spec, final N? nav) {
-  static const question = AnswerPop<QuestionNav>._(
-    _Screens.question,
-    QuestionNav._(),
-  );
-  static const quiz = AnswerPop<QuizNav>._(_Screens.quiz, QuizNav._());
-  static const lesson = AnswerPop<LessonNav>._(_Screens.lesson, LessonNav._());
+final class const AnswerPop<N extends AnyNav>._(
+  final _Screens spec,
+  final N? nav,
+) {
+  static const question = AnswerPop<QuestionNav>._(.question, QuestionNav._());
+  static const quiz = AnswerPop<QuizNav>._(.quiz, QuizNav._());
+  static const lesson = AnswerPop<LessonNav>._(.lesson, LessonNav._());
   static const courseModule = AnswerPop<CourseModuleNav>._(
-    _Screens.courseModule,
+    .courseModule,
     CourseModuleNav._(),
   );
-  static const course = AnswerPop<CourseNav>._(_Screens.course, CourseNav._());
-  static const learn = AnswerPop<LearnNav>._(_Screens.learn, LearnNav._());
+  static const course = AnswerPop<CourseNav>._(.course, CourseNav._());
+  static const learn = AnswerPop<LearnNav>._(.learn, LearnNav._());
 }
 
 final class const CourseReviewNav._() extends AnyPlacement {
@@ -13503,25 +13269,16 @@ final class const CourseReviewNav._() extends AnyPlacement {
 }
 
 final class const CourseReviewPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
-  static const lesson = CourseReviewPop<LessonNav>._(
-    _Screens.lesson,
-    LessonNav._(),
-  );
+  static const lesson = CourseReviewPop<LessonNav>._(.lesson, LessonNav._());
   static const courseModule = CourseReviewPop<CourseModuleNav>._(
-    _Screens.courseModule,
+    .courseModule,
     CourseModuleNav._(),
   );
-  static const course = CourseReviewPop<CourseNav>._(
-    _Screens.course,
-    CourseNav._(),
-  );
-  static const learn = CourseReviewPop<LearnNav>._(
-    _Screens.learn,
-    LearnNav._(),
-  );
+  static const course = CourseReviewPop<CourseNav>._(.course, CourseNav._());
+  static const learn = CourseReviewPop<LearnNav>._(.learn, LearnNav._());
 }
 
 final class const InstructorNav._() extends AnyPlacement {
@@ -13553,18 +13310,15 @@ final class const InstructorNav._() extends AnyPlacement {
 }
 
 final class const InstructorPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
   static const courseModule = InstructorPop<CourseModuleNav>._(
-    _Screens.courseModule,
+    .courseModule,
     CourseModuleNav._(),
   );
-  static const course = InstructorPop<CourseNav>._(
-    _Screens.course,
-    CourseNav._(),
-  );
-  static const learn = InstructorPop<LearnNav>._(_Screens.learn, LearnNav._());
+  static const course = InstructorPop<CourseNav>._(.course, CourseNav._());
+  static const learn = InstructorPop<LearnNav>._(.learn, LearnNav._());
 }
 
 final class const CertificateNav._() extends AnyPlacement {
@@ -13591,14 +13345,11 @@ final class const CertificateNav._() extends AnyPlacement {
 }
 
 final class const CertificatePop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
-  static const course = CertificatePop<CourseNav>._(
-    _Screens.course,
-    CourseNav._(),
-  );
-  static const learn = CertificatePop<LearnNav>._(_Screens.learn, LearnNav._());
+  static const course = CertificatePop<CourseNav>._(.course, CourseNav._());
+  static const learn = CertificatePop<LearnNav>._(.learn, LearnNav._());
 }
 
 final class const ShopNav._() extends AnyPlacement implements PopDestPlacement {
@@ -13627,14 +13378,14 @@ final class const ShopNav._() extends AnyPlacement implements PopDestPlacement {
 }
 
 final class const ShopHop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final Object? id,
   final N nav,
 ) {
   static ShopHop<ShopDeptNav> shopDept(String id) =>
-      ShopHop._(_Screens.shopDept, id, const ShopDeptNav._());
+      ShopHop._(.shopDept, id, const ShopDeptNav._());
   static const compareProducts = ShopHop<CompareProductsNav>._(
-    _Screens.compareProducts,
+    .compareProducts,
     null,
     CompareProductsNav._(),
   );
@@ -13693,14 +13444,14 @@ final class const ShopCategoryNav._()
 }
 
 final class const ShopCategoryPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
   static const shopDept = ShopCategoryPop<ShopDeptNav>._(
-    _Screens.shopDept,
+    .shopDept,
     ShopDeptNav._(),
   );
-  static const shop = ShopCategoryPop<ShopNav>._(_Screens.shop, ShopNav._());
+  static const shop = ShopCategoryPop<ShopNav>._(.shop, ShopNav._());
 }
 
 final class const ShopSubcategoryNav._()
@@ -13744,18 +13495,18 @@ final class const ShopSubcategoryNav._()
 }
 
 final class const ShopSubcategoryPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
   static const shopCategory = ShopSubcategoryPop<ShopCategoryNav>._(
-    _Screens.shopCategory,
+    .shopCategory,
     ShopCategoryNav._(),
   );
   static const shopDept = ShopSubcategoryPop<ShopDeptNav>._(
-    _Screens.shopDept,
+    .shopDept,
     ShopDeptNav._(),
   );
-  static const shop = ShopSubcategoryPop<ShopNav>._(_Screens.shop, ShopNav._());
+  static const shop = ShopSubcategoryPop<ShopNav>._(.shop, ShopNav._());
 }
 
 final class const ProductNav._()
@@ -13834,41 +13585,35 @@ final class const ProductNav._()
 }
 
 final class const ProductPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
   static const shopSubcategory = ProductPop<ShopSubcategoryNav>._(
-    _Screens.shopSubcategory,
+    .shopSubcategory,
     ShopSubcategoryNav._(),
   );
   static const shopCategory = ProductPop<ShopCategoryNav>._(
-    _Screens.shopCategory,
+    .shopCategory,
     ShopCategoryNav._(),
   );
-  static const shopDept = ProductPop<ShopDeptNav>._(
-    _Screens.shopDept,
-    ShopDeptNav._(),
-  );
-  static const shop = ProductPop<ShopNav>._(_Screens.shop, ShopNav._());
-  static const product = ProductPop<ProductNav>._(
-    _Screens.product,
-    ProductNav._(),
-  );
+  static const shopDept = ProductPop<ShopDeptNav>._(.shopDept, ShopDeptNav._());
+  static const shop = ProductPop<ShopNav>._(.shop, ShopNav._());
+  static const product = ProductPop<ProductNav>._(.product, ProductNav._());
 }
 
 final class const ProductHop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final Object? id,
   final N nav,
 ) {
   static ProductHop<ProductVariantNav> productVariant(String id) =>
-      ProductHop._(_Screens.productVariant, id, const ProductVariantNav._());
+      ProductHop._(.productVariant, id, const ProductVariantNav._());
   static ProductHop<ProductReviewNav> productReview(String id) =>
-      ProductHop._(_Screens.productReview, id, const ProductReviewNav._());
+      ProductHop._(.productReview, id, const ProductReviewNav._());
   static ProductHop<BrandNav> brand(String id) =>
-      ProductHop._(_Screens.brand, id, const BrandNav._());
+      ProductHop._(.brand, id, const BrandNav._());
   static ProductHop<ProductNav> product(String id) =>
-      ProductHop._(_Screens.product, id, const ProductNav._());
+      ProductHop._(.product, id, const ProductNav._());
 }
 
 final class const ProductVariantNav._()
@@ -13924,28 +13669,28 @@ final class const ProductVariantNav._()
 }
 
 final class const ProductVariantPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
   static const product = ProductVariantPop<ProductNav>._(
-    _Screens.product,
+    .product,
     ProductNav._(),
   );
   static const shopSubcategory = ProductVariantPop<ShopSubcategoryNav>._(
-    _Screens.shopSubcategory,
+    .shopSubcategory,
     ShopSubcategoryNav._(),
   );
   static const shopCategory = ProductVariantPop<ShopCategoryNav>._(
-    _Screens.shopCategory,
+    .shopCategory,
     ShopCategoryNav._(),
   );
   static const shopDept = ProductVariantPop<ShopDeptNav>._(
-    _Screens.shopDept,
+    .shopDept,
     ShopDeptNav._(),
   );
-  static const shop = ProductVariantPop<ShopNav>._(_Screens.shop, ShopNav._());
+  static const shop = ProductVariantPop<ShopNav>._(.shop, ShopNav._());
   static const productVariant = ProductVariantPop<ProductVariantNav>._(
-    _Screens.productVariant,
+    .productVariant,
     ProductVariantNav._(),
   );
 }
@@ -13989,26 +13734,26 @@ final class const ProductReviewNav._() extends AnyPlacement {
 }
 
 final class const ProductReviewPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
   static const product = ProductReviewPop<ProductNav>._(
-    _Screens.product,
+    .product,
     ProductNav._(),
   );
   static const shopSubcategory = ProductReviewPop<ShopSubcategoryNav>._(
-    _Screens.shopSubcategory,
+    .shopSubcategory,
     ShopSubcategoryNav._(),
   );
   static const shopCategory = ProductReviewPop<ShopCategoryNav>._(
-    _Screens.shopCategory,
+    .shopCategory,
     ShopCategoryNav._(),
   );
   static const shopDept = ProductReviewPop<ShopDeptNav>._(
-    _Screens.shopDept,
+    .shopDept,
     ShopDeptNav._(),
   );
-  static const shop = ProductReviewPop<ShopNav>._(_Screens.shop, ShopNav._());
+  static const shop = ProductReviewPop<ShopNav>._(.shop, ShopNav._());
 }
 
 final class const BrandNav._() extends AnyPlacement {
@@ -14049,24 +13794,21 @@ final class const BrandNav._() extends AnyPlacement {
   }
 }
 
-final class const BrandPop<N extends AnyNav>._(final Enum spec, final N? nav) {
-  static const product = BrandPop<ProductNav>._(
-    _Screens.product,
-    ProductNav._(),
-  );
+final class const BrandPop<N extends AnyNav>._(
+  final _Screens spec,
+  final N? nav,
+) {
+  static const product = BrandPop<ProductNav>._(.product, ProductNav._());
   static const shopSubcategory = BrandPop<ShopSubcategoryNav>._(
-    _Screens.shopSubcategory,
+    .shopSubcategory,
     ShopSubcategoryNav._(),
   );
   static const shopCategory = BrandPop<ShopCategoryNav>._(
-    _Screens.shopCategory,
+    .shopCategory,
     ShopCategoryNav._(),
   );
-  static const shopDept = BrandPop<ShopDeptNav>._(
-    _Screens.shopDept,
-    ShopDeptNav._(),
-  );
-  static const shop = BrandPop<ShopNav>._(_Screens.shop, ShopNav._());
+  static const shopDept = BrandPop<ShopDeptNav>._(.shopDept, ShopDeptNav._());
+  static const shop = BrandPop<ShopNav>._(.shop, ShopNav._());
 }
 
 final class const CompareProductsNav._() extends AnyPlacement {
@@ -14152,15 +13894,12 @@ final class const ExerciseNav._()
 }
 
 final class const ExercisePop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
-  static const workout = ExercisePop<WorkoutNav>._(
-    _Screens.workout,
-    WorkoutNav._(),
-  );
+  static const workout = ExercisePop<WorkoutNav>._(.workout, WorkoutNav._());
   static const activity = ExercisePop<ActivityNav>._(
-    _Screens.activity,
+    .activity,
     ActivityNav._(),
   );
 }
@@ -14208,23 +13947,20 @@ final class const ExerciseSetNav._()
 }
 
 final class const ExerciseSetPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
   static const exercise = ExerciseSetPop<ExerciseNav>._(
-    _Screens.exercise,
+    .exercise,
     ExerciseNav._(),
   );
-  static const workout = ExerciseSetPop<WorkoutNav>._(
-    _Screens.workout,
-    WorkoutNav._(),
-  );
+  static const workout = ExerciseSetPop<WorkoutNav>._(.workout, WorkoutNav._());
   static const activity = ExerciseSetPop<ActivityNav>._(
-    _Screens.activity,
+    .activity,
     ActivityNav._(),
   );
   static const exerciseSet = ExerciseSetPop<ExerciseSetNav>._(
-    _Screens.exerciseSet,
+    .exerciseSet,
     ExerciseSetNav._(),
   );
 }
@@ -14302,17 +14038,17 @@ final class const LevelANav._()
   }
 }
 
-final class const LevelAPop<N extends AnyNav>._(final Enum spec, final N? nav) {
-  static const deepDemo = LevelAPop<DeepDemoNav>._(
-    _Screens.deepDemo,
-    DeepDemoNav._(),
-  );
-  static const levelF = LevelAPop<LevelFNav>._(_Screens.levelF, LevelFNav._());
-  static const levelE = LevelAPop<LevelENav>._(_Screens.levelE, LevelENav._());
-  static const levelD = LevelAPop<LevelDNav>._(_Screens.levelD, LevelDNav._());
-  static const levelC = LevelAPop<LevelCNav>._(_Screens.levelC, LevelCNav._());
-  static const levelB = LevelAPop<LevelBNav>._(_Screens.levelB, LevelBNav._());
-  static const levelA = LevelAPop<LevelANav>._(_Screens.levelA, LevelANav._());
+final class const LevelAPop<N extends AnyNav>._(
+  final _Screens spec,
+  final N? nav,
+) {
+  static const deepDemo = LevelAPop<DeepDemoNav>._(.deepDemo, DeepDemoNav._());
+  static const levelF = LevelAPop<LevelFNav>._(.levelF, LevelFNav._());
+  static const levelE = LevelAPop<LevelENav>._(.levelE, LevelENav._());
+  static const levelD = LevelAPop<LevelDNav>._(.levelD, LevelDNav._());
+  static const levelC = LevelAPop<LevelCNav>._(.levelC, LevelCNav._());
+  static const levelB = LevelAPop<LevelBNav>._(.levelB, LevelBNav._());
+  static const levelA = LevelAPop<LevelANav>._(.levelA, LevelANav._());
 }
 
 final class const LevelBNav._()
@@ -14372,17 +14108,17 @@ final class const LevelBNav._()
   }
 }
 
-final class const LevelBPop<N extends AnyNav>._(final Enum spec, final N? nav) {
-  static const levelA = LevelBPop<LevelANav>._(_Screens.levelA, LevelANav._());
-  static const deepDemo = LevelBPop<DeepDemoNav>._(
-    _Screens.deepDemo,
-    DeepDemoNav._(),
-  );
-  static const levelF = LevelBPop<LevelFNav>._(_Screens.levelF, LevelFNav._());
-  static const levelE = LevelBPop<LevelENav>._(_Screens.levelE, LevelENav._());
-  static const levelD = LevelBPop<LevelDNav>._(_Screens.levelD, LevelDNav._());
-  static const levelC = LevelBPop<LevelCNav>._(_Screens.levelC, LevelCNav._());
-  static const levelB = LevelBPop<LevelBNav>._(_Screens.levelB, LevelBNav._());
+final class const LevelBPop<N extends AnyNav>._(
+  final _Screens spec,
+  final N? nav,
+) {
+  static const levelA = LevelBPop<LevelANav>._(.levelA, LevelANav._());
+  static const deepDemo = LevelBPop<DeepDemoNav>._(.deepDemo, DeepDemoNav._());
+  static const levelF = LevelBPop<LevelFNav>._(.levelF, LevelFNav._());
+  static const levelE = LevelBPop<LevelENav>._(.levelE, LevelENav._());
+  static const levelD = LevelBPop<LevelDNav>._(.levelD, LevelDNav._());
+  static const levelC = LevelBPop<LevelCNav>._(.levelC, LevelCNav._());
+  static const levelB = LevelBPop<LevelBNav>._(.levelB, LevelBNav._());
 }
 
 final class const LevelCNav._()
@@ -14442,17 +14178,17 @@ final class const LevelCNav._()
   }
 }
 
-final class const LevelCPop<N extends AnyNav>._(final Enum spec, final N? nav) {
-  static const levelB = LevelCPop<LevelBNav>._(_Screens.levelB, LevelBNav._());
-  static const levelA = LevelCPop<LevelANav>._(_Screens.levelA, LevelANav._());
-  static const deepDemo = LevelCPop<DeepDemoNav>._(
-    _Screens.deepDemo,
-    DeepDemoNav._(),
-  );
-  static const levelF = LevelCPop<LevelFNav>._(_Screens.levelF, LevelFNav._());
-  static const levelE = LevelCPop<LevelENav>._(_Screens.levelE, LevelENav._());
-  static const levelD = LevelCPop<LevelDNav>._(_Screens.levelD, LevelDNav._());
-  static const levelC = LevelCPop<LevelCNav>._(_Screens.levelC, LevelCNav._());
+final class const LevelCPop<N extends AnyNav>._(
+  final _Screens spec,
+  final N? nav,
+) {
+  static const levelB = LevelCPop<LevelBNav>._(.levelB, LevelBNav._());
+  static const levelA = LevelCPop<LevelANav>._(.levelA, LevelANav._());
+  static const deepDemo = LevelCPop<DeepDemoNav>._(.deepDemo, DeepDemoNav._());
+  static const levelF = LevelCPop<LevelFNav>._(.levelF, LevelFNav._());
+  static const levelE = LevelCPop<LevelENav>._(.levelE, LevelENav._());
+  static const levelD = LevelCPop<LevelDNav>._(.levelD, LevelDNav._());
+  static const levelC = LevelCPop<LevelCNav>._(.levelC, LevelCNav._());
 }
 
 final class const LevelDNav._()
@@ -14512,17 +14248,17 @@ final class const LevelDNav._()
   }
 }
 
-final class const LevelDPop<N extends AnyNav>._(final Enum spec, final N? nav) {
-  static const levelC = LevelDPop<LevelCNav>._(_Screens.levelC, LevelCNav._());
-  static const levelB = LevelDPop<LevelBNav>._(_Screens.levelB, LevelBNav._());
-  static const levelA = LevelDPop<LevelANav>._(_Screens.levelA, LevelANav._());
-  static const deepDemo = LevelDPop<DeepDemoNav>._(
-    _Screens.deepDemo,
-    DeepDemoNav._(),
-  );
-  static const levelF = LevelDPop<LevelFNav>._(_Screens.levelF, LevelFNav._());
-  static const levelE = LevelDPop<LevelENav>._(_Screens.levelE, LevelENav._());
-  static const levelD = LevelDPop<LevelDNav>._(_Screens.levelD, LevelDNav._());
+final class const LevelDPop<N extends AnyNav>._(
+  final _Screens spec,
+  final N? nav,
+) {
+  static const levelC = LevelDPop<LevelCNav>._(.levelC, LevelCNav._());
+  static const levelB = LevelDPop<LevelBNav>._(.levelB, LevelBNav._());
+  static const levelA = LevelDPop<LevelANav>._(.levelA, LevelANav._());
+  static const deepDemo = LevelDPop<DeepDemoNav>._(.deepDemo, DeepDemoNav._());
+  static const levelF = LevelDPop<LevelFNav>._(.levelF, LevelFNav._());
+  static const levelE = LevelDPop<LevelENav>._(.levelE, LevelENav._());
+  static const levelD = LevelDPop<LevelDNav>._(.levelD, LevelDNav._());
 }
 
 final class const LevelENav._()
@@ -14582,17 +14318,17 @@ final class const LevelENav._()
   }
 }
 
-final class const LevelEPop<N extends AnyNav>._(final Enum spec, final N? nav) {
-  static const levelD = LevelEPop<LevelDNav>._(_Screens.levelD, LevelDNav._());
-  static const levelC = LevelEPop<LevelCNav>._(_Screens.levelC, LevelCNav._());
-  static const levelB = LevelEPop<LevelBNav>._(_Screens.levelB, LevelBNav._());
-  static const levelA = LevelEPop<LevelANav>._(_Screens.levelA, LevelANav._());
-  static const deepDemo = LevelEPop<DeepDemoNav>._(
-    _Screens.deepDemo,
-    DeepDemoNav._(),
-  );
-  static const levelF = LevelEPop<LevelFNav>._(_Screens.levelF, LevelFNav._());
-  static const levelE = LevelEPop<LevelENav>._(_Screens.levelE, LevelENav._());
+final class const LevelEPop<N extends AnyNav>._(
+  final _Screens spec,
+  final N? nav,
+) {
+  static const levelD = LevelEPop<LevelDNav>._(.levelD, LevelDNav._());
+  static const levelC = LevelEPop<LevelCNav>._(.levelC, LevelCNav._());
+  static const levelB = LevelEPop<LevelBNav>._(.levelB, LevelBNav._());
+  static const levelA = LevelEPop<LevelANav>._(.levelA, LevelANav._());
+  static const deepDemo = LevelEPop<DeepDemoNav>._(.deepDemo, DeepDemoNav._());
+  static const levelF = LevelEPop<LevelFNav>._(.levelF, LevelFNav._());
+  static const levelE = LevelEPop<LevelENav>._(.levelE, LevelENav._());
 }
 
 final class const LevelFNav._()
@@ -14694,36 +14430,36 @@ final class const LevelFNav._()
   }
 }
 
-final class const LevelFPop<N extends AnyNav>._(final Enum spec, final N? nav) {
-  static const levelE = LevelFPop<LevelENav>._(_Screens.levelE, LevelENav._());
-  static const levelD = LevelFPop<LevelDNav>._(_Screens.levelD, LevelDNav._());
-  static const levelC = LevelFPop<LevelCNav>._(_Screens.levelC, LevelCNav._());
-  static const levelB = LevelFPop<LevelBNav>._(_Screens.levelB, LevelBNav._());
-  static const levelA = LevelFPop<LevelANav>._(_Screens.levelA, LevelANav._());
-  static const deepDemo = LevelFPop<DeepDemoNav>._(
-    _Screens.deepDemo,
-    DeepDemoNav._(),
-  );
-  static const levelF = LevelFPop<LevelFNav>._(_Screens.levelF, LevelFNav._());
+final class const LevelFPop<N extends AnyNav>._(
+  final _Screens spec,
+  final N? nav,
+) {
+  static const levelE = LevelFPop<LevelENav>._(.levelE, LevelENav._());
+  static const levelD = LevelFPop<LevelDNav>._(.levelD, LevelDNav._());
+  static const levelC = LevelFPop<LevelCNav>._(.levelC, LevelCNav._());
+  static const levelB = LevelFPop<LevelBNav>._(.levelB, LevelBNav._());
+  static const levelA = LevelFPop<LevelANav>._(.levelA, LevelANav._());
+  static const deepDemo = LevelFPop<DeepDemoNav>._(.deepDemo, DeepDemoNav._());
+  static const levelF = LevelFPop<LevelFNav>._(.levelF, LevelFNav._());
 }
 
 final class const LevelFHop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final Object? id,
   final N nav,
 ) {
   static LevelFHop<LevelANav> levelA(String id) =>
-      LevelFHop._(_Screens.levelA, id, const LevelANav._());
+      LevelFHop._(.levelA, id, const LevelANav._());
   static LevelFHop<LevelBNav> levelB(String id) =>
-      LevelFHop._(_Screens.levelB, id, const LevelBNav._());
+      LevelFHop._(.levelB, id, const LevelBNav._());
   static LevelFHop<LevelCNav> levelC(String id) =>
-      LevelFHop._(_Screens.levelC, id, const LevelCNav._());
+      LevelFHop._(.levelC, id, const LevelCNav._());
   static LevelFHop<LevelDNav> levelD(String id) =>
-      LevelFHop._(_Screens.levelD, id, const LevelDNav._());
+      LevelFHop._(.levelD, id, const LevelDNav._());
   static LevelFHop<LevelENav> levelE(String id) =>
-      LevelFHop._(_Screens.levelE, id, const LevelENav._());
+      LevelFHop._(.levelE, id, const LevelENav._());
   static LevelFHop<LevelFNav> levelF(String id) =>
-      LevelFHop._(_Screens.levelF, id, const LevelFNav._());
+      LevelFHop._(.levelF, id, const LevelFNav._());
 }
 
 final class const IntegrationsNav._()
@@ -14771,17 +14507,14 @@ final class const ApiKeysNav._() extends AnyPlacement {
 }
 
 final class const ApiKeysPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
   static const integrations = ApiKeysPop<IntegrationsNav>._(
-    _Screens.integrations,
+    .integrations,
     IntegrationsNav._(),
   );
-  static const settings = ApiKeysPop<SettingsNav>._(
-    _Screens.settings,
-    SettingsNav._(),
-  );
+  static const settings = ApiKeysPop<SettingsNav>._(.settings, SettingsNav._());
 }
 
 final class const StudioNav._()
@@ -14836,22 +14569,22 @@ final class const StudioNav._()
 }
 
 final class const StudioHop<N extends AnyNav>._(
-  final Enum spec,
+  final CreatorStudio spec,
   final Object? id,
   final N nav,
 ) {
   static const analytics = StudioHop<AnalyticsNav>._(
-    CreatorStudio.analytics,
+    .analytics,
     null,
     AnalyticsNav._(),
   );
   static const scheduled = StudioHop<ScheduledNav>._(
-    CreatorStudio.scheduled,
+    .scheduled,
     null,
     ScheduledNav._(),
   );
   static const monetization = StudioHop<MonetizationNav>._(
-    CreatorStudio.monetization,
+    .monetization,
     null,
     MonetizationNav._(),
   );
@@ -15233,14 +14966,14 @@ final class const EventsNav._()
 }
 
 final class const EventsHop<N extends AnyNav>._(
-  final Enum spec,
+  final Events spec,
   final Object? id,
   final N nav,
 ) {
   static EventsHop<EventNav> event(String id) =>
-      EventsHop._(Events.event, id, const EventNav._());
+      EventsHop._(.event, id, const EventNav._());
   static const createEvent = EventsHop<CreateEventNav>._(
-    Events.createEvent,
+    .createEvent,
     null,
     CreateEventNav._(),
   );
@@ -15505,22 +15238,22 @@ final class const SupportNav._()
 }
 
 final class const SupportHop<N extends AnyNav>._(
-  final Enum spec,
+  final Support spec,
   final Object? id,
   final N nav,
 ) {
   static const supportTickets = SupportHop<SupportTicketsNav>._(
-    Support.supportTickets,
+    .supportTickets,
     null,
     SupportTicketsNav._(),
   );
   static const newTicket = SupportHop<NewTicketNav>._(
-    Support.newTicket,
+    .newTicket,
     null,
     NewTicketNav._(),
   );
   static const knowledgeBase = SupportHop<KnowledgeBaseNav>._(
-    Support.knowledgeBase,
+    .knowledgeBase,
     null,
     KnowledgeBaseNav._(),
   );
@@ -15802,27 +15535,27 @@ final class const AdminNav._()
 }
 
 final class const AdminHop<N extends AnyNav>._(
-  final Enum spec,
+  final Admin spec,
   final Object? id,
   final N nav,
 ) {
   static const adminUsers = AdminHop<AdminUsersNav>._(
-    Admin.adminUsers,
+    .adminUsers,
     null,
     AdminUsersNav._(),
   );
   static const adminAuditLog = AdminHop<AdminAuditLogNav>._(
-    Admin.adminAuditLog,
+    .adminAuditLog,
     null,
     AdminAuditLogNav._(),
   );
   static const adminFeatureFlags = AdminHop<AdminFeatureFlagsNav>._(
-    Admin.adminFeatureFlags,
+    .adminFeatureFlags,
     null,
     AdminFeatureFlagsNav._(),
   );
   static const webhooks = AdminHop<WebhooksNav>._(
-    Admin.webhooks,
+    .webhooks,
     null,
     WebhooksNav._(),
   );
@@ -16978,316 +16711,246 @@ bool _endsWith(List<Enum> chain, List<Enum> suffix) {
 /// `Url.<route>…` and `.toUri([domain])`; `parseUrl` returns one.
 sealed class const Url([final String? domain]) {
   Uri toUri([String? domain]);
-  static _WLSplash get splash => _WLSplash._([_Screens.splash], [null]);
-  static _WLSignIn get signIn => _WLSignIn._([_Screens.signIn], [null]);
-  static _WLSignUp get signUp => _WLSignUp._([_Screens.signUp], [null]);
-  static _WLOnboarding get onboarding =>
-      _WLOnboarding._([_Screens.onboarding], [null]);
+  static _WLSplash get splash => _WLSplash._([.splash], [null]);
+  static _WLSignIn get signIn => _WLSignIn._([.signIn], [null]);
+  static _WLSignUp get signUp => _WLSignUp._([.signUp], [null]);
+  static _WLOnboarding get onboarding => _WLOnboarding._([.onboarding], [null]);
   static _WLForgotPassword get forgotPassword =>
-      _WLForgotPassword._([_Screens.forgotPassword], [null]);
+      _WLForgotPassword._([.forgotPassword], [null]);
   static _WLForgotPasswordResetPassword resetPassword(String id) =>
       _WLForgotPasswordResetPassword._(
-        [_Screens.forgotPassword, _Screens.resetPassword],
+        [.forgotPassword, .resetPassword],
         [null, id],
       );
   static _WLVerifyEmail get verifyEmail =>
-      _WLVerifyEmail._([_Screens.verifyEmail], [null]);
-  static _WLTwoFactor get twoFactor =>
-      _WLTwoFactor._([_Screens.twoFactor], [null]);
-  static _WLHome get home => _WLHome._([_Screens.home], [null]);
-  static _WLHomeFeed get feed =>
-      _WLHomeFeed._([_Screens.home, _Screens.feed], [null, null]);
+      _WLVerifyEmail._([.verifyEmail], [null]);
+  static _WLTwoFactor get twoFactor => _WLTwoFactor._([.twoFactor], [null]);
+  static _WLHome get home => _WLHome._([.home], [null]);
+  static _WLHomeFeed get feed => _WLHomeFeed._([.home, .feed], [null, null]);
   static _WLHomeFeedComposePost get composePost => _WLHomeFeedComposePost._(
-    [_Screens.home, _Screens.feed, _Screens.composePost],
+    [.home, .feed, .composePost],
     [null, null, null],
   );
-  static _WLHomeFeedStory story(String id) => _WLHomeFeedStory._(
-    [_Screens.home, _Screens.feed, _Screens.story],
-    [null, null, id],
-  );
-  static _WLHomeFeedPost post(String id) => _WLHomeFeedPost._(
-    [_Screens.home, _Screens.feed, _Screens.post],
-    [null, null, id],
-  );
+  static _WLHomeFeedStory story(String id) =>
+      _WLHomeFeedStory._([.home, .feed, .story], [null, null, id]);
+  static _WLHomeFeedPost post(String id) =>
+      _WLHomeFeedPost._([.home, .feed, .post], [null, null, id]);
   static _WLHomeFeedPostPostComments postComments(String id) =>
       _WLHomeFeedPostPostComments._(
-        [_Screens.home, _Screens.feed, _Screens.post, _Screens.postComments],
+        [.home, .feed, .post, .postComments],
         [null, null, id, null],
       );
   static _WLHomeFeedPostPostLikes postLikes(String id) =>
       _WLHomeFeedPostPostLikes._(
-        [_Screens.home, _Screens.feed, _Screens.post, _Screens.postLikes],
+        [.home, .feed, .post, .postLikes],
         [null, null, id, null],
       );
   static _WLHomeFeedPostEditPost editPost(String id) =>
       _WLHomeFeedPostEditPost._(
-        [_Screens.home, _Screens.feed, _Screens.post, _Screens.editPost],
+        [.home, .feed, .post, .editPost],
         [null, null, id, null],
       );
   static _WLHomeFeedPostRepost repost(String id) => _WLHomeFeedPostRepost._(
-    [_Screens.home, _Screens.feed, _Screens.post, _Screens.repost],
+    [.home, .feed, .post, .repost],
     [null, null, id, null],
   );
-  static _WLDiscover get discover => _WLDiscover._([_Screens.discover], [null]);
-  static _WLDiscoverTrending get trending => _WLDiscoverTrending._(
-    [_Screens.discover, _Screens.trending],
-    [null, null],
-  );
+  static _WLDiscover get discover => _WLDiscover._([.discover], [null]);
+  static _WLDiscoverTrending get trending =>
+      _WLDiscoverTrending._([.discover, .trending], [null, null]);
   static _WLDiscoverTopics get topics =>
-      _WLDiscoverTopics._([_Screens.discover, _Screens.topics], [null, null]);
+      _WLDiscoverTopics._([.discover, .topics], [null, null]);
   static _WLDiscoverTrendingTopic topic(String id) =>
       _WLDiscoverTrendingTopic._(
-        [_Screens.discover, _Screens.trending, _Screens.topic],
+        [.discover, .trending, .topic],
         [null, null, id],
       );
   static _WLDiscoverTrendingHashtag hashtag(String id) =>
       _WLDiscoverTrendingHashtag._(
-        [_Screens.discover, _Screens.trending, _Screens.hashtag],
+        [.discover, .trending, .hashtag],
         [null, null, id],
       );
   static _WLDiscoverLiveNow get liveNow =>
-      _WLDiscoverLiveNow._([_Screens.discover, _Screens.liveNow], [null, null]);
+      _WLDiscoverLiveNow._([.discover, .liveNow], [null, null]);
   static _WLDiscoverLiveNowLiveRoom liveRoom(String id) =>
       _WLDiscoverLiveNowLiveRoom._(
-        [_Screens.discover, _Screens.liveNow, _Screens.liveRoom],
+        [.discover, .liveNow, .liveRoom],
         [null, null, id],
       );
   static _WLDiscoverNearby get nearby =>
-      _WLDiscoverNearby._([_Screens.discover, _Screens.nearby], [null, null]);
+      _WLDiscoverNearby._([.discover, .nearby], [null, null]);
   static _WLMarketplace get marketplace =>
-      _WLMarketplace._([_Screens.marketplace], [null]);
-  static _WLMarketplaceCategories get categories => _WLMarketplaceCategories._(
-    [_Screens.marketplace, _Screens.categories],
-    [null, null],
-  );
+      _WLMarketplace._([.marketplace], [null]);
+  static _WLMarketplaceCategories get categories =>
+      _WLMarketplaceCategories._([.marketplace, .categories], [null, null]);
   static _WLMarketplaceCategoriesCategory category(String id) =>
       _WLMarketplaceCategoriesCategory._(
-        [_Screens.marketplace, _Screens.categories, _Screens.category],
+        [.marketplace, .categories, .category],
         [null, null, id],
       );
   static _WLMarketplaceCart get cart =>
-      _WLMarketplaceCart._([_Screens.marketplace, _Screens.cart], [null, null]);
+      _WLMarketplaceCart._([.marketplace, .cart], [null, null]);
   static _WLMarketplaceCartCheckout checkout(String id) =>
       _WLMarketplaceCartCheckout._(
-        [_Screens.marketplace, _Screens.cart, _Screens.checkout],
+        [.marketplace, .cart, .checkout],
         [null, null, id],
       );
-  static _WLMarketplaceMyOrders get myOrders => _WLMarketplaceMyOrders._(
-    [_Screens.marketplace, _Screens.myOrders],
-    [null, null],
-  );
+  static _WLMarketplaceMyOrders get myOrders =>
+      _WLMarketplaceMyOrders._([.marketplace, .myOrders], [null, null]);
   static _WLMarketplaceMyOrdersOrder order(String id) =>
       _WLMarketplaceMyOrdersOrder._(
-        [_Screens.marketplace, _Screens.myOrders, _Screens.order],
+        [.marketplace, .myOrders, .order],
         [null, null, id],
       );
-  static _WLMarketplaceWishlist get wishlist => _WLMarketplaceWishlist._(
-    [_Screens.marketplace, _Screens.wishlist],
-    [null, null],
-  );
-  static _WLMessages get messages => _WLMessages._([_Screens.messages], [null]);
+  static _WLMarketplaceWishlist get wishlist =>
+      _WLMarketplaceWishlist._([.marketplace, .wishlist], [null, null]);
+  static _WLMessages get messages => _WLMessages._([.messages], [null]);
   static _WLMessagesChats get chats =>
-      _WLMessagesChats._([_Screens.messages, _Screens.chats], [null, null]);
-  static _WLMessagesChatsChat chat(String id) => _WLMessagesChatsChat._(
-    [_Screens.messages, _Screens.chats, _Screens.chat],
-    [null, null, id],
-  );
+      _WLMessagesChats._([.messages, .chats], [null, null]);
+  static _WLMessagesChatsChat chat(String id) =>
+      _WLMessagesChatsChat._([.messages, .chats, .chat], [null, null, id]);
   static _WLMessagesChatsChatVoiceCall voiceCall(String id) =>
       _WLMessagesChatsChatVoiceCall._(
-        [_Screens.messages, _Screens.chats, _Screens.chat, _Screens.voiceCall],
+        [.messages, .chats, .chat, .voiceCall],
         [null, null, id, null],
       );
   static _WLMessagesNewChat get newChat =>
-      _WLMessagesNewChat._([_Screens.messages, _Screens.newChat], [null, null]);
-  static _WLMessagesGroupChat groupChat(String id) => _WLMessagesGroupChat._(
-    [_Screens.messages, _Screens.groupChat],
-    [null, id],
-  );
+      _WLMessagesNewChat._([.messages, .newChat], [null, null]);
+  static _WLMessagesGroupChat groupChat(String id) =>
+      _WLMessagesGroupChat._([.messages, .groupChat], [null, id]);
   static _WLMessagesGroupChatGroupInfo groupInfo(String id) =>
       _WLMessagesGroupChatGroupInfo._(
-        [_Screens.messages, _Screens.groupChat, _Screens.groupInfo],
+        [.messages, .groupChat, .groupInfo],
         [null, id, null],
       );
-  static _WLWallet get wallet => _WLWallet._([_Screens.wallet], [null]);
+  static _WLWallet get wallet => _WLWallet._([.wallet], [null]);
   static _WLWalletBalance get balance =>
-      _WLWalletBalance._([_Screens.wallet, _Screens.balance], [null, null]);
+      _WLWalletBalance._([.wallet, .balance], [null, null]);
   static _WLWalletAccounts get accounts =>
-      _WLWalletAccounts._([_Screens.wallet, _Screens.accounts], [null, null]);
+      _WLWalletAccounts._([.wallet, .accounts], [null, null]);
   static _WLWalletAccountsAccount account(String id) =>
       _WLWalletAccountsAccount._(
-        [_Screens.wallet, _Screens.accounts, _Screens.account],
+        [.wallet, .accounts, .account],
         [null, null, id],
       );
   static _WLWalletSendMoney get sendMoney =>
-      _WLWalletSendMoney._([_Screens.wallet, _Screens.sendMoney], [null, null]);
-  static _WLWalletReceiveMoney get receiveMoney => _WLWalletReceiveMoney._(
-    [_Screens.wallet, _Screens.receiveMoney],
-    [null, null],
-  );
+      _WLWalletSendMoney._([.wallet, .sendMoney], [null, null]);
+  static _WLWalletReceiveMoney get receiveMoney =>
+      _WLWalletReceiveMoney._([.wallet, .receiveMoney], [null, null]);
   static _WLWalletPaymentMethods get paymentMethods =>
-      _WLWalletPaymentMethods._(
-        [_Screens.wallet, _Screens.paymentMethods],
-        [null, null],
-      );
+      _WLWalletPaymentMethods._([.wallet, .paymentMethods], [null, null]);
   static _WLWalletPaymentMethodsAddCard get addCard =>
       _WLWalletPaymentMethodsAddCard._(
-        [_Screens.wallet, _Screens.paymentMethods, _Screens.addCard],
+        [.wallet, .paymentMethods, .addCard],
         [null, null, null],
       );
   static _WLWalletPaymentMethodsCard card(String id) =>
       _WLWalletPaymentMethodsCard._(
-        [_Screens.wallet, _Screens.paymentMethods, _Screens.card],
+        [.wallet, .paymentMethods, .card],
         [null, null, id],
       );
-  static _WLProfile get profile => _WLProfile._([_Screens.profile], [null]);
+  static _WLProfile get profile => _WLProfile._([.profile], [null]);
   static _WLProfileFollowers followers(String id) =>
-      _WLProfileFollowers._([_Screens.profile, _Screens.followers], [null, id]);
+      _WLProfileFollowers._([.profile, .followers], [null, id]);
   static _WLProfileFollowing following(String id) =>
-      _WLProfileFollowing._([_Screens.profile, _Screens.following], [null, id]);
-  static _WLProfileEditProfile get editProfile => _WLProfileEditProfile._(
-    [_Screens.profile, _Screens.editProfile],
-    [null, null],
-  );
-  static _WLProfileAchievements get achievements => _WLProfileAchievements._(
-    [_Screens.profile, _Screens.achievements],
-    [null, null],
-  );
+      _WLProfileFollowing._([.profile, .following], [null, id]);
+  static _WLProfileEditProfile get editProfile =>
+      _WLProfileEditProfile._([.profile, .editProfile], [null, null]);
+  static _WLProfileAchievements get achievements =>
+      _WLProfileAchievements._([.profile, .achievements], [null, null]);
   static _WLProfileBadges get badges =>
-      _WLProfileBadges._([_Screens.profile, _Screens.badges], [null, null]);
-  static _WLProfileBadgesBadge badge(String id) => _WLProfileBadgesBadge._(
-    [_Screens.profile, _Screens.badges, _Screens.badge],
-    [null, null, id],
-  );
-  static _WLProfileSavedPosts get savedPosts => _WLProfileSavedPosts._(
-    [_Screens.profile, _Screens.savedPosts],
-    [null, null],
-  );
+      _WLProfileBadges._([.profile, .badges], [null, null]);
+  static _WLProfileBadgesBadge badge(String id) =>
+      _WLProfileBadgesBadge._([.profile, .badges, .badge], [null, null, id]);
+  static _WLProfileSavedPosts get savedPosts =>
+      _WLProfileSavedPosts._([.profile, .savedPosts], [null, null]);
   static _WLProfileDrafts get drafts =>
-      _WLProfileDrafts._([_Screens.profile, _Screens.drafts], [null, null]);
-  static _WLProfileMyListings get myListings => _WLProfileMyListings._(
-    [_Screens.profile, _Screens.myListings],
-    [null, null],
-  );
+      _WLProfileDrafts._([.profile, .drafts], [null, null]);
+  static _WLProfileMyListings get myListings =>
+      _WLProfileMyListings._([.profile, .myListings], [null, null]);
   static _WLNotifications get notifications =>
-      _WLNotifications._([_Screens.notifications], [null]);
+      _WLNotifications._([.notifications], [null]);
   static _WLNotificationsNotificationSettings get notificationSettings =>
       _WLNotificationsNotificationSettings._(
-        [_Screens.notifications, _Screens.notificationSettings],
+        [.notifications, .notificationSettings],
         [null, null],
       );
-  static _WLSearch get search => _WLSearch._([_Screens.search], [null]);
-  static _WLSearchSearchResults get searchResults => _WLSearchSearchResults._(
-    [_Screens.search, _Screens.searchResults],
-    [null, null],
-  );
-  static _WLSettings get settings => _WLSettings._([_Screens.settings], [null]);
+  static _WLSearch get search => _WLSearch._([.search], [null]);
+  static _WLSearchSearchResults get searchResults =>
+      _WLSearchSearchResults._([.search, .searchResults], [null, null]);
+  static _WLSettings get settings => _WLSettings._([.settings], [null]);
   static _WLSettingsAccountSettings get accountSettings =>
-      _WLSettingsAccountSettings._(
-        [_Screens.settings, _Screens.accountSettings],
-        [null, null],
-      );
-  static _WLSettingsSecurity get security => _WLSettingsSecurity._(
-    [_Screens.settings, _Screens.security],
-    [null, null],
-  );
+      _WLSettingsAccountSettings._([.settings, .accountSettings], [null, null]);
+  static _WLSettingsSecurity get security =>
+      _WLSettingsSecurity._([.settings, .security], [null, null]);
   static _WLSettingsSecurityTwoFactorSettings get twoFactorSettings =>
       _WLSettingsSecurityTwoFactorSettings._(
-        [_Screens.settings, _Screens.security, _Screens.twoFactorSettings],
+        [.settings, .security, .twoFactorSettings],
         [null, null, null],
       );
   static _WLSettingsPrivacy get privacy =>
-      _WLSettingsPrivacy._([_Screens.settings, _Screens.privacy], [null, null]);
-  static _WLSettingsAppearance get appearance => _WLSettingsAppearance._(
-    [_Screens.settings, _Screens.appearance],
-    [null, null],
-  );
-  static _WLSettingsLanguage get language => _WLSettingsLanguage._(
-    [_Screens.settings, _Screens.language],
-    [null, null],
-  );
+      _WLSettingsPrivacy._([.settings, .privacy], [null, null]);
+  static _WLSettingsAppearance get appearance =>
+      _WLSettingsAppearance._([.settings, .appearance], [null, null]);
+  static _WLSettingsLanguage get language =>
+      _WLSettingsLanguage._([.settings, .language], [null, null]);
   static _WLSettingsConnectedApps get connectedApps =>
-      _WLSettingsConnectedApps._(
-        [_Screens.settings, _Screens.connectedApps],
-        [null, null],
-      );
+      _WLSettingsConnectedApps._([.settings, .connectedApps], [null, null]);
   static _WLSettingsAbout get about =>
-      _WLSettingsAbout._([_Screens.settings, _Screens.about], [null, null]);
-  static _WLSettingsAboutHelp get help => _WLSettingsAboutHelp._(
-    [_Screens.settings, _Screens.about, _Screens.help],
-    [null, null, null],
-  );
+      _WLSettingsAbout._([.settings, .about], [null, null]);
+  static _WLSettingsAboutHelp get help =>
+      _WLSettingsAboutHelp._([.settings, .about, .help], [null, null, null]);
   static _WLSettingsAboutHelpHelpCategory helpCategory(String id) =>
       _WLSettingsAboutHelpHelpCategory._(
-        [
-          _Screens.settings,
-          _Screens.about,
-          _Screens.help,
-          _Screens.helpCategory,
-        ],
+        [.settings, .about, .help, .helpCategory],
         [null, null, null, id],
       );
   static _WLSettingsAboutFeedback get feedback => _WLSettingsAboutFeedback._(
-    [_Screens.settings, _Screens.about, _Screens.feedback],
+    [.settings, .about, .feedback],
     [null, null, null],
   );
-  static _WLSettingsBlockedUsers get blockedUsers => _WLSettingsBlockedUsers._(
-    [_Screens.settings, _Screens.blockedUsers],
-    [null, null],
-  );
+  static _WLSettingsBlockedUsers get blockedUsers =>
+      _WLSettingsBlockedUsers._([.settings, .blockedUsers], [null, null]);
   static _WLSettingsDevices get devices =>
-      _WLSettingsDevices._([_Screens.settings, _Screens.devices], [null, null]);
+      _WLSettingsDevices._([.settings, .devices], [null, null]);
   static _WLSettingsDevicesDevice device(String id) =>
       _WLSettingsDevicesDevice._(
-        [_Screens.settings, _Screens.devices, _Screens.device],
+        [.settings, .devices, .device],
         [null, null, id],
       );
-  static _WLSettingsDataExport get dataExport => _WLSettingsDataExport._(
-    [_Screens.settings, _Screens.dataExport],
-    [null, null],
-  );
+  static _WLSettingsDataExport get dataExport =>
+      _WLSettingsDataExport._([.settings, .dataExport], [null, null]);
   static _WLSettingsDeleteAccount get deleteAccount =>
-      _WLSettingsDeleteAccount._(
-        [_Screens.settings, _Screens.deleteAccount],
-        [null, null],
-      );
-  static _WLWorkspace get workspace =>
-      _WLWorkspace._([_Screens.workspace], [null]);
+      _WLSettingsDeleteAccount._([.settings, .deleteAccount], [null, null]);
+  static _WLWorkspace get workspace => _WLWorkspace._([.workspace], [null]);
   static _WLWorkspaceProject project(String id) =>
-      _WLWorkspaceProject._([_Screens.workspace, _Screens.project], [null, id]);
-  static _WLForum get forum => _WLForum._([_Screens.forum], [null]);
+      _WLWorkspaceProject._([.workspace, .project], [null, id]);
+  static _WLForum get forum => _WLForum._([.forum], [null]);
   static _WLForumForumCategory forumCategory(String id) =>
-      _WLForumForumCategory._(
-        [_Screens.forum, _Screens.forumCategory],
-        [null, id],
-      );
-  static _WLLearn get learn => _WLLearn._([_Screens.learn], [null]);
+      _WLForumForumCategory._([.forum, .forumCategory], [null, id]);
+  static _WLLearn get learn => _WLLearn._([.learn], [null]);
   static _WLLearnCourse course(String id) =>
-      _WLLearnCourse._([_Screens.learn, _Screens.course], [null, id]);
+      _WLLearnCourse._([.learn, .course], [null, id]);
   static _WLLearnCourseCertificate certificate(String id) =>
       _WLLearnCourseCertificate._(
-        [_Screens.learn, _Screens.course, _Screens.certificate],
+        [.learn, .course, .certificate],
         [null, id, null],
       );
-  static _WLShop get shop => _WLShop._([_Screens.shop], [null]);
+  static _WLShop get shop => _WLShop._([.shop], [null]);
   static _WLShopShopDept shopDept(String id) =>
-      _WLShopShopDept._([_Screens.shop, _Screens.shopDept], [null, id]);
-  static _WLShopCompareProducts get compareProducts => _WLShopCompareProducts._(
-    [_Screens.shop, _Screens.compareProducts],
-    [null, null],
-  );
-  static _WLActivity get activity => _WLActivity._([_Screens.activity], [null]);
+      _WLShopShopDept._([.shop, .shopDept], [null, id]);
+  static _WLShopCompareProducts get compareProducts =>
+      _WLShopCompareProducts._([.shop, .compareProducts], [null, null]);
+  static _WLActivity get activity => _WLActivity._([.activity], [null]);
   static _WLActivityWorkout workout(String id) =>
-      _WLActivityWorkout._([_Screens.activity, _Screens.workout], [null, id]);
-  static _WLDeepDemo get deepDemo => _WLDeepDemo._([_Screens.deepDemo], [null]);
+      _WLActivityWorkout._([.activity, .workout], [null, id]);
+  static _WLDeepDemo get deepDemo => _WLDeepDemo._([.deepDemo], [null]);
   static _WLDeepDemoLevelA levelA(String id) =>
-      _WLDeepDemoLevelA._([_Screens.deepDemo, _Screens.levelA], [null, id]);
-  static _WLSettingsIntegrations get integrations => _WLSettingsIntegrations._(
-    [_Screens.settings, _Screens.integrations],
-    [null, null],
-  );
+      _WLDeepDemoLevelA._([.deepDemo, .levelA], [null, id]);
+  static _WLSettingsIntegrations get integrations =>
+      _WLSettingsIntegrations._([.settings, .integrations], [null, null]);
   static _WLSettingsIntegrationsApiKeys get apiKeys =>
       _WLSettingsIntegrationsApiKeys._(
-        [_Screens.settings, _Screens.integrations, _Screens.apiKeys],
+        [.settings, .integrations, .apiKeys],
         [null, null, null],
       );
   static _WLHomeStudio get studio =>
@@ -17464,316 +17127,246 @@ sealed class const Place([super.domain]) extends Url implements Hop<AnyNav> {
   AnyNav get nav => _atOf(_Screens.graph.current);
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
-  static _WLSplash get splash => _WLSplash._([_Screens.splash], [null]);
-  static _WLSignIn get signIn => _WLSignIn._([_Screens.signIn], [null]);
-  static _WLSignUp get signUp => _WLSignUp._([_Screens.signUp], [null]);
-  static _WLOnboarding get onboarding =>
-      _WLOnboarding._([_Screens.onboarding], [null]);
+  static _WLSplash get splash => _WLSplash._([.splash], [null]);
+  static _WLSignIn get signIn => _WLSignIn._([.signIn], [null]);
+  static _WLSignUp get signUp => _WLSignUp._([.signUp], [null]);
+  static _WLOnboarding get onboarding => _WLOnboarding._([.onboarding], [null]);
   static _WLForgotPassword get forgotPassword =>
-      _WLForgotPassword._([_Screens.forgotPassword], [null]);
+      _WLForgotPassword._([.forgotPassword], [null]);
   static _WLForgotPasswordResetPassword resetPassword(String id) =>
       _WLForgotPasswordResetPassword._(
-        [_Screens.forgotPassword, _Screens.resetPassword],
+        [.forgotPassword, .resetPassword],
         [null, id],
       );
   static _WLVerifyEmail get verifyEmail =>
-      _WLVerifyEmail._([_Screens.verifyEmail], [null]);
-  static _WLTwoFactor get twoFactor =>
-      _WLTwoFactor._([_Screens.twoFactor], [null]);
-  static _WLHome get home => _WLHome._([_Screens.home], [null]);
-  static _WLHomeFeed get feed =>
-      _WLHomeFeed._([_Screens.home, _Screens.feed], [null, null]);
+      _WLVerifyEmail._([.verifyEmail], [null]);
+  static _WLTwoFactor get twoFactor => _WLTwoFactor._([.twoFactor], [null]);
+  static _WLHome get home => _WLHome._([.home], [null]);
+  static _WLHomeFeed get feed => _WLHomeFeed._([.home, .feed], [null, null]);
   static _WLHomeFeedComposePost get composePost => _WLHomeFeedComposePost._(
-    [_Screens.home, _Screens.feed, _Screens.composePost],
+    [.home, .feed, .composePost],
     [null, null, null],
   );
-  static _WLHomeFeedStory story(String id) => _WLHomeFeedStory._(
-    [_Screens.home, _Screens.feed, _Screens.story],
-    [null, null, id],
-  );
-  static _WLHomeFeedPost post(String id) => _WLHomeFeedPost._(
-    [_Screens.home, _Screens.feed, _Screens.post],
-    [null, null, id],
-  );
+  static _WLHomeFeedStory story(String id) =>
+      _WLHomeFeedStory._([.home, .feed, .story], [null, null, id]);
+  static _WLHomeFeedPost post(String id) =>
+      _WLHomeFeedPost._([.home, .feed, .post], [null, null, id]);
   static _WLHomeFeedPostPostComments postComments(String id) =>
       _WLHomeFeedPostPostComments._(
-        [_Screens.home, _Screens.feed, _Screens.post, _Screens.postComments],
+        [.home, .feed, .post, .postComments],
         [null, null, id, null],
       );
   static _WLHomeFeedPostPostLikes postLikes(String id) =>
       _WLHomeFeedPostPostLikes._(
-        [_Screens.home, _Screens.feed, _Screens.post, _Screens.postLikes],
+        [.home, .feed, .post, .postLikes],
         [null, null, id, null],
       );
   static _WLHomeFeedPostEditPost editPost(String id) =>
       _WLHomeFeedPostEditPost._(
-        [_Screens.home, _Screens.feed, _Screens.post, _Screens.editPost],
+        [.home, .feed, .post, .editPost],
         [null, null, id, null],
       );
   static _WLHomeFeedPostRepost repost(String id) => _WLHomeFeedPostRepost._(
-    [_Screens.home, _Screens.feed, _Screens.post, _Screens.repost],
+    [.home, .feed, .post, .repost],
     [null, null, id, null],
   );
-  static _WLDiscover get discover => _WLDiscover._([_Screens.discover], [null]);
-  static _WLDiscoverTrending get trending => _WLDiscoverTrending._(
-    [_Screens.discover, _Screens.trending],
-    [null, null],
-  );
+  static _WLDiscover get discover => _WLDiscover._([.discover], [null]);
+  static _WLDiscoverTrending get trending =>
+      _WLDiscoverTrending._([.discover, .trending], [null, null]);
   static _WLDiscoverTopics get topics =>
-      _WLDiscoverTopics._([_Screens.discover, _Screens.topics], [null, null]);
+      _WLDiscoverTopics._([.discover, .topics], [null, null]);
   static _WLDiscoverTrendingTopic topic(String id) =>
       _WLDiscoverTrendingTopic._(
-        [_Screens.discover, _Screens.trending, _Screens.topic],
+        [.discover, .trending, .topic],
         [null, null, id],
       );
   static _WLDiscoverTrendingHashtag hashtag(String id) =>
       _WLDiscoverTrendingHashtag._(
-        [_Screens.discover, _Screens.trending, _Screens.hashtag],
+        [.discover, .trending, .hashtag],
         [null, null, id],
       );
   static _WLDiscoverLiveNow get liveNow =>
-      _WLDiscoverLiveNow._([_Screens.discover, _Screens.liveNow], [null, null]);
+      _WLDiscoverLiveNow._([.discover, .liveNow], [null, null]);
   static _WLDiscoverLiveNowLiveRoom liveRoom(String id) =>
       _WLDiscoverLiveNowLiveRoom._(
-        [_Screens.discover, _Screens.liveNow, _Screens.liveRoom],
+        [.discover, .liveNow, .liveRoom],
         [null, null, id],
       );
   static _WLDiscoverNearby get nearby =>
-      _WLDiscoverNearby._([_Screens.discover, _Screens.nearby], [null, null]);
+      _WLDiscoverNearby._([.discover, .nearby], [null, null]);
   static _WLMarketplace get marketplace =>
-      _WLMarketplace._([_Screens.marketplace], [null]);
-  static _WLMarketplaceCategories get categories => _WLMarketplaceCategories._(
-    [_Screens.marketplace, _Screens.categories],
-    [null, null],
-  );
+      _WLMarketplace._([.marketplace], [null]);
+  static _WLMarketplaceCategories get categories =>
+      _WLMarketplaceCategories._([.marketplace, .categories], [null, null]);
   static _WLMarketplaceCategoriesCategory category(String id) =>
       _WLMarketplaceCategoriesCategory._(
-        [_Screens.marketplace, _Screens.categories, _Screens.category],
+        [.marketplace, .categories, .category],
         [null, null, id],
       );
   static _WLMarketplaceCart get cart =>
-      _WLMarketplaceCart._([_Screens.marketplace, _Screens.cart], [null, null]);
+      _WLMarketplaceCart._([.marketplace, .cart], [null, null]);
   static _WLMarketplaceCartCheckout checkout(String id) =>
       _WLMarketplaceCartCheckout._(
-        [_Screens.marketplace, _Screens.cart, _Screens.checkout],
+        [.marketplace, .cart, .checkout],
         [null, null, id],
       );
-  static _WLMarketplaceMyOrders get myOrders => _WLMarketplaceMyOrders._(
-    [_Screens.marketplace, _Screens.myOrders],
-    [null, null],
-  );
+  static _WLMarketplaceMyOrders get myOrders =>
+      _WLMarketplaceMyOrders._([.marketplace, .myOrders], [null, null]);
   static _WLMarketplaceMyOrdersOrder order(String id) =>
       _WLMarketplaceMyOrdersOrder._(
-        [_Screens.marketplace, _Screens.myOrders, _Screens.order],
+        [.marketplace, .myOrders, .order],
         [null, null, id],
       );
-  static _WLMarketplaceWishlist get wishlist => _WLMarketplaceWishlist._(
-    [_Screens.marketplace, _Screens.wishlist],
-    [null, null],
-  );
-  static _WLMessages get messages => _WLMessages._([_Screens.messages], [null]);
+  static _WLMarketplaceWishlist get wishlist =>
+      _WLMarketplaceWishlist._([.marketplace, .wishlist], [null, null]);
+  static _WLMessages get messages => _WLMessages._([.messages], [null]);
   static _WLMessagesChats get chats =>
-      _WLMessagesChats._([_Screens.messages, _Screens.chats], [null, null]);
-  static _WLMessagesChatsChat chat(String id) => _WLMessagesChatsChat._(
-    [_Screens.messages, _Screens.chats, _Screens.chat],
-    [null, null, id],
-  );
+      _WLMessagesChats._([.messages, .chats], [null, null]);
+  static _WLMessagesChatsChat chat(String id) =>
+      _WLMessagesChatsChat._([.messages, .chats, .chat], [null, null, id]);
   static _WLMessagesChatsChatVoiceCall voiceCall(String id) =>
       _WLMessagesChatsChatVoiceCall._(
-        [_Screens.messages, _Screens.chats, _Screens.chat, _Screens.voiceCall],
+        [.messages, .chats, .chat, .voiceCall],
         [null, null, id, null],
       );
   static _WLMessagesNewChat get newChat =>
-      _WLMessagesNewChat._([_Screens.messages, _Screens.newChat], [null, null]);
-  static _WLMessagesGroupChat groupChat(String id) => _WLMessagesGroupChat._(
-    [_Screens.messages, _Screens.groupChat],
-    [null, id],
-  );
+      _WLMessagesNewChat._([.messages, .newChat], [null, null]);
+  static _WLMessagesGroupChat groupChat(String id) =>
+      _WLMessagesGroupChat._([.messages, .groupChat], [null, id]);
   static _WLMessagesGroupChatGroupInfo groupInfo(String id) =>
       _WLMessagesGroupChatGroupInfo._(
-        [_Screens.messages, _Screens.groupChat, _Screens.groupInfo],
+        [.messages, .groupChat, .groupInfo],
         [null, id, null],
       );
-  static _WLWallet get wallet => _WLWallet._([_Screens.wallet], [null]);
+  static _WLWallet get wallet => _WLWallet._([.wallet], [null]);
   static _WLWalletBalance get balance =>
-      _WLWalletBalance._([_Screens.wallet, _Screens.balance], [null, null]);
+      _WLWalletBalance._([.wallet, .balance], [null, null]);
   static _WLWalletAccounts get accounts =>
-      _WLWalletAccounts._([_Screens.wallet, _Screens.accounts], [null, null]);
+      _WLWalletAccounts._([.wallet, .accounts], [null, null]);
   static _WLWalletAccountsAccount account(String id) =>
       _WLWalletAccountsAccount._(
-        [_Screens.wallet, _Screens.accounts, _Screens.account],
+        [.wallet, .accounts, .account],
         [null, null, id],
       );
   static _WLWalletSendMoney get sendMoney =>
-      _WLWalletSendMoney._([_Screens.wallet, _Screens.sendMoney], [null, null]);
-  static _WLWalletReceiveMoney get receiveMoney => _WLWalletReceiveMoney._(
-    [_Screens.wallet, _Screens.receiveMoney],
-    [null, null],
-  );
+      _WLWalletSendMoney._([.wallet, .sendMoney], [null, null]);
+  static _WLWalletReceiveMoney get receiveMoney =>
+      _WLWalletReceiveMoney._([.wallet, .receiveMoney], [null, null]);
   static _WLWalletPaymentMethods get paymentMethods =>
-      _WLWalletPaymentMethods._(
-        [_Screens.wallet, _Screens.paymentMethods],
-        [null, null],
-      );
+      _WLWalletPaymentMethods._([.wallet, .paymentMethods], [null, null]);
   static _WLWalletPaymentMethodsAddCard get addCard =>
       _WLWalletPaymentMethodsAddCard._(
-        [_Screens.wallet, _Screens.paymentMethods, _Screens.addCard],
+        [.wallet, .paymentMethods, .addCard],
         [null, null, null],
       );
   static _WLWalletPaymentMethodsCard card(String id) =>
       _WLWalletPaymentMethodsCard._(
-        [_Screens.wallet, _Screens.paymentMethods, _Screens.card],
+        [.wallet, .paymentMethods, .card],
         [null, null, id],
       );
-  static _WLProfile get profile => _WLProfile._([_Screens.profile], [null]);
+  static _WLProfile get profile => _WLProfile._([.profile], [null]);
   static _WLProfileFollowers followers(String id) =>
-      _WLProfileFollowers._([_Screens.profile, _Screens.followers], [null, id]);
+      _WLProfileFollowers._([.profile, .followers], [null, id]);
   static _WLProfileFollowing following(String id) =>
-      _WLProfileFollowing._([_Screens.profile, _Screens.following], [null, id]);
-  static _WLProfileEditProfile get editProfile => _WLProfileEditProfile._(
-    [_Screens.profile, _Screens.editProfile],
-    [null, null],
-  );
-  static _WLProfileAchievements get achievements => _WLProfileAchievements._(
-    [_Screens.profile, _Screens.achievements],
-    [null, null],
-  );
+      _WLProfileFollowing._([.profile, .following], [null, id]);
+  static _WLProfileEditProfile get editProfile =>
+      _WLProfileEditProfile._([.profile, .editProfile], [null, null]);
+  static _WLProfileAchievements get achievements =>
+      _WLProfileAchievements._([.profile, .achievements], [null, null]);
   static _WLProfileBadges get badges =>
-      _WLProfileBadges._([_Screens.profile, _Screens.badges], [null, null]);
-  static _WLProfileBadgesBadge badge(String id) => _WLProfileBadgesBadge._(
-    [_Screens.profile, _Screens.badges, _Screens.badge],
-    [null, null, id],
-  );
-  static _WLProfileSavedPosts get savedPosts => _WLProfileSavedPosts._(
-    [_Screens.profile, _Screens.savedPosts],
-    [null, null],
-  );
+      _WLProfileBadges._([.profile, .badges], [null, null]);
+  static _WLProfileBadgesBadge badge(String id) =>
+      _WLProfileBadgesBadge._([.profile, .badges, .badge], [null, null, id]);
+  static _WLProfileSavedPosts get savedPosts =>
+      _WLProfileSavedPosts._([.profile, .savedPosts], [null, null]);
   static _WLProfileDrafts get drafts =>
-      _WLProfileDrafts._([_Screens.profile, _Screens.drafts], [null, null]);
-  static _WLProfileMyListings get myListings => _WLProfileMyListings._(
-    [_Screens.profile, _Screens.myListings],
-    [null, null],
-  );
+      _WLProfileDrafts._([.profile, .drafts], [null, null]);
+  static _WLProfileMyListings get myListings =>
+      _WLProfileMyListings._([.profile, .myListings], [null, null]);
   static _WLNotifications get notifications =>
-      _WLNotifications._([_Screens.notifications], [null]);
+      _WLNotifications._([.notifications], [null]);
   static _WLNotificationsNotificationSettings get notificationSettings =>
       _WLNotificationsNotificationSettings._(
-        [_Screens.notifications, _Screens.notificationSettings],
+        [.notifications, .notificationSettings],
         [null, null],
       );
-  static _WLSearch get search => _WLSearch._([_Screens.search], [null]);
-  static _WLSearchSearchResults get searchResults => _WLSearchSearchResults._(
-    [_Screens.search, _Screens.searchResults],
-    [null, null],
-  );
-  static _WLSettings get settings => _WLSettings._([_Screens.settings], [null]);
+  static _WLSearch get search => _WLSearch._([.search], [null]);
+  static _WLSearchSearchResults get searchResults =>
+      _WLSearchSearchResults._([.search, .searchResults], [null, null]);
+  static _WLSettings get settings => _WLSettings._([.settings], [null]);
   static _WLSettingsAccountSettings get accountSettings =>
-      _WLSettingsAccountSettings._(
-        [_Screens.settings, _Screens.accountSettings],
-        [null, null],
-      );
-  static _WLSettingsSecurity get security => _WLSettingsSecurity._(
-    [_Screens.settings, _Screens.security],
-    [null, null],
-  );
+      _WLSettingsAccountSettings._([.settings, .accountSettings], [null, null]);
+  static _WLSettingsSecurity get security =>
+      _WLSettingsSecurity._([.settings, .security], [null, null]);
   static _WLSettingsSecurityTwoFactorSettings get twoFactorSettings =>
       _WLSettingsSecurityTwoFactorSettings._(
-        [_Screens.settings, _Screens.security, _Screens.twoFactorSettings],
+        [.settings, .security, .twoFactorSettings],
         [null, null, null],
       );
   static _WLSettingsPrivacy get privacy =>
-      _WLSettingsPrivacy._([_Screens.settings, _Screens.privacy], [null, null]);
-  static _WLSettingsAppearance get appearance => _WLSettingsAppearance._(
-    [_Screens.settings, _Screens.appearance],
-    [null, null],
-  );
-  static _WLSettingsLanguage get language => _WLSettingsLanguage._(
-    [_Screens.settings, _Screens.language],
-    [null, null],
-  );
+      _WLSettingsPrivacy._([.settings, .privacy], [null, null]);
+  static _WLSettingsAppearance get appearance =>
+      _WLSettingsAppearance._([.settings, .appearance], [null, null]);
+  static _WLSettingsLanguage get language =>
+      _WLSettingsLanguage._([.settings, .language], [null, null]);
   static _WLSettingsConnectedApps get connectedApps =>
-      _WLSettingsConnectedApps._(
-        [_Screens.settings, _Screens.connectedApps],
-        [null, null],
-      );
+      _WLSettingsConnectedApps._([.settings, .connectedApps], [null, null]);
   static _WLSettingsAbout get about =>
-      _WLSettingsAbout._([_Screens.settings, _Screens.about], [null, null]);
-  static _WLSettingsAboutHelp get help => _WLSettingsAboutHelp._(
-    [_Screens.settings, _Screens.about, _Screens.help],
-    [null, null, null],
-  );
+      _WLSettingsAbout._([.settings, .about], [null, null]);
+  static _WLSettingsAboutHelp get help =>
+      _WLSettingsAboutHelp._([.settings, .about, .help], [null, null, null]);
   static _WLSettingsAboutHelpHelpCategory helpCategory(String id) =>
       _WLSettingsAboutHelpHelpCategory._(
-        [
-          _Screens.settings,
-          _Screens.about,
-          _Screens.help,
-          _Screens.helpCategory,
-        ],
+        [.settings, .about, .help, .helpCategory],
         [null, null, null, id],
       );
   static _WLSettingsAboutFeedback get feedback => _WLSettingsAboutFeedback._(
-    [_Screens.settings, _Screens.about, _Screens.feedback],
+    [.settings, .about, .feedback],
     [null, null, null],
   );
-  static _WLSettingsBlockedUsers get blockedUsers => _WLSettingsBlockedUsers._(
-    [_Screens.settings, _Screens.blockedUsers],
-    [null, null],
-  );
+  static _WLSettingsBlockedUsers get blockedUsers =>
+      _WLSettingsBlockedUsers._([.settings, .blockedUsers], [null, null]);
   static _WLSettingsDevices get devices =>
-      _WLSettingsDevices._([_Screens.settings, _Screens.devices], [null, null]);
+      _WLSettingsDevices._([.settings, .devices], [null, null]);
   static _WLSettingsDevicesDevice device(String id) =>
       _WLSettingsDevicesDevice._(
-        [_Screens.settings, _Screens.devices, _Screens.device],
+        [.settings, .devices, .device],
         [null, null, id],
       );
-  static _WLSettingsDataExport get dataExport => _WLSettingsDataExport._(
-    [_Screens.settings, _Screens.dataExport],
-    [null, null],
-  );
+  static _WLSettingsDataExport get dataExport =>
+      _WLSettingsDataExport._([.settings, .dataExport], [null, null]);
   static _WLSettingsDeleteAccount get deleteAccount =>
-      _WLSettingsDeleteAccount._(
-        [_Screens.settings, _Screens.deleteAccount],
-        [null, null],
-      );
-  static _WLWorkspace get workspace =>
-      _WLWorkspace._([_Screens.workspace], [null]);
+      _WLSettingsDeleteAccount._([.settings, .deleteAccount], [null, null]);
+  static _WLWorkspace get workspace => _WLWorkspace._([.workspace], [null]);
   static _WLWorkspaceProject project(String id) =>
-      _WLWorkspaceProject._([_Screens.workspace, _Screens.project], [null, id]);
-  static _WLForum get forum => _WLForum._([_Screens.forum], [null]);
+      _WLWorkspaceProject._([.workspace, .project], [null, id]);
+  static _WLForum get forum => _WLForum._([.forum], [null]);
   static _WLForumForumCategory forumCategory(String id) =>
-      _WLForumForumCategory._(
-        [_Screens.forum, _Screens.forumCategory],
-        [null, id],
-      );
-  static _WLLearn get learn => _WLLearn._([_Screens.learn], [null]);
+      _WLForumForumCategory._([.forum, .forumCategory], [null, id]);
+  static _WLLearn get learn => _WLLearn._([.learn], [null]);
   static _WLLearnCourse course(String id) =>
-      _WLLearnCourse._([_Screens.learn, _Screens.course], [null, id]);
+      _WLLearnCourse._([.learn, .course], [null, id]);
   static _WLLearnCourseCertificate certificate(String id) =>
       _WLLearnCourseCertificate._(
-        [_Screens.learn, _Screens.course, _Screens.certificate],
+        [.learn, .course, .certificate],
         [null, id, null],
       );
-  static _WLShop get shop => _WLShop._([_Screens.shop], [null]);
+  static _WLShop get shop => _WLShop._([.shop], [null]);
   static _WLShopShopDept shopDept(String id) =>
-      _WLShopShopDept._([_Screens.shop, _Screens.shopDept], [null, id]);
-  static _WLShopCompareProducts get compareProducts => _WLShopCompareProducts._(
-    [_Screens.shop, _Screens.compareProducts],
-    [null, null],
-  );
-  static _WLActivity get activity => _WLActivity._([_Screens.activity], [null]);
+      _WLShopShopDept._([.shop, .shopDept], [null, id]);
+  static _WLShopCompareProducts get compareProducts =>
+      _WLShopCompareProducts._([.shop, .compareProducts], [null, null]);
+  static _WLActivity get activity => _WLActivity._([.activity], [null]);
   static _WLActivityWorkout workout(String id) =>
-      _WLActivityWorkout._([_Screens.activity, _Screens.workout], [null, id]);
-  static _WLDeepDemo get deepDemo => _WLDeepDemo._([_Screens.deepDemo], [null]);
+      _WLActivityWorkout._([.activity, .workout], [null, id]);
+  static _WLDeepDemo get deepDemo => _WLDeepDemo._([.deepDemo], [null]);
   static _WLDeepDemoLevelA levelA(String id) =>
-      _WLDeepDemoLevelA._([_Screens.deepDemo, _Screens.levelA], [null, id]);
-  static _WLSettingsIntegrations get integrations => _WLSettingsIntegrations._(
-    [_Screens.settings, _Screens.integrations],
-    [null, null],
-  );
+      _WLDeepDemoLevelA._([.deepDemo, .levelA], [null, id]);
+  static _WLSettingsIntegrations get integrations =>
+      _WLSettingsIntegrations._([.settings, .integrations], [null, null]);
   static _WLSettingsIntegrationsApiKeys get apiKeys =>
       _WLSettingsIntegrationsApiKeys._(
-        [_Screens.settings, _Screens.integrations, _Screens.apiKeys],
+        [.settings, .integrations, .apiKeys],
         [null, null, null],
       );
   static _WLHomeStudio get studio =>
@@ -18247,7 +17840,7 @@ class _LXTaskSlot(final List<Object?> _p, final List<int> _b) {
   );
 }
 
-final class const _WLSplash._(final List<Enum> _s, final List<Object?> _i)
+final class const _WLSplash._(final List<_Screens> _s, final List<Object?> _i)
     implements Hop<SplashNav> {
   @override
   List<(Enum, Object?)> get chain => [
@@ -18266,7 +17859,7 @@ final class const _WLSplash._(final List<Enum> _s, final List<Object?> _i)
   );
 }
 
-final class const _WLSignIn._(final List<Enum> _s, final List<Object?> _i)
+final class const _WLSignIn._(final List<_Screens> _s, final List<Object?> _i)
     implements Hop<SignInNav> {
   @override
   List<(Enum, Object?)> get chain => [
@@ -18285,7 +17878,7 @@ final class const _WLSignIn._(final List<Enum> _s, final List<Object?> _i)
   );
 }
 
-final class const _WLSignUp._(final List<Enum> _s, final List<Object?> _i)
+final class const _WLSignUp._(final List<_Screens> _s, final List<Object?> _i)
     implements Hop<SignUpNav> {
   @override
   List<(Enum, Object?)> get chain => [
@@ -18304,8 +17897,10 @@ final class const _WLSignUp._(final List<Enum> _s, final List<Object?> _i)
   );
 }
 
-final class const _WLOnboarding._(final List<Enum> _s, final List<Object?> _i)
-    implements Hop<OnboardingNav> {
+final class const _WLOnboarding._(
+  final List<_Screens> _s,
+  final List<Object?> _i,
+) implements Hop<OnboardingNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -18324,7 +17919,7 @@ final class const _WLOnboarding._(final List<Enum> _s, final List<Object?> _i)
 }
 
 final class const _WLForgotPassword._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<ForgotPasswordNav> {
   @override
@@ -18340,17 +17935,14 @@ final class const _WLForgotPassword._(
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLForgotPasswordResetPassword resetPassword(String id) =>
-      _WLForgotPasswordResetPassword._(
-        [..._s, _Screens.resetPassword],
-        [..._i, id],
-      );
+      _WLForgotPasswordResetPassword._([..._s, .resetPassword], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
 }
 
 final class const _WLForgotPasswordResetPassword._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<ResetPasswordNav> {
   @override
@@ -18370,8 +17962,10 @@ final class const _WLForgotPasswordResetPassword._(
   );
 }
 
-final class const _WLVerifyEmail._(final List<Enum> _s, final List<Object?> _i)
-    implements Hop<VerifyEmailNav> {
+final class const _WLVerifyEmail._(
+  final List<_Screens> _s,
+  final List<Object?> _i,
+) implements Hop<VerifyEmailNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -18389,8 +17983,10 @@ final class const _WLVerifyEmail._(final List<Enum> _s, final List<Object?> _i)
   );
 }
 
-final class const _WLTwoFactor._(final List<Enum> _s, final List<Object?> _i)
-    implements Hop<TwoFactorNav> {
+final class const _WLTwoFactor._(
+  final List<_Screens> _s,
+  final List<Object?> _i,
+) implements Hop<TwoFactorNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -18408,7 +18004,7 @@ final class const _WLTwoFactor._(final List<Enum> _s, final List<Object?> _i)
   );
 }
 
-final class const _WLHome._(final List<Enum> _s, final List<Object?> _i)
+final class const _WLHome._(final List<_Screens> _s, final List<Object?> _i)
     implements Hop<HomeNav> {
   @override
   List<(Enum, Object?)> get chain => [
@@ -18422,7 +18018,7 @@ final class const _WLHome._(final List<Enum> _s, final List<Object?> _i)
   HomeNav get nav => const HomeNav._();
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLHomeFeed get feed => _WLHomeFeed._([..._s, _Screens.feed], [..._i, null]);
+  _WLHomeFeed get feed => _WLHomeFeed._([..._s, .feed], [..._i, null]);
   _WLHomeStudio get studio =>
       _WLHomeStudio._([..._s, CreatorStudio.studio], [..._i, null]);
   Uri toUri([String? domain]) => Uri.parse(
@@ -18430,7 +18026,7 @@ final class const _WLHome._(final List<Enum> _s, final List<Object?> _i)
   );
 }
 
-final class const _WLHomeFeed._(final List<Enum> _s, final List<Object?> _i)
+final class const _WLHomeFeed._(final List<_Screens> _s, final List<Object?> _i)
     implements Hop<FeedNav> {
   @override
   List<(Enum, Object?)> get chain => [
@@ -18445,30 +18041,24 @@ final class const _WLHomeFeed._(final List<Enum> _s, final List<Object?> _i)
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLHomeFeedPost post(String id) =>
-      _WLHomeFeedPost._([..._s, _Screens.post], [..._i, id]);
+      _WLHomeFeedPost._([..._s, .post], [..._i, id]);
   _WLHomeFeedPostPostComments postComments(String id) =>
       _WLHomeFeedPostPostComments._(
-        [..._s, _Screens.post, _Screens.postComments],
+        [..._s, .post, .postComments],
         [..._i, id, null],
       );
-  _WLHomeFeedPostPostLikes postLikes(String id) => _WLHomeFeedPostPostLikes._(
-    [..._s, _Screens.post, _Screens.postLikes],
-    [..._i, id, null],
-  );
-  _WLHomeFeedPostEditPost editPost(String id) => _WLHomeFeedPostEditPost._(
-    [..._s, _Screens.post, _Screens.editPost],
-    [..._i, id, null],
-  );
-  _WLHomeFeedPostRepost repost(String id) => _WLHomeFeedPostRepost._(
-    [..._s, _Screens.post, _Screens.repost],
-    [..._i, id, null],
-  );
+  _WLHomeFeedPostPostLikes postLikes(String id) =>
+      _WLHomeFeedPostPostLikes._([..._s, .post, .postLikes], [..._i, id, null]);
+  _WLHomeFeedPostEditPost editPost(String id) =>
+      _WLHomeFeedPostEditPost._([..._s, .post, .editPost], [..._i, id, null]);
+  _WLHomeFeedPostRepost repost(String id) =>
+      _WLHomeFeedPostRepost._([..._s, .post, .repost], [..._i, id, null]);
   _WLHomeFeedStory story(String id) =>
-      _WLHomeFeedStory._([..._s, _Screens.story], [..._i, id]);
+      _WLHomeFeedStory._([..._s, .story], [..._i, id]);
   _WLHomeFeedComposePost get composePost =>
-      _WLHomeFeedComposePost._([..._s, _Screens.composePost], [..._i, null]);
+      _WLHomeFeedComposePost._([..._s, .composePost], [..._i, null]);
   _WLHomeFeedUserProfile userProfile(String id) =>
-      _WLHomeFeedUserProfile._([..._s, _Screens.userProfile], [..._i, id]);
+      _WLHomeFeedUserProfile._([..._s, .userProfile], [..._i, id]);
   _WLHomeFeedQ query(Set<FeedQueryArg> q) =>
       _WLHomeFeedQ(_s, _i, {for (final t in q) t.key: t.value}, const {});
   _WLHomeFeedF fragment(Set<FeedFragmentArg> f) =>
@@ -18479,7 +18069,7 @@ final class const _WLHomeFeed._(final List<Enum> _s, final List<Object?> _i)
 }
 
 class _WLHomeFeedQ(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
   final Map<String, Object?> _q,
   final Map<String, Object?> _f,
@@ -18498,7 +18088,7 @@ class _WLHomeFeedQ(
 }
 
 class _WLHomeFeedF(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
   final Map<String, Object?> _q,
   final Map<String, Object?> _f,
@@ -18514,8 +18104,10 @@ class _WLHomeFeedF(
   );
 }
 
-final class const _WLHomeFeedPost._(final List<Enum> _s, final List<Object?> _i)
-    implements Hop<PostNav> {
+final class const _WLHomeFeedPost._(
+  final List<_Screens> _s,
+  final List<Object?> _i,
+) implements Hop<PostNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -18529,19 +18121,17 @@ final class const _WLHomeFeedPost._(final List<Enum> _s, final List<Object?> _i)
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLHomeFeedPostComment comment(String id) =>
-      _WLHomeFeedPostComment._([..._s, _Screens.comment], [..._i, id]);
+      _WLHomeFeedPostComment._([..._s, .comment], [..._i, id]);
   _WLHomeFeedPostPostAuthor postAuthor(String id) =>
-      _WLHomeFeedPostPostAuthor._([..._s, _Screens.postAuthor], [..._i, id]);
-  _WLHomeFeedPostPostComments get postComments => _WLHomeFeedPostPostComments._(
-    [..._s, _Screens.postComments],
-    [..._i, null],
-  );
+      _WLHomeFeedPostPostAuthor._([..._s, .postAuthor], [..._i, id]);
+  _WLHomeFeedPostPostComments get postComments =>
+      _WLHomeFeedPostPostComments._([..._s, .postComments], [..._i, null]);
   _WLHomeFeedPostPostLikes get postLikes =>
-      _WLHomeFeedPostPostLikes._([..._s, _Screens.postLikes], [..._i, null]);
+      _WLHomeFeedPostPostLikes._([..._s, .postLikes], [..._i, null]);
   _WLHomeFeedPostEditPost get editPost =>
-      _WLHomeFeedPostEditPost._([..._s, _Screens.editPost], [..._i, null]);
+      _WLHomeFeedPostEditPost._([..._s, .editPost], [..._i, null]);
   _WLHomeFeedPostRepost get repost =>
-      _WLHomeFeedPostRepost._([..._s, _Screens.repost], [..._i, null]);
+      _WLHomeFeedPostRepost._([..._s, .repost], [..._i, null]);
   _WLHomeFeedPostQ query(Set<PostQueryArg> q) =>
       _WLHomeFeedPostQ(_s, _i, {for (final t in q) t.key: t.value}, const {});
   Uri toUri([String? domain]) => Uri.parse(
@@ -18550,7 +18140,7 @@ final class const _WLHomeFeedPost._(final List<Enum> _s, final List<Object?> _i)
 }
 
 class _WLHomeFeedPostQ(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
   final Map<String, Object?> _q,
   final Map<String, Object?> _f,
@@ -18567,7 +18157,7 @@ class _WLHomeFeedPostQ(
 }
 
 final class const _WLHomeFeedPostComment._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<CommentNav> {
   @override
@@ -18588,7 +18178,7 @@ final class const _WLHomeFeedPostComment._(
 }
 
 final class const _WLHomeFeedPostPostAuthor._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<PostAuthorNav> {
   @override
@@ -18609,7 +18199,7 @@ final class const _WLHomeFeedPostPostAuthor._(
 }
 
 final class const _WLHomeFeedPostPostComments._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<PostCommentsNav> {
   @override
@@ -18630,7 +18220,7 @@ final class const _WLHomeFeedPostPostComments._(
 }
 
 final class const _WLHomeFeedPostPostLikes._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<PostLikesNav> {
   @override
@@ -18651,7 +18241,7 @@ final class const _WLHomeFeedPostPostLikes._(
 }
 
 final class const _WLHomeFeedPostEditPost._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<EditPostNav> {
   @override
@@ -18672,7 +18262,7 @@ final class const _WLHomeFeedPostEditPost._(
 }
 
 final class const _WLHomeFeedPostRepost._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<RepostNav> {
   @override
@@ -18693,7 +18283,7 @@ final class const _WLHomeFeedPostRepost._(
 }
 
 final class const _WLHomeFeedStory._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<StoryNav> {
   @override
@@ -18714,7 +18304,7 @@ final class const _WLHomeFeedStory._(
 }
 
 final class const _WLHomeFeedComposePost._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<ComposePostNav> {
   @override
@@ -18735,7 +18325,7 @@ final class const _WLHomeFeedComposePost._(
 }
 
 final class const _WLHomeFeedUserProfile._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<HomeFeedUserProfileNav> {
   @override
@@ -18954,7 +18544,7 @@ final class const _WLHomeStudioMonetizationPayouts._(
   );
 }
 
-final class const _WLDiscover._(final List<Enum> _s, final List<Object?> _i)
+final class const _WLDiscover._(final List<_Screens> _s, final List<Object?> _i)
     implements Hop<DiscoverNav> {
   @override
   List<(Enum, Object?)> get chain => [
@@ -18969,13 +18559,13 @@ final class const _WLDiscover._(final List<Enum> _s, final List<Object?> _i)
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLDiscoverTrending get trending =>
-      _WLDiscoverTrending._([..._s, _Screens.trending], [..._i, null]);
+      _WLDiscoverTrending._([..._s, .trending], [..._i, null]);
   _WLDiscoverTopics get topics =>
-      _WLDiscoverTopics._([..._s, _Screens.topics], [..._i, null]);
+      _WLDiscoverTopics._([..._s, .topics], [..._i, null]);
   _WLDiscoverLiveNow get liveNow =>
-      _WLDiscoverLiveNow._([..._s, _Screens.liveNow], [..._i, null]);
+      _WLDiscoverLiveNow._([..._s, .liveNow], [..._i, null]);
   _WLDiscoverNearby get nearby =>
-      _WLDiscoverNearby._([..._s, _Screens.nearby], [..._i, null]);
+      _WLDiscoverNearby._([..._s, .nearby], [..._i, null]);
   _WLDiscoverEvents get events =>
       _WLDiscoverEvents._([..._s, Events.events], [..._i, null]);
   _WLDiscoverQ query(Set<DiscoverQueryArg> q) =>
@@ -18986,7 +18576,7 @@ final class const _WLDiscover._(final List<Enum> _s, final List<Object?> _i)
 }
 
 class _WLDiscoverQ(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
   final Map<String, Object?> _q,
   final Map<String, Object?> _f,
@@ -19003,7 +18593,7 @@ class _WLDiscoverQ(
 }
 
 final class const _WLDiscoverTrending._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<TrendingNav> {
   @override
@@ -19019,21 +18609,18 @@ final class const _WLDiscoverTrending._(
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLDiscoverTrendingHashtag hashtag(String id) =>
-      _WLDiscoverTrendingHashtag._([..._s, _Screens.hashtag], [..._i, id]);
+      _WLDiscoverTrendingHashtag._([..._s, .hashtag], [..._i, id]);
   _WLDiscoverTrendingTopic topic(String id) =>
-      _WLDiscoverTrendingTopic._([..._s, _Screens.topic], [..._i, id]);
+      _WLDiscoverTrendingTopic._([..._s, .topic], [..._i, id]);
   _WLDiscoverTrendingUserProfile userProfile(String id) =>
-      _WLDiscoverTrendingUserProfile._(
-        [..._s, _Screens.userProfile],
-        [..._i, id],
-      );
+      _WLDiscoverTrendingUserProfile._([..._s, .userProfile], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
 }
 
 final class const _WLDiscoverTrendingHashtag._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<HashtagNav> {
   @override
@@ -19054,7 +18641,7 @@ final class const _WLDiscoverTrendingHashtag._(
 }
 
 final class const _WLDiscoverTrendingTopic._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<TopicNav> {
   @override
@@ -19070,17 +18657,14 @@ final class const _WLDiscoverTrendingTopic._(
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLDiscoverTrendingTopicSubtopic subtopic(String id) =>
-      _WLDiscoverTrendingTopicSubtopic._(
-        [..._s, _Screens.subtopic],
-        [..._i, id],
-      );
+      _WLDiscoverTrendingTopicSubtopic._([..._s, .subtopic], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
 }
 
 final class const _WLDiscoverTrendingTopicSubtopic._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<SubtopicNav> {
   @override
@@ -19101,7 +18685,7 @@ final class const _WLDiscoverTrendingTopicSubtopic._(
 }
 
 final class const _WLDiscoverTrendingUserProfile._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<DiscoverTrendingUserProfileNav> {
   @override
@@ -19123,7 +18707,7 @@ final class const _WLDiscoverTrendingUserProfile._(
 }
 
 final class const _WLDiscoverTopics._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<TopicsNav> {
   @override
@@ -19144,7 +18728,7 @@ final class const _WLDiscoverTopics._(
 }
 
 final class const _WLDiscoverLiveNow._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<LiveNowNav> {
   @override
@@ -19160,14 +18744,14 @@ final class const _WLDiscoverLiveNow._(
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLDiscoverLiveNowLiveRoom liveRoom(String id) =>
-      _WLDiscoverLiveNowLiveRoom._([..._s, _Screens.liveRoom], [..._i, id]);
+      _WLDiscoverLiveNowLiveRoom._([..._s, .liveRoom], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
 }
 
 final class const _WLDiscoverLiveNowLiveRoom._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<LiveRoomNav> {
   @override
@@ -19188,7 +18772,7 @@ final class const _WLDiscoverLiveNowLiveRoom._(
 }
 
 final class const _WLDiscoverNearby._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<NearbyNav> {
   @override
@@ -19368,8 +18952,10 @@ final class const _WLDiscoverEventsCreateEvent._(
   );
 }
 
-final class const _WLMarketplace._(final List<Enum> _s, final List<Object?> _i)
-    implements Hop<MarketplaceNav> {
+final class const _WLMarketplace._(
+  final List<_Screens> _s,
+  final List<Object?> _i,
+) implements Hop<MarketplaceNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -19383,13 +18969,13 @@ final class const _WLMarketplace._(final List<Enum> _s, final List<Object?> _i)
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLMarketplaceCategories get categories =>
-      _WLMarketplaceCategories._([..._s, _Screens.categories], [..._i, null]);
+      _WLMarketplaceCategories._([..._s, .categories], [..._i, null]);
   _WLMarketplaceCart get cart =>
-      _WLMarketplaceCart._([..._s, _Screens.cart], [..._i, null]);
+      _WLMarketplaceCart._([..._s, .cart], [..._i, null]);
   _WLMarketplaceMyOrders get myOrders =>
-      _WLMarketplaceMyOrders._([..._s, _Screens.myOrders], [..._i, null]);
+      _WLMarketplaceMyOrders._([..._s, .myOrders], [..._i, null]);
   _WLMarketplaceWishlist get wishlist =>
-      _WLMarketplaceWishlist._([..._s, _Screens.wishlist], [..._i, null]);
+      _WLMarketplaceWishlist._([..._s, .wishlist], [..._i, null]);
   _WLMarketplaceQ query(Set<MarketplaceQueryArg> q) =>
       _WLMarketplaceQ(_s, _i, {for (final t in q) t.key: t.value}, const {});
   Uri toUri([String? domain]) => Uri.parse(
@@ -19398,7 +18984,7 @@ final class const _WLMarketplace._(final List<Enum> _s, final List<Object?> _i)
 }
 
 class _WLMarketplaceQ(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
   final Map<String, Object?> _q,
   final Map<String, Object?> _f,
@@ -19415,7 +19001,7 @@ class _WLMarketplaceQ(
 }
 
 final class const _WLMarketplaceCategories._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<CategoriesNav> {
   @override
@@ -19431,17 +19017,14 @@ final class const _WLMarketplaceCategories._(
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLMarketplaceCategoriesCategory category(String id) =>
-      _WLMarketplaceCategoriesCategory._(
-        [..._s, _Screens.category],
-        [..._i, id],
-      );
+      _WLMarketplaceCategoriesCategory._([..._s, .category], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
 }
 
 final class const _WLMarketplaceCategoriesCategory._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<CategoryNav> {
   @override
@@ -19457,13 +19040,10 @@ final class const _WLMarketplaceCategoriesCategory._(
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLMarketplaceCategoriesCategoryListing listing(String id) =>
-      _WLMarketplaceCategoriesCategoryListing._(
-        [..._s, _Screens.listing],
-        [..._i, id],
-      );
+      _WLMarketplaceCategoriesCategoryListing._([..._s, .listing], [..._i, id]);
   _WLMarketplaceCategoriesCategoryListingEditListing editListing(String id) =>
       _WLMarketplaceCategoriesCategoryListingEditListing._(
-        [..._s, _Screens.listing, _Screens.editListing],
+        [..._s, .listing, .editListing],
         [..._i, id, null],
       );
   Uri toUri([String? domain]) => Uri.parse(
@@ -19472,7 +19052,7 @@ final class const _WLMarketplaceCategoriesCategory._(
 }
 
 final class const _WLMarketplaceCategoriesCategoryListing._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<ListingNav> {
   @override
@@ -19489,19 +19069,19 @@ final class const _WLMarketplaceCategoriesCategoryListing._(
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLMarketplaceCategoriesCategoryListingEditListing get editListing =>
       _WLMarketplaceCategoriesCategoryListingEditListing._(
-        [..._s, _Screens.editListing],
+        [..._s, .editListing],
         [..._i, null],
       );
   _WLMarketplaceCategoriesCategoryListingSellerProfile sellerProfile(
     String id,
   ) => _WLMarketplaceCategoriesCategoryListingSellerProfile._(
-    [..._s, _Screens.sellerProfile],
+    [..._s, .sellerProfile],
     [..._i, id],
   );
   _WLMarketplaceCategoriesCategoryListingListingVariant listingVariant(
     String id,
   ) => _WLMarketplaceCategoriesCategoryListingListingVariant._(
-    [..._s, _Screens.listingVariant],
+    [..._s, .listingVariant],
     [..._i, id],
   );
   Uri toUri([String? domain]) => Uri.parse(
@@ -19510,7 +19090,7 @@ final class const _WLMarketplaceCategoriesCategoryListing._(
 }
 
 final class const _WLMarketplaceCategoriesCategoryListingEditListing._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<EditListingNav> {
   @override
@@ -19531,7 +19111,7 @@ final class const _WLMarketplaceCategoriesCategoryListingEditListing._(
 }
 
 final class const _WLMarketplaceCategoriesCategoryListingSellerProfile._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<SellerProfileNav> {
   @override
@@ -19552,7 +19132,7 @@ final class const _WLMarketplaceCategoriesCategoryListingSellerProfile._(
 }
 
 final class const _WLMarketplaceCategoriesCategoryListingListingVariant._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<ListingVariantNav> {
   @override
@@ -19573,7 +19153,7 @@ final class const _WLMarketplaceCategoriesCategoryListingListingVariant._(
 }
 
 final class const _WLMarketplaceCart._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<CartNav> {
   @override
@@ -19589,14 +19169,14 @@ final class const _WLMarketplaceCart._(
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLMarketplaceCartCheckout checkout(String id) =>
-      _WLMarketplaceCartCheckout._([..._s, _Screens.checkout], [..._i, id]);
+      _WLMarketplaceCartCheckout._([..._s, .checkout], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
 }
 
 final class const _WLMarketplaceCartCheckout._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<CheckoutNav> {
   @override
@@ -19613,7 +19193,7 @@ final class const _WLMarketplaceCartCheckout._(
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLMarketplaceCartCheckoutOrderConfirmation orderConfirmation(String id) =>
       _WLMarketplaceCartCheckoutOrderConfirmation._(
-        [..._s, _Screens.orderConfirmation],
+        [..._s, .orderConfirmation],
         [..._i, id],
       );
   Uri toUri([String? domain]) => Uri.parse(
@@ -19622,7 +19202,7 @@ final class const _WLMarketplaceCartCheckout._(
 }
 
 final class const _WLMarketplaceCartCheckoutOrderConfirmation._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<OrderConfirmationNav> {
   @override
@@ -19643,7 +19223,7 @@ final class const _WLMarketplaceCartCheckoutOrderConfirmation._(
 }
 
 final class const _WLMarketplaceMyOrders._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<MyOrdersNav> {
   @override
@@ -19659,14 +19239,14 @@ final class const _WLMarketplaceMyOrders._(
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLMarketplaceMyOrdersOrder order(String id) =>
-      _WLMarketplaceMyOrdersOrder._([..._s, _Screens.order], [..._i, id]);
+      _WLMarketplaceMyOrdersOrder._([..._s, .order], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
 }
 
 final class const _WLMarketplaceMyOrdersOrder._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<OrderNav> {
   @override
@@ -19687,7 +19267,7 @@ final class const _WLMarketplaceMyOrdersOrder._(
 }
 
 final class const _WLMarketplaceWishlist._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<WishlistNav> {
   @override
@@ -19707,7 +19287,7 @@ final class const _WLMarketplaceWishlist._(
   );
 }
 
-final class const _WLMessages._(final List<Enum> _s, final List<Object?> _i)
+final class const _WLMessages._(final List<_Screens> _s, final List<Object?> _i)
     implements Hop<MessagesNav> {
   @override
   List<(Enum, Object?)> get chain => [
@@ -19722,14 +19302,14 @@ final class const _WLMessages._(final List<Enum> _s, final List<Object?> _i)
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLMessagesChats get chats =>
-      _WLMessagesChats._([..._s, _Screens.chats], [..._i, null]);
+      _WLMessagesChats._([..._s, .chats], [..._i, null]);
   _WLMessagesNewChat get newChat =>
-      _WLMessagesNewChat._([..._s, _Screens.newChat], [..._i, null]);
+      _WLMessagesNewChat._([..._s, .newChat], [..._i, null]);
   _WLMessagesGroupChat groupChat(String id) =>
-      _WLMessagesGroupChat._([..._s, _Screens.groupChat], [..._i, id]);
+      _WLMessagesGroupChat._([..._s, .groupChat], [..._i, id]);
   _WLMessagesGroupChatGroupInfo groupInfo(String id) =>
       _WLMessagesGroupChatGroupInfo._(
-        [..._s, _Screens.groupChat, _Screens.groupInfo],
+        [..._s, .groupChat, .groupInfo],
         [..._i, id, null],
       );
   Uri toUri([String? domain]) => Uri.parse(
@@ -19738,7 +19318,7 @@ final class const _WLMessages._(final List<Enum> _s, final List<Object?> _i)
 }
 
 final class const _WLMessagesChats._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<ChatsNav> {
   @override
@@ -19754,10 +19334,10 @@ final class const _WLMessagesChats._(
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLMessagesChatsChat chat(String id) =>
-      _WLMessagesChatsChat._([..._s, _Screens.chat], [..._i, id]);
+      _WLMessagesChatsChat._([..._s, .chat], [..._i, id]);
   _WLMessagesChatsChatVoiceCall voiceCall(String id) =>
       _WLMessagesChatsChatVoiceCall._(
-        [..._s, _Screens.chat, _Screens.voiceCall],
+        [..._s, .chat, .voiceCall],
         [..._i, id, null],
       );
   Uri toUri([String? domain]) => Uri.parse(
@@ -19766,7 +19346,7 @@ final class const _WLMessagesChats._(
 }
 
 final class const _WLMessagesChatsChat._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<ChatNav> {
   @override
@@ -19782,24 +19362,18 @@ final class const _WLMessagesChatsChat._(
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLMessagesChatsChatThread thread(String id) =>
-      _WLMessagesChatsChatThread._([..._s, _Screens.thread], [..._i, id]);
+      _WLMessagesChatsChatThread._([..._s, .thread], [..._i, id]);
   _WLMessagesChatsChatVoiceCall get voiceCall =>
-      _WLMessagesChatsChatVoiceCall._(
-        [..._s, _Screens.voiceCall],
-        [..._i, null],
-      );
+      _WLMessagesChatsChatVoiceCall._([..._s, .voiceCall], [..._i, null]);
   _WLMessagesChatsChatUserProfile userProfile(String id) =>
-      _WLMessagesChatsChatUserProfile._(
-        [..._s, _Screens.userProfile],
-        [..._i, id],
-      );
+      _WLMessagesChatsChatUserProfile._([..._s, .userProfile], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
 }
 
 final class const _WLMessagesChatsChatThread._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<ThreadNav> {
   @override
@@ -19815,17 +19389,14 @@ final class const _WLMessagesChatsChatThread._(
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLMessagesChatsChatThreadMessage message(String id) =>
-      _WLMessagesChatsChatThreadMessage._(
-        [..._s, _Screens.message],
-        [..._i, id],
-      );
+      _WLMessagesChatsChatThreadMessage._([..._s, .message], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
 }
 
 final class const _WLMessagesChatsChatThreadMessage._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<MessageNav> {
   @override
@@ -19842,7 +19413,7 @@ final class const _WLMessagesChatsChatThreadMessage._(
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLMessagesChatsChatThreadMessageMessageReply messageReply(String id) =>
       _WLMessagesChatsChatThreadMessageMessageReply._(
-        [..._s, _Screens.messageReply],
+        [..._s, .messageReply],
         [..._i, id],
       );
   Uri toUri([String? domain]) => Uri.parse(
@@ -19851,7 +19422,7 @@ final class const _WLMessagesChatsChatThreadMessage._(
 }
 
 final class const _WLMessagesChatsChatThreadMessageMessageReply._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<MessageReplyNav> {
   @override
@@ -19872,7 +19443,7 @@ final class const _WLMessagesChatsChatThreadMessageMessageReply._(
 }
 
 final class const _WLMessagesChatsChatVoiceCall._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<VoiceCallNav> {
   @override
@@ -19893,7 +19464,7 @@ final class const _WLMessagesChatsChatVoiceCall._(
 }
 
 final class const _WLMessagesChatsChatUserProfile._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<MessagesChatsChatUserProfileNav> {
   @override
@@ -19915,7 +19486,7 @@ final class const _WLMessagesChatsChatUserProfile._(
 }
 
 final class const _WLMessagesNewChat._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<NewChatNav> {
   @override
@@ -19936,7 +19507,7 @@ final class const _WLMessagesNewChat._(
 }
 
 final class const _WLMessagesGroupChat._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<GroupChatNav> {
   @override
@@ -19952,17 +19523,14 @@ final class const _WLMessagesGroupChat._(
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLMessagesGroupChatGroupInfo get groupInfo =>
-      _WLMessagesGroupChatGroupInfo._(
-        [..._s, _Screens.groupInfo],
-        [..._i, null],
-      );
+      _WLMessagesGroupChatGroupInfo._([..._s, .groupInfo], [..._i, null]);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
 }
 
 final class const _WLMessagesGroupChatGroupInfo._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<GroupInfoNav> {
   @override
@@ -19982,7 +19550,7 @@ final class const _WLMessagesGroupChatGroupInfo._(
   );
 }
 
-final class const _WLWallet._(final List<Enum> _s, final List<Object?> _i)
+final class const _WLWallet._(final List<_Screens> _s, final List<Object?> _i)
     implements Hop<WalletNav> {
   @override
   List<(Enum, Object?)> get chain => [
@@ -19997,24 +19565,22 @@ final class const _WLWallet._(final List<Enum> _s, final List<Object?> _i)
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLWalletBalance get balance =>
-      _WLWalletBalance._([..._s, _Screens.balance], [..._i, null]);
+      _WLWalletBalance._([..._s, .balance], [..._i, null]);
   _WLWalletAccounts get accounts =>
-      _WLWalletAccounts._([..._s, _Screens.accounts], [..._i, null]);
+      _WLWalletAccounts._([..._s, .accounts], [..._i, null]);
   _WLWalletSendMoney get sendMoney =>
-      _WLWalletSendMoney._([..._s, _Screens.sendMoney], [..._i, null]);
+      _WLWalletSendMoney._([..._s, .sendMoney], [..._i, null]);
   _WLWalletReceiveMoney get receiveMoney =>
-      _WLWalletReceiveMoney._([..._s, _Screens.receiveMoney], [..._i, null]);
-  _WLWalletPaymentMethods get paymentMethods => _WLWalletPaymentMethods._(
-    [..._s, _Screens.paymentMethods],
-    [..._i, null],
-  );
+      _WLWalletReceiveMoney._([..._s, .receiveMoney], [..._i, null]);
+  _WLWalletPaymentMethods get paymentMethods =>
+      _WLWalletPaymentMethods._([..._s, .paymentMethods], [..._i, null]);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
 }
 
 final class const _WLWalletBalance._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<BalanceNav> {
   @override
@@ -20035,7 +19601,7 @@ final class const _WLWalletBalance._(
 }
 
 final class const _WLWalletAccounts._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<AccountsNav> {
   @override
@@ -20051,14 +19617,14 @@ final class const _WLWalletAccounts._(
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLWalletAccountsAccount account(String id) =>
-      _WLWalletAccountsAccount._([..._s, _Screens.account], [..._i, id]);
+      _WLWalletAccountsAccount._([..._s, .account], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
 }
 
 final class const _WLWalletAccountsAccount._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<AccountNav> {
   @override
@@ -20075,21 +19641,18 @@ final class const _WLWalletAccountsAccount._(
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLWalletAccountsAccountTransactions get transactions =>
       _WLWalletAccountsAccountTransactions._(
-        [..._s, _Screens.transactions],
+        [..._s, .transactions],
         [..._i, null],
       );
   _WLWalletAccountsAccountStatements get statements =>
-      _WLWalletAccountsAccountStatements._(
-        [..._s, _Screens.statements],
-        [..._i, null],
-      );
+      _WLWalletAccountsAccountStatements._([..._s, .statements], [..._i, null]);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
 }
 
 final class const _WLWalletAccountsAccountTransactions._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<TransactionsNav> {
   @override
@@ -20106,7 +19669,7 @@ final class const _WLWalletAccountsAccountTransactions._(
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLWalletAccountsAccountTransactionsTransaction transaction(String id) =>
       _WLWalletAccountsAccountTransactionsTransaction._(
-        [..._s, _Screens.transaction],
+        [..._s, .transaction],
         [..._i, id],
       );
   Uri toUri([String? domain]) => Uri.parse(
@@ -20115,7 +19678,7 @@ final class const _WLWalletAccountsAccountTransactions._(
 }
 
 final class const _WLWalletAccountsAccountTransactionsTransaction._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<TransactionNav> {
   @override
@@ -20133,7 +19696,7 @@ final class const _WLWalletAccountsAccountTransactionsTransaction._(
   _WLWalletAccountsAccountTransactionsTransactionTransactionItem
   transactionItem(String id) =>
       _WLWalletAccountsAccountTransactionsTransactionTransactionItem._(
-        [..._s, _Screens.transactionItem],
+        [..._s, .transactionItem],
         [..._i, id],
       );
   Uri toUri([String? domain]) => Uri.parse(
@@ -20142,7 +19705,7 @@ final class const _WLWalletAccountsAccountTransactionsTransaction._(
 }
 
 final class const _WLWalletAccountsAccountTransactionsTransactionTransactionItem._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<TransactionItemNav> {
   @override
@@ -20163,7 +19726,7 @@ final class const _WLWalletAccountsAccountTransactionsTransactionTransactionItem
 }
 
 final class const _WLWalletAccountsAccountStatements._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<StatementsNav> {
   @override
@@ -20180,7 +19743,7 @@ final class const _WLWalletAccountsAccountStatements._(
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLWalletAccountsAccountStatementsStatement statement(String id) =>
       _WLWalletAccountsAccountStatementsStatement._(
-        [..._s, _Screens.statement],
+        [..._s, .statement],
         [..._i, id],
       );
   Uri toUri([String? domain]) => Uri.parse(
@@ -20189,7 +19752,7 @@ final class const _WLWalletAccountsAccountStatements._(
 }
 
 final class const _WLWalletAccountsAccountStatementsStatement._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<StatementNav> {
   @override
@@ -20210,7 +19773,7 @@ final class const _WLWalletAccountsAccountStatementsStatement._(
 }
 
 final class const _WLWalletSendMoney._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<SendMoneyNav> {
   @override
@@ -20231,7 +19794,7 @@ final class const _WLWalletSendMoney._(
 }
 
 final class const _WLWalletReceiveMoney._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<ReceiveMoneyNav> {
   @override
@@ -20252,7 +19815,7 @@ final class const _WLWalletReceiveMoney._(
 }
 
 final class const _WLWalletPaymentMethods._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<PaymentMethodsNav> {
   @override
@@ -20268,19 +19831,16 @@ final class const _WLWalletPaymentMethods._(
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLWalletPaymentMethodsAddCard get addCard =>
-      _WLWalletPaymentMethodsAddCard._(
-        [..._s, _Screens.addCard],
-        [..._i, null],
-      );
+      _WLWalletPaymentMethodsAddCard._([..._s, .addCard], [..._i, null]);
   _WLWalletPaymentMethodsCard card(String id) =>
-      _WLWalletPaymentMethodsCard._([..._s, _Screens.card], [..._i, id]);
+      _WLWalletPaymentMethodsCard._([..._s, .card], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
 }
 
 final class const _WLWalletPaymentMethodsAddCard._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<AddCardNav> {
   @override
@@ -20301,7 +19861,7 @@ final class const _WLWalletPaymentMethodsAddCard._(
 }
 
 final class const _WLWalletPaymentMethodsCard._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<CardNav> {
   @override
@@ -20321,7 +19881,7 @@ final class const _WLWalletPaymentMethodsCard._(
   );
 }
 
-final class const _WLProfile._(final List<Enum> _s, final List<Object?> _i)
+final class const _WLProfile._(final List<_Screens> _s, final List<Object?> _i)
     implements Hop<ProfileNav> {
   @override
   List<(Enum, Object?)> get chain => [
@@ -20336,30 +19896,30 @@ final class const _WLProfile._(final List<Enum> _s, final List<Object?> _i)
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLProfileUserProfile userProfile(String id) =>
-      _WLProfileUserProfile._([..._s, _Screens.userProfile], [..._i, id]);
+      _WLProfileUserProfile._([..._s, .userProfile], [..._i, id]);
   _WLProfileFollowers followers(String id) =>
-      _WLProfileFollowers._([..._s, _Screens.followers], [..._i, id]);
+      _WLProfileFollowers._([..._s, .followers], [..._i, id]);
   _WLProfileFollowing following(String id) =>
-      _WLProfileFollowing._([..._s, _Screens.following], [..._i, id]);
+      _WLProfileFollowing._([..._s, .following], [..._i, id]);
   _WLProfileEditProfile get editProfile =>
-      _WLProfileEditProfile._([..._s, _Screens.editProfile], [..._i, null]);
+      _WLProfileEditProfile._([..._s, .editProfile], [..._i, null]);
   _WLProfileAchievements get achievements =>
-      _WLProfileAchievements._([..._s, _Screens.achievements], [..._i, null]);
+      _WLProfileAchievements._([..._s, .achievements], [..._i, null]);
   _WLProfileBadges get badges =>
-      _WLProfileBadges._([..._s, _Screens.badges], [..._i, null]);
+      _WLProfileBadges._([..._s, .badges], [..._i, null]);
   _WLProfileSavedPosts get savedPosts =>
-      _WLProfileSavedPosts._([..._s, _Screens.savedPosts], [..._i, null]);
+      _WLProfileSavedPosts._([..._s, .savedPosts], [..._i, null]);
   _WLProfileDrafts get drafts =>
-      _WLProfileDrafts._([..._s, _Screens.drafts], [..._i, null]);
+      _WLProfileDrafts._([..._s, .drafts], [..._i, null]);
   _WLProfileMyListings get myListings =>
-      _WLProfileMyListings._([..._s, _Screens.myListings], [..._i, null]);
+      _WLProfileMyListings._([..._s, .myListings], [..._i, null]);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
 }
 
 final class const _WLProfileUserProfile._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<ProfileUserProfileNav> {
   @override
@@ -20380,7 +19940,7 @@ final class const _WLProfileUserProfile._(
 }
 
 final class const _WLProfileFollowers._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<FollowersNav> {
   @override
@@ -20396,17 +19956,14 @@ final class const _WLProfileFollowers._(
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLProfileFollowersConnection connection(String id) =>
-      _WLProfileFollowersConnection._(
-        [..._s, _Screens.connection],
-        [..._i, id],
-      );
+      _WLProfileFollowersConnection._([..._s, .connection], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
 }
 
 final class const _WLProfileFollowersConnection._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<ConnectionNav> {
   @override
@@ -20423,7 +19980,7 @@ final class const _WLProfileFollowersConnection._(
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLProfileFollowersConnectionMutualConnections get mutualConnections =>
       _WLProfileFollowersConnectionMutualConnections._(
-        [..._s, _Screens.mutualConnections],
+        [..._s, .mutualConnections],
         [..._i, null],
       );
   Uri toUri([String? domain]) => Uri.parse(
@@ -20432,7 +19989,7 @@ final class const _WLProfileFollowersConnection._(
 }
 
 final class const _WLProfileFollowersConnectionMutualConnections._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<MutualConnectionsNav> {
   @override
@@ -20453,7 +20010,7 @@ final class const _WLProfileFollowersConnectionMutualConnections._(
 }
 
 final class const _WLProfileFollowing._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<FollowingNav> {
   @override
@@ -20474,7 +20031,7 @@ final class const _WLProfileFollowing._(
 }
 
 final class const _WLProfileEditProfile._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<EditProfileNav> {
   @override
@@ -20495,7 +20052,7 @@ final class const _WLProfileEditProfile._(
 }
 
 final class const _WLProfileAchievements._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<AchievementsNav> {
   @override
@@ -20516,7 +20073,7 @@ final class const _WLProfileAchievements._(
 }
 
 final class const _WLProfileBadges._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<BadgesNav> {
   @override
@@ -20532,14 +20089,14 @@ final class const _WLProfileBadges._(
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLProfileBadgesBadge badge(String id) =>
-      _WLProfileBadgesBadge._([..._s, _Screens.badge], [..._i, id]);
+      _WLProfileBadgesBadge._([..._s, .badge], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
 }
 
 final class const _WLProfileBadgesBadge._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<BadgeNav> {
   @override
@@ -20560,7 +20117,7 @@ final class const _WLProfileBadgesBadge._(
 }
 
 final class const _WLProfileSavedPosts._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<SavedPostsNav> {
   @override
@@ -20581,7 +20138,7 @@ final class const _WLProfileSavedPosts._(
 }
 
 final class const _WLProfileDrafts._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<DraftsNav> {
   @override
@@ -20602,7 +20159,7 @@ final class const _WLProfileDrafts._(
 }
 
 final class const _WLProfileMyListings._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<MyListingsNav> {
   @override
@@ -20623,7 +20180,7 @@ final class const _WLProfileMyListings._(
 }
 
 final class const _WLNotifications._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<NotificationsNav> {
   @override
@@ -20640,7 +20197,7 @@ final class const _WLNotifications._(
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLNotificationsNotificationSettings get notificationSettings =>
       _WLNotificationsNotificationSettings._(
-        [..._s, _Screens.notificationSettings],
+        [..._s, .notificationSettings],
         [..._i, null],
       );
   Uri toUri([String? domain]) => Uri.parse(
@@ -20649,7 +20206,7 @@ final class const _WLNotifications._(
 }
 
 final class const _WLNotificationsNotificationSettings._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<NotificationSettingsNav> {
   @override
@@ -20669,7 +20226,7 @@ final class const _WLNotificationsNotificationSettings._(
   );
 }
 
-final class const _WLSearch._(final List<Enum> _s, final List<Object?> _i)
+final class const _WLSearch._(final List<_Screens> _s, final List<Object?> _i)
     implements Hop<SearchNav> {
   @override
   List<(Enum, Object?)> get chain => [
@@ -20684,7 +20241,7 @@ final class const _WLSearch._(final List<Enum> _s, final List<Object?> _i)
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLSearchSearchResults get searchResults =>
-      _WLSearchSearchResults._([..._s, _Screens.searchResults], [..._i, null]);
+      _WLSearchSearchResults._([..._s, .searchResults], [..._i, null]);
   _WLSearchQ query(Set<SearchQueryArg> q) =>
       _WLSearchQ(_s, _i, {for (final t in q) t.key: t.value}, const {});
   _WLSearchF fragment(Set<SearchFragmentArg> f) =>
@@ -20695,7 +20252,7 @@ final class const _WLSearch._(final List<Enum> _s, final List<Object?> _i)
 }
 
 class _WLSearchQ(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
   final Map<String, Object?> _q,
   final Map<String, Object?> _f,
@@ -20714,7 +20271,7 @@ class _WLSearchQ(
 }
 
 class _WLSearchF(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
   final Map<String, Object?> _q,
   final Map<String, Object?> _f,
@@ -20731,7 +20288,7 @@ class _WLSearchF(
 }
 
 final class const _WLSearchSearchResults._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<SearchResultsNav> {
   @override
@@ -20751,7 +20308,7 @@ final class const _WLSearchSearchResults._(
   );
 }
 
-final class const _WLSettings._(final List<Enum> _s, final List<Object?> _i)
+final class const _WLSettings._(final List<_Screens> _s, final List<Object?> _i)
     implements Hop<SettingsNav> {
   @override
   List<(Enum, Object?)> get chain => [
@@ -20766,36 +20323,29 @@ final class const _WLSettings._(final List<Enum> _s, final List<Object?> _i)
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLSettingsAccountSettings get accountSettings =>
-      _WLSettingsAccountSettings._(
-        [..._s, _Screens.accountSettings],
-        [..._i, null],
-      );
+      _WLSettingsAccountSettings._([..._s, .accountSettings], [..._i, null]);
   _WLSettingsSecurity get security =>
-      _WLSettingsSecurity._([..._s, _Screens.security], [..._i, null]);
+      _WLSettingsSecurity._([..._s, .security], [..._i, null]);
   _WLSettingsPrivacy get privacy =>
-      _WLSettingsPrivacy._([..._s, _Screens.privacy], [..._i, null]);
+      _WLSettingsPrivacy._([..._s, .privacy], [..._i, null]);
   _WLSettingsAppearance get appearance =>
-      _WLSettingsAppearance._([..._s, _Screens.appearance], [..._i, null]);
+      _WLSettingsAppearance._([..._s, .appearance], [..._i, null]);
   _WLSettingsLanguage get language =>
-      _WLSettingsLanguage._([..._s, _Screens.language], [..._i, null]);
-  _WLSettingsConnectedApps get connectedApps => _WLSettingsConnectedApps._(
-    [..._s, _Screens.connectedApps],
-    [..._i, null],
-  );
+      _WLSettingsLanguage._([..._s, .language], [..._i, null]);
+  _WLSettingsConnectedApps get connectedApps =>
+      _WLSettingsConnectedApps._([..._s, .connectedApps], [..._i, null]);
   _WLSettingsAbout get about =>
-      _WLSettingsAbout._([..._s, _Screens.about], [..._i, null]);
+      _WLSettingsAbout._([..._s, .about], [..._i, null]);
   _WLSettingsBlockedUsers get blockedUsers =>
-      _WLSettingsBlockedUsers._([..._s, _Screens.blockedUsers], [..._i, null]);
+      _WLSettingsBlockedUsers._([..._s, .blockedUsers], [..._i, null]);
   _WLSettingsDevices get devices =>
-      _WLSettingsDevices._([..._s, _Screens.devices], [..._i, null]);
+      _WLSettingsDevices._([..._s, .devices], [..._i, null]);
   _WLSettingsDataExport get dataExport =>
-      _WLSettingsDataExport._([..._s, _Screens.dataExport], [..._i, null]);
-  _WLSettingsDeleteAccount get deleteAccount => _WLSettingsDeleteAccount._(
-    [..._s, _Screens.deleteAccount],
-    [..._i, null],
-  );
+      _WLSettingsDataExport._([..._s, .dataExport], [..._i, null]);
+  _WLSettingsDeleteAccount get deleteAccount =>
+      _WLSettingsDeleteAccount._([..._s, .deleteAccount], [..._i, null]);
   _WLSettingsIntegrations get integrations =>
-      _WLSettingsIntegrations._([..._s, _Screens.integrations], [..._i, null]);
+      _WLSettingsIntegrations._([..._s, .integrations], [..._i, null]);
   _WLSettingsSupport get support =>
       _WLSettingsSupport._([..._s, Support.support], [..._i, null]);
   _WLSettingsAdmin get admin =>
@@ -20806,7 +20356,7 @@ final class const _WLSettings._(final List<Enum> _s, final List<Object?> _i)
 }
 
 final class const _WLSettingsAccountSettings._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<AccountSettingsNav> {
   @override
@@ -20827,7 +20377,7 @@ final class const _WLSettingsAccountSettings._(
 }
 
 final class const _WLSettingsSecurity._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<SecurityNav> {
   @override
@@ -20844,7 +20394,7 @@ final class const _WLSettingsSecurity._(
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLSettingsSecurityTwoFactorSettings get twoFactorSettings =>
       _WLSettingsSecurityTwoFactorSettings._(
-        [..._s, _Screens.twoFactorSettings],
+        [..._s, .twoFactorSettings],
         [..._i, null],
       );
   Uri toUri([String? domain]) => Uri.parse(
@@ -20853,7 +20403,7 @@ final class const _WLSettingsSecurity._(
 }
 
 final class const _WLSettingsSecurityTwoFactorSettings._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<TwoFactorSettingsNav> {
   @override
@@ -20874,7 +20424,7 @@ final class const _WLSettingsSecurityTwoFactorSettings._(
 }
 
 final class const _WLSettingsPrivacy._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<PrivacyNav> {
   @override
@@ -20895,7 +20445,7 @@ final class const _WLSettingsPrivacy._(
 }
 
 final class const _WLSettingsAppearance._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<AppearanceNav> {
   @override
@@ -20916,7 +20466,7 @@ final class const _WLSettingsAppearance._(
 }
 
 final class const _WLSettingsLanguage._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<LanguageNav> {
   @override
@@ -20937,7 +20487,7 @@ final class const _WLSettingsLanguage._(
 }
 
 final class const _WLSettingsConnectedApps._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<ConnectedAppsNav> {
   @override
@@ -20958,7 +20508,7 @@ final class const _WLSettingsConnectedApps._(
 }
 
 final class const _WLSettingsAbout._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<AboutNav> {
   @override
@@ -20974,16 +20524,16 @@ final class const _WLSettingsAbout._(
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLSettingsAboutHelp get help =>
-      _WLSettingsAboutHelp._([..._s, _Screens.help], [..._i, null]);
+      _WLSettingsAboutHelp._([..._s, .help], [..._i, null]);
   _WLSettingsAboutFeedback get feedback =>
-      _WLSettingsAboutFeedback._([..._s, _Screens.feedback], [..._i, null]);
+      _WLSettingsAboutFeedback._([..._s, .feedback], [..._i, null]);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
 }
 
 final class const _WLSettingsAboutHelp._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<HelpNav> {
   @override
@@ -20999,17 +20549,14 @@ final class const _WLSettingsAboutHelp._(
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLSettingsAboutHelpHelpCategory helpCategory(String id) =>
-      _WLSettingsAboutHelpHelpCategory._(
-        [..._s, _Screens.helpCategory],
-        [..._i, id],
-      );
+      _WLSettingsAboutHelpHelpCategory._([..._s, .helpCategory], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
 }
 
 final class const _WLSettingsAboutHelpHelpCategory._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<HelpCategoryNav> {
   @override
@@ -21025,17 +20572,14 @@ final class const _WLSettingsAboutHelpHelpCategory._(
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLSettingsAboutHelpHelpCategoryFaq get faq =>
-      _WLSettingsAboutHelpHelpCategoryFaq._(
-        [..._s, _Screens.faq],
-        [..._i, null],
-      );
+      _WLSettingsAboutHelpHelpCategoryFaq._([..._s, .faq], [..._i, null]);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
 }
 
 final class const _WLSettingsAboutHelpHelpCategoryFaq._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<FaqNav> {
   @override
@@ -21052,7 +20596,7 @@ final class const _WLSettingsAboutHelpHelpCategoryFaq._(
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLSettingsAboutHelpHelpCategoryFaqFaqArticle faqArticle(String id) =>
       _WLSettingsAboutHelpHelpCategoryFaqFaqArticle._(
-        [..._s, _Screens.faqArticle],
+        [..._s, .faqArticle],
         [..._i, id],
       );
   Uri toUri([String? domain]) => Uri.parse(
@@ -21061,7 +20605,7 @@ final class const _WLSettingsAboutHelpHelpCategoryFaq._(
 }
 
 final class const _WLSettingsAboutHelpHelpCategoryFaqFaqArticle._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<FaqArticleNav> {
   @override
@@ -21082,7 +20626,7 @@ final class const _WLSettingsAboutHelpHelpCategoryFaqFaqArticle._(
 }
 
 final class const _WLSettingsAboutFeedback._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<FeedbackNav> {
   @override
@@ -21103,7 +20647,7 @@ final class const _WLSettingsAboutFeedback._(
 }
 
 final class const _WLSettingsBlockedUsers._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<BlockedUsersNav> {
   @override
@@ -21124,7 +20668,7 @@ final class const _WLSettingsBlockedUsers._(
 }
 
 final class const _WLSettingsDevices._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<DevicesNav> {
   @override
@@ -21140,14 +20684,14 @@ final class const _WLSettingsDevices._(
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLSettingsDevicesDevice device(String id) =>
-      _WLSettingsDevicesDevice._([..._s, _Screens.device], [..._i, id]);
+      _WLSettingsDevicesDevice._([..._s, .device], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
 }
 
 final class const _WLSettingsDevicesDevice._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<DeviceNav> {
   @override
@@ -21163,19 +20707,16 @@ final class const _WLSettingsDevicesDevice._(
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLSettingsDevicesDeviceSessions get sessions =>
-      _WLSettingsDevicesDeviceSessions._(
-        [..._s, _Screens.sessions],
-        [..._i, null],
-      );
+      _WLSettingsDevicesDeviceSessions._([..._s, .sessions], [..._i, null]);
   _WLSettingsDevicesDeviceSession session(String id) =>
-      _WLSettingsDevicesDeviceSession._([..._s, _Screens.session], [..._i, id]);
+      _WLSettingsDevicesDeviceSession._([..._s, .session], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
 }
 
 final class const _WLSettingsDevicesDeviceSessions._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<SessionsNav> {
   @override
@@ -21196,7 +20737,7 @@ final class const _WLSettingsDevicesDeviceSessions._(
 }
 
 final class const _WLSettingsDevicesDeviceSession._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<SessionNav> {
   @override
@@ -21217,7 +20758,7 @@ final class const _WLSettingsDevicesDeviceSession._(
 }
 
 final class const _WLSettingsDataExport._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<DataExportNav> {
   @override
@@ -21238,7 +20779,7 @@ final class const _WLSettingsDataExport._(
 }
 
 final class const _WLSettingsDeleteAccount._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<DeleteAccountNav> {
   @override
@@ -21259,7 +20800,7 @@ final class const _WLSettingsDeleteAccount._(
 }
 
 final class const _WLSettingsIntegrations._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<IntegrationsNav> {
   @override
@@ -21275,17 +20816,14 @@ final class const _WLSettingsIntegrations._(
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLSettingsIntegrationsApiKeys get apiKeys =>
-      _WLSettingsIntegrationsApiKeys._(
-        [..._s, _Screens.apiKeys],
-        [..._i, null],
-      );
+      _WLSettingsIntegrationsApiKeys._([..._s, .apiKeys], [..._i, null]);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
 }
 
 final class const _WLSettingsIntegrationsApiKeys._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<ApiKeysNav> {
   @override
@@ -21647,8 +21185,10 @@ final class const _WLSettingsAdminWebhooksWebhook._(
   );
 }
 
-final class const _WLWorkspace._(final List<Enum> _s, final List<Object?> _i)
-    implements Hop<WorkspaceNav> {
+final class const _WLWorkspace._(
+  final List<_Screens> _s,
+  final List<Object?> _i,
+) implements Hop<WorkspaceNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -21662,7 +21202,7 @@ final class const _WLWorkspace._(final List<Enum> _s, final List<Object?> _i)
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLWorkspaceProject project(String id) =>
-      _WLWorkspaceProject._([..._s, _Screens.project], [..._i, id]);
+      _WLWorkspaceProject._([..._s, .project], [..._i, id]);
   _WLWorkspaceQ query(Set<WorkspaceQueryArg> q) =>
       _WLWorkspaceQ(_s, _i, {for (final t in q) t.key: t.value}, const {});
   Uri toUri([String? domain]) => Uri.parse(
@@ -21671,7 +21211,7 @@ final class const _WLWorkspace._(final List<Enum> _s, final List<Object?> _i)
 }
 
 class _WLWorkspaceQ(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
   final Map<String, Object?> _q,
   final Map<String, Object?> _f,
@@ -21688,7 +21228,7 @@ class _WLWorkspaceQ(
 }
 
 final class const _WLWorkspaceProject._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<ProjectNav> {
   @override
@@ -21704,12 +21244,9 @@ final class const _WLWorkspaceProject._(
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLWorkspaceProjectBoard board(String id) =>
-      _WLWorkspaceProjectBoard._([..._s, _Screens.board], [..._i, id]);
+      _WLWorkspaceProjectBoard._([..._s, .board], [..._i, id]);
   _WLWorkspaceProjectUserProfile userProfile(String id) =>
-      _WLWorkspaceProjectUserProfile._(
-        [..._s, _Screens.userProfile],
-        [..._i, id],
-      );
+      _WLWorkspaceProjectUserProfile._([..._s, .userProfile], [..._i, id]);
   _WLWorkspaceProjectQ query(Set<ProjectQueryArg> q) => _WLWorkspaceProjectQ(
     _s,
     _i,
@@ -21722,7 +21259,7 @@ final class const _WLWorkspaceProject._(
 }
 
 class _WLWorkspaceProjectQ(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
   final Map<String, Object?> _q,
   final Map<String, Object?> _f,
@@ -21739,7 +21276,7 @@ class _WLWorkspaceProjectQ(
 }
 
 final class const _WLWorkspaceProjectBoard._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<BoardNav> {
   @override
@@ -21755,10 +21292,7 @@ final class const _WLWorkspaceProjectBoard._(
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLWorkspaceProjectBoardTaskList taskList(String id) =>
-      _WLWorkspaceProjectBoardTaskList._(
-        [..._s, _Screens.taskList],
-        [..._i, id],
-      );
+      _WLWorkspaceProjectBoardTaskList._([..._s, .taskList], [..._i, id]);
   _WLWorkspaceProjectBoardQ query(Set<BoardQueryArg> q) =>
       _WLWorkspaceProjectBoardQ(_s, _i, {
         for (final t in q) t.key: t.value,
@@ -21769,7 +21303,7 @@ final class const _WLWorkspaceProjectBoard._(
 }
 
 class _WLWorkspaceProjectBoardQ(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
   final Map<String, Object?> _q,
   final Map<String, Object?> _f,
@@ -21786,7 +21320,7 @@ class _WLWorkspaceProjectBoardQ(
 }
 
 final class const _WLWorkspaceProjectBoardTaskList._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<TaskListNav> {
   @override
@@ -21802,30 +21336,24 @@ final class const _WLWorkspaceProjectBoardTaskList._(
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLWorkspaceProjectBoardTaskListTask task(String id) =>
-      _WLWorkspaceProjectBoardTaskListTask._(
-        [..._s, _Screens.task],
-        [..._i, id],
-      );
+      _WLWorkspaceProjectBoardTaskListTask._([..._s, .task], [..._i, id]);
   _WLWorkspaceProjectBoardTaskListTaskEditTask editTask(String id) =>
       _WLWorkspaceProjectBoardTaskListTaskEditTask._(
-        [..._s, _Screens.task, _Screens.editTask],
+        [..._s, .task, .editTask],
         [..._i, id, null],
       );
   _WLWorkspaceProjectBoardTaskListTaskTaskComment taskComment(String id) =>
       _WLWorkspaceProjectBoardTaskListTaskTaskComment._(
-        [..._s, _Screens.task, _Screens.taskComment],
+        [..._s, .task, .taskComment],
         [..._i, id, null],
       );
   _WLWorkspaceProjectBoardTaskListMilestone milestone(String id) =>
       _WLWorkspaceProjectBoardTaskListMilestone._(
-        [..._s, _Screens.milestone],
+        [..._s, .milestone],
         [..._i, id],
       );
   _WLWorkspaceProjectBoardTaskListSprint sprint(String id) =>
-      _WLWorkspaceProjectBoardTaskListSprint._(
-        [..._s, _Screens.sprint],
-        [..._i, id],
-      );
+      _WLWorkspaceProjectBoardTaskListSprint._([..._s, .sprint], [..._i, id]);
   _WLWorkspaceProjectBoardTaskListQ query(Set<TaskListQueryArg> q) =>
       _WLWorkspaceProjectBoardTaskListQ(_s, _i, {
         for (final t in q) t.key: t.value,
@@ -21836,7 +21364,7 @@ final class const _WLWorkspaceProjectBoardTaskList._(
 }
 
 class _WLWorkspaceProjectBoardTaskListQ(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
   final Map<String, Object?> _q,
   final Map<String, Object?> _f,
@@ -21853,7 +21381,7 @@ class _WLWorkspaceProjectBoardTaskListQ(
 }
 
 final class const _WLWorkspaceProjectBoardTaskListTask._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<TaskNav> {
   @override
@@ -21870,29 +21398,26 @@ final class const _WLWorkspaceProjectBoardTaskListTask._(
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLWorkspaceProjectBoardTaskListTaskSubtask subtask(String id) =>
       _WLWorkspaceProjectBoardTaskListTaskSubtask._(
-        [..._s, _Screens.subtask],
+        [..._s, .subtask],
         [..._i, id],
       );
   _WLWorkspaceProjectBoardTaskListTaskEditTask get editTask =>
       _WLWorkspaceProjectBoardTaskListTaskEditTask._(
-        [..._s, _Screens.editTask],
+        [..._s, .editTask],
         [..._i, null],
       );
   _WLWorkspaceProjectBoardTaskListTaskTaskComment get taskComment =>
       _WLWorkspaceProjectBoardTaskListTaskTaskComment._(
-        [..._s, _Screens.taskComment],
+        [..._s, .taskComment],
         [..._i, null],
       );
   _WLWorkspaceProjectBoardTaskListTaskAssignee assignee(String id) =>
       _WLWorkspaceProjectBoardTaskListTaskAssignee._(
-        [..._s, _Screens.assignee],
+        [..._s, .assignee],
         [..._i, id],
       );
   _WLWorkspaceProjectBoardTaskListTaskLabel label(String id) =>
-      _WLWorkspaceProjectBoardTaskListTaskLabel._(
-        [..._s, _Screens.label],
-        [..._i, id],
-      );
+      _WLWorkspaceProjectBoardTaskListTaskLabel._([..._s, .label], [..._i, id]);
   _WLWorkspaceProjectBoardTaskListTaskQ query(Set<TaskQueryArg> q) =>
       _WLWorkspaceProjectBoardTaskListTaskQ(_s, _i, {
         for (final t in q) t.key: t.value,
@@ -21903,7 +21428,7 @@ final class const _WLWorkspaceProjectBoardTaskListTask._(
 }
 
 class _WLWorkspaceProjectBoardTaskListTaskQ(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
   final Map<String, Object?> _q,
   final Map<String, Object?> _f,
@@ -21920,7 +21445,7 @@ class _WLWorkspaceProjectBoardTaskListTaskQ(
 }
 
 final class const _WLWorkspaceProjectBoardTaskListTaskSubtask._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<SubtaskNav> {
   @override
@@ -21938,7 +21463,7 @@ final class const _WLWorkspaceProjectBoardTaskListTaskSubtask._(
   _WLWorkspaceProjectBoardTaskListTaskSubtaskChecklistItem checklistItem(
     String id,
   ) => _WLWorkspaceProjectBoardTaskListTaskSubtaskChecklistItem._(
-    [..._s, _Screens.checklistItem],
+    [..._s, .checklistItem],
     [..._i, id],
   );
   Uri toUri([String? domain]) => Uri.parse(
@@ -21947,7 +21472,7 @@ final class const _WLWorkspaceProjectBoardTaskListTaskSubtask._(
 }
 
 final class const _WLWorkspaceProjectBoardTaskListTaskSubtaskChecklistItem._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<ChecklistItemNav> {
   @override
@@ -21968,7 +21493,7 @@ final class const _WLWorkspaceProjectBoardTaskListTaskSubtaskChecklistItem._(
 }
 
 final class const _WLWorkspaceProjectBoardTaskListTaskEditTask._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<EditTaskNav> {
   @override
@@ -21989,7 +21514,7 @@ final class const _WLWorkspaceProjectBoardTaskListTaskEditTask._(
 }
 
 final class const _WLWorkspaceProjectBoardTaskListTaskTaskComment._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<TaskCommentNav> {
   @override
@@ -22010,7 +21535,7 @@ final class const _WLWorkspaceProjectBoardTaskListTaskTaskComment._(
 }
 
 final class const _WLWorkspaceProjectBoardTaskListTaskAssignee._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<AssigneeNav> {
   @override
@@ -22031,7 +21556,7 @@ final class const _WLWorkspaceProjectBoardTaskListTaskAssignee._(
 }
 
 final class const _WLWorkspaceProjectBoardTaskListTaskLabel._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<LabelNav> {
   @override
@@ -22052,7 +21577,7 @@ final class const _WLWorkspaceProjectBoardTaskListTaskLabel._(
 }
 
 final class const _WLWorkspaceProjectBoardTaskListMilestone._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<MilestoneNav> {
   @override
@@ -22073,7 +21598,7 @@ final class const _WLWorkspaceProjectBoardTaskListMilestone._(
 }
 
 final class const _WLWorkspaceProjectBoardTaskListSprint._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<SprintNav> {
   @override
@@ -22094,7 +21619,7 @@ final class const _WLWorkspaceProjectBoardTaskListSprint._(
 }
 
 final class const _WLWorkspaceProjectUserProfile._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<WorkspaceProjectUserProfileNav> {
   @override
@@ -22115,7 +21640,7 @@ final class const _WLWorkspaceProjectUserProfile._(
   );
 }
 
-final class const _WLForum._(final List<Enum> _s, final List<Object?> _i)
+final class const _WLForum._(final List<_Screens> _s, final List<Object?> _i)
     implements Hop<ForumNav> {
   @override
   List<(Enum, Object?)> get chain => [
@@ -22130,14 +21655,14 @@ final class const _WLForum._(final List<Enum> _s, final List<Object?> _i)
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLForumForumCategory forumCategory(String id) =>
-      _WLForumForumCategory._([..._s, _Screens.forumCategory], [..._i, id]);
+      _WLForumForumCategory._([..._s, .forumCategory], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
 }
 
 final class const _WLForumForumCategory._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<ForumCategoryNav> {
   @override
@@ -22153,13 +21678,10 @@ final class const _WLForumForumCategory._(
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLForumForumCategoryForumThread forumThread(String id) =>
-      _WLForumForumCategoryForumThread._(
-        [..._s, _Screens.forumThread],
-        [..._i, id],
-      );
+      _WLForumForumCategoryForumThread._([..._s, .forumThread], [..._i, id]);
   _WLForumForumCategoryForumThreadReportThread reportThread(String id) =>
       _WLForumForumCategoryForumThreadReportThread._(
-        [..._s, _Screens.forumThread, _Screens.reportThread],
+        [..._s, .forumThread, .reportThread],
         [..._i, id, null],
       );
   _WLForumForumCategoryQ query(Set<ForumCategoryQueryArg> q) =>
@@ -22172,7 +21694,7 @@ final class const _WLForumForumCategory._(
 }
 
 class _WLForumForumCategoryQ(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
   final Map<String, Object?> _q,
   final Map<String, Object?> _f,
@@ -22189,7 +21711,7 @@ class _WLForumForumCategoryQ(
 }
 
 final class const _WLForumForumCategoryForumThread._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<ForumThreadNav> {
   @override
@@ -22206,12 +21728,12 @@ final class const _WLForumForumCategoryForumThread._(
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLForumForumCategoryForumThreadForumReply forumReply(String id) =>
       _WLForumForumCategoryForumThreadForumReply._(
-        [..._s, _Screens.forumReply],
+        [..._s, .forumReply],
         [..._i, id],
       );
   _WLForumForumCategoryForumThreadReportThread get reportThread =>
       _WLForumForumCategoryForumThreadReportThread._(
-        [..._s, _Screens.reportThread],
+        [..._s, .reportThread],
         [..._i, null],
       );
   _WLForumForumCategoryForumThreadQ query(Set<ForumThreadQueryArg> q) =>
@@ -22224,7 +21746,7 @@ final class const _WLForumForumCategoryForumThread._(
 }
 
 class _WLForumForumCategoryForumThreadQ(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
   final Map<String, Object?> _q,
   final Map<String, Object?> _f,
@@ -22241,7 +21763,7 @@ class _WLForumForumCategoryForumThreadQ(
 }
 
 final class const _WLForumForumCategoryForumThreadForumReply._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<ForumReplyNav> {
   @override
@@ -22259,7 +21781,7 @@ final class const _WLForumForumCategoryForumThreadForumReply._(
   _WLForumForumCategoryForumThreadForumReplyUserProfile userProfile(
     String id,
   ) => _WLForumForumCategoryForumThreadForumReplyUserProfile._(
-    [..._s, _Screens.userProfile],
+    [..._s, .userProfile],
     [..._i, id],
   );
   Uri toUri([String? domain]) => Uri.parse(
@@ -22268,7 +21790,7 @@ final class const _WLForumForumCategoryForumThreadForumReply._(
 }
 
 final class const _WLForumForumCategoryForumThreadForumReplyUserProfile._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<ForumForumCategoryForumThreadForumReplyUserProfileNav> {
   @override
@@ -22290,7 +21812,7 @@ final class const _WLForumForumCategoryForumThreadForumReplyUserProfile._(
 }
 
 final class const _WLForumForumCategoryForumThreadReportThread._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<ReportThreadNav> {
   @override
@@ -22310,7 +21832,7 @@ final class const _WLForumForumCategoryForumThreadReportThread._(
   );
 }
 
-final class const _WLLearn._(final List<Enum> _s, final List<Object?> _i)
+final class const _WLLearn._(final List<_Screens> _s, final List<Object?> _i)
     implements Hop<LearnNav> {
   @override
   List<(Enum, Object?)> get chain => [
@@ -22325,10 +21847,10 @@ final class const _WLLearn._(final List<Enum> _s, final List<Object?> _i)
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLLearnCourse course(String id) =>
-      _WLLearnCourse._([..._s, _Screens.course], [..._i, id]);
+      _WLLearnCourse._([..._s, .course], [..._i, id]);
   _WLLearnCourseCertificate certificate(String id) =>
       _WLLearnCourseCertificate._(
-        [..._s, _Screens.course, _Screens.certificate],
+        [..._s, .course, .certificate],
         [..._i, id, null],
       );
   Uri toUri([String? domain]) => Uri.parse(
@@ -22336,8 +21858,10 @@ final class const _WLLearn._(final List<Enum> _s, final List<Object?> _i)
   );
 }
 
-final class const _WLLearnCourse._(final List<Enum> _s, final List<Object?> _i)
-    implements Hop<CourseNav> {
+final class const _WLLearnCourse._(
+  final List<_Screens> _s,
+  final List<Object?> _i,
+) implements Hop<CourseNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -22351,9 +21875,9 @@ final class const _WLLearnCourse._(final List<Enum> _s, final List<Object?> _i)
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLLearnCourseCourseModule courseModule(String id) =>
-      _WLLearnCourseCourseModule._([..._s, _Screens.courseModule], [..._i, id]);
+      _WLLearnCourseCourseModule._([..._s, .courseModule], [..._i, id]);
   _WLLearnCourseCertificate get certificate =>
-      _WLLearnCourseCertificate._([..._s, _Screens.certificate], [..._i, null]);
+      _WLLearnCourseCertificate._([..._s, .certificate], [..._i, null]);
   _WLLearnCourseQ query(Set<CourseQueryArg> q) =>
       _WLLearnCourseQ(_s, _i, {for (final t in q) t.key: t.value}, const {});
   Uri toUri([String? domain]) => Uri.parse(
@@ -22362,7 +21886,7 @@ final class const _WLLearnCourse._(final List<Enum> _s, final List<Object?> _i)
 }
 
 class _WLLearnCourseQ(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
   final Map<String, Object?> _q,
   final Map<String, Object?> _f,
@@ -22379,7 +21903,7 @@ class _WLLearnCourseQ(
 }
 
 final class const _WLLearnCourseCourseModule._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<CourseModuleNav> {
   @override
@@ -22395,19 +21919,16 @@ final class const _WLLearnCourseCourseModule._(
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLLearnCourseCourseModuleLesson lesson(String id) =>
-      _WLLearnCourseCourseModuleLesson._([..._s, _Screens.lesson], [..._i, id]);
+      _WLLearnCourseCourseModuleLesson._([..._s, .lesson], [..._i, id]);
   _WLLearnCourseCourseModuleInstructor instructor(String id) =>
-      _WLLearnCourseCourseModuleInstructor._(
-        [..._s, _Screens.instructor],
-        [..._i, id],
-      );
+      _WLLearnCourseCourseModuleInstructor._([..._s, .instructor], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
 }
 
 final class const _WLLearnCourseCourseModuleLesson._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<LessonNav> {
   @override
@@ -22423,13 +21944,10 @@ final class const _WLLearnCourseCourseModuleLesson._(
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLLearnCourseCourseModuleLessonQuiz quiz(String id) =>
-      _WLLearnCourseCourseModuleLessonQuiz._(
-        [..._s, _Screens.quiz],
-        [..._i, id],
-      );
+      _WLLearnCourseCourseModuleLessonQuiz._([..._s, .quiz], [..._i, id]);
   _WLLearnCourseCourseModuleLessonCourseReview courseReview(String id) =>
       _WLLearnCourseCourseModuleLessonCourseReview._(
-        [..._s, _Screens.courseReview],
+        [..._s, .courseReview],
         [..._i, id],
       );
   Uri toUri([String? domain]) => Uri.parse(
@@ -22438,7 +21956,7 @@ final class const _WLLearnCourseCourseModuleLesson._(
 }
 
 final class const _WLLearnCourseCourseModuleLessonQuiz._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<QuizNav> {
   @override
@@ -22455,12 +21973,12 @@ final class const _WLLearnCourseCourseModuleLessonQuiz._(
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLLearnCourseCourseModuleLessonQuizQuestion question(String id) =>
       _WLLearnCourseCourseModuleLessonQuizQuestion._(
-        [..._s, _Screens.question],
+        [..._s, .question],
         [..._i, id],
       );
   _WLLearnCourseCourseModuleLessonQuizQuestionAnswer answer(String id) =>
       _WLLearnCourseCourseModuleLessonQuizQuestionAnswer._(
-        [..._s, _Screens.question, _Screens.answer],
+        [..._s, .question, .answer],
         [..._i, id, null],
       );
   Uri toUri([String? domain]) => Uri.parse(
@@ -22469,7 +21987,7 @@ final class const _WLLearnCourseCourseModuleLessonQuiz._(
 }
 
 final class const _WLLearnCourseCourseModuleLessonQuizQuestion._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<QuestionNav> {
   @override
@@ -22486,7 +22004,7 @@ final class const _WLLearnCourseCourseModuleLessonQuizQuestion._(
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLLearnCourseCourseModuleLessonQuizQuestionAnswer get answer =>
       _WLLearnCourseCourseModuleLessonQuizQuestionAnswer._(
-        [..._s, _Screens.answer],
+        [..._s, .answer],
         [..._i, null],
       );
   Uri toUri([String? domain]) => Uri.parse(
@@ -22495,7 +22013,7 @@ final class const _WLLearnCourseCourseModuleLessonQuizQuestion._(
 }
 
 final class const _WLLearnCourseCourseModuleLessonQuizQuestionAnswer._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<AnswerNav> {
   @override
@@ -22516,7 +22034,7 @@ final class const _WLLearnCourseCourseModuleLessonQuizQuestionAnswer._(
 }
 
 final class const _WLLearnCourseCourseModuleLessonCourseReview._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<CourseReviewNav> {
   @override
@@ -22537,7 +22055,7 @@ final class const _WLLearnCourseCourseModuleLessonCourseReview._(
 }
 
 final class const _WLLearnCourseCourseModuleInstructor._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<InstructorNav> {
   @override
@@ -22558,7 +22076,7 @@ final class const _WLLearnCourseCourseModuleInstructor._(
 }
 
 final class const _WLLearnCourseCertificate._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<CertificateNav> {
   @override
@@ -22578,7 +22096,7 @@ final class const _WLLearnCourseCertificate._(
   );
 }
 
-final class const _WLShop._(final List<Enum> _s, final List<Object?> _i)
+final class const _WLShop._(final List<_Screens> _s, final List<Object?> _i)
     implements Hop<ShopNav> {
   @override
   List<(Enum, Object?)> get chain => [
@@ -22593,18 +22111,18 @@ final class const _WLShop._(final List<Enum> _s, final List<Object?> _i)
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLShopShopDept shopDept(String id) =>
-      _WLShopShopDept._([..._s, _Screens.shopDept], [..._i, id]);
-  _WLShopCompareProducts get compareProducts => _WLShopCompareProducts._(
-    [..._s, _Screens.compareProducts],
-    [..._i, null],
-  );
+      _WLShopShopDept._([..._s, .shopDept], [..._i, id]);
+  _WLShopCompareProducts get compareProducts =>
+      _WLShopCompareProducts._([..._s, .compareProducts], [..._i, null]);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
 }
 
-final class const _WLShopShopDept._(final List<Enum> _s, final List<Object?> _i)
-    implements Hop<ShopDeptNav> {
+final class const _WLShopShopDept._(
+  final List<_Screens> _s,
+  final List<Object?> _i,
+) implements Hop<ShopDeptNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -22618,17 +22136,14 @@ final class const _WLShopShopDept._(final List<Enum> _s, final List<Object?> _i)
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLShopShopDeptShopCategory shopCategory(String id) =>
-      _WLShopShopDeptShopCategory._(
-        [..._s, _Screens.shopCategory],
-        [..._i, id],
-      );
+      _WLShopShopDeptShopCategory._([..._s, .shopCategory], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
 }
 
 final class const _WLShopShopDeptShopCategory._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<ShopCategoryNav> {
   @override
@@ -22645,7 +22160,7 @@ final class const _WLShopShopDeptShopCategory._(
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLShopShopDeptShopCategoryShopSubcategory shopSubcategory(String id) =>
       _WLShopShopDeptShopCategoryShopSubcategory._(
-        [..._s, _Screens.shopSubcategory],
+        [..._s, .shopSubcategory],
         [..._i, id],
       );
   Uri toUri([String? domain]) => Uri.parse(
@@ -22654,7 +22169,7 @@ final class const _WLShopShopDeptShopCategory._(
 }
 
 final class const _WLShopShopDeptShopCategoryShopSubcategory._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<ShopSubcategoryNav> {
   @override
@@ -22671,7 +22186,7 @@ final class const _WLShopShopDeptShopCategoryShopSubcategory._(
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLShopShopDeptShopCategoryShopSubcategoryProduct product(String id) =>
       _WLShopShopDeptShopCategoryShopSubcategoryProduct._(
-        [..._s, _Screens.product],
+        [..._s, .product],
         [..._i, id],
       );
   _WLShopShopDeptShopCategoryShopSubcategoryQ query(
@@ -22685,7 +22200,7 @@ final class const _WLShopShopDeptShopCategoryShopSubcategory._(
 }
 
 class _WLShopShopDeptShopCategoryShopSubcategoryQ(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
   final Map<String, Object?> _q,
   final Map<String, Object?> _f,
@@ -22702,7 +22217,7 @@ class _WLShopShopDeptShopCategoryShopSubcategoryQ(
 }
 
 final class const _WLShopShopDeptShopCategoryShopSubcategoryProduct._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<ProductNav> {
   @override
@@ -22720,18 +22235,18 @@ final class const _WLShopShopDeptShopCategoryShopSubcategoryProduct._(
   _WLShopShopDeptShopCategoryShopSubcategoryProductProductVariant
   productVariant(String id) =>
       _WLShopShopDeptShopCategoryShopSubcategoryProductProductVariant._(
-        [..._s, _Screens.productVariant],
+        [..._s, .productVariant],
         [..._i, id],
       );
   _WLShopShopDeptShopCategoryShopSubcategoryProductProductReview productReview(
     String id,
   ) => _WLShopShopDeptShopCategoryShopSubcategoryProductProductReview._(
-    [..._s, _Screens.productReview],
+    [..._s, .productReview],
     [..._i, id],
   );
   _WLShopShopDeptShopCategoryShopSubcategoryProductBrand brand(String id) =>
       _WLShopShopDeptShopCategoryShopSubcategoryProductBrand._(
-        [..._s, _Screens.brand],
+        [..._s, .brand],
         [..._i, id],
       );
   _WLShopShopDeptShopCategoryShopSubcategoryProductQ query(
@@ -22745,7 +22260,7 @@ final class const _WLShopShopDeptShopCategoryShopSubcategoryProduct._(
 }
 
 class _WLShopShopDeptShopCategoryShopSubcategoryProductQ(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
   final Map<String, Object?> _q,
   final Map<String, Object?> _f,
@@ -22762,7 +22277,7 @@ class _WLShopShopDeptShopCategoryShopSubcategoryProductQ(
 }
 
 final class const _WLShopShopDeptShopCategoryShopSubcategoryProductProductVariant._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<ProductVariantNav> {
   @override
@@ -22783,7 +22298,7 @@ final class const _WLShopShopDeptShopCategoryShopSubcategoryProductProductVarian
 }
 
 final class const _WLShopShopDeptShopCategoryShopSubcategoryProductProductReview._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<ProductReviewNav> {
   @override
@@ -22804,7 +22319,7 @@ final class const _WLShopShopDeptShopCategoryShopSubcategoryProductProductReview
 }
 
 final class const _WLShopShopDeptShopCategoryShopSubcategoryProductBrand._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<BrandNav> {
   @override
@@ -22825,7 +22340,7 @@ final class const _WLShopShopDeptShopCategoryShopSubcategoryProductBrand._(
 }
 
 final class const _WLShopCompareProducts._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<CompareProductsNav> {
   @override
@@ -22845,7 +22360,7 @@ final class const _WLShopCompareProducts._(
   );
 }
 
-final class const _WLActivity._(final List<Enum> _s, final List<Object?> _i)
+final class const _WLActivity._(final List<_Screens> _s, final List<Object?> _i)
     implements Hop<ActivityNav> {
   @override
   List<(Enum, Object?)> get chain => [
@@ -22860,14 +22375,14 @@ final class const _WLActivity._(final List<Enum> _s, final List<Object?> _i)
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLActivityWorkout workout(String id) =>
-      _WLActivityWorkout._([..._s, _Screens.workout], [..._i, id]);
+      _WLActivityWorkout._([..._s, .workout], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
 }
 
 final class const _WLActivityWorkout._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<WorkoutNav> {
   @override
@@ -22883,7 +22398,7 @@ final class const _WLActivityWorkout._(
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLActivityWorkoutExercise exercise(String id) =>
-      _WLActivityWorkoutExercise._([..._s, _Screens.exercise], [..._i, id]);
+      _WLActivityWorkoutExercise._([..._s, .exercise], [..._i, id]);
   _WLActivityWorkoutQ query(Set<WorkoutQueryArg> q) => _WLActivityWorkoutQ(
     _s,
     _i,
@@ -22896,7 +22411,7 @@ final class const _WLActivityWorkout._(
 }
 
 class _WLActivityWorkoutQ(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
   final Map<String, Object?> _q,
   final Map<String, Object?> _f,
@@ -22913,7 +22428,7 @@ class _WLActivityWorkoutQ(
 }
 
 final class const _WLActivityWorkoutExercise._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<ExerciseNav> {
   @override
@@ -22930,7 +22445,7 @@ final class const _WLActivityWorkoutExercise._(
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLActivityWorkoutExerciseExerciseSet exerciseSet(String id) =>
       _WLActivityWorkoutExerciseExerciseSet._(
-        [..._s, _Screens.exerciseSet],
+        [..._s, .exerciseSet],
         [..._i, id],
       );
   Uri toUri([String? domain]) => Uri.parse(
@@ -22939,7 +22454,7 @@ final class const _WLActivityWorkoutExercise._(
 }
 
 final class const _WLActivityWorkoutExerciseExerciseSet._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<ExerciseSetNav> {
   @override
@@ -22959,7 +22474,7 @@ final class const _WLActivityWorkoutExerciseExerciseSet._(
   );
 }
 
-final class const _WLDeepDemo._(final List<Enum> _s, final List<Object?> _i)
+final class const _WLDeepDemo._(final List<_Screens> _s, final List<Object?> _i)
     implements Hop<DeepDemoNav> {
   @override
   List<(Enum, Object?)> get chain => [
@@ -22974,14 +22489,14 @@ final class const _WLDeepDemo._(final List<Enum> _s, final List<Object?> _i)
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLDeepDemoLevelA levelA(String id) =>
-      _WLDeepDemoLevelA._([..._s, _Screens.levelA], [..._i, id]);
+      _WLDeepDemoLevelA._([..._s, .levelA], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
 }
 
 final class const _WLDeepDemoLevelA._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<LevelANav> {
   @override
@@ -22997,14 +22512,14 @@ final class const _WLDeepDemoLevelA._(
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLDeepDemoLevelALevelB levelB(String id) =>
-      _WLDeepDemoLevelALevelB._([..._s, _Screens.levelB], [..._i, id]);
+      _WLDeepDemoLevelALevelB._([..._s, .levelB], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
 }
 
 final class const _WLDeepDemoLevelALevelB._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<LevelBNav> {
   @override
@@ -23020,14 +22535,14 @@ final class const _WLDeepDemoLevelALevelB._(
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLDeepDemoLevelALevelBLevelC levelC(String id) =>
-      _WLDeepDemoLevelALevelBLevelC._([..._s, _Screens.levelC], [..._i, id]);
+      _WLDeepDemoLevelALevelBLevelC._([..._s, .levelC], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
 }
 
 final class const _WLDeepDemoLevelALevelBLevelC._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<LevelCNav> {
   @override
@@ -23043,17 +22558,14 @@ final class const _WLDeepDemoLevelALevelBLevelC._(
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLDeepDemoLevelALevelBLevelCLevelD levelD(String id) =>
-      _WLDeepDemoLevelALevelBLevelCLevelD._(
-        [..._s, _Screens.levelD],
-        [..._i, id],
-      );
+      _WLDeepDemoLevelALevelBLevelCLevelD._([..._s, .levelD], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
   );
 }
 
 final class const _WLDeepDemoLevelALevelBLevelCLevelD._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<LevelDNav> {
   @override
@@ -23070,7 +22582,7 @@ final class const _WLDeepDemoLevelALevelBLevelCLevelD._(
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLDeepDemoLevelALevelBLevelCLevelDLevelE levelE(String id) =>
       _WLDeepDemoLevelALevelBLevelCLevelDLevelE._(
-        [..._s, _Screens.levelE],
+        [..._s, .levelE],
         [..._i, id],
       );
   Uri toUri([String? domain]) => Uri.parse(
@@ -23079,7 +22591,7 @@ final class const _WLDeepDemoLevelALevelBLevelCLevelD._(
 }
 
 final class const _WLDeepDemoLevelALevelBLevelCLevelDLevelE._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<LevelENav> {
   @override
@@ -23096,7 +22608,7 @@ final class const _WLDeepDemoLevelALevelBLevelCLevelDLevelE._(
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLDeepDemoLevelALevelBLevelCLevelDLevelELevelF levelF(String id) =>
       _WLDeepDemoLevelALevelBLevelCLevelDLevelELevelF._(
-        [..._s, _Screens.levelF],
+        [..._s, .levelF],
         [..._i, id],
       );
   Uri toUri([String? domain]) => Uri.parse(
@@ -23105,7 +22617,7 @@ final class const _WLDeepDemoLevelALevelBLevelCLevelDLevelE._(
 }
 
 final class const _WLDeepDemoLevelALevelBLevelCLevelDLevelELevelF._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<LevelFNav> {
   @override

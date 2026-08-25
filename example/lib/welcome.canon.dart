@@ -335,22 +335,20 @@ final class const Root._() extends AnyPlacement {
 }
 
 final class const On<N extends AnyNav>._(
-  final List<Enum> specs,
+  final List<_Screens> specs,
   final List<Object?> ids,
   final N? nav, [
   final List<ViewCond> conds = const [],
 ]) {
-  static OnHome get home =>
-      OnHome._([_Screens.home], [null], const HomeNav._());
-  static OnTodo get todo =>
-      OnTodo._([_Screens.todo], [null], const TodoNav._());
+  static OnHome get home => OnHome._([.home], [null], const HomeNav._());
+  static OnTodo get todo => OnTodo._([.todo], [null], const TodoNav._());
 }
 
 final class const OnHome._(super.specs, super.ids, super.nav)
     extends On<HomeNav> {
   this : super._();
   OnTodo get todo =>
-      OnTodo._([...specs, _Screens.todo], [...ids, null], const TodoNav._());
+      OnTodo._([...specs, .todo], [...ids, null], const TodoNav._());
 }
 
 final class const OnTodo._(super.specs, super.ids, super.nav)
@@ -418,8 +416,8 @@ final class const TodoNav._() extends AnyPlacement {
   }
 }
 
-extension type const ScreenId<I>._(Enum spec) {
-  static const todo = ScreenId<TodoId>._(_Screens.todo);
+extension type const ScreenId<I>._(_Screens spec) {
+  static const todo = ScreenId<TodoId>._(.todo);
 }
 
 extension ScreenIdOf on BuildContext {
@@ -447,9 +445,9 @@ void verifyScreens() {
 /// `Url.<route>…` and `.toUri([domain])`; `parseUrl` returns one.
 sealed class const Url([final String? domain]) {
   Uri toUri(String domain);
-  static _WLHome get home => _WLHome._([_Screens.home], [null]);
+  static _WLHome get home => _WLHome._([.home], [null]);
   static _WLHomeTodo todo(TodoId id) =>
-      _WLHomeTodo._([_Screens.home, _Screens.todo], [null, id]);
+      _WLHomeTodo._([.home, .todo], [null, id]);
 }
 
 /// A POSITION in the tree — a screen with a widget to present and a nav
@@ -467,9 +465,9 @@ sealed class const Place([super.domain]) extends Url implements Hop<AnyNav> {
   AnyNav get nav => _atOf(_Screens.graph.current);
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
-  static _WLHome get home => _WLHome._([_Screens.home], [null]);
+  static _WLHome get home => _WLHome._([.home], [null]);
   static _WLHomeTodo todo(TodoId id) =>
-      _WLHomeTodo._([_Screens.home, _Screens.todo], [null, id]);
+      _WLHomeTodo._([.home, .todo], [null, id]);
 }
 
 /// A resolve-only branch (declared via `.link`/`slots`): URL-shaped DATA
@@ -522,7 +520,7 @@ Url? parseUrl(String url) {
   return null;
 }
 
-final class const _WLHome._(final List<Enum> _s, final List<Object?> _i)
+final class const _WLHome._(final List<_Screens> _s, final List<Object?> _i)
     implements Hop<HomeNav> {
   @override
   List<(Enum, Object?)> get chain => [
@@ -536,13 +534,12 @@ final class const _WLHome._(final List<Enum> _s, final List<Object?> _i)
   HomeNav get nav => const HomeNav._();
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLHomeTodo todo(TodoId id) =>
-      _WLHomeTodo._([..._s, _Screens.todo], [..._i, id]);
+  _WLHomeTodo todo(TodoId id) => _WLHomeTodo._([..._s, .todo], [..._i, id]);
   Uri toUri(String domain) =>
       Uri.parse(_Screens.graph.encodeNavUrl(domain, _s, _i));
 }
 
-final class const _WLHomeTodo._(final List<Enum> _s, final List<Object?> _i)
+final class const _WLHomeTodo._(final List<_Screens> _s, final List<Object?> _i)
     implements Hop<TodoNav> {
   @override
   List<(Enum, Object?)> get chain => [

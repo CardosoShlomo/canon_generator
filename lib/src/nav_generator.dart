@@ -477,6 +477,18 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     // A screen's enum-qualified value (`_Root.home`, `Shop.shop`) — the only
     // place graft surfaces in the output; everything else is by name.
     String sv(String name) => '${specOf[name]}.$name';
+    // The one enum a screen set lives in — the field type a constructed-only
+    // spec site can carry; a graft-mixed set falls back to bare `Enum`.
+    String specTypeOf(Iterable<String> screens) {
+      final specs = {for (final s in screens) specOf[s]!};
+      return specs.length == 1 ? specs.single : 'Enum';
+    }
+
+    // A screen literal under a context of [type]: the dot-shorthand when the
+    // type pins the enum, the qualified spelling under bare `Enum`.
+    String svIn(String type, String name) =>
+        type == 'Enum' ? sv(name) : '.$name';
+    final treeT = specTypeOf([for (final r in rows) r.name]);
     // Enums that declare an `id` field — i.e. some row of theirs is id-bearing.
     // Only these have `.id` to verify; an all-id-free enum has no field.
     final specsWithId = {
@@ -1059,8 +1071,8 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
 
     // Read a source's live id, projecting one record component for a projection.
     String idRead(String src, int? comp) => comp == null
-        ? '_idOf(${sv(src)})'
-        : '(_idOf(${sv(src)}) as ${idOf[src]})${componentRead(src, comp)}';
+        ? '_idOf(${svIn(treeT, src)})'
+        : '(_idOf(${svIn(treeT, src)}) as ${idOf[src]})${componentRead(src, comp)}';
     String parentPush(String x) {
       final src = inheritSrcUniform(x);
       final idT = idOf[x];
@@ -1097,7 +1109,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
           for (var i = 0; i < comps.length; i++)
             if (filled[i] == null && comps[i] == srcT) i,
         ].first;
-        filled[idx] = '_idOf(${sv(src.screen)})';
+        filled[idx] = '_idOf(${svIn(treeT, src.screen)})';
       }
       final missing = [
         for (var i = 0; i < comps.length; i++)
@@ -1151,8 +1163,8 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       if (inheritSrc != null && path != null) {
         final ci = node?.inheritComponent;
         final read = ci == null
-            ? '_idOf(${sv(inheritSrc)})'
-            : '(_idOf(${sv(inheritSrc)}) as ${idOf[inheritSrc]})'
+            ? '_idOf(${svIn(treeT, inheritSrc)})'
+            : '(_idOf(${svIn(treeT, inheritSrc)}) as ${idOf[inheritSrc]})'
                   '${componentRead(inheritSrc, ci)}';
         return '  $returns go${_cap(child)}() {\n'
             '    $popSelf$spec.graph.go(${sv(child)}, $read, true);\n'
@@ -1367,33 +1379,35 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       }
       b.writeln('}');
       if (pops.length >= 2) {
+        final pT = specTypeOf(pops.keys);
         b.writeln(
           'final class const $popName<N extends AnyNav>._('
-          'final Enum spec, final N? nav) {',
+          'final $pT spec, final N? nav) {',
         );
         for (final e in pops.entries) {
           final pt = isSingle(e.key) ? e.value : '${_cap(e.key)}Placement';
           final pv = isSingle(e.key) ? '${e.value}._()' : 'null';
           b.writeln(
-            '  static const ${e.key} = $popName<$pt>._(${sv(e.key)}, $pv);',
+            '  static const ${e.key} = $popName<$pt>._(${svIn(pT, e.key)}, $pv);',
           );
         }
         b.writeln('}');
       }
       if (edges.length >= 2) {
+        final eT = specTypeOf(edges.keys);
         b.writeln(
           'final class const $hopName<N extends AnyNav>._('
-          'final Enum spec, final Object? id, final N nav) {',
+          'final $eT spec, final Object? id, final N nav) {',
         );
         for (final e in edges.entries) {
           final idT = idOf[e.key];
           if (idT == null) {
             b.writeln(
-              '  static const ${e.key} = $hopName<${e.value}>._(${sv(e.key)}, null, ${e.value}._());',
+              '  static const ${e.key} = $hopName<${e.value}>._(${svIn(eT, e.key)}, null, ${e.value}._());',
             );
           } else {
             b.writeln(
-              '  static $hopName<${e.value}> ${e.key}($idT id) => $hopName._(${sv(e.key)}, id, const ${e.value}._());',
+              '  static $hopName<${e.value}> ${e.key}($idT id) => $hopName._(${svIn(eT, e.key)}, id, const ${e.value}._());',
             );
           }
         }
@@ -1413,7 +1427,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln('// ignore_for_file: invalid_use_of_internal_member');
     if (hasInherit) {
       // An inherited edge reads its ancestor's live id from the chain.
-      b.writeln('Object? _idOf(Enum s) =>');
+      b.writeln('Object? _idOf($treeT s) =>');
       b.writeln('    $spec.graph.stack.lastWhere((e) => e.screen == s).id;');
     }
     if (hasMulti || hasCanPop) {
@@ -2110,7 +2124,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
             ? 'const ${placementName(e.value.single)}._()'
             : 'null';
         stepBuf.writeln(
-          '  $ret get ${e.key} => $ctor._([...specs, ${sv(e.key)}], [...ids, null], $cArg);',
+          '  $ret get ${e.key} => $ctor._([...specs, ${svIn(treeT, e.key)}], [...ids, null], $cArg);',
         );
       }
       // Inherit kick-start shortcut: an inheriting leaf grandchild (`editItem`
@@ -2143,7 +2157,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
           final gcCtor = gcLeaf ? 'On${_cap(gc.screen)}Term' : 'On';
           stepBuf.writeln(
             '  $gcRet ${gc.screen}(${idOf[c.screen]} id) =>'
-            ' $gcCtor._([...specs, ${sv(c.screen)}, ${sv(gc.screen)}], [...ids, id, null], const $gcNav._());',
+            ' $gcCtor._([...specs, ${svIn(treeT, c.screen)}, ${svIn(treeT, gc.screen)}], [...ids, id, null], const $gcNav._());',
           );
         }
       }
@@ -2179,7 +2193,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     );
 
     b.writeln(
-      'final class const On<${onDecl()}>._(final List<Enum> specs, '
+      'final class const On<${onDecl()}>._(final List<$treeT> specs, '
       'final List<Object?> ids, final N? nav, '
       '[final List<ViewCond> conds = const []]) {',
     );
@@ -2202,7 +2216,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       // Always a getter (id = null matches any); `.x(id)` invokes the step's
       // call() to pin a specific id.
       b.writeln(
-        '  static $ret get ${r.name} => $ctor._([${sv(r.name)}], [null], $navArg);',
+        '  static $ret get ${r.name} => $ctor._([${svIn(treeT, r.name)}], [null], $navArg);',
       );
     }
     // Placement-less GLOBAL view-state selectors: no screen, just conditions on
@@ -2240,9 +2254,12 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     }
     b.writeln('}');
     if (hasParentOf) {
+      final parentT = specTypeOf([
+        for (final ps in parentScreensOf.values) ...ps,
+      ]);
       b.writeln(
         'final class const OnParentOf<${onDecl()}>._('
-        'final Set<Enum> parents, N nav) extends On<${onNV()}> {',
+        'final Set<$parentT> parents, N nav) extends On<${onNV()}> {',
       );
       b.writeln('  this : super._(const [], const [], nav);');
       b.writeln('}');
@@ -2250,7 +2267,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       for (final e in parentScreensOf.entries) {
         final cap = '${_cap(e.key)}NavParent';
         final lits = (e.value.toList()..sort())
-            .map((s) => '${sv(s)}')
+            .map((s) => svIn(parentT, s))
             .join(', ');
         b.writeln('  OnParentOf<${onArgs(cap, e.key)}> get ${e.key} =>');
         b.writeln('      OnParentOf._(const {$lits}, const $cap._());');
@@ -2411,9 +2428,10 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     // forget()'s gated target table — only when there are 2+ keeps (a single
     // keep gets the named forget<Keep>() verb instead, so it needs no handle).
     if (kept.length >= 2) {
-      b.writeln('final class const Keep._(final Enum spec) {');
+      final kT = specTypeOf(kept);
+      b.writeln('final class const Keep._(final $kT spec) {');
       for (final name in kept) {
-        b.writeln('  static const $name = Keep._(${sv(name)});');
+        b.writeln('  static const $name = Keep._(${svIn(kT, name)});');
       }
       b.writeln('}');
     }
@@ -2640,10 +2658,11 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
         if (r.idType != null) r,
     ];
     if (idRows.isNotEmpty) {
-      b.writeln('extension type const ScreenId<I>._(Enum spec) {');
+      final iT = specTypeOf([for (final r in idRows) r.name]);
+      b.writeln('extension type const ScreenId<I>._($iT spec) {');
       for (final r in idRows) {
         b.writeln(
-          '  static const ${r.name} = ScreenId<${r.idType}>._(${sv(r.name)});',
+          '  static const ${r.name} = ScreenId<${r.idType}>._(${svIn(iT, r.name)});',
         );
       }
       b.writeln('}');
@@ -2965,10 +2984,11 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       ];
       String wlAccessor(PlacementNode c, {required bool static}) {
         final cn = wlName(c);
+        final ct = specTypeOf(c.path);
         final pre = static ? 'static ' : '';
         final push = static
-            ? '[${sv(c.screen)}], [${idOf[c.screen] != null && c.inheritSource == null ? 'id' : 'null'}]'
-            : '[..._s, ${sv(c.screen)}], [..._i, '
+            ? '[${svIn(ct, c.screen)}], [${idOf[c.screen] != null && c.inheritSource == null ? 'id' : 'null'}]'
+            : '[..._s, ${svIn(ct, c.screen)}], [..._i, '
                   '${idOf[c.screen] != null && c.inheritSource == null ? 'id' : 'null'}]';
         // id-bearing (non-inherited) → method taking the id; else a getter.
         return idOf[c.screen] != null && c.inheritSource == null
@@ -2985,7 +3005,8 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
         final idT = idOf[s];
         // The lone id-bearing segment: the inherit source, or the screen itself.
         final anchor = node.inheritSource?.screen ?? (idT != null ? s : null);
-        final pathEnums = [for (final p in node.path) sv(p)].join(', ');
+        final t = specTypeOf(node.path);
+        final pathEnums = [for (final p in node.path) svIn(t, p)].join(', ');
         final ids = [for (final p in node.path) p == anchor ? 'id' : 'null']
             .join(', ');
         final step = wlName(node);
@@ -3001,11 +3022,12 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
         final navT = placementName(n);
         // A Place step is a complete root-down placement → a navigable Hop,
         // so `Screen.go(Place.x())` lands the whole chain and returns its nav.
+        final wt = specTypeOf(n.path);
         chainBuf.writeln(
           hasKickstart
-              ? 'final class const $name._(final List<Enum> _s, '
+              ? 'final class const $name._(final List<$wt> _s, '
                     'final List<Object?> _i) implements Hop<$navT> {'
-              : 'class const $name._(final List<Enum> _s, '
+              : 'class const $name._(final List<$wt> _s, '
                     'final List<Object?> _i) {',
         );
         if (hasKickstart) {
@@ -3046,9 +3068,10 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
                 continue;
               }
               final gn = wlName(gc);
+              final gt = specTypeOf(gc.path);
               chainBuf.writeln(
                 '  $gn ${gc.screen}(${idOf[c.screen]} id) => '
-                '$gn._([..._s, ${sv(c.screen)}, ${sv(gc.screen)}], '
+                '$gn._([..._s, ${svIn(gt, c.screen)}, ${svIn(gt, gc.screen)}], '
                 '[..._i, id, null]);',
               );
             }
@@ -3091,7 +3114,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
         // stage only) transitions into the fragment stage.
         void viewStage(String cls, {String? transition}) {
           chainBuf.writeln(
-            'class $cls(final List<Enum> _s, '
+            'class $cls(final List<$wt> _s, '
             'final List<Object?> _i, final Map<String, Object?> _q, '
             'final Map<String, Object?> _f) {',
           );

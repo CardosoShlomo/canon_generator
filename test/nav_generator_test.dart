@@ -1182,9 +1182,9 @@ void main() {
           'OrderNav goOrder() {',
         ), // both components inherited -> no args
         contains('_Screens.graph.go(_Screens.order, ('),
-        contains('_idOf(_Screens.product)'),
-        contains('_idOf(_Screens.author)'),
-        contains('Object? _idOf(Enum s)'),
+        contains('_idOf(.product)'),
+        contains('_idOf(.author)'),
+        contains('Object? _idOf(_Screens s)'),
       ]),
       spec: _compositeSpec,
     ),
@@ -1196,7 +1196,7 @@ void main() {
       allOf([
         contains('OrderNav goOrder(int id) {'),
         contains(
-          '_Screens.graph.go(_Screens.order, (_idOf(_Screens.product), id), true)',
+          '_Screens.graph.go(_Screens.order, (_idOf(.product), id), true)',
         ),
         isNot(contains('goOrder((String, int) id)')),
       ]),
@@ -1238,7 +1238,7 @@ void main() {
       allOf([
         contains('EditProductNav goEditProduct() {'),
         contains(
-          '_Screens.graph.go(_Screens.editProduct, _idOf(_Screens.product), true)',
+          '_Screens.graph.go(_Screens.editProduct, _idOf(.product), true)',
         ),
         isNot(
           contains(
@@ -1259,9 +1259,9 @@ void main() {
           'EditProductNav goEditProduct() {',
         ), // chained: no id parameter
         contains(
-          '_Screens.graph.go(_Screens.editProduct, _idOf(_Screens.product), true)',
+          '_Screens.graph.go(_Screens.editProduct, _idOf(.product), true)',
         ),
-        contains('Object? _idOf(Enum s)'), // the live-ancestor reader
+        contains('Object? _idOf(_Screens s)'), // the live-ancestor reader
       ),
       spec: _inheritSpec,
     ),
@@ -1355,7 +1355,7 @@ void main() {
         // at order the source id is live → no-arg verb reading it.
         contains('goOrderProfile()'),
         contains(
-          '_Screens.graph.go(_Screens.orderProfile, _idOf(_Screens.profile), true)',
+          '_Screens.graph.go(_Screens.orderProfile, _idOf(.profile), true)',
         ),
         // order's id sits between profile and orderProfile → no single-id reach.
         isNot(contains('goOrderProfile(String id)')),
@@ -1647,7 +1647,7 @@ void main() {
         // `item` sits under home alone → a direct kick-start static jumps to it
         contains(
           'static _WLHomeItem item(String id) =>\n'
-          '      _WLHomeItem._([_Screens.home, _Screens.item], [null, id]);',
+          '      _WLHomeItem._([.home, .item], [null, id]);',
         ),
       ]),
       spec: _spec,
@@ -1703,7 +1703,7 @@ void main() {
         contains('sealed class const Place([super.domain]) extends Url'),
         // id-free root → a getter; id-bearing root → a method (id mandatory
         // before `.toUri()`, no bare `.author`)
-        contains('static _WLHome get home => _WLHome._([_Screens.home]'),
+        contains('static _WLHome get home => _WLHome._([.home]'),
         contains('static _WLAuthor author(String id) =>'),
         isNot(contains('static _WLAuthor get author')),
         contains('final class const _WLAuthor._('),
@@ -1906,7 +1906,7 @@ void main() {
     () => _expectGenerated(
       allOf([
         contains('final class const On<'),
-        contains('final List<Enum> specs'), // suffix selector
+        contains('final List<_Screens> specs'), // suffix selector
         contains('final class const OnHome'), // step: home has child item
         contains('final class const OnItem'), // step: item cyclic, child about
         contains('final class const OnAbout'), // step: about cyclic leaf

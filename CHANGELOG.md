@@ -1,3 +1,7 @@
+## 0.41.1
+
+- Screen literals use the dot shorthand where the enum type is pinned.
+
 ## 0.41.0
 
 - Generated code uses Dart 3.13 primary constructors; min SDK ^3.13.0.

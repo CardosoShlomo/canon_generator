@@ -833,24 +833,22 @@ final class const On<N extends AnyNav, V>._(
 }
 
 final class const OnParentOf<N extends AnyNav, V>._(
-  final Set<Enum> parents,
+  final Set<_Screens> parents,
   N nav,
 ) extends On<N, V> {
   this : super._(const [], const [], nav);
 }
 
 final class const _ParentSel._() {
-  OnParentOf<CategoryNavParent, AnyView> get category => OnParentOf._(const {
-    _Screens.category,
-    _Screens.home,
-  }, const CategoryNavParent._());
+  OnParentOf<CategoryNavParent, AnyView> get category =>
+      OnParentOf._(const {.category, .home}, const CategoryNavParent._());
   OnParentOf<ProductNavParent, ProductView> get product => OnParentOf._(const {
-    _Screens.category,
-    _Screens.order,
-    _Screens.scan,
-    _Screens.search,
-    _Screens.seller,
-    _Screens.wishlist,
+    .category,
+    .order,
+    .scan,
+    .search,
+    .seller,
+    .wishlist,
   }, const ProductNavParent._());
 }
 
@@ -1839,9 +1837,9 @@ final class const ConfirmationScreenId(@override final String id)
     extends _SId
     with Identifiable<String>;
 
-final class const Keep._(final Enum spec) {
-  static const account = Keep._(_Screens.account);
-  static const home = Keep._(_Screens.home);
+final class const Keep._(final _Screens spec) {
+  static const account = Keep._(.account);
+  static const home = Keep._(.home);
 }
 
 final class const SplashNav._() extends AnyPlacement {
@@ -2050,25 +2048,25 @@ final class const CategoryNav._()
 }
 
 final class const CategoryPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
-  static const home = CategoryPop<HomeNav>._(_Screens.home, HomeNav._());
+  static const home = CategoryPop<HomeNav>._(.home, HomeNav._());
   static const category = CategoryPop<CategoryNav>._(
-    _Screens.category,
+    .category,
     CategoryNav._(),
   );
 }
 
 final class const CategoryHop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final Object? id,
   final N nav,
 ) {
   static CategoryHop<CategoryNav> category(CategoryId id) =>
-      CategoryHop._(_Screens.category, id, const CategoryNav._());
+      CategoryHop._(.category, id, const CategoryNav._());
   static CategoryHop<HomeCategoryProductNav> product(ProductId id) =>
-      CategoryHop._(_Screens.product, id, const HomeCategoryProductNav._());
+      CategoryHop._(.product, id, const HomeCategoryProductNav._());
 }
 
 ProductPlacement _resolveProductPlacement(List<Enum> c) {
@@ -2143,23 +2141,17 @@ final class const HomeSearchProductNav._()
 }
 
 final class const HomeSearchProductPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
   static const search = HomeSearchProductPop<SearchNav>._(
-    _Screens.search,
+    .search,
     SearchNav._(),
   );
-  static const home = HomeSearchProductPop<HomeNav>._(
-    _Screens.home,
-    HomeNav._(),
-  );
-  static const seller = HomeSearchProductPop<SellerPlacement>._(
-    _Screens.seller,
-    null,
-  );
+  static const home = HomeSearchProductPop<HomeNav>._(.home, HomeNav._());
+  static const seller = HomeSearchProductPop<SellerPlacement>._(.seller, null);
   static const product = HomeSearchProductPop<ProductPlacement>._(
-    _Screens.product,
+    .product,
     null,
   );
 }
@@ -2210,23 +2202,20 @@ final class const HomeCategoryProductNav._()
 }
 
 final class const HomeCategoryProductPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
   static const category = HomeCategoryProductPop<CategoryNav>._(
-    _Screens.category,
+    .category,
     CategoryNav._(),
   );
-  static const home = HomeCategoryProductPop<HomeNav>._(
-    _Screens.home,
-    HomeNav._(),
-  );
+  static const home = HomeCategoryProductPop<HomeNav>._(.home, HomeNav._());
   static const seller = HomeCategoryProductPop<SellerPlacement>._(
-    _Screens.seller,
+    .seller,
     null,
   );
   static const product = HomeCategoryProductPop<ProductPlacement>._(
-    _Screens.product,
+    .product,
     null,
   );
 }
@@ -2277,19 +2266,13 @@ final class const HomeScanProductNav._()
 }
 
 final class const HomeScanProductPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
-  static const scan = HomeScanProductPop<ScanNav>._(_Screens.scan, ScanNav._());
-  static const home = HomeScanProductPop<HomeNav>._(_Screens.home, HomeNav._());
-  static const seller = HomeScanProductPop<SellerPlacement>._(
-    _Screens.seller,
-    null,
-  );
-  static const product = HomeScanProductPop<ProductPlacement>._(
-    _Screens.product,
-    null,
-  );
+  static const scan = HomeScanProductPop<ScanNav>._(.scan, ScanNav._());
+  static const home = HomeScanProductPop<HomeNav>._(.home, HomeNav._());
+  static const seller = HomeScanProductPop<SellerPlacement>._(.seller, null);
+  static const product = HomeScanProductPop<ProductPlacement>._(.product, null);
 }
 
 final class const HomeWishlistProductNav._()
@@ -2338,23 +2321,20 @@ final class const HomeWishlistProductNav._()
 }
 
 final class const HomeWishlistProductPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
   static const wishlist = HomeWishlistProductPop<WishlistNav>._(
-    _Screens.wishlist,
+    .wishlist,
     WishlistNav._(),
   );
-  static const home = HomeWishlistProductPop<HomeNav>._(
-    _Screens.home,
-    HomeNav._(),
-  );
+  static const home = HomeWishlistProductPop<HomeNav>._(.home, HomeNav._());
   static const seller = HomeWishlistProductPop<SellerPlacement>._(
-    _Screens.seller,
+    .seller,
     null,
   );
   static const product = HomeWishlistProductPop<ProductPlacement>._(
-    _Screens.product,
+    .product,
     null,
   );
 }
@@ -2410,27 +2390,27 @@ final class const AccountOrdersOrderProductNav._()
 }
 
 final class const AccountOrdersOrderProductPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
   static const order = AccountOrdersOrderProductPop<OrderNav>._(
-    _Screens.order,
+    .order,
     OrderNav._(),
   );
   static const orders = AccountOrdersOrderProductPop<OrdersNav>._(
-    _Screens.orders,
+    .orders,
     OrdersNav._(),
   );
   static const account = AccountOrdersOrderProductPop<AccountNav>._(
-    _Screens.account,
+    .account,
     AccountNav._(),
   );
   static const seller = AccountOrdersOrderProductPop<SellerPlacement>._(
-    _Screens.seller,
+    .seller,
     null,
   );
   static const product = AccountOrdersOrderProductPop<ProductPlacement>._(
-    _Screens.product,
+    .product,
     null,
   );
 }
@@ -2553,42 +2533,39 @@ final class const HomeSearchProductSellerNav._()
 }
 
 final class const HomeSearchProductSellerPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
   static const product = HomeSearchProductSellerPop<ProductPlacement>._(
-    _Screens.product,
+    .product,
     null,
   );
   static const search = HomeSearchProductSellerPop<SearchNav>._(
-    _Screens.search,
+    .search,
     SearchNav._(),
   );
-  static const home = HomeSearchProductSellerPop<HomeNav>._(
-    _Screens.home,
-    HomeNav._(),
-  );
+  static const home = HomeSearchProductSellerPop<HomeNav>._(.home, HomeNav._());
   static const seller = HomeSearchProductSellerPop<SellerPlacement>._(
-    _Screens.seller,
+    .seller,
     null,
   );
 }
 
 final class const HomeSearchProductSellerHop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final Object? id,
   final N nav,
 ) {
   static HomeSearchProductSellerHop<HomeSearchProductNav> product(
     ProductId id,
   ) => HomeSearchProductSellerHop._(
-    _Screens.product,
+    .product,
     id,
     const HomeSearchProductNav._(),
   );
   static HomeSearchProductSellerHop<HomeSearchProductSellerSellerChatNav>
   sellerChat(SellerChatId id) => HomeSearchProductSellerHop._(
-    _Screens.sellerChat,
+    .sellerChat,
     id,
     const HomeSearchProductSellerSellerChatNav._(),
   );
@@ -2656,42 +2633,42 @@ final class const HomeCategoryProductSellerNav._()
 }
 
 final class const HomeCategoryProductSellerPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
   static const product = HomeCategoryProductSellerPop<ProductPlacement>._(
-    _Screens.product,
+    .product,
     null,
   );
   static const category = HomeCategoryProductSellerPop<CategoryNav>._(
-    _Screens.category,
+    .category,
     CategoryNav._(),
   );
   static const home = HomeCategoryProductSellerPop<HomeNav>._(
-    _Screens.home,
+    .home,
     HomeNav._(),
   );
   static const seller = HomeCategoryProductSellerPop<SellerPlacement>._(
-    _Screens.seller,
+    .seller,
     null,
   );
 }
 
 final class const HomeCategoryProductSellerHop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final Object? id,
   final N nav,
 ) {
   static HomeCategoryProductSellerHop<HomeCategoryProductNav> product(
     ProductId id,
   ) => HomeCategoryProductSellerHop._(
-    _Screens.product,
+    .product,
     id,
     const HomeCategoryProductNav._(),
   );
   static HomeCategoryProductSellerHop<HomeCategoryProductSellerSellerChatNav>
   sellerChat(SellerChatId id) => HomeCategoryProductSellerHop._(
-    _Screens.sellerChat,
+    .sellerChat,
     id,
     const HomeCategoryProductSellerSellerChatNav._(),
   );
@@ -2759,41 +2736,31 @@ final class const HomeScanProductSellerNav._()
 }
 
 final class const HomeScanProductSellerPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
   static const product = HomeScanProductSellerPop<ProductPlacement>._(
-    _Screens.product,
+    .product,
     null,
   );
-  static const scan = HomeScanProductSellerPop<ScanNav>._(
-    _Screens.scan,
-    ScanNav._(),
-  );
-  static const home = HomeScanProductSellerPop<HomeNav>._(
-    _Screens.home,
-    HomeNav._(),
-  );
+  static const scan = HomeScanProductSellerPop<ScanNav>._(.scan, ScanNav._());
+  static const home = HomeScanProductSellerPop<HomeNav>._(.home, HomeNav._());
   static const seller = HomeScanProductSellerPop<SellerPlacement>._(
-    _Screens.seller,
+    .seller,
     null,
   );
 }
 
 final class const HomeScanProductSellerHop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final Object? id,
   final N nav,
 ) {
   static HomeScanProductSellerHop<HomeScanProductNav> product(ProductId id) =>
-      HomeScanProductSellerHop._(
-        _Screens.product,
-        id,
-        const HomeScanProductNav._(),
-      );
+      HomeScanProductSellerHop._(.product, id, const HomeScanProductNav._());
   static HomeScanProductSellerHop<HomeScanProductSellerSellerChatNav>
   sellerChat(SellerChatId id) => HomeScanProductSellerHop._(
-    _Screens.sellerChat,
+    .sellerChat,
     id,
     const HomeScanProductSellerSellerChatNav._(),
   );
@@ -2861,42 +2828,42 @@ final class const HomeWishlistProductSellerNav._()
 }
 
 final class const HomeWishlistProductSellerPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
   static const product = HomeWishlistProductSellerPop<ProductPlacement>._(
-    _Screens.product,
+    .product,
     null,
   );
   static const wishlist = HomeWishlistProductSellerPop<WishlistNav>._(
-    _Screens.wishlist,
+    .wishlist,
     WishlistNav._(),
   );
   static const home = HomeWishlistProductSellerPop<HomeNav>._(
-    _Screens.home,
+    .home,
     HomeNav._(),
   );
   static const seller = HomeWishlistProductSellerPop<SellerPlacement>._(
-    _Screens.seller,
+    .seller,
     null,
   );
 }
 
 final class const HomeWishlistProductSellerHop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final Object? id,
   final N nav,
 ) {
   static HomeWishlistProductSellerHop<HomeWishlistProductNav> product(
     ProductId id,
   ) => HomeWishlistProductSellerHop._(
-    _Screens.product,
+    .product,
     id,
     const HomeWishlistProductNav._(),
   );
   static HomeWishlistProductSellerHop<HomeWishlistProductSellerSellerChatNav>
   sellerChat(SellerChatId id) => HomeWishlistProductSellerHop._(
-    _Screens.sellerChat,
+    .sellerChat,
     id,
     const HomeWishlistProductSellerSellerChatNav._(),
   );
@@ -2969,39 +2936,39 @@ final class const AccountOrdersOrderProductSellerNav._()
 }
 
 final class const AccountOrdersOrderProductSellerPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
   static const product = AccountOrdersOrderProductSellerPop<ProductPlacement>._(
-    _Screens.product,
+    .product,
     null,
   );
   static const order = AccountOrdersOrderProductSellerPop<OrderNav>._(
-    _Screens.order,
+    .order,
     OrderNav._(),
   );
   static const orders = AccountOrdersOrderProductSellerPop<OrdersNav>._(
-    _Screens.orders,
+    .orders,
     OrdersNav._(),
   );
   static const account = AccountOrdersOrderProductSellerPop<AccountNav>._(
-    _Screens.account,
+    .account,
     AccountNav._(),
   );
   static const seller = AccountOrdersOrderProductSellerPop<SellerPlacement>._(
-    _Screens.seller,
+    .seller,
     null,
   );
 }
 
 final class const AccountOrdersOrderProductSellerHop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final Object? id,
   final N nav,
 ) {
   static AccountOrdersOrderProductSellerHop<AccountOrdersOrderProductNav>
   product(ProductId id) => AccountOrdersOrderProductSellerHop._(
-    _Screens.product,
+    .product,
     id,
     const AccountOrdersOrderProductNav._(),
   );
@@ -3009,7 +2976,7 @@ final class const AccountOrdersOrderProductSellerHop<N extends AnyNav>._(
     AccountOrdersOrderProductSellerSellerChatNav
   >
   sellerChat(SellerChatId id) => AccountOrdersOrderProductSellerHop._(
-    _Screens.sellerChat,
+    .sellerChat,
     id,
     const AccountOrdersOrderProductSellerSellerChatNav._(),
   );
@@ -3115,24 +3082,21 @@ final class const HomeSearchProductSellerSellerChatNav._()
 }
 
 final class const HomeSearchProductSellerSellerChatPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
   static const seller = HomeSearchProductSellerSellerChatPop<SellerPlacement>._(
-    _Screens.seller,
+    .seller,
     null,
   );
   static const product =
-      HomeSearchProductSellerSellerChatPop<ProductPlacement>._(
-        _Screens.product,
-        null,
-      );
+      HomeSearchProductSellerSellerChatPop<ProductPlacement>._(.product, null);
   static const search = HomeSearchProductSellerSellerChatPop<SearchNav>._(
-    _Screens.search,
+    .search,
     SearchNav._(),
   );
   static const home = HomeSearchProductSellerSellerChatPop<HomeNav>._(
-    _Screens.home,
+    .home,
     HomeNav._(),
   );
 }
@@ -3176,25 +3140,22 @@ final class const HomeCategoryProductSellerSellerChatNav._()
 }
 
 final class const HomeCategoryProductSellerSellerChatPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
   static const seller =
-      HomeCategoryProductSellerSellerChatPop<SellerPlacement>._(
-        _Screens.seller,
-        null,
-      );
+      HomeCategoryProductSellerSellerChatPop<SellerPlacement>._(.seller, null);
   static const product =
       HomeCategoryProductSellerSellerChatPop<ProductPlacement>._(
-        _Screens.product,
+        .product,
         null,
       );
   static const category = HomeCategoryProductSellerSellerChatPop<CategoryNav>._(
-    _Screens.category,
+    .category,
     CategoryNav._(),
   );
   static const home = HomeCategoryProductSellerSellerChatPop<HomeNav>._(
-    _Screens.home,
+    .home,
     HomeNav._(),
   );
 }
@@ -3238,23 +3199,23 @@ final class const HomeScanProductSellerSellerChatNav._()
 }
 
 final class const HomeScanProductSellerSellerChatPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
   static const seller = HomeScanProductSellerSellerChatPop<SellerPlacement>._(
-    _Screens.seller,
+    .seller,
     null,
   );
   static const product = HomeScanProductSellerSellerChatPop<ProductPlacement>._(
-    _Screens.product,
+    .product,
     null,
   );
   static const scan = HomeScanProductSellerSellerChatPop<ScanNav>._(
-    _Screens.scan,
+    .scan,
     ScanNav._(),
   );
   static const home = HomeScanProductSellerSellerChatPop<HomeNav>._(
-    _Screens.home,
+    .home,
     HomeNav._(),
   );
 }
@@ -3298,25 +3259,22 @@ final class const HomeWishlistProductSellerSellerChatNav._()
 }
 
 final class const HomeWishlistProductSellerSellerChatPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
   static const seller =
-      HomeWishlistProductSellerSellerChatPop<SellerPlacement>._(
-        _Screens.seller,
-        null,
-      );
+      HomeWishlistProductSellerSellerChatPop<SellerPlacement>._(.seller, null);
   static const product =
       HomeWishlistProductSellerSellerChatPop<ProductPlacement>._(
-        _Screens.product,
+        .product,
         null,
       );
   static const wishlist = HomeWishlistProductSellerSellerChatPop<WishlistNav>._(
-    _Screens.wishlist,
+    .wishlist,
     WishlistNav._(),
   );
   static const home = HomeWishlistProductSellerSellerChatPop<HomeNav>._(
-    _Screens.home,
+    .home,
     HomeNav._(),
   );
 }
@@ -3368,29 +3326,29 @@ final class const AccountOrdersOrderProductSellerSellerChatNav._()
 
 final class const AccountOrdersOrderProductSellerSellerChatPop<
   N extends AnyNav
->._(final Enum spec, final N? nav) {
+>._(final _Screens spec, final N? nav) {
   static const seller =
       AccountOrdersOrderProductSellerSellerChatPop<SellerPlacement>._(
-        _Screens.seller,
+        .seller,
         null,
       );
   static const product =
       AccountOrdersOrderProductSellerSellerChatPop<ProductPlacement>._(
-        _Screens.product,
+        .product,
         null,
       );
   static const order = AccountOrdersOrderProductSellerSellerChatPop<OrderNav>._(
-    _Screens.order,
+    .order,
     OrderNav._(),
   );
   static const orders =
       AccountOrdersOrderProductSellerSellerChatPop<OrdersNav>._(
-        _Screens.orders,
+        .orders,
         OrdersNav._(),
       );
   static const account =
       AccountOrdersOrderProductSellerSellerChatPop<AccountNav>._(
-        _Screens.account,
+        .account,
         AccountNav._(),
       );
 }
@@ -3464,22 +3422,18 @@ final class const AccountNav._()
 }
 
 final class const AccountHop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final Object? id,
   final N nav,
 ) {
-  static const orders = AccountHop<OrdersNav>._(
-    _Screens.orders,
-    null,
-    OrdersNav._(),
-  );
+  static const orders = AccountHop<OrdersNav>._(.orders, null, OrdersNav._());
   static const settings = AccountHop<SettingsNav>._(
-    _Screens.settings,
+    .settings,
     null,
     SettingsNav._(),
   );
   static AccountHop<ListingNav> listing(ListingId id) =>
-      AccountHop._(_Screens.listing, id, const ListingNav._());
+      AccountHop._(.listing, id, const ListingNav._());
 }
 
 final class const OrdersNav._()
@@ -3536,12 +3490,12 @@ final class const OrderNav._()
   }
 }
 
-final class const OrderPop<N extends AnyNav>._(final Enum spec, final N? nav) {
-  static const orders = OrderPop<OrdersNav>._(_Screens.orders, OrdersNav._());
-  static const account = OrderPop<AccountNav>._(
-    _Screens.account,
-    AccountNav._(),
-  );
+final class const OrderPop<N extends AnyNav>._(
+  final _Screens spec,
+  final N? nav,
+) {
+  static const orders = OrderPop<OrdersNav>._(.orders, OrdersNav._());
+  static const account = OrderPop<AccountNav>._(.account, AccountNav._());
 }
 
 final class const SettingsNav._() extends AnyPlacement {
@@ -3602,17 +3556,11 @@ final class const EditListingNav._() extends AnyPlacement {
 }
 
 final class const EditListingPop<N extends AnyNav>._(
-  final Enum spec,
+  final _Screens spec,
   final N? nav,
 ) {
-  static const listing = EditListingPop<ListingNav>._(
-    _Screens.listing,
-    ListingNav._(),
-  );
-  static const account = EditListingPop<AccountNav>._(
-    _Screens.account,
-    AccountNav._(),
-  );
+  static const listing = EditListingPop<ListingNav>._(.listing, ListingNav._());
+  static const account = EditListingPop<AccountNav>._(.account, AccountNav._());
 }
 
 final class const CartNav._() extends AnyPlacement implements PopDestPlacement {
@@ -3905,33 +3853,30 @@ bool _endsWith(List<Enum> chain, List<Enum> suffix) {
 /// `Url.<route>…` and `.toUri([domain])`; `parseUrl` returns one.
 sealed class const Url([final String? domain]) {
   Uri toUri([String? domain]);
-  static _WLSplash get splash => _WLSplash._([_Screens.splash], [null]);
-  static _WLSignIn get signIn => _WLSignIn._([_Screens.signIn], [null]);
+  static _WLSplash get splash => _WLSplash._([.splash], [null]);
+  static _WLSignIn get signIn => _WLSignIn._([.signIn], [null]);
   static _WLSignInOtp otp(String id) =>
-      _WLSignInOtp._([_Screens.signIn, _Screens.otp], [null, id]);
-  static _WLHome get home => _WLHome._([_Screens.home], [null]);
+      _WLSignInOtp._([.signIn, .otp], [null, id]);
+  static _WLHome get home => _WLHome._([.home], [null]);
   static _WLHomeSearch get search =>
-      _WLHomeSearch._([_Screens.home, _Screens.search], [null, null]);
-  static _WLHomeScan get scan =>
-      _WLHomeScan._([_Screens.home, _Screens.scan], [null, null]);
+      _WLHomeSearch._([.home, .search], [null, null]);
+  static _WLHomeScan get scan => _WLHomeScan._([.home, .scan], [null, null]);
   static _WLHomeCategory category(CategoryId id) =>
-      _WLHomeCategory._([_Screens.home, _Screens.category], [null, id]);
+      _WLHomeCategory._([.home, .category], [null, id]);
   static _WLHomeWishlist get wishlist =>
-      _WLHomeWishlist._([_Screens.home, _Screens.wishlist], [null, null]);
-  static _WLAccount get account => _WLAccount._([_Screens.account], [null]);
+      _WLHomeWishlist._([.home, .wishlist], [null, null]);
+  static _WLAccount get account => _WLAccount._([.account], [null]);
   static _WLAccountOrders get orders =>
-      _WLAccountOrders._([_Screens.account, _Screens.orders], [null, null]);
-  static _WLAccountOrdersOrder order(OrderId id) => _WLAccountOrdersOrder._(
-    [_Screens.account, _Screens.orders, _Screens.order],
-    [null, null, id],
-  );
+      _WLAccountOrders._([.account, .orders], [null, null]);
+  static _WLAccountOrdersOrder order(OrderId id) =>
+      _WLAccountOrdersOrder._([.account, .orders, .order], [null, null, id]);
   static _WLAccountSettings get settings =>
-      _WLAccountSettings._([_Screens.account, _Screens.settings], [null, null]);
+      _WLAccountSettings._([.account, .settings], [null, null]);
   static _WLAccountListing listing(ListingId id) =>
-      _WLAccountListing._([_Screens.account, _Screens.listing], [null, id]);
+      _WLAccountListing._([.account, .listing], [null, id]);
   static _WLAccountListingEditListing editListing(ListingId id) =>
       _WLAccountListingEditListing._(
-        [_Screens.account, _Screens.listing, _Screens.editListing],
+        [.account, .listing, .editListing],
         [null, id, null],
       );
   static _WLHomeCart get cart =>
@@ -3973,33 +3918,30 @@ sealed class const Place([super.domain]) extends Url implements Hop<AnyNav> {
   AnyNav get nav => _atOf(_Screens.graph.current);
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
-  static _WLSplash get splash => _WLSplash._([_Screens.splash], [null]);
-  static _WLSignIn get signIn => _WLSignIn._([_Screens.signIn], [null]);
+  static _WLSplash get splash => _WLSplash._([.splash], [null]);
+  static _WLSignIn get signIn => _WLSignIn._([.signIn], [null]);
   static _WLSignInOtp otp(String id) =>
-      _WLSignInOtp._([_Screens.signIn, _Screens.otp], [null, id]);
-  static _WLHome get home => _WLHome._([_Screens.home], [null]);
+      _WLSignInOtp._([.signIn, .otp], [null, id]);
+  static _WLHome get home => _WLHome._([.home], [null]);
   static _WLHomeSearch get search =>
-      _WLHomeSearch._([_Screens.home, _Screens.search], [null, null]);
-  static _WLHomeScan get scan =>
-      _WLHomeScan._([_Screens.home, _Screens.scan], [null, null]);
+      _WLHomeSearch._([.home, .search], [null, null]);
+  static _WLHomeScan get scan => _WLHomeScan._([.home, .scan], [null, null]);
   static _WLHomeCategory category(CategoryId id) =>
-      _WLHomeCategory._([_Screens.home, _Screens.category], [null, id]);
+      _WLHomeCategory._([.home, .category], [null, id]);
   static _WLHomeWishlist get wishlist =>
-      _WLHomeWishlist._([_Screens.home, _Screens.wishlist], [null, null]);
-  static _WLAccount get account => _WLAccount._([_Screens.account], [null]);
+      _WLHomeWishlist._([.home, .wishlist], [null, null]);
+  static _WLAccount get account => _WLAccount._([.account], [null]);
   static _WLAccountOrders get orders =>
-      _WLAccountOrders._([_Screens.account, _Screens.orders], [null, null]);
-  static _WLAccountOrdersOrder order(OrderId id) => _WLAccountOrdersOrder._(
-    [_Screens.account, _Screens.orders, _Screens.order],
-    [null, null, id],
-  );
+      _WLAccountOrders._([.account, .orders], [null, null]);
+  static _WLAccountOrdersOrder order(OrderId id) =>
+      _WLAccountOrdersOrder._([.account, .orders, .order], [null, null, id]);
   static _WLAccountSettings get settings =>
-      _WLAccountSettings._([_Screens.account, _Screens.settings], [null, null]);
+      _WLAccountSettings._([.account, .settings], [null, null]);
   static _WLAccountListing listing(ListingId id) =>
-      _WLAccountListing._([_Screens.account, _Screens.listing], [null, id]);
+      _WLAccountListing._([.account, .listing], [null, id]);
   static _WLAccountListingEditListing editListing(ListingId id) =>
       _WLAccountListingEditListing._(
-        [_Screens.account, _Screens.listing, _Screens.editListing],
+        [.account, .listing, .editListing],
         [null, id, null],
       );
   static _WLHomeCart get cart =>
@@ -4131,7 +4073,7 @@ class _LXProductSlot(final List<Object?> _p, final List<int> _b) {
   );
 }
 
-final class const _WLSplash._(final List<Enum> _s, final List<Object?> _i)
+final class const _WLSplash._(final List<_Screens> _s, final List<Object?> _i)
     implements Hop<SplashNav> {
   @override
   List<(Enum, Object?)> get chain => [
@@ -4150,7 +4092,7 @@ final class const _WLSplash._(final List<Enum> _s, final List<Object?> _i)
   );
 }
 
-final class const _WLSignIn._(final List<Enum> _s, final List<Object?> _i)
+final class const _WLSignIn._(final List<_Screens> _s, final List<Object?> _i)
     implements Hop<SignInNav> {
   @override
   List<(Enum, Object?)> get chain => [
@@ -4164,15 +4106,16 @@ final class const _WLSignIn._(final List<Enum> _s, final List<Object?> _i)
   SignInNav get nav => const SignInNav._();
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLSignInOtp otp(String id) =>
-      _WLSignInOtp._([..._s, _Screens.otp], [..._i, id]);
+  _WLSignInOtp otp(String id) => _WLSignInOtp._([..._s, .otp], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://shop.example', _s, _i),
   );
 }
 
-final class const _WLSignInOtp._(final List<Enum> _s, final List<Object?> _i)
-    implements Hop<OtpNav> {
+final class const _WLSignInOtp._(
+  final List<_Screens> _s,
+  final List<Object?> _i,
+) implements Hop<OtpNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -4190,7 +4133,7 @@ final class const _WLSignInOtp._(final List<Enum> _s, final List<Object?> _i)
   );
 }
 
-final class const _WLHome._(final List<Enum> _s, final List<Object?> _i)
+final class const _WLHome._(final List<_Screens> _s, final List<Object?> _i)
     implements Hop<HomeNav> {
   @override
   List<(Enum, Object?)> get chain => [
@@ -4204,21 +4147,22 @@ final class const _WLHome._(final List<Enum> _s, final List<Object?> _i)
   HomeNav get nav => const HomeNav._();
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLHomeSearch get search =>
-      _WLHomeSearch._([..._s, _Screens.search], [..._i, null]);
+  _WLHomeSearch get search => _WLHomeSearch._([..._s, .search], [..._i, null]);
   _WLHomeCategory category(CategoryId id) =>
-      _WLHomeCategory._([..._s, _Screens.category], [..._i, id]);
-  _WLHomeScan get scan => _WLHomeScan._([..._s, _Screens.scan], [..._i, null]);
+      _WLHomeCategory._([..._s, .category], [..._i, id]);
+  _WLHomeScan get scan => _WLHomeScan._([..._s, .scan], [..._i, null]);
   _WLHomeWishlist get wishlist =>
-      _WLHomeWishlist._([..._s, _Screens.wishlist], [..._i, null]);
+      _WLHomeWishlist._([..._s, .wishlist], [..._i, null]);
   _WLHomeCart get cart => _WLHomeCart._([..._s, _Checkout.cart], [..._i, null]);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://shop.example', _s, _i),
   );
 }
 
-final class const _WLHomeSearch._(final List<Enum> _s, final List<Object?> _i)
-    implements Hop<SearchNav> {
+final class const _WLHomeSearch._(
+  final List<_Screens> _s,
+  final List<Object?> _i,
+) implements Hop<SearchNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -4232,7 +4176,7 @@ final class const _WLHomeSearch._(final List<Enum> _s, final List<Object?> _i)
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLHomeSearchProduct product(ProductId id) =>
-      _WLHomeSearchProduct._([..._s, _Screens.product], [..._i, id]);
+      _WLHomeSearchProduct._([..._s, .product], [..._i, id]);
   _WLHomeSearchQ query(Set<SearchQueryArg> q) =>
       _WLHomeSearchQ(_s, _i, {for (final t in q) t.key: t.value}, const {});
   Uri toUri([String? domain]) => Uri.parse(
@@ -4241,7 +4185,7 @@ final class const _WLHomeSearch._(final List<Enum> _s, final List<Object?> _i)
 }
 
 class _WLHomeSearchQ(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
   final Map<String, Object?> _q,
   final Map<String, Object?> _f,
@@ -4258,7 +4202,7 @@ class _WLHomeSearchQ(
 }
 
 final class const _WLHomeSearchProduct._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<HomeSearchProductNav> {
   @override
@@ -4274,7 +4218,7 @@ final class const _WLHomeSearchProduct._(
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLHomeSearchProductSeller seller(SellerId id) =>
-      _WLHomeSearchProductSeller._([..._s, _Screens.seller], [..._i, id]);
+      _WLHomeSearchProductSeller._([..._s, .seller], [..._i, id]);
   _WLHomeSearchProductQ query(Set<ProductQueryArg> q) => _WLHomeSearchProductQ(
     _s,
     _i,
@@ -4291,7 +4235,7 @@ final class const _WLHomeSearchProduct._(
 }
 
 class _WLHomeSearchProductQ(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
   final Map<String, Object?> _q,
   final Map<String, Object?> _f,
@@ -4310,7 +4254,7 @@ class _WLHomeSearchProductQ(
 }
 
 class _WLHomeSearchProductF(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
   final Map<String, Object?> _q,
   final Map<String, Object?> _f,
@@ -4327,7 +4271,7 @@ class _WLHomeSearchProductF(
 }
 
 final class const _WLHomeSearchProductSeller._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<HomeSearchProductSellerNav> {
   @override
@@ -4343,17 +4287,14 @@ final class const _WLHomeSearchProductSeller._(
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLHomeSearchProductSellerSellerChat sellerChat(SellerChatId id) =>
-      _WLHomeSearchProductSellerSellerChat._(
-        [..._s, _Screens.sellerChat],
-        [..._i, id],
-      );
+      _WLHomeSearchProductSellerSellerChat._([..._s, .sellerChat], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://shop.example', _s, _i),
   );
 }
 
 final class const _WLHomeSearchProductSellerSellerChat._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<HomeSearchProductSellerSellerChatNav> {
   @override
@@ -4374,8 +4315,10 @@ final class const _WLHomeSearchProductSellerSellerChat._(
   );
 }
 
-final class const _WLHomeCategory._(final List<Enum> _s, final List<Object?> _i)
-    implements Hop<CategoryNav> {
+final class const _WLHomeCategory._(
+  final List<_Screens> _s,
+  final List<Object?> _i,
+) implements Hop<CategoryNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -4389,14 +4332,14 @@ final class const _WLHomeCategory._(final List<Enum> _s, final List<Object?> _i)
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLHomeCategoryProduct product(ProductId id) =>
-      _WLHomeCategoryProduct._([..._s, _Screens.product], [..._i, id]);
+      _WLHomeCategoryProduct._([..._s, .product], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://shop.example', _s, _i),
   );
 }
 
 final class const _WLHomeCategoryProduct._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<HomeCategoryProductNav> {
   @override
@@ -4412,7 +4355,7 @@ final class const _WLHomeCategoryProduct._(
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLHomeCategoryProductSeller seller(SellerId id) =>
-      _WLHomeCategoryProductSeller._([..._s, _Screens.seller], [..._i, id]);
+      _WLHomeCategoryProductSeller._([..._s, .seller], [..._i, id]);
   _WLHomeCategoryProductQ query(Set<ProductQueryArg> q) =>
       _WLHomeCategoryProductQ(_s, _i, {
         for (final t in q) t.key: t.value,
@@ -4427,7 +4370,7 @@ final class const _WLHomeCategoryProduct._(
 }
 
 class _WLHomeCategoryProductQ(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
   final Map<String, Object?> _q,
   final Map<String, Object?> _f,
@@ -4446,7 +4389,7 @@ class _WLHomeCategoryProductQ(
 }
 
 class _WLHomeCategoryProductF(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
   final Map<String, Object?> _q,
   final Map<String, Object?> _f,
@@ -4463,7 +4406,7 @@ class _WLHomeCategoryProductF(
 }
 
 final class const _WLHomeCategoryProductSeller._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<HomeCategoryProductSellerNav> {
   @override
@@ -4481,7 +4424,7 @@ final class const _WLHomeCategoryProductSeller._(
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLHomeCategoryProductSellerSellerChat sellerChat(SellerChatId id) =>
       _WLHomeCategoryProductSellerSellerChat._(
-        [..._s, _Screens.sellerChat],
+        [..._s, .sellerChat],
         [..._i, id],
       );
   Uri toUri([String? domain]) => Uri.parse(
@@ -4490,7 +4433,7 @@ final class const _WLHomeCategoryProductSeller._(
 }
 
 final class const _WLHomeCategoryProductSellerSellerChat._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<HomeCategoryProductSellerSellerChatNav> {
   @override
@@ -4511,7 +4454,7 @@ final class const _WLHomeCategoryProductSellerSellerChat._(
   );
 }
 
-final class const _WLHomeScan._(final List<Enum> _s, final List<Object?> _i)
+final class const _WLHomeScan._(final List<_Screens> _s, final List<Object?> _i)
     implements Hop<ScanNav> {
   @override
   List<(Enum, Object?)> get chain => [
@@ -4526,14 +4469,14 @@ final class const _WLHomeScan._(final List<Enum> _s, final List<Object?> _i)
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLHomeScanProduct product(ProductId id) =>
-      _WLHomeScanProduct._([..._s, _Screens.product], [..._i, id]);
+      _WLHomeScanProduct._([..._s, .product], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://shop.example', _s, _i),
   );
 }
 
 final class const _WLHomeScanProduct._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<HomeScanProductNav> {
   @override
@@ -4549,7 +4492,7 @@ final class const _WLHomeScanProduct._(
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLHomeScanProductSeller seller(SellerId id) =>
-      _WLHomeScanProductSeller._([..._s, _Screens.seller], [..._i, id]);
+      _WLHomeScanProductSeller._([..._s, .seller], [..._i, id]);
   _WLHomeScanProductQ query(Set<ProductQueryArg> q) => _WLHomeScanProductQ(
     _s,
     _i,
@@ -4566,7 +4509,7 @@ final class const _WLHomeScanProduct._(
 }
 
 class _WLHomeScanProductQ(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
   final Map<String, Object?> _q,
   final Map<String, Object?> _f,
@@ -4585,7 +4528,7 @@ class _WLHomeScanProductQ(
 }
 
 class _WLHomeScanProductF(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
   final Map<String, Object?> _q,
   final Map<String, Object?> _f,
@@ -4602,7 +4545,7 @@ class _WLHomeScanProductF(
 }
 
 final class const _WLHomeScanProductSeller._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<HomeScanProductSellerNav> {
   @override
@@ -4618,17 +4561,14 @@ final class const _WLHomeScanProductSeller._(
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLHomeScanProductSellerSellerChat sellerChat(SellerChatId id) =>
-      _WLHomeScanProductSellerSellerChat._(
-        [..._s, _Screens.sellerChat],
-        [..._i, id],
-      );
+      _WLHomeScanProductSellerSellerChat._([..._s, .sellerChat], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://shop.example', _s, _i),
   );
 }
 
 final class const _WLHomeScanProductSellerSellerChat._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<HomeScanProductSellerSellerChatNav> {
   @override
@@ -4649,8 +4589,10 @@ final class const _WLHomeScanProductSellerSellerChat._(
   );
 }
 
-final class const _WLHomeWishlist._(final List<Enum> _s, final List<Object?> _i)
-    implements Hop<WishlistNav> {
+final class const _WLHomeWishlist._(
+  final List<_Screens> _s,
+  final List<Object?> _i,
+) implements Hop<WishlistNav> {
   @override
   List<(Enum, Object?)> get chain => [
     for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
@@ -4664,14 +4606,14 @@ final class const _WLHomeWishlist._(final List<Enum> _s, final List<Object?> _i)
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLHomeWishlistProduct product(ProductId id) =>
-      _WLHomeWishlistProduct._([..._s, _Screens.product], [..._i, id]);
+      _WLHomeWishlistProduct._([..._s, .product], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://shop.example', _s, _i),
   );
 }
 
 final class const _WLHomeWishlistProduct._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<HomeWishlistProductNav> {
   @override
@@ -4687,7 +4629,7 @@ final class const _WLHomeWishlistProduct._(
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLHomeWishlistProductSeller seller(SellerId id) =>
-      _WLHomeWishlistProductSeller._([..._s, _Screens.seller], [..._i, id]);
+      _WLHomeWishlistProductSeller._([..._s, .seller], [..._i, id]);
   _WLHomeWishlistProductQ query(Set<ProductQueryArg> q) =>
       _WLHomeWishlistProductQ(_s, _i, {
         for (final t in q) t.key: t.value,
@@ -4702,7 +4644,7 @@ final class const _WLHomeWishlistProduct._(
 }
 
 class _WLHomeWishlistProductQ(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
   final Map<String, Object?> _q,
   final Map<String, Object?> _f,
@@ -4721,7 +4663,7 @@ class _WLHomeWishlistProductQ(
 }
 
 class _WLHomeWishlistProductF(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
   final Map<String, Object?> _q,
   final Map<String, Object?> _f,
@@ -4738,7 +4680,7 @@ class _WLHomeWishlistProductF(
 }
 
 final class const _WLHomeWishlistProductSeller._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<HomeWishlistProductSellerNav> {
   @override
@@ -4756,7 +4698,7 @@ final class const _WLHomeWishlistProductSeller._(
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLHomeWishlistProductSellerSellerChat sellerChat(SellerChatId id) =>
       _WLHomeWishlistProductSellerSellerChat._(
-        [..._s, _Screens.sellerChat],
+        [..._s, .sellerChat],
         [..._i, id],
       );
   Uri toUri([String? domain]) => Uri.parse(
@@ -4765,7 +4707,7 @@ final class const _WLHomeWishlistProductSeller._(
 }
 
 final class const _WLHomeWishlistProductSellerSellerChat._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<HomeWishlistProductSellerSellerChatNav> {
   @override
@@ -4877,7 +4819,7 @@ final class const _WLHomeCartCheckoutPaymentConfirmation._(
   );
 }
 
-final class const _WLAccount._(final List<Enum> _s, final List<Object?> _i)
+final class const _WLAccount._(final List<_Screens> _s, final List<Object?> _i)
     implements Hop<AccountNav> {
   @override
   List<(Enum, Object?)> get chain => [
@@ -4892,14 +4834,14 @@ final class const _WLAccount._(final List<Enum> _s, final List<Object?> _i)
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLAccountOrders get orders =>
-      _WLAccountOrders._([..._s, _Screens.orders], [..._i, null]);
+      _WLAccountOrders._([..._s, .orders], [..._i, null]);
   _WLAccountSettings get settings =>
-      _WLAccountSettings._([..._s, _Screens.settings], [..._i, null]);
+      _WLAccountSettings._([..._s, .settings], [..._i, null]);
   _WLAccountListing listing(ListingId id) =>
-      _WLAccountListing._([..._s, _Screens.listing], [..._i, id]);
+      _WLAccountListing._([..._s, .listing], [..._i, id]);
   _WLAccountListingEditListing editListing(ListingId id) =>
       _WLAccountListingEditListing._(
-        [..._s, _Screens.listing, _Screens.editListing],
+        [..._s, .listing, .editListing],
         [..._i, id, null],
       );
   Uri toUri([String? domain]) => Uri.parse(
@@ -4908,7 +4850,7 @@ final class const _WLAccount._(final List<Enum> _s, final List<Object?> _i)
 }
 
 final class const _WLAccountOrders._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<OrdersNav> {
   @override
@@ -4924,14 +4866,14 @@ final class const _WLAccountOrders._(
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLAccountOrdersOrder order(OrderId id) =>
-      _WLAccountOrdersOrder._([..._s, _Screens.order], [..._i, id]);
+      _WLAccountOrdersOrder._([..._s, .order], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://shop.example', _s, _i),
   );
 }
 
 final class const _WLAccountOrdersOrder._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<OrderNav> {
   @override
@@ -4947,14 +4889,14 @@ final class const _WLAccountOrdersOrder._(
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLAccountOrdersOrderProduct product(ProductId id) =>
-      _WLAccountOrdersOrderProduct._([..._s, _Screens.product], [..._i, id]);
+      _WLAccountOrdersOrderProduct._([..._s, .product], [..._i, id]);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://shop.example', _s, _i),
   );
 }
 
 final class const _WLAccountOrdersOrderProduct._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<AccountOrdersOrderProductNav> {
   @override
@@ -4971,10 +4913,7 @@ final class const _WLAccountOrdersOrderProduct._(
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLAccountOrdersOrderProductSeller seller(SellerId id) =>
-      _WLAccountOrdersOrderProductSeller._(
-        [..._s, _Screens.seller],
-        [..._i, id],
-      );
+      _WLAccountOrdersOrderProductSeller._([..._s, .seller], [..._i, id]);
   _WLAccountOrdersOrderProductQ query(Set<ProductQueryArg> q) =>
       _WLAccountOrdersOrderProductQ(_s, _i, {
         for (final t in q) t.key: t.value,
@@ -4989,7 +4928,7 @@ final class const _WLAccountOrdersOrderProduct._(
 }
 
 class _WLAccountOrdersOrderProductQ(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
   final Map<String, Object?> _q,
   final Map<String, Object?> _f,
@@ -5010,7 +4949,7 @@ class _WLAccountOrdersOrderProductQ(
 }
 
 class _WLAccountOrdersOrderProductF(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
   final Map<String, Object?> _q,
   final Map<String, Object?> _f,
@@ -5027,7 +4966,7 @@ class _WLAccountOrdersOrderProductF(
 }
 
 final class const _WLAccountOrdersOrderProductSeller._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<AccountOrdersOrderProductSellerNav> {
   @override
@@ -5045,7 +4984,7 @@ final class const _WLAccountOrdersOrderProductSeller._(
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLAccountOrdersOrderProductSellerSellerChat sellerChat(SellerChatId id) =>
       _WLAccountOrdersOrderProductSellerSellerChat._(
-        [..._s, _Screens.sellerChat],
+        [..._s, .sellerChat],
         [..._i, id],
       );
   Uri toUri([String? domain]) => Uri.parse(
@@ -5054,7 +4993,7 @@ final class const _WLAccountOrdersOrderProductSeller._(
 }
 
 final class const _WLAccountOrdersOrderProductSellerSellerChat._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<AccountOrdersOrderProductSellerSellerChatNav> {
   @override
@@ -5076,7 +5015,7 @@ final class const _WLAccountOrdersOrderProductSellerSellerChat._(
 }
 
 final class const _WLAccountSettings._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<SettingsNav> {
   @override
@@ -5097,7 +5036,7 @@ final class const _WLAccountSettings._(
 }
 
 final class const _WLAccountListing._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<ListingNav> {
   @override
@@ -5113,17 +5052,14 @@ final class const _WLAccountListing._(
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
   _WLAccountListingEditListing get editListing =>
-      _WLAccountListingEditListing._(
-        [..._s, _Screens.editListing],
-        [..._i, null],
-      );
+      _WLAccountListingEditListing._([..._s, .editListing], [..._i, null]);
   Uri toUri([String? domain]) => Uri.parse(
     _Screens.graph.encodeNavUrl(domain ?? 'https://shop.example', _s, _i),
   );
 }
 
 final class const _WLAccountListingEditListing._(
-  final List<Enum> _s,
+  final List<_Screens> _s,
   final List<Object?> _i,
 ) implements Hop<EditListingNav> {
   @override
