@@ -1937,12 +1937,13 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     // A committed navigation, retyped: the engine's `(Enum, Object?)` stacks
     // mapped to the public sealed `ScreenEntry`, so the destination's id is
     // typed. Derivations (direction/forward/…) forward from the runtime snapshot.
+    // The boot placement is no screen of the tree, so the stacks leave it out.
     b.writeln('/// One committed navigation as typed [ScreenEntry] stacks.');
     b.writeln('final class ScreenNavigation._(final Navigation _n) {');
     b.writeln('  List<ScreenEntry> get from =>');
-    b.writeln('      [for (final e in _n.from) _entryOf(e.\$1, e.\$2)];');
+    b.writeln('      [for (final e in _n.from) if (e.\$1 != BootScreen.root) _entryOf(e.\$1, e.\$2)];');
     b.writeln('  List<ScreenEntry> get to =>');
-    b.writeln('      [for (final e in _n.to) _entryOf(e.\$1, e.\$2)];');
+    b.writeln('      [for (final e in _n.to) if (e.\$1 != BootScreen.root) _entryOf(e.\$1, e.\$2)];');
     b.writeln(
       '  ScreenEntry get source => _entryOf(_n.source.\$1, _n.source.\$2);',
     );
