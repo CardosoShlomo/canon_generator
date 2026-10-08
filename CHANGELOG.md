@@ -1,3 +1,7 @@
+## 0.41.2
+
+- Navigation stacks leave out the boot placement.
+
 ## 0.41.1
 
 - Screen literals use the dot shorthand where the enum type is pinned.
