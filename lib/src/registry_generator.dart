@@ -529,21 +529,6 @@ class RegistryGenerator {
         b.writeln('      IdScope.screenOf<$key>(context);');
         b.writeln('  static $key itemOf(BuildContext context) =>');
         b.writeln('      IdScope.itemOf<$key>(context);');
-        if (reverseNavs.containsKey(e.key)) {
-          b.writeln(
-            '  /// The CLAIMED handle — compile-gated: only chains that',
-          );
-          b.writeln(
-            '  /// EVIDENCE this identity type-check (`${_cap(nodeName)}On`);',
-          );
-          b.writeln('  /// null when the claim misses the live chain.');
-          b.writeln(
-            '  static IdNav<$key>? on(BuildContext context, ${_cap(nodeName)}On which) =>',
-          );
-          b.writeln('      Screen.on(which as On) == null');
-          b.writeln('          ? null');
-          b.writeln('          : IdScope.navOf<$key>(context, $node);');
-        }
         b.writeln('}');
         b.writeln();
       }
@@ -555,8 +540,7 @@ class RegistryGenerator {
       for (final (scrEnum, scr) in screens) {
         final verb = _entityVerb(scr, nodeName);
         b.writeln('  void $verb() {');
-        b.writeln('    $scrEnum.graph.popTo(screen);');
-        b.writeln('    $scrEnum.graph.go($scrEnum.$scr, id, true);');
+        b.writeln('    $scrEnum.graph.goFrom(screen, $scrEnum.$scr, id);');
         b.writeln('  }');
       }
       // Component projections keep the full screen name: the scope is the
@@ -564,8 +548,7 @@ class RegistryGenerator {
       // an adChat identity).
       for (final (scrEnum, scr, comp) in compVerbs) {
         b.writeln('  void go${_cap(scr)}() {');
-        b.writeln('    $scrEnum.graph.popTo(screen);');
-        b.writeln('    $scrEnum.graph.go($scrEnum.$scr, id.$comp, true);');
+        b.writeln('    $scrEnum.graph.goFrom(screen, $scrEnum.$scr, id.$comp);');
         b.writeln('  }');
       }
       for (final line in reverse) {
@@ -648,9 +631,8 @@ class RegistryGenerator {
             );
             lines.add('        ? (e.id as $compositeKey).$otherName');
             lines.add('        : e.id as $otherKey;');
-            lines.add('    $en.graph.popTo(screen);');
             lines.add(
-              '    $en.graph.go($en.$scr, $compositeKey.of(${i == 0 ? 'id, other' : 'other, id'}), true);',
+              '    $en.graph.goFrom(screen, $en.$scr, $compositeKey.of(${i == 0 ? 'id, other' : 'other, id'}));',
             );
             lines.add('  }');
           }

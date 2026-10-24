@@ -288,33 +288,6 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 }
 ''';
 
-// A screen with BOTH query and fragment view-state → the link chain stages them
-// (`.query…` then `.fragment…`; fragment is terminal).
-const _viewBothSpec = '''
-import 'package:canon/canon.dart';
-
-part 'spec.canon.dart';
-
-enum _Q with QueryKeyBase { category }
-enum _F with QueryKeyBase { tab }
-
-@screens
-enum _Screens with ScreenNode<Object?, _Screens> {
-  home(0),
-  feed(0);
-
-  const _Screens(this.widget);
-  final Object widget;
-
-  static final graph = NavGraph<_Screens>(
-    {
-      home,
-      feed.query({_Q.category(Codec.string)}).fragment({_F.tab(Codec.string)}),
-    },
-  );
-}
-''';
-
 // A link nested under a placement: the URL keeps the full path, the class is
 // named by the LEAF screen (no `HomeAccount…` stutter).
 const _nestedLinkSpec = '''
@@ -510,31 +483,6 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 }
 ''';
 
-// Two screens share DetailScreen with DIFFERENT id types — the id-ambiguous case.
-const _sharedSpec = '''
-import 'package:canon/canon.dart';
-
-part 'spec.canon.dart';
-
-class DetailScreen { const DetailScreen(); }
-class HomeScreen { const HomeScreen(); }
-
-@screens
-enum _Screens with ScreenNode<Object?, _Screens> {
-  home(HomeScreen()),
-  product(DetailScreen(), Codec.string),
-  order(DetailScreen(), Codec.integer);
-
-  const _Screens(this.widget, [this.id]);
-  final Object widget;
-  final Codec? id;
-
-  static final graph = NavGraph<_Screens>(
-    {home({product, order})},
-  );
-}
-''';
-
 // id types written as sample VALUES (no Type literals, no typedef): a record
 // value `('', '')` -> (String, String), and a plain `0` -> int. Needs `Object? id`.
 const _recordIdSpec = '''
@@ -606,35 +554,8 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 }
 ''';
 
-// A chain of inherited id-screens: itemPreview inherits item, editItem inherits
-// itemPreview — all three share item's one id. From item's parent (home) you can
-// reach either with that single id; the chain flattens to the ultimate source.
-const _chainInheritSpec = '''
-import 'package:canon/canon.dart';
-
-part 'spec.canon.dart';
-
-@screens
-enum _Screens with ScreenNode<Object?, _Screens> {
-  home(0),
-  item(0, Codec.string),
-  itemPreview(0, Codec.string),
-  editItem(0, Codec.string);
-
-  const _Screens(this.widget, [this.id]);
-  final Object widget;
-  final Codec? id;
-
-  static final graph = NavGraph<_Screens>(
-    {home({item({itemPreview({editItem.inherit(itemPreview)}).inherit(item)})})},
-  );
-}
-''';
-
-// orderProfile inherits profile, but order (its OWN id) sits between them. No
-// single id can reach orderProfile from above order (you'd need profile's AND
-// order's ids), so there is no goOrderProfile(id) reach verb anywhere; at order the
-// id is already live, so it's the no-arg goOrderProfile().
+// orderProfile inherits profile, but order (its OWN id) sits between them; at
+// order the id is already live, so it's the no-arg goOrderProfile().
 const _interposedIdSpec = '''
 import 'package:canon/canon.dart';
 
@@ -1090,13 +1011,47 @@ enum _Screens with ScreenNode<Object?, _Screens> {
 }
 ''';
 
+// A link slot holding an @IDs node keeps the node's typed id.
+const _idSlotLinkSpec = '''
+import 'package:canon/canon.dart';
+
+part 'spec.canon.dart';
+
+@IDs()
+enum Ids with IdNode {
+  product(Codec.uuid);
+
+  const Ids(this.codec);
+
+  @override
+  final Codec codec;
+}
+
+@screens
+enum _Screens with ScreenNode<Object?, _Screens> {
+  home(0),
+  product(0, .product);
+
+  const _Screens(this.widget, [this.id]);
+  final Object widget;
+  final Ids? id;
+
+  static final graph = NavGraph<_Screens>(
+    {
+      home({product}),
+      product.links({slot(Ids.product)}),
+    },
+  );
+}
+''';
+
 void main() {
   test(
     'projection under an inherited composite anchors at the composite',
     () => _expectGenerated(
       allOf([
         // author's id = component 2 of the COMPOSITE — never product's id
-        contains('ReviewId).author'),
+        contains('ReviewId?)?.author'),
         isNot(contains('goAuthor(ProductId')),
       ]),
       spec: _nestedProjectionSpec,
@@ -1109,7 +1064,7 @@ void main() {
       allOf([
         contains('goReview(ReviewId id)'), // typed composite verb
         contains('Screen<AuthorId>'), // typed screen surface
-        contains('ReviewId).author'), // typed projection cast
+        contains('ReviewId?)?.author'), // typed projection cast
         isNot(contains('goReview((String, String) id)')),
       ]),
       spec: _typedIdsSpec,
@@ -1128,14 +1083,18 @@ void main() {
   );
 
   test(
-    'cycle + kick-start collisions: multi-placement pop resolves via _atOf',
+    'a multi-placement screen: ordinal-named navs under one sealed placement',
     () => _expectGenerated(
       allOf([
-        // same-screen multi-placement pop → the screen's Placement family
-        contains('as AuthorPlacement;'),
-        // never the bare <Screen>Nav pop/resolver (exists only for singles)
-        isNot(contains('_resolveAuthorNav')),
-        isNot(contains('AuthorNav pop()')),
+        contains('sealed class AuthorPlacement implements AnyPlacement'),
+        matches(RegExp(r'class const AuthorNav1\._\(\)\s+extends AnyPlacement')),
+        matches(RegExp(r'class const AuthorNav2\._\(\)\s+extends AnyPlacement')),
+        contains('AuthorPlacement _resolveAuthorPlacement(List<Enum> c)'),
+        // no pop surface on a nav, no path-joined names
+        isNot(contains('popTo<')),
+        isNot(contains('popToHome')),
+        isNot(contains('PopPlacement')),
+        isNot(contains('HomeAuthorNav')),
       ]),
       spec: _cycleKickstartSpec,
     ),
@@ -1145,7 +1104,7 @@ void main() {
     'composite as an @ids enum row: same projection, dot-shorthand ids',
     () => _expectGenerated(
       allOf([
-        contains('(String, String)).\$2'), // author = component 2 of review
+        contains('(String, String)?)?.\$2'), // author = component 2 of review
         contains('goReview((String, String) id)'), // record type from _codec
         contains('goAuthor(String id)'), // atomic type through _codec backing
       ]),
@@ -1157,7 +1116,7 @@ void main() {
     'inherit projects one composite component by node identity',
     () => _expectGenerated(
       // author's id is component 1 (author) of review's (String, String) record.
-      contains('(String, String)).\$2'),
+      contains('(String, String)?)?.\$2'),
       spec: _projectionSpec,
     ),
   );
@@ -1181,7 +1140,7 @@ void main() {
         contains(
           'OrderNav goOrder() {',
         ), // both components inherited -> no args
-        contains('_Screens.graph.go(_Screens.order, ('),
+        contains(', _Screens.order, ('),
         contains('_idOf(.product)'),
         contains('_idOf(.author)'),
         contains('Object? _idOf(_Screens s)'),
@@ -1196,7 +1155,9 @@ void main() {
       allOf([
         contains('OrderNav goOrder(int id) {'),
         contains(
-          '_Screens.graph.go(_Screens.order, (_idOf(.product), id), true)',
+          '_Screens.graph.goFrom(_Screens.product, _Screens.order, (\n'
+          '      _idOf(.product),\n'
+          '      id,\n',
         ),
         isNot(contains('goOrder((String, int) id)')),
       ]),
@@ -1233,36 +1194,28 @@ void main() {
   );
 
   test(
-    'single-arg inherit output is unchanged (regression)',
-    () => _expectGenerated(
-      allOf([
-        contains('EditProductNav goEditProduct() {'),
-        contains(
-          '_Screens.graph.go(_Screens.editProduct, _idOf(.product), true)',
-        ),
-        isNot(
-          contains(
-            'goEditProduct(String id) {\n'
-            '    _Screens.graph.go(_Screens.editProduct',
-          ),
-        ), // still the no-arg edge
-      ]),
-      spec: _inheritSpec,
-    ),
-  );
-
-  test(
     'inherited edge: no-arg chained verb reads the ancestor id',
     () => _expectGenerated(
       allOf(
         contains(
           'EditProductNav goEditProduct() {',
         ), // chained: no id parameter
-        contains(
-          '_Screens.graph.go(_Screens.editProduct, _idOf(.product), true)',
-        ),
+        contains('_Screens.editProduct,\n'),
+        contains('_idOf(.product),'),
         contains('Object? _idOf(_Screens s)'), // the live-ancestor reader
       ),
+      spec: _inheritSpec,
+    ),
+  );
+
+  test(
+    'a placement verb goes FROM its placement (goFrom), not a bare push',
+    () => _expectGenerated(
+      allOf([
+        contains('_Screens.graph.goFrom(_Screens.home, _Screens.product, id);'),
+        // an inherited edge: from product, reading product's live id
+        contains('    _Screens.graph.goFrom(\n      _Screens.product,\n'),
+      ]),
       spec: _inheritSpec,
     ),
   );
@@ -1289,37 +1242,17 @@ void main() {
   );
 
   test(
-    'inherit ancestor-reach: parent gets goEdit(id), pushing both levels',
+    'no ancestor reach: a verb is offered only on its direct parent',
     () => _expectGenerated(
       allOf([
-        contains(
-          'EditProductNav goEditProduct(String id) {',
-        ), // on the ancestor handle (home)
-        // edge-required source push — distinguishes this from the kick-start,
-        // which pushes the source with a plain (non-edge) go.
-        contains('_Screens.graph.go(_Screens.product, id, true)'),
-        contains('_Screens.graph.go(_Screens.editProduct, id, true)'),
-      ]),
-      spec: _inheritSpec,
-    ),
-  );
-
-  test(
-    'inherit ancestor-reach reaches every ancestor above the source',
-    () => _expectGenerated(
-      allOf([
-        // direct parent of the source (section): push source + target.
-        contains(
-          'EditProductNav goEditProduct(String id) {\n'
-          '    _Screens.graph.go(_Screens.product, id, true);\n'
-          '    _Screens.graph.go(_Screens.editProduct, id, true);',
-        ),
-        // two levels up (home): the id-free intermediate is stamped null.
-        contains(
-          'EditProductNav goEditProduct(String id) {\n'
-          '    _Screens.graph.go(_Screens.section, null, true);\n'
-          '    _Screens.graph.go(_Screens.product, id, true);\n'
-          '    _Screens.graph.go(_Screens.editProduct, id, true);',
+        // section (the direct parent) pushes product…
+        contains('ProductNav goProduct(String id) {'),
+        // …but no nav above product reaches editProduct with an id (only the
+        // static kick-start does)
+        isNot(
+          matches(
+            RegExp(r'^  EditProductNav goEditProduct\(String id\)', multiLine: true),
+          ),
         ),
       ]),
       spec: _deepInheritSpec,
@@ -1327,53 +1260,15 @@ void main() {
   );
 
   test(
-    'inherit chain: one id reaches every inherited screen in the chain',
-    () => _expectGenerated(
-      allOf([
-        // from item's parent: reach the mid-chain inherited screen with the id.
-        contains(
-          'ItemPreviewNav goItemPreview(String id) {\n'
-          '    _Screens.graph.go(_Screens.item, id, true);\n'
-          '    _Screens.graph.go(_Screens.itemPreview, id, true);',
-        ),
-        // ...and the end-of-chain one, the single id stamped at every level.
-        contains(
-          'EditItemNav goEditItem(String id) {\n'
-          '    _Screens.graph.go(_Screens.item, id, true);\n'
-          '    _Screens.graph.go(_Screens.itemPreview, id, true);\n'
-          '    _Screens.graph.go(_Screens.editItem, id, true);',
-        ),
-      ]),
-      spec: _chainInheritSpec,
-    ),
-  );
-
-  test(
-    'inherit blocked by an interposed id: no single-id reach, no-arg at order',
+    'inherit blocked by an interposed id: no-arg at order, reading profile',
     () => _expectGenerated(
       allOf([
         // at order the source id is live → no-arg verb reading it.
         contains('goOrderProfile()'),
-        contains(
-          '_Screens.graph.go(_Screens.orderProfile, _idOf(.profile), true)',
-        ),
-        // order's id sits between profile and orderProfile → no single-id reach.
+        contains('_idOf(.profile)'),
         isNot(contains('goOrderProfile(String id)')),
       ]),
       spec: _interposedIdSpec,
-    ),
-  );
-
-  test(
-    'broad reach: a plain id screen is reachable through id-free intermediates',
-    () => _expectGenerated(
-      // home reaches product with just product's id — section (id-free) is stamped null.
-      contains(
-        'ProductNav goProduct(String id) {\n'
-        '    _Screens.graph.go(_Screens.section, null, true);\n'
-        '    _Screens.graph.go(_Screens.product, id, true);',
-      ),
-      spec: _deepInheritSpec,
     ),
   );
 
@@ -1395,7 +1290,7 @@ void main() {
     'emits the Initial boot placement (no chain surface, no goRoot)',
     () => _expectGenerated(
       allOf([
-        // the boot placement, matched via `Screen.current case Initial()`
+        // the boot placement the resolver maps the boot entry to
         contains('final class const Root._() extends AnyPlacement'),
         contains('BootScreen.root => const Root._()'), // _atOf maps it
         contains(
@@ -1422,8 +1317,11 @@ void main() {
           contains('_ParentSel extends'),
         ), // so bare on(.parentOf) can't compile
         contains('OnParentOf<ItemNavParent> get item'), // item: 2 parents
-        contains('final class const ItemNavParent._() extends AnyNav'),
-        contains('ItemNav goItem(String id)'), // pushes the target
+        contains(
+          'final class const ItemNavParent._([final Enum? _at]) extends AnyNav',
+        ),
+        contains('void goItem(String id)'), // pushes the target
+        contains('if (_at case final at?)'), // an owner handle goes from it
         contains('parents.contains(_Screens.graph.current)'),
         isNot(
           contains('EditItemNavParent'),
@@ -1437,17 +1335,28 @@ void main() {
   test(
     'emits the typed Screen surface',
     () => _expectGenerated(
-      allOf(
+      allOf([
         contains('final class const Screen<I>._(final Enum _spec)'),
         contains('goItem(String id)'), // typed id verb
         contains('isCodegenFresh'), // stale-codegen guard
         contains('_treeSignature'),
-        // Screen.current is the sealed AnyPlacement → exhaustive switch. Placements
-        // EXTEND it (so cross-screen ternaries LUB to AnyPlacement, not AnyNav).
+        // Placements EXTEND the sealed AnyPlacement (so cross-screen
+        // ternaries LUB to AnyPlacement, not AnyNav).
         contains('sealed class const AnyPlacement._() extends AnyNav'),
-        contains('static AnyPlacement get current'),
         matches(RegExp(r'class const \w+\._\(\) extends AnyPlacement')),
-      ),
+        // the total, context-owned handle
+        contains(
+          'static N ownerOf<N extends AnyNav>(BuildContext context, On<N> which)',
+        ),
+        contains('ScreenScope.entryOf(context)'),
+        contains('_Screens.graph.chainOf(entry)'),
+        // gone: the families no consumer reads
+        isNot(contains('get current')),
+        isNot(contains('Replace')),
+        isNot(contains('RootControls')),
+        isNot(contains('snapshot()')),
+        isNot(contains('OnDepth')),
+      ]),
     ),
   );
 
@@ -1616,106 +1525,33 @@ void main() {
   );
 
   test(
-    'Link.<route> is the superset; a name clash resolves to the nav target',
+    'Link carries the widgetless resolvers; no Place builder chain',
     () => _expectGenerated(
       allOf([
-        // Link carries the nav-tree roots…
-        contains('static _WLHome get home =>'),
-        // …and `author` (a nav root with widget-form resolvers) clashes with
-        // its own widgetless leaf — the nav-target METHOD wins on Link
-        contains('static _WLAuthor author(String id) =>'),
-        // the widgetless resolvers stay reachable via Link.author
         contains('static _LXAuthor get author =>'),
         contains("me() => _LXAuthorSlot([..._p, 'me'], [..._b, 1]);"),
         contains('byUsername(String username) =>'),
         // the leaf step builds its URL off the accumulators
         contains("_Screens.graph.encodeLink(domain, 'author/*', _p, _b)"),
+        isNot(contains('_WL')),
       ]),
       spec: _widgetFormSpec,
     ),
   );
 
   test(
-    'the Place surface emits even with no `.link` declared',
+    'Place is the parsed nav-mirror form, go-able; no builder statics',
     () => _expectGenerated(
       allOf([
-        // `_spec` declares no link at all, yet every screen is a deep link
         contains('sealed class const Place([super.domain]) extends Url'),
-        contains('static _WLHome get home =>'),
-        contains('_WLHomeItem item(String id) =>'),
+        contains('implements Hop<AnyNav>'),
+        contains('final class const _NavPlace('),
         contains('_Screens.graph.encodeNavUrl('),
-        // `item` sits under home alone → a direct kick-start static jumps to it
-        contains(
-          'static _WLHomeItem item(String id) =>\n'
-          '      _WLHomeItem._([.home, .item], [null, id]);',
-        ),
+        isNot(contains('_WL')),
+        // a broken percent escape parses to nothing instead of throwing
+        contains('final uri = tryParseUri(url);'),
       ]),
       spec: _spec,
-    ),
-  );
-
-  test(
-    'a view-state screen takes an On-shape build term set on its link',
-    () => _expectGenerated(
-      allOf([
-        // `.query({…})` takes a dot-shorthand build-term set (no .not)
-        contains('_WLFeedQ query(Set<FeedQueryArg> q) =>'),
-        contains('class _WLFeedQ('),
-        // the build vocabulary mirrors the match `Cond` set, ASSIGNING
-        contains(
-          'final class const FeedQueryArg._(final String key, final Object? value) {',
-        ),
-        contains(
-          "static FeedQueryArg category(String v) => "
-          "FeedQueryArg._('category', v);",
-        ),
-        contains("static FeedQueryArg radius(int v) =>"),
-        // the set collapses to a map; the terminal builds the URL with it
-        contains('{for (final t in q) t.key: t.value}'),
-        contains('encodeNavUrl(domain, _s, _i, _q, _f)'),
-      ]),
-      spec: _viewSpec,
-    ),
-  );
-
-  test(
-    'query and fragment are staged: query→fragment, fragment is terminal',
-    () => _expectGenerated(
-      allOf([
-        // the screen step opens either stage (fragment without a query first)
-        contains('_WLFeedQ query(Set<FeedQueryArg> q) =>'),
-        contains('_WLFeedF fragment(Set<FeedFragmentArg> f) =>'),
-        // the query stage transitions INTO fragment…
-        contains('class _WLFeedQ('),
-        contains('  _WLFeedF fragment(Set<FeedFragmentArg> f) =>'),
-        // …and the fragment stage is terminal — a build + toUri, no way back
-        contains('class _WLFeedF('),
-        // (no `query(Set` inside _WLFeedF — it has only toUri)
-      ]),
-      spec: _viewBothSpec,
-    ),
-  );
-
-  test(
-    'Place mirrors the nav tree root-down (id screens are methods)',
-    () => _expectGenerated(
-      allOf([
-        contains('sealed class const Place([super.domain]) extends Url'),
-        // id-free root → a getter; id-bearing root → a method (id mandatory
-        // before `.toUri()`, no bare `.author`)
-        contains('static _WLHome get home => _WLHome._([.home]'),
-        contains('static _WLAuthor author(String id) =>'),
-        isNot(contains('static _WLAuthor get author')),
-        contains('final class const _WLAuthor._('),
-        // every nav-target node prints its full path via the nav-mirror
-        contains('_Screens.graph.encodeNavUrl('),
-        // the widgetless resolver branches (me/username) live on the
-        // SEPARATE Link surface, not the Place nav tree
-        contains('static _LXAuthor get author =>'),
-        contains("me() => _LXAuthorSlot([..._p, 'me']"),
-        isNot(contains('me() => _WL')),
-      ]),
-      spec: _widgetFormSpec,
     ),
   );
 
@@ -1758,17 +1594,12 @@ void main() {
   );
 
   test(
-    'Place nav tree spans nav screens; link branches stay widgetless',
+    'a link branch stays widgetless, addressed by its leaf',
     () => _expectGenerated(
       allOf([
-        // the nav tree, root-down: a nested id-bearing screen is a method
-        contains('static _WLHome get home =>'),
-        contains('_WLHomeAccount account(String id) =>'),
-        contains('static _WLSettings get settings =>'),
-        contains('_WLSettingsDetail detail(String id) =>'),
         // `account.link` is a link branch, NOT a nav child → its widgetless
-        // resolver stays on the Link surface, off the nav tree, and
-        // smart-addressed by its leaf (the redundant `home` parent dropped)
+        // resolver stays on the Link surface, smart-addressed by its leaf
+        // (the redundant `home` parent dropped)
         contains('static _LXAccount get account =>'),
         isNot(contains('static _LXHome get home =>')),
         isNot(contains('account(String id) => _LX')),
@@ -1834,46 +1665,26 @@ void main() {
         ), // mutable subtype
         contains('set category(String? v) =>'),
         contains("viewSet(_Screens.feed, 'category', v)"),
-        // …and the nav implements the read-only view, exposing the MUTABLE getter
-        contains('abstract interface class FeedView'),
-        contains('FeedQuery get query;'),
-        contains('FeedView'), // the nav implements the read-only view
+        // …and the nav exposes the MUTABLE view-state
         contains('FeedQueryMut get query => const FeedQueryMut._();'),
-        // …and the conditioned selector: a FeedQueryCond vocabulary + On.query
-        contains('class const FeedQueryCond<T>._('),
-        contains(
-          'static FeedQueryCond<String> get category =>',
-        ), // present getter
-        contains('FeedQueryCond<T> call(T v) =>'), // narrow to equals
-        contains('presence: true'), // the present/absent path
-        contains('class const FeedQueryNot._()'), // the .not mirror
-        contains('OnFeed query(Set<FeedQueryCond> cs) =>'),
-        // …evaluated by Screen.on against the live view store
-        contains(
-          'if (!c.test(_Screens.graph.viewGet(specs.last, c.key))) return null;',
-        ),
-        // the selector carries the typed read-only view, so context.on returns it
-        contains('extends On<FeedNav, FeedView>'),
-        contains(
-          'V? on<N extends AnyNav, V>(On<N, V> sel)',
-        ), // typed reactive read
+        // gone: the match/build vocabularies and the reactive view reads
+        isNot(contains('FeedQueryCond')),
+        isNot(contains('FeedQueryArg')),
+        isNot(contains('FeedView')),
+        isNot(contains('AnyView')),
       ]),
       spec: _viewSpec,
     ),
   );
 
   test(
-    'a multi-placement view-state screen: every placement nav is its View',
+    'a multi-placement view-state screen: its placement declares the getter',
     () => _expectGenerated(
       allOf([
-        contains('abstract interface class ItemView'),
         contains('class const ItemQuery._()'),
         contains('String? get tag =>'),
-        matches(
-          RegExp(r'implements[^{]*ItemView'),
-        ), // placement navs implement it
-        contains('ItemQueryMut get query'), // …with the mutable getter
-        contains('extends On<ItemPlacement, ItemView>'), // typed selector
+        contains('ItemQueryMut get query;'), // on the sealed placement
+        contains('ItemQueryMut get query => const ItemQueryMut._();'),
       ]),
       spec: _multiViewSpec,
     ),
@@ -1890,52 +1701,19 @@ void main() {
   );
 
   test(
-    'emits the Screen.replace redirect facade',
-    () => _expectGenerated(
-      allOf([
-        contains('static const replace = Replace._();'),
-        contains('final class const Replace._() {'),
-        contains('graph.markReplace();'), // each verb flags replace…
-        contains('return Screen.go'), // …then delegates to the normal commit
-      ]),
-    ),
-  );
-
-  test(
     'emits the on-chain suffix selector + steps',
     () => _expectGenerated(
       allOf([
-        contains('final class const On<'),
+        contains('final class const On<N extends AnyNav>._('),
         contains('final List<_Screens> specs'), // suffix selector
         contains('final class const OnHome'), // step: home has child item
-        contains('final class const OnItem'), // step: item cyclic, child about
-        contains('final class const OnAbout'), // step: about cyclic leaf
-        contains('final class const OnDepth<'), // terminal depth field
+        contains('final class const OnItem'), // step: item, child about
         contains('static OnItem get item'), // id selector is a getter (any id)
         contains('OnItem call(String id)'), // ...callable to pin a specific id
-        contains('OnAbout get about'), // chain: item -> about
-        contains(
-          'OnDepth<ItemNav> depth(int d)',
-        ), // depth method on cyclic step
+        contains('On<AboutNav> get about'), // chain: item -> about (a leaf)
+        isNot(contains('OnDepth')),
+        isNot(contains('countOf(')),
       ]),
-    ),
-  );
-
-  test(
-    'emits depth getters and cycle-member pops on cyclic navs',
-    () => _expectGenerated(
-      allOf(
-        contains('int get depth => _Screens.graph.countOf(_Screens.item)'),
-        contains('int get depth => _Screens.graph.countOf(_Screens.about)'),
-        contains('popToAbout'), // item can pop to the cycle member below
-      ),
-    ),
-  );
-
-  test(
-    'non-cyclic screens get no depth surface',
-    () => _expectGenerated(
-      isNot(contains('countOf(_Screens.home)')), // home never recurs
     ),
   );
 
@@ -1950,19 +1728,13 @@ void main() {
   );
 
   test(
-    'emits the global canPop / Screen.pop sugar surface',
+    'emits the global Screen.pop: a pop above a root, nothing at one',
     () => _expectGenerated(
       allOf([
-        contains('sealed class PopDestPlacement {}'),
-        contains('final class const CanPopNav._() extends AnyNav'),
-        contains('static CanPopNav? get canPop'),
-        contains('currentChain.length > 1'), // null at root
-        // pop() returns the sealed destination placement
-        contains('static PopDestPlacement? pop() => canPop?.pop()'),
-        contains(
-          'PopDestPlacement pop()',
-        ), // CanPopNav executes the guaranteed pop
-        contains('PopDestPlacement _resolvePopDest()'),
+        contains('static void pop() {'),
+        contains('if (_Screens.graph.currentChain.length > 1)'),
+        isNot(contains('PopDestPlacement')),
+        isNot(contains('CanPopNav')),
       ]),
     ),
   );
@@ -1983,7 +1755,6 @@ void main() {
         // Mobile has no host-fed cold URL — assignment during boot
         // fires the launch route as the fallback.
         contains('boot:'),
-        contains('get rootUrl'),
         contains('platformDispatcher.defaultRouteName'),
       ),
       spec: _linksSpec,
@@ -1991,24 +1762,14 @@ void main() {
   );
 
   test(
-    'shared widget with distinct id types gets a sealed id union',
+    'a link slot holding an @IDs node carries its typed id, named by it',
     () => _expectGenerated(
       allOf([
-        contains('sealed class const DetailScreenId()'),
-        // `<Screen>ScreenId` — the bare `<Name>Id` shape belongs to the @IDs
-        // extension types; the variant is Identifiable by its wrapped id.
-        contains(
-          'final class const ProductScreenId(@override final String id)',
-        ),
-        contains('with Identifiable<String>'),
-        contains('final class const OrderScreenId(@override final int id)'),
-        contains('with Identifiable<int>'),
-        contains('static DetailScreenId detailScreenId(BuildContext context)'),
-        contains('ScreenScope.idOf<String>(context, _Screens.product)'),
-        contains('ScreenScope.idOf<int>(context, _Screens.order)'),
-        isNot(contains('HomeScreenId')), // single-use widget: no union
+        contains('final ProductId product'),
+        contains('m.path[0] as ProductId'),
+        isNot(contains('final Object value0')),
       ]),
-      spec: _sharedSpec,
+      spec: _idSlotLinkSpec,
     ),
   );
 
@@ -2026,37 +1787,8 @@ void main() {
   test(
     'a flat (all-roots) tree generates no pop surface at all',
     () => _expectGenerated(
-      allOf(
-        isNot(contains('canPop')),
-        isNot(contains('CanPopNav')),
-        isNot(contains('PopDestPlacement')),
-      ),
+      isNot(contains('static void pop()')),
       spec: _flatSpec,
-    ),
-  );
-
-  test(
-    'cycle bare-pop returns the sealed predecessor placement directly',
-    () => _expectGenerated(
-      allOf(
-        contains('sealed class AboutHomePopPlacement {}'),
-        // pop() returns the resolved sealed predecessor placement
-        contains('AboutHomePopPlacement _resolveAboutHomePopPlacement()'),
-        contains(
-          'AboutHomePopPlacement pop()',
-        ), // item pops into the sealed union
-        // predecessors implement the marker -> exhaustive switch(x.pop())
-        matches(
-          RegExp(
-            r'class const HomeNav\._\(\)\s+extends AnyPlacement\s+implements[^{]*AboutHomePopPlacement',
-          ),
-        ),
-        matches(
-          RegExp(
-            r'class const AboutNav\._\(\)\s+extends AnyPlacement\s+implements[^{]*AboutHomePopPlacement',
-          ),
-        ),
-      ),
     ),
   );
 

@@ -36,11 +36,9 @@ part 'showcase.canon.dart';
 //      `products.entityOf(context)`, `inFlight.containsIdOf(context)`
 //  15. the GATED tier: a COMPOSITE identity (`sellerChat` = product ×
 //      seller) — `SellerChatID.of(context)` on its screen, component
-//      projections, and the CLAIMED handle
-//      `ProductID.on(context, On.seller)?.goSellerChat()` — the other
-//      component read from the claimed chain; a chain that evidences
-//      nothing is a COMPILE error (the `ProductOn` marker), a claim that
-//      misses the live chain is null (the button simply doesn't render).
+//      projections, and the reverse verb
+//      `ProductID.navOf(context).goSellerChat()` — the other component read
+//      from the live chain (offered only on the seller screen).
 //      Identity is NODE-MATCHED: with product (item) and seller (screen)
 //      both ambient, `SellerID.of(context)` walks past the nearer product
 //      scope — a read can never answer with another node's id
@@ -852,8 +850,9 @@ class _Boot extends StatelessWidget {
   const _Boot();
   @override
   Widget build(BuildContext context) {
-    if (Screen.root.kind != null) {
-      return Screen.root.front ?? const Scaffold(backgroundColor: Colors.black);
+    if (_Screens.graph.rootKind != null) {
+      return _Screens.graph.frontWidget as Widget? ??
+          const Scaffold(backgroundColor: Colors.black);
     }
     return const Scaffold(body: Center(child: CircularProgressIndicator()));
   }
@@ -949,7 +948,7 @@ class _S extends StatelessWidget {
                           spacing: 8,
                           runSpacing: 8,
                           children: [
-                            if (Screen.canPop != null)
+                            if (_Screens.graph.currentChain.length > 1)
                               FilledButton.tonal(
                                   onPressed: Screen.pop,
                                   child: const Text('← back')),
@@ -1012,12 +1011,10 @@ class _ProductTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final product = EntityScope.of<Product>(context);
-    // The CLAIMED tier: on the seller screen the chain EVIDENCES the pair
-    // (seller + this product ⇒ the seller-chat composite), so the claim
-    // resolves and the button renders; on search it is null and no button.
-    // A chain proving nothing (`On.home`) would not even compile: the
-    // parameter type is the generated `ProductOn` marker.
-    final claimed = ProductID.on(context, On.seller);
+    // On the seller screen the pair is ambient (seller + this product ⇒ the
+    // seller-chat composite), so the reverse verb has its other half; on
+    // search there is no seller and no button.
+    final claimed = Screen.on(On.seller) != null;
     return Row(
       mainAxisSize: .min,
       children: [
@@ -1029,10 +1026,9 @@ class _ProductTile extends StatelessWidget {
           child: Text(
               '${product.name} · \$${(product.price / 100).toStringAsFixed(2)}'),
         ),
-        if (claimed != null) ...[
+        if (claimed) ...[
           TextButton(
-            onPressed: () =>
-                ProductID.on(context, On.seller)?.goSellerChat(),
+            onPressed: () => ProductID.navOf(context).goSellerChat(),
             child: const Text('ask', style: TextStyle(color: Colors.white70)),
           ),
           // TWO identities are ambient here: the item's (product) and the

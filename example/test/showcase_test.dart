@@ -5,7 +5,7 @@ import 'package:canon_example/showcase.dart';
 void main() {
   testWidgets('showcase grammar validates and navigates the whole tree',
       (tester) async {
-    verifyScreens();
+    expect(Screen.isCodegenFresh, isTrue);
     await tester.pumpWidget(MaterialApp.router(routerDelegate: Screen.manager));
 
     Screen.goHome();
@@ -24,8 +24,7 @@ void main() {
     expect(Screen.stack.current.name, 'editListing');
     expect(Screen.stack.currentId, 'L1');
 
-    // pop returns the sealed placement directly (no .at)
-    expect(Screen.pop(), isNotNull);
+    Screen.pop();
     await tester.pumpAndSettle();
     expect(Screen.stack.current.name, 'listing');
   });

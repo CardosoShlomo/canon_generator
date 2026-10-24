@@ -439,9 +439,32 @@ CodecSpec _codecSpec(Expression codec, EnumElement element) {
     // `.literal('me')` → a payload-less variant named after the literal.
     return CodecSpec('String', _pascal(literal), literal: literal);
   }
+  // An id node (`Ids.image`) erases to `Codec<Object?>`; its typed id
+  // (`ImageId`) and its own name (`image`) are what the slot carries.
+  final node = _idNodeName(codec);
+  if (node != null) {
+    return CodecSpec('${_pascal(node)}Id', _pascal(node),
+        nameOverride: _codecNameOverride(codec), fieldName: node);
+  }
   final (type, _, name) = _codecType(codec, element);
   return CodecSpec(type, name,
       nameOverride: _codecNameOverride(codec), fieldName: _codecFieldName(codec));
+}
+
+/// The node name of an `@IDs` id-space row (`Ids.image` / `.image`), else null.
+String? _idNodeName(Expression codec) {
+  final t = _typeOf?.call(codec);
+  if (t is! InterfaceType) return null;
+  final el = t.element;
+  if (el is! EnumElement) return null;
+  final marked = el.metadata.annotations.any((a) => const {'IDs', 'Canon'}
+      .contains(a.computeConstantValue()?.type?.element?.name));
+  if (!marked) return null;
+  return switch (codec) {
+    PrefixedIdentifier(:final identifier) => identifier.name,
+    DotShorthandPropertyAccess(:final propertyName) => propertyName.name,
+    _ => null,
+  };
 }
 
 /// The literal value of a `Codec.literal('me')` / `.literal('me')` codec, else null.

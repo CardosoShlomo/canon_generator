@@ -5,7 +5,7 @@ import 'package:canon_example/welcome.dart';
 void main() {
   testWidgets('welcome: home -> todo(id) -> back; optimistic complete',
       (tester) async {
-    verifyScreens();
+    expect(Screen.isCodegenFresh, isTrue);
     await tester.pumpWidget(MaterialApp.router(routerDelegate: Screen.manager));
 
     Screen.goHome();
