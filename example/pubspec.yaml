@@ -7,8 +7,8 @@ environment:
   sdk: ^3.13.0
 
 dependencies:
-  canon_flutter: ^0.12.0
-  regent: ^0.14.0 # the pure state engine the regency binds to
+  canon_flutter: ^0.14.0
+  regent: ^0.15.0 # the pure state engine the regency binds to
   flutter:
     sdk: flutter
   flutter_web_plugins:
