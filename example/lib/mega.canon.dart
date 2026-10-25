@@ -9,8 +9,14 @@ part of 'mega.dart';
 
 // ignore_for_file: library_private_types_in_public_api
 // ignore_for_file: invalid_use_of_internal_member
-Object? _idOf(Enum s) =>
-    _Screens.graph.stack.lastWhere((e) => e.screen == s).id;
+// ignore_for_file: annotate_overrides
+Object? _idOf(Enum s) {
+  for (final e in _Screens.graph.stack.reversed) {
+    if (e.screen == s) return e.id;
+  }
+  return null;
+}
+
 bool _chainIs(List<Enum> a, List<Enum> b) {
   if (a.length != b.length) return false;
   for (var i = 0; i < a.length; i++) {
@@ -212,18 +218,6 @@ final class const Screen<I>._(final Enum _spec) {
   /// `PageCtx.screen` to the typed surface (per-screen meta extensions
   /// switch on the constants).
   static Screen<Object?> from(Enum spec) => _bySpec[spec]!;
-
-  /// The current foreground as a read-only view, reactively — switch
-  /// it to render per screen. Null when the current screen has no
-  /// view-state. (`Placement.isOn`/`Placement.isCurrent` for raw checks.)
-  static AnyView? of(BuildContext context) =>
-      _viewOf(Placement.current(context));
-
-  /// Reactive: is the screen THIS context is under the current foreground
-  /// top? Rebuilds only when that flips. The self-vs-current gate —
-  /// `if (Screen.isCurrentOf(context)) …` to act only while visible.
-  static bool isCurrentOf(BuildContext context) =>
-      Placement.isCurrent(context, ScreenScope.of(context));
   static const _bySpec = <Enum, Screen<Object?>>{
     BootScreen.root: Screen<Never>._(BootScreen.root),
     _Screens.splash: splash,
@@ -414,20 +408,10 @@ final class const Screen<I>._(final Enum _spec) {
   static NavStack<Screen<Object?>> get stack => NavStack([
     for (final e in _Screens.graph.stack) NavEntry(_forSpec(e.screen), e.id),
   ]);
-
-  /// The active top screen's QUERY view-state, read-only and
-  /// context-free (the headless peer of `Query.of(context, ...)`).
-  static Map<String, Object?> get query => _Screens.graph.activeView('q');
-
-  /// The active top screen's FRAGMENT view-state, read-only and
-  /// context-free.
-  static Map<String, Object?> get fragment => _Screens.graph.activeView('f');
   static const _treeSignature =
       'activityK(workout(exercise(exerciseSet(exerciseSetA()))));deepDemoK(levelA(levelB(levelC(levelD(levelE(levelF(levelAA(),levelBA(),levelCA(),levelDA(),levelEA(),levelFA())))))));discoverK(events(createEvent(),event(attendees(),editEvent(),tickets())),liveNow(liveRoom(liveRoomA())),nearby(),topics(),trending(hashtag(hashtagA()),topic(subtopic(subtopicA(),topicA()),topicA()),userProfile()));forgotPassword(resetPassword());forumK(forumCategory(forumThread(forumReply(forumReplyA(),userProfile()),forumThreadA(),reportThread())));homeK(feed(composePost(),post(comment(commentA(),postA()),editPost(),postA(),postAuthor(postA(),postAuthorA()),postComments(),postLikes(),repost()),story(storyA()),userProfile()),studio(analytics(audience()),monetization(payouts()),scheduled(scheduledPost(editScheduled()))));learnK(course(certificate(),courseModule(instructor(),lesson(courseReview(),quiz(question(answer(),questionA()))))));marketplaceK(cart(checkout(orderConfirmation())),categories(category(categoryA(),listing(editListing(),listingA(),listingVariant(listingVariantA()),sellerProfile(listingA(),sellerProfileA())))),myOrders(order(orderA())),wishlist());messagesK(chats(chat(thread(message(chatA(),messageReply(messageReplyA())),threadA()),userProfile(),voiceCall())),groupChat(groupChatA(),groupInfo()),newChat());notificationsK(notificationSettings());onboarding();profileK(achievements(),badges(badge(badgeA())),drafts(),editProfile(),followers(connection(connectionA(),mutualConnections())),following(),myListings(),savedPosts(),userProfile());searchK(searchResults());settingsK(about(feedback(),help(helpCategory(faq(faqArticle())))),accountSettings(),admin(adminAuditLog(),adminFeatureFlags(),adminUsers(adminUser(adminRole())),webhooks(webhook())),appearance(),blockedUsers(),connectedApps(),dataExport(),deleteAccount(),devices(device(session(sessionA()),sessions())),integrations(apiKeys()),language(),privacy(),security(twoFactorSettings()),support(knowledgeBase(article()),newTicket(),supportTickets(supportTicket())));shopK(compareProducts(),shopDept(shopCategory(shopSubcategory(product(brand(),productA(),productReview(),productVariant(productVariantA()))))));signIn();signUp();splash();twoFactor();verifyEmail();walletK(accounts(account(accountA(),statements(statement()),transactions(transaction(transactionA(),transactionItem(transactionItemA()))))),balance(),paymentMethods(addCard(),card()),receiveMoney(),sendMoney());workspaceK(project(board(taskList(milestone(),sprint(),task(assignee(),editTask(),label(),subtask(checklistItem(checklistItemA()),subtaskA()),taskA(),taskComment()))),userProfile()))';
 
   /// True when this generated code still matches the live tree.
-  /// Assert it in a test to fail CI on a stale (un-regenerated) tree:
-  /// `test('nav codegen fresh', () => expect(Screen.isCodegenFresh, true));`
   static bool get isCodegenFresh =>
       _Screens.graph.structureSignature == _treeSignature;
   static final bool _fresh = () {
@@ -439,49 +423,26 @@ final class const Screen<I>._(final Enum _spec) {
   }();
 
   /// THE app host — a `RouterDelegate`. Wire it once:
-  /// `MaterialApp.router(routerDelegate: Screen.manager)`. It owns the
-  /// in-memory stack, drives browser back/forward + the URL channel on
-  /// web, and system back on mobile. (The placement may change; the name
-  /// stays — always pass it where a `RouterDelegate` goes.)
+  /// `MaterialApp.router(routerDelegate: Screen.manager)`.
   static NavDelegate get manager {
     assert(_fresh);
     return _Screens.graph.delegate;
   }
 
-  /// A restoration-serializable snapshot of the whole nav state
-  /// (no URLs; ids via each screen codec). Persist + [restore] it.
-  static Map<String, Object?> snapshot() => _Screens.graph.toState();
-
-  /// Rebuilds the stack from a [snapshot], best-effort. Returns
-  /// false on a stale/incompatible snapshot.
-  static bool restore(Map<String, Object?> state) =>
-      _Screens.graph.restore(state);
-
-  /// Executes a resolved [Hop] — the path a parsed [Place] carries.
-  /// This is how a resolver commits an inbound link:
-  /// `Screen.resolver = (url) { if (url case Place p) Screen.go(p); };`.
+  /// Executes a resolved [Hop] — a kick-start or a parsed [Place].
   static N go<N extends AnyNav>(Hop<N> hop) {
     for (final (s, i) in hop.chain) _Screens.graph.go<Object?>(s, i);
     return hop.nav;
   }
 
-  /// If the live stack ends with this selector path (every pinned id and,
-  /// for a cyclic terminal, its depth matching), its nav — else null.
-  static N? on<N extends AnyNav, V>(On<N, V> which) {
-    if (which is OnParentOf) {
-      return (which as OnParentOf).parents.contains(_Screens.graph.current)
-          ? which.nav
-          : null;
+  /// If the live stack ends with this selector path (every pinned id),
+  /// its nav — else null.
+  static N? on<N extends AnyNav>(On<N> which) {
+    if (which is OnParentOf<N>) {
+      return which.parents.contains(_Screens.graph.current) ? which.nav : null;
     }
     final st = _Screens.graph.stack;
     final specs = which.specs;
-    if (specs.isEmpty) {
-      for (final c in which.conds) {
-        if (!c.test(_Screens.graph.viewGet(_Screens.graph.current, c.key)))
-          return null;
-      }
-      return _atOf(_Screens.graph.current) as N;
-    }
     if (st.length < specs.length) return null;
     final off = st.length - specs.length;
     for (var i = 0; i < specs.length; i++) {
@@ -489,33 +450,15 @@ final class const Screen<I>._(final Enum _spec) {
       final wid = which.ids[i];
       if (wid != null && st[off + i].id != wid) return null;
     }
-    if (which is OnDepth &&
-        _Screens.graph.countOf(specs.last, which.ids.last) !=
-            (which as OnDepth).depth) {
-      return null;
-    }
-    for (final c in which.conds) {
-      if (!c.test(_Screens.graph.viewGet(specs.last, c.key))) return null;
-    }
     return _atOf(specs.last) as N;
   }
 
   /// The placement if this selector path is anywhere on the live stack
   /// (front OR buried) — for `Screen.at(.x)?.surface()`. Else null.
-  static N? at<N extends AnyNav, V>(On<N, V> which) {
+  static N? at<N extends AnyNav>(On<N> which) {
+    if (which is OnParentOf<N>) return null;
     final st = _Screens.graph.stack;
     final specs = which.specs;
-    if (which is OnParentOf) return null;
-    if (specs.isEmpty) {
-      for (final entry in st) {
-        if (which.conds.every(
-          (c) => c.test(_Screens.graph.viewGet(entry.screen, c.key)),
-        )) {
-          return _atOf(entry.screen) as N;
-        }
-      }
-      return null;
-    }
     outer:
     for (var e = st.length - 1; e >= specs.length - 1; e--) {
       final off = e - specs.length + 1;
@@ -524,60 +467,37 @@ final class const Screen<I>._(final Enum _spec) {
         final wid = which.ids[i];
         if (wid != null && st[off + i].id != wid) continue outer;
       }
-      for (final c in which.conds) {
-        if (!c.test(_Screens.graph.viewGet(specs.last, c.key))) continue outer;
-      }
       return _atOf(specs.last) as N;
     }
     return null;
   }
 
-  /// The placement OWNING [context] (this widget's screen), reactive.
-  static AnyPlacement ownerOf(BuildContext context) {
-    Placement.isOn(context, ScreenScope.of(context));
-    return _atOf(ScreenScope.of(context));
-  }
-
-  /// Is the screen owning [context] the current foreground? Reactive.
-  static bool isForegroundOf(BuildContext context) =>
-      Placement.isCurrent(context, ScreenScope.of(context));
-
-  /// The read-only view of the screen owning [context] (or null if it
-  /// has no view-state) — `switch` it for the typed view. Reactive.
-  static AnyView? viewOf(BuildContext context) {
-    Placement.isOn(context, ScreenScope.of(context));
-    return _viewOf(ScreenScope.of(context));
-  }
-
-  /// Live-stack redirect: the chained verb REPLACES the current history
-  /// entry instead of pushing. Decide it at the start —
-  /// `Screen.replace.goHome()`, `Screen.replace.on(.user)?.goChat(id)`.
-  static const replace = Replace._();
-
-  /// The root (history bottom) controls: `Screen.root.anchor()` keeps the
-  /// launch position returnable; `Screen.root.passthrough()` makes it a
-  /// throwaway that exits on back.
-  static const root = RootControls._();
-
-  /// The current foreground placement (the front), as the sealed
-  /// [AnyPlacement] — `switch (Screen.current) { … }` is exhaustive.
-  static AnyPlacement get current => _atOf(_Screens.graph.current);
-
-  /// The cold-start link, parsed from the launch URL — read it in the
-  /// `root` boot UI to vary the loading screen by destination. Eager:
-  /// available from the first build, independent of the Router callback.
-  /// Null when the launch URL isn't a representable link.
-  static Url? get rootUrl {
-    final u =
-        _Screens.graph.bootUrl ??
-        WidgetsBinding.instance.platformDispatcher.defaultRouteName;
-    return parseUrl(u);
+  /// The nav of the screen OWNING [context] (this widget's screen),
+  /// typed by [which]. Total: its verbs go from that screen.
+  /// Throws a [StateError] when [context] stands at another placement.
+  static N ownerOf<N extends AnyNav>(BuildContext context, On<N> which) {
+    final entry = ScreenScope.entryOf(context);
+    final own = entry.screen;
+    if (which is OnParentOf<N>) {
+      if (which.parents.contains(own)) return which.at(own);
+      throw StateError('ownerOf: ${own.name} is no parent of this push');
+    }
+    final chain = _Screens.graph.chainOf(entry);
+    final specs = which.specs;
+    final off = chain.length - specs.length;
+    for (var i = 0; i < specs.length; i++) {
+      if (off < 0 || chain[off + i] != specs[i]) {
+        throw StateError(
+          'ownerOf(${specs.map((s) => s.name).join('.')}) at ${chain.map((s) => s.name).join('/')}',
+        );
+      }
+    }
+    return _placementOf(own, chain) as N;
   }
 
   /// THE navigation resolver — assign once (ideally in `main` before
   /// `runApp`). Fires with the cold-start link (or null), then on every
-  /// deep link — web URL + mobile app-link, one channel. Write plain
-  /// `Screen.goX()` / `Screen.replace`. Single, last-wins, never disposed.
+  /// deep link — web URL + mobile app-link, one channel.
   static set resolver(void Function(Url? url) fn) => _Screens.graph.setResolver(
     (url) => fn(parseUrl(url)),
     boot:
@@ -585,25 +505,16 @@ final class const Screen<I>._(final Enum _spec) {
         WidgetsBinding.instance.platformDispatcher.defaultRouteName,
   );
 
-  /// The poppable handle if the active top is a non-root placement,
-  /// else null (at a scope root). `.at` = current placement; `.pop()`
-  /// executes the guaranteed pop and returns the destination.
-  static CanPopNav? get canPop =>
-      _Screens.graph.currentChain.length > 1 ? const CanPopNav._() : null;
-
-  /// Documented sugar for `canPop?.pop()` — pops the active top if any,
-  /// returns where it landed, or null at a root. Never throws.
-  static PopDestPlacement? pop() => canPop?.pop();
+  /// Pops the active top when it sits on a parent; a no-op at a root.
+  static void pop() {
+    if (_Screens.graph.currentChain.length > 1) _Screens.graph.pop();
+  }
 
   /// A broadcast stream of committed navigations as typed snapshots:
   /// `from`/`to` are ScreenEntry stacks; `switch (e.destination)` for
   /// the landed screen + its typed id. Filter with `.where`.
   static Stream<ScreenNavigation> get navigations =>
       _Screens.graph.navigations.map(ScreenNavigation._);
-
-  /// Drops a kept subtree now, so its next visit rebuilds fresh —
-  /// the runtime counterpart to a `keep` branch in the grammar.
-  static void forget(Keep keep) => _Screens.graph.forget(keep.spec);
   static SplashNav goSplash() {
     _Screens.graph.go(_Screens.splash);
     return const SplashNav._();
@@ -1231,669 +1142,16 @@ final class const Screen<I>._(final Enum _spec) {
   }
 }
 
-/// The `Screen.root` facade — controls for the root (the history bottom):
-/// whether the launch position is a returnable root or a throwaway that
-/// exits on back.
-final class const RootControls._() {
-  /// Persist the launch/root position as returnable — back returns to it
-  /// (then exits), and trunk-switches stack above it.
-  void anchor() => _Screens.graph.anchor();
-
-  /// Make the launch/root a throwaway that exits on back (the default).
-  void passthrough() => _Screens.graph.passthrough();
-
-  /// On a BARE root the `root` widget renders — read this to branch
-  /// (a `sentinel`/`fallthrough` kind), or null while boot-loading.
-  FloorKind? get kind => _Screens.graph.rootKind;
-
-  /// The current front screen's widget — `return Screen.root.front` from
-  /// the `root` widget to keep showing it on a bare root.
-  Widget? get front => _Screens.graph.frontWidget as Widget?;
-}
-
-/// The `Screen.replace` redirect facade — every verb mirrors `Screen`
-/// but commits as a history REPLACE (web `replaceState`).
-final class const Replace._() {
-  N go<N extends AnyNav>(Hop<N> hop) {
-    _Screens.graph.markReplace();
-    return Screen.go(hop);
-  }
-
-  /// Scoped redirect — replace is decided here, before scoping; a miss
-  /// (null) commits nothing, so the pending flag is dropped, not leaked.
-  N? on<N extends AnyNav, V>(On<N, V> which) {
-    _Screens.graph.markReplace();
-    return Screen.on(which);
-  }
-
-  /// Replace-mode reach: the placement anywhere on the stack, so the
-  /// following `surface()` / `goX()` commits as a replace (or, on a miss,
-  /// nothing — the flag drops, not leaks).
-  N? at<N extends AnyNav, V>(On<N, V> which) {
-    _Screens.graph.markReplace();
-    return Screen.at(which);
-  }
-
-  SplashNav goSplash() {
-    _Screens.graph.markReplace();
-    return Screen.goSplash();
-  }
-
-  SignInNav goSignIn() {
-    _Screens.graph.markReplace();
-    return Screen.goSignIn();
-  }
-
-  SignUpNav goSignUp() {
-    _Screens.graph.markReplace();
-    return Screen.goSignUp();
-  }
-
-  OnboardingNav goOnboarding() {
-    _Screens.graph.markReplace();
-    return Screen.goOnboarding();
-  }
-
-  ForgotPasswordNav goForgotPassword() {
-    _Screens.graph.markReplace();
-    return Screen.goForgotPassword();
-  }
-
-  ResetPasswordNav goResetPassword(String id) {
-    _Screens.graph.markReplace();
-    return Screen.goResetPassword(id);
-  }
-
-  VerifyEmailNav goVerifyEmail() {
-    _Screens.graph.markReplace();
-    return Screen.goVerifyEmail();
-  }
-
-  TwoFactorNav goTwoFactor() {
-    _Screens.graph.markReplace();
-    return Screen.goTwoFactor();
-  }
-
-  HomeNav goHome() {
-    _Screens.graph.markReplace();
-    return Screen.goHome();
-  }
-
-  FeedNav goFeed() {
-    _Screens.graph.markReplace();
-    return Screen.goFeed();
-  }
-
-  ComposePostNav goComposePost() {
-    _Screens.graph.markReplace();
-    return Screen.goComposePost();
-  }
-
-  StoryNav goStory(String id) {
-    _Screens.graph.markReplace();
-    return Screen.goStory(id);
-  }
-
-  PostNav goPost(String id) {
-    _Screens.graph.markReplace();
-    return Screen.goPost(id);
-  }
-
-  PostCommentsNav goPostComments(String id) {
-    _Screens.graph.markReplace();
-    return Screen.goPostComments(id);
-  }
-
-  PostLikesNav goPostLikes(String id) {
-    _Screens.graph.markReplace();
-    return Screen.goPostLikes(id);
-  }
-
-  EditPostNav goEditPost(String id) {
-    _Screens.graph.markReplace();
-    return Screen.goEditPost(id);
-  }
-
-  RepostNav goRepost(String id) {
-    _Screens.graph.markReplace();
-    return Screen.goRepost(id);
-  }
-
-  DiscoverNav goDiscover() {
-    _Screens.graph.markReplace();
-    return Screen.goDiscover();
-  }
-
-  TrendingNav goTrending() {
-    _Screens.graph.markReplace();
-    return Screen.goTrending();
-  }
-
-  TopicsNav goTopics() {
-    _Screens.graph.markReplace();
-    return Screen.goTopics();
-  }
-
-  TopicNav goTopic(String id) {
-    _Screens.graph.markReplace();
-    return Screen.goTopic(id);
-  }
-
-  HashtagNav goHashtag(String id) {
-    _Screens.graph.markReplace();
-    return Screen.goHashtag(id);
-  }
-
-  LiveNowNav goLiveNow() {
-    _Screens.graph.markReplace();
-    return Screen.goLiveNow();
-  }
-
-  LiveRoomNav goLiveRoom(String id) {
-    _Screens.graph.markReplace();
-    return Screen.goLiveRoom(id);
-  }
-
-  NearbyNav goNearby() {
-    _Screens.graph.markReplace();
-    return Screen.goNearby();
-  }
-
-  MarketplaceNav goMarketplace() {
-    _Screens.graph.markReplace();
-    return Screen.goMarketplace();
-  }
-
-  CategoriesNav goCategories() {
-    _Screens.graph.markReplace();
-    return Screen.goCategories();
-  }
-
-  CategoryNav goCategory(String id) {
-    _Screens.graph.markReplace();
-    return Screen.goCategory(id);
-  }
-
-  CartNav goCart() {
-    _Screens.graph.markReplace();
-    return Screen.goCart();
-  }
-
-  CheckoutNav goCheckout(String id) {
-    _Screens.graph.markReplace();
-    return Screen.goCheckout(id);
-  }
-
-  MyOrdersNav goMyOrders() {
-    _Screens.graph.markReplace();
-    return Screen.goMyOrders();
-  }
-
-  OrderNav goOrder(String id) {
-    _Screens.graph.markReplace();
-    return Screen.goOrder(id);
-  }
-
-  WishlistNav goWishlist() {
-    _Screens.graph.markReplace();
-    return Screen.goWishlist();
-  }
-
-  MessagesNav goMessages() {
-    _Screens.graph.markReplace();
-    return Screen.goMessages();
-  }
-
-  ChatsNav goChats() {
-    _Screens.graph.markReplace();
-    return Screen.goChats();
-  }
-
-  ChatNav goChat(String id) {
-    _Screens.graph.markReplace();
-    return Screen.goChat(id);
-  }
-
-  VoiceCallNav goVoiceCall(String id) {
-    _Screens.graph.markReplace();
-    return Screen.goVoiceCall(id);
-  }
-
-  NewChatNav goNewChat() {
-    _Screens.graph.markReplace();
-    return Screen.goNewChat();
-  }
-
-  GroupChatNav goGroupChat(String id) {
-    _Screens.graph.markReplace();
-    return Screen.goGroupChat(id);
-  }
-
-  GroupInfoNav goGroupInfo(String id) {
-    _Screens.graph.markReplace();
-    return Screen.goGroupInfo(id);
-  }
-
-  WalletNav goWallet() {
-    _Screens.graph.markReplace();
-    return Screen.goWallet();
-  }
-
-  BalanceNav goBalance() {
-    _Screens.graph.markReplace();
-    return Screen.goBalance();
-  }
-
-  AccountsNav goAccounts() {
-    _Screens.graph.markReplace();
-    return Screen.goAccounts();
-  }
-
-  AccountNav goAccount(String id) {
-    _Screens.graph.markReplace();
-    return Screen.goAccount(id);
-  }
-
-  SendMoneyNav goSendMoney() {
-    _Screens.graph.markReplace();
-    return Screen.goSendMoney();
-  }
-
-  ReceiveMoneyNav goReceiveMoney() {
-    _Screens.graph.markReplace();
-    return Screen.goReceiveMoney();
-  }
-
-  PaymentMethodsNav goPaymentMethods() {
-    _Screens.graph.markReplace();
-    return Screen.goPaymentMethods();
-  }
-
-  AddCardNav goAddCard() {
-    _Screens.graph.markReplace();
-    return Screen.goAddCard();
-  }
-
-  CardNav goCard(String id) {
-    _Screens.graph.markReplace();
-    return Screen.goCard(id);
-  }
-
-  ProfileNav goProfile() {
-    _Screens.graph.markReplace();
-    return Screen.goProfile();
-  }
-
-  FollowersNav goFollowers(String id) {
-    _Screens.graph.markReplace();
-    return Screen.goFollowers(id);
-  }
-
-  FollowingNav goFollowing(String id) {
-    _Screens.graph.markReplace();
-    return Screen.goFollowing(id);
-  }
-
-  EditProfileNav goEditProfile() {
-    _Screens.graph.markReplace();
-    return Screen.goEditProfile();
-  }
-
-  AchievementsNav goAchievements() {
-    _Screens.graph.markReplace();
-    return Screen.goAchievements();
-  }
-
-  BadgesNav goBadges() {
-    _Screens.graph.markReplace();
-    return Screen.goBadges();
-  }
-
-  BadgeNav goBadge(String id) {
-    _Screens.graph.markReplace();
-    return Screen.goBadge(id);
-  }
-
-  SavedPostsNav goSavedPosts() {
-    _Screens.graph.markReplace();
-    return Screen.goSavedPosts();
-  }
-
-  DraftsNav goDrafts() {
-    _Screens.graph.markReplace();
-    return Screen.goDrafts();
-  }
-
-  MyListingsNav goMyListings() {
-    _Screens.graph.markReplace();
-    return Screen.goMyListings();
-  }
-
-  NotificationsNav goNotifications() {
-    _Screens.graph.markReplace();
-    return Screen.goNotifications();
-  }
-
-  NotificationSettingsNav goNotificationSettings() {
-    _Screens.graph.markReplace();
-    return Screen.goNotificationSettings();
-  }
-
-  SearchNav goSearch() {
-    _Screens.graph.markReplace();
-    return Screen.goSearch();
-  }
-
-  SearchResultsNav goSearchResults() {
-    _Screens.graph.markReplace();
-    return Screen.goSearchResults();
-  }
-
-  SettingsNav goSettings() {
-    _Screens.graph.markReplace();
-    return Screen.goSettings();
-  }
-
-  AccountSettingsNav goAccountSettings() {
-    _Screens.graph.markReplace();
-    return Screen.goAccountSettings();
-  }
-
-  SecurityNav goSecurity() {
-    _Screens.graph.markReplace();
-    return Screen.goSecurity();
-  }
-
-  TwoFactorSettingsNav goTwoFactorSettings() {
-    _Screens.graph.markReplace();
-    return Screen.goTwoFactorSettings();
-  }
-
-  PrivacyNav goPrivacy() {
-    _Screens.graph.markReplace();
-    return Screen.goPrivacy();
-  }
-
-  AppearanceNav goAppearance() {
-    _Screens.graph.markReplace();
-    return Screen.goAppearance();
-  }
-
-  LanguageNav goLanguage() {
-    _Screens.graph.markReplace();
-    return Screen.goLanguage();
-  }
-
-  ConnectedAppsNav goConnectedApps() {
-    _Screens.graph.markReplace();
-    return Screen.goConnectedApps();
-  }
-
-  AboutNav goAbout() {
-    _Screens.graph.markReplace();
-    return Screen.goAbout();
-  }
-
-  HelpNav goHelp() {
-    _Screens.graph.markReplace();
-    return Screen.goHelp();
-  }
-
-  HelpCategoryNav goHelpCategory(String id) {
-    _Screens.graph.markReplace();
-    return Screen.goHelpCategory(id);
-  }
-
-  FeedbackNav goFeedback() {
-    _Screens.graph.markReplace();
-    return Screen.goFeedback();
-  }
-
-  BlockedUsersNav goBlockedUsers() {
-    _Screens.graph.markReplace();
-    return Screen.goBlockedUsers();
-  }
-
-  DevicesNav goDevices() {
-    _Screens.graph.markReplace();
-    return Screen.goDevices();
-  }
-
-  DeviceNav goDevice(String id) {
-    _Screens.graph.markReplace();
-    return Screen.goDevice(id);
-  }
-
-  DataExportNav goDataExport() {
-    _Screens.graph.markReplace();
-    return Screen.goDataExport();
-  }
-
-  DeleteAccountNav goDeleteAccount() {
-    _Screens.graph.markReplace();
-    return Screen.goDeleteAccount();
-  }
-
-  WorkspaceNav goWorkspace() {
-    _Screens.graph.markReplace();
-    return Screen.goWorkspace();
-  }
-
-  ProjectNav goProject(String id) {
-    _Screens.graph.markReplace();
-    return Screen.goProject(id);
-  }
-
-  ForumNav goForum() {
-    _Screens.graph.markReplace();
-    return Screen.goForum();
-  }
-
-  ForumCategoryNav goForumCategory(String id) {
-    _Screens.graph.markReplace();
-    return Screen.goForumCategory(id);
-  }
-
-  LearnNav goLearn() {
-    _Screens.graph.markReplace();
-    return Screen.goLearn();
-  }
-
-  CourseNav goCourse(String id) {
-    _Screens.graph.markReplace();
-    return Screen.goCourse(id);
-  }
-
-  CertificateNav goCertificate(String id) {
-    _Screens.graph.markReplace();
-    return Screen.goCertificate(id);
-  }
-
-  ShopNav goShop() {
-    _Screens.graph.markReplace();
-    return Screen.goShop();
-  }
-
-  ShopDeptNav goShopDept(String id) {
-    _Screens.graph.markReplace();
-    return Screen.goShopDept(id);
-  }
-
-  CompareProductsNav goCompareProducts() {
-    _Screens.graph.markReplace();
-    return Screen.goCompareProducts();
-  }
-
-  ActivityNav goActivity() {
-    _Screens.graph.markReplace();
-    return Screen.goActivity();
-  }
-
-  WorkoutNav goWorkout(String id) {
-    _Screens.graph.markReplace();
-    return Screen.goWorkout(id);
-  }
-
-  DeepDemoNav goDeepDemo() {
-    _Screens.graph.markReplace();
-    return Screen.goDeepDemo();
-  }
-
-  LevelANav goLevelA(String id) {
-    _Screens.graph.markReplace();
-    return Screen.goLevelA(id);
-  }
-
-  IntegrationsNav goIntegrations() {
-    _Screens.graph.markReplace();
-    return Screen.goIntegrations();
-  }
-
-  ApiKeysNav goApiKeys() {
-    _Screens.graph.markReplace();
-    return Screen.goApiKeys();
-  }
-
-  StudioNav goStudio() {
-    _Screens.graph.markReplace();
-    return Screen.goStudio();
-  }
-
-  AnalyticsNav goAnalytics() {
-    _Screens.graph.markReplace();
-    return Screen.goAnalytics();
-  }
-
-  AudienceNav goAudience() {
-    _Screens.graph.markReplace();
-    return Screen.goAudience();
-  }
-
-  ScheduledNav goScheduled() {
-    _Screens.graph.markReplace();
-    return Screen.goScheduled();
-  }
-
-  ScheduledPostNav goScheduledPost(String id) {
-    _Screens.graph.markReplace();
-    return Screen.goScheduledPost(id);
-  }
-
-  EditScheduledNav goEditScheduled(String id) {
-    _Screens.graph.markReplace();
-    return Screen.goEditScheduled(id);
-  }
-
-  MonetizationNav goMonetization() {
-    _Screens.graph.markReplace();
-    return Screen.goMonetization();
-  }
-
-  PayoutsNav goPayouts() {
-    _Screens.graph.markReplace();
-    return Screen.goPayouts();
-  }
-
-  EventsNav goEvents() {
-    _Screens.graph.markReplace();
-    return Screen.goEvents();
-  }
-
-  EventNav goEvent(String id) {
-    _Screens.graph.markReplace();
-    return Screen.goEvent(id);
-  }
-
-  AttendeesNav goAttendees(String id) {
-    _Screens.graph.markReplace();
-    return Screen.goAttendees(id);
-  }
-
-  EditEventNav goEditEvent(String id) {
-    _Screens.graph.markReplace();
-    return Screen.goEditEvent(id);
-  }
-
-  CreateEventNav goCreateEvent() {
-    _Screens.graph.markReplace();
-    return Screen.goCreateEvent();
-  }
-
-  TicketsNav goTickets(String id) {
-    _Screens.graph.markReplace();
-    return Screen.goTickets(id);
-  }
-
-  SupportNav goSupport() {
-    _Screens.graph.markReplace();
-    return Screen.goSupport();
-  }
-
-  SupportTicketsNav goSupportTickets() {
-    _Screens.graph.markReplace();
-    return Screen.goSupportTickets();
-  }
-
-  SupportTicketNav goSupportTicket(String id) {
-    _Screens.graph.markReplace();
-    return Screen.goSupportTicket(id);
-  }
-
-  NewTicketNav goNewTicket() {
-    _Screens.graph.markReplace();
-    return Screen.goNewTicket();
-  }
-
-  KnowledgeBaseNav goKnowledgeBase() {
-    _Screens.graph.markReplace();
-    return Screen.goKnowledgeBase();
-  }
-
-  ArticleNav goArticle(String id) {
-    _Screens.graph.markReplace();
-    return Screen.goArticle(id);
-  }
-
-  AdminNav goAdmin() {
-    _Screens.graph.markReplace();
-    return Screen.goAdmin();
-  }
-
-  AdminUsersNav goAdminUsers() {
-    _Screens.graph.markReplace();
-    return Screen.goAdminUsers();
-  }
-
-  AdminUserNav goAdminUser(String id) {
-    _Screens.graph.markReplace();
-    return Screen.goAdminUser(id);
-  }
-
-  AdminAuditLogNav goAdminAuditLog() {
-    _Screens.graph.markReplace();
-    return Screen.goAdminAuditLog();
-  }
-
-  AdminFeatureFlagsNav goAdminFeatureFlags() {
-    _Screens.graph.markReplace();
-    return Screen.goAdminFeatureFlags();
-  }
-
-  WebhooksNav goWebhooks() {
-    _Screens.graph.markReplace();
-    return Screen.goWebhooks();
-  }
-
-  WebhookNav goWebhook(String id) {
-    _Screens.graph.markReplace();
-    return Screen.goWebhook(id);
-  }
-}
-
 /// One committed navigation as typed [ScreenEntry] stacks.
 final class ScreenNavigation._(final Navigation _n) {
-  List<ScreenEntry> get from => [for (final e in _n.from) _entryOf(e.$1, e.$2)];
-  List<ScreenEntry> get to => [for (final e in _n.to) _entryOf(e.$1, e.$2)];
+  List<ScreenEntry> get from => [
+    for (final e in _n.from)
+      if (e.$1 != BootScreen.root) _entryOf(e.$1, e.$2),
+  ];
+  List<ScreenEntry> get to => [
+    for (final e in _n.to)
+      if (e.$1 != BootScreen.root) _entryOf(e.$1, e.$2),
+  ];
   ScreenEntry get source => _entryOf(_n.source.$1, _n.source.$2);
   ScreenEntry get destination => _entryOf(_n.destination.$1, _n.destination.$2);
   NavDirection get direction => _n.direction;
@@ -2676,25 +1934,22 @@ final class const Hop<N extends AnyNav>._(
       Hop._(Admin.webhook, id, const WebhookNav._());
 }
 
-/// The root/boot placement: `Screen.current` returns it until the first
-/// commit. `if (Screen.current case Root()) ...` gates blob-null cold-boot UI.
 final class const Root._() extends AnyPlacement {
   this : super._();
 }
 
-final class const On<N extends AnyNav, V>._(
+final class const On<N extends AnyNav>._(
   final List<Enum> specs,
   final List<Object?> ids,
-  final N? nav, [
-  final List<ViewCond> conds = const [],
-]) {
-  static On<SplashNav, AnyView> get splash =>
+  final N? nav,
+) {
+  static On<SplashNav> get splash =>
       On._([_Screens.splash], [null], const SplashNav._());
-  static On<SignInNav, AnyView> get signIn =>
+  static On<SignInNav> get signIn =>
       On._([_Screens.signIn], [null], const SignInNav._());
-  static On<SignUpNav, AnyView> get signUp =>
+  static On<SignUpNav> get signUp =>
       On._([_Screens.signUp], [null], const SignUpNav._());
-  static On<OnboardingNav, AnyView> get onboarding =>
+  static On<OnboardingNav> get onboarding =>
       On._([_Screens.onboarding], [null], const OnboardingNav._());
   static OnForgotPassword get forgotPassword => OnForgotPassword._(
     [_Screens.forgotPassword],
@@ -2706,15 +1961,15 @@ final class const On<N extends AnyNav, V>._(
     [null],
     const ResetPasswordNav._(),
   );
-  static On<VerifyEmailNav, AnyView> get verifyEmail =>
+  static On<VerifyEmailNav> get verifyEmail =>
       On._([_Screens.verifyEmail], [null], const VerifyEmailNav._());
-  static On<TwoFactorNav, AnyView> get twoFactor =>
+  static On<TwoFactorNav> get twoFactor =>
       On._([_Screens.twoFactor], [null], const TwoFactorNav._());
   static OnHome get home =>
       OnHome._([_Screens.home], [null], const HomeNav._());
   static OnFeed get feed =>
       OnFeed._([_Screens.feed], [null], const FeedNav._());
-  static On<ComposePostNav, AnyView> get composePost =>
+  static On<ComposePostNav> get composePost =>
       On._([_Screens.composePost], [null], const ComposePostNav._());
   static OnStory get story =>
       OnStory._([_Screens.story], [null], const StoryNav._());
@@ -2739,7 +1994,7 @@ final class const On<N extends AnyNav, V>._(
       OnDiscover._([_Screens.discover], [null], const DiscoverNav._());
   static OnTrending get trending =>
       OnTrending._([_Screens.trending], [null], const TrendingNav._());
-  static On<TopicsNav, AnyView> get topics =>
+  static On<TopicsNav> get topics =>
       On._([_Screens.topics], [null], const TopicsNav._());
   static OnTopic get topic =>
       OnTopic._([_Screens.topic], [null], const TopicNav._());
@@ -2751,7 +2006,7 @@ final class const On<N extends AnyNav, V>._(
       OnLiveNow._([_Screens.liveNow], [null], const LiveNowNav._());
   static OnLiveRoom get liveRoom =>
       OnLiveRoom._([_Screens.liveRoom], [null], const LiveRoomNav._());
-  static On<NearbyNav, AnyView> get nearby =>
+  static On<NearbyNav> get nearby =>
       On._([_Screens.nearby], [null], const NearbyNav._());
   static OnMarketplace get marketplace =>
       OnMarketplace._([_Screens.marketplace], [null], const MarketplaceNav._());
@@ -2786,7 +2041,7 @@ final class const On<N extends AnyNav, V>._(
       OnMyOrders._([_Screens.myOrders], [null], const MyOrdersNav._());
   static OnOrder get order =>
       OnOrder._([_Screens.order], [null], const OrderNav._());
-  static On<WishlistNav, AnyView> get wishlist =>
+  static On<WishlistNav> get wishlist =>
       On._([_Screens.wishlist], [null], const WishlistNav._());
   static OnMessages get messages =>
       OnMessages._([_Screens.messages], [null], const MessagesNav._());
@@ -2805,7 +2060,7 @@ final class const On<N extends AnyNav, V>._(
   );
   static OnVoiceCall get voiceCall =>
       OnVoiceCall._([_Screens.voiceCall], [null], const VoiceCallNav._());
-  static On<NewChatNav, AnyView> get newChat =>
+  static On<NewChatNav> get newChat =>
       On._([_Screens.newChat], [null], const NewChatNav._());
   static OnGroupChat get groupChat =>
       OnGroupChat._([_Screens.groupChat], [null], const GroupChatNav._());
@@ -2813,7 +2068,7 @@ final class const On<N extends AnyNav, V>._(
       OnGroupInfo._([_Screens.groupInfo], [null], const GroupInfoNav._());
   static OnWallet get wallet =>
       OnWallet._([_Screens.wallet], [null], const WalletNav._());
-  static On<BalanceNav, AnyView> get balance =>
+  static On<BalanceNav> get balance =>
       On._([_Screens.balance], [null], const BalanceNav._());
   static OnAccounts get accounts =>
       OnAccounts._([_Screens.accounts], [null], const AccountsNav._());
@@ -2831,16 +2086,16 @@ final class const On<N extends AnyNav, V>._(
     [null],
     const TransactionItemNav._(),
   );
-  static On<SendMoneyNav, AnyView> get sendMoney =>
+  static On<SendMoneyNav> get sendMoney =>
       On._([_Screens.sendMoney], [null], const SendMoneyNav._());
-  static On<ReceiveMoneyNav, AnyView> get receiveMoney =>
+  static On<ReceiveMoneyNav> get receiveMoney =>
       On._([_Screens.receiveMoney], [null], const ReceiveMoneyNav._());
   static OnPaymentMethods get paymentMethods => OnPaymentMethods._(
     [_Screens.paymentMethods],
     [null],
     const PaymentMethodsNav._(),
   );
-  static On<AddCardNav, AnyView> get addCard =>
+  static On<AddCardNav> get addCard =>
       On._([_Screens.addCard], [null], const AddCardNav._());
   static OnCard get card =>
       OnCard._([_Screens.card], [null], const CardNav._());
@@ -2858,57 +2113,57 @@ final class const On<N extends AnyNav, V>._(
       OnFollowing._([_Screens.following], [null], const FollowingNav._());
   static OnConnection get connection =>
       OnConnection._([_Screens.connection], [null], const ConnectionNav._());
-  static On<MutualConnectionsNav, AnyView> get mutualConnections => On._(
+  static On<MutualConnectionsNav> get mutualConnections => On._(
     [_Screens.mutualConnections],
     [null],
     const MutualConnectionsNav._(),
   );
-  static On<EditProfileNav, AnyView> get editProfile =>
+  static On<EditProfileNav> get editProfile =>
       On._([_Screens.editProfile], [null], const EditProfileNav._());
-  static On<AchievementsNav, AnyView> get achievements =>
+  static On<AchievementsNav> get achievements =>
       On._([_Screens.achievements], [null], const AchievementsNav._());
   static OnBadges get badges =>
       OnBadges._([_Screens.badges], [null], const BadgesNav._());
   static OnBadge get badge =>
       OnBadge._([_Screens.badge], [null], const BadgeNav._());
-  static On<SavedPostsNav, AnyView> get savedPosts =>
+  static On<SavedPostsNav> get savedPosts =>
       On._([_Screens.savedPosts], [null], const SavedPostsNav._());
-  static On<DraftsNav, AnyView> get drafts =>
+  static On<DraftsNav> get drafts =>
       On._([_Screens.drafts], [null], const DraftsNav._());
-  static On<MyListingsNav, AnyView> get myListings =>
+  static On<MyListingsNav> get myListings =>
       On._([_Screens.myListings], [null], const MyListingsNav._());
   static OnNotifications get notifications => OnNotifications._(
     [_Screens.notifications],
     [null],
     const NotificationsNav._(),
   );
-  static On<NotificationSettingsNav, AnyView> get notificationSettings => On._(
+  static On<NotificationSettingsNav> get notificationSettings => On._(
     [_Screens.notificationSettings],
     [null],
     const NotificationSettingsNav._(),
   );
   static OnSearch get search =>
       OnSearch._([_Screens.search], [null], const SearchNav._());
-  static On<SearchResultsNav, AnyView> get searchResults =>
+  static On<SearchResultsNav> get searchResults =>
       On._([_Screens.searchResults], [null], const SearchResultsNav._());
   static OnSettings get settings =>
       OnSettings._([_Screens.settings], [null], const SettingsNav._());
-  static On<AccountSettingsNav, AnyView> get accountSettings =>
+  static On<AccountSettingsNav> get accountSettings =>
       On._([_Screens.accountSettings], [null], const AccountSettingsNav._());
   static OnSecurity get security =>
       OnSecurity._([_Screens.security], [null], const SecurityNav._());
-  static On<TwoFactorSettingsNav, AnyView> get twoFactorSettings => On._(
+  static On<TwoFactorSettingsNav> get twoFactorSettings => On._(
     [_Screens.twoFactorSettings],
     [null],
     const TwoFactorSettingsNav._(),
   );
-  static On<PrivacyNav, AnyView> get privacy =>
+  static On<PrivacyNav> get privacy =>
       On._([_Screens.privacy], [null], const PrivacyNav._());
-  static On<AppearanceNav, AnyView> get appearance =>
+  static On<AppearanceNav> get appearance =>
       On._([_Screens.appearance], [null], const AppearanceNav._());
-  static On<LanguageNav, AnyView> get language =>
+  static On<LanguageNav> get language =>
       On._([_Screens.language], [null], const LanguageNav._());
-  static On<ConnectedAppsNav, AnyView> get connectedApps =>
+  static On<ConnectedAppsNav> get connectedApps =>
       On._([_Screens.connectedApps], [null], const ConnectedAppsNav._());
   static OnAbout get about =>
       OnAbout._([_Screens.about], [null], const AboutNav._());
@@ -2922,21 +2177,21 @@ final class const On<N extends AnyNav, V>._(
   static OnFaq get faq => OnFaq._([_Screens.faq], [null], const FaqNav._());
   static OnFaqArticle get faqArticle =>
       OnFaqArticle._([_Screens.faqArticle], [null], const FaqArticleNav._());
-  static On<FeedbackNav, AnyView> get feedback =>
+  static On<FeedbackNav> get feedback =>
       On._([_Screens.feedback], [null], const FeedbackNav._());
-  static On<BlockedUsersNav, AnyView> get blockedUsers =>
+  static On<BlockedUsersNav> get blockedUsers =>
       On._([_Screens.blockedUsers], [null], const BlockedUsersNav._());
   static OnDevices get devices =>
       OnDevices._([_Screens.devices], [null], const DevicesNav._());
   static OnDevice get device =>
       OnDevice._([_Screens.device], [null], const DeviceNav._());
-  static On<SessionsNav, AnyView> get sessions =>
+  static On<SessionsNav> get sessions =>
       On._([_Screens.sessions], [null], const SessionsNav._());
   static OnSession get session =>
       OnSession._([_Screens.session], [null], const SessionNav._());
-  static On<DataExportNav, AnyView> get dataExport =>
+  static On<DataExportNav> get dataExport =>
       On._([_Screens.dataExport], [null], const DataExportNav._());
-  static On<DeleteAccountNav, AnyView> get deleteAccount =>
+  static On<DeleteAccountNav> get deleteAccount =>
       On._([_Screens.deleteAccount], [null], const DeleteAccountNav._());
   static OnWorkspace get workspace =>
       OnWorkspace._([_Screens.workspace], [null], const WorkspaceNav._());
@@ -3037,7 +2292,7 @@ final class const On<N extends AnyNav, V>._(
   );
   static OnBrand get brand =>
       OnBrand._([_Screens.brand], [null], const BrandNav._());
-  static On<CompareProductsNav, AnyView> get compareProducts =>
+  static On<CompareProductsNav> get compareProducts =>
       On._([_Screens.compareProducts], [null], const CompareProductsNav._());
   static OnActivity get activity =>
       OnActivity._([_Screens.activity], [null], const ActivityNav._());
@@ -3066,13 +2321,13 @@ final class const On<N extends AnyNav, V>._(
     [null],
     const IntegrationsNav._(),
   );
-  static On<ApiKeysNav, AnyView> get apiKeys =>
+  static On<ApiKeysNav> get apiKeys =>
       On._([_Screens.apiKeys], [null], const ApiKeysNav._());
   static OnStudio get studio =>
       OnStudio._([CreatorStudio.studio], [null], const StudioNav._());
   static OnAnalytics get analytics =>
       OnAnalytics._([CreatorStudio.analytics], [null], const AnalyticsNav._());
-  static On<AudienceNav, AnyView> get audience =>
+  static On<AudienceNav> get audience =>
       On._([CreatorStudio.audience], [null], const AudienceNav._());
   static OnScheduled get scheduled =>
       OnScheduled._([CreatorStudio.scheduled], [null], const ScheduledNav._());
@@ -3091,7 +2346,7 @@ final class const On<N extends AnyNav, V>._(
     [null],
     const MonetizationNav._(),
   );
-  static On<PayoutsNav, AnyView> get payouts =>
+  static On<PayoutsNav> get payouts =>
       On._([CreatorStudio.payouts], [null], const PayoutsNav._());
   static OnEvents get events =>
       OnEvents._([Events.events], [null], const EventsNav._());
@@ -3101,7 +2356,7 @@ final class const On<N extends AnyNav, V>._(
       OnAttendees._([Events.attendees], [null], const AttendeesNav._());
   static OnEditEvent get editEvent =>
       OnEditEvent._([Events.editEvent], [null], const EditEventNav._());
-  static On<CreateEventNav, AnyView> get createEvent =>
+  static On<CreateEventNav> get createEvent =>
       On._([Events.createEvent], [null], const CreateEventNav._());
   static OnTickets get tickets =>
       OnTickets._([Events.tickets], [null], const TicketsNav._());
@@ -3117,7 +2372,7 @@ final class const On<N extends AnyNav, V>._(
     [null],
     const SupportTicketNav._(),
   );
-  static On<NewTicketNav, AnyView> get newTicket =>
+  static On<NewTicketNav> get newTicket =>
       On._([Support.newTicket], [null], const NewTicketNav._());
   static OnKnowledgeBase get knowledgeBase => OnKnowledgeBase._(
     [Support.knowledgeBase],
@@ -3132,25 +2387,16 @@ final class const On<N extends AnyNav, V>._(
       OnAdminUsers._([Admin.adminUsers], [null], const AdminUsersNav._());
   static OnAdminUser get adminUser =>
       OnAdminUser._([Admin.adminUser], [null], const AdminUserNav._());
-  static On<AdminAuditLogNav, AnyView> get adminAuditLog =>
+  static On<AdminAuditLogNav> get adminAuditLog =>
       On._([Admin.adminAuditLog], [null], const AdminAuditLogNav._());
   static OnAdminRole get adminRole =>
       OnAdminRole._([Admin.adminRole], [null], const AdminRoleNav._());
-  static On<AdminFeatureFlagsNav, AnyView> get adminFeatureFlags =>
+  static On<AdminFeatureFlagsNav> get adminFeatureFlags =>
       On._([Admin.adminFeatureFlags], [null], const AdminFeatureFlagsNav._());
   static OnWebhooks get webhooks =>
       OnWebhooks._([Admin.webhooks], [null], const WebhooksNav._());
   static OnWebhook get webhook =>
       OnWebhook._([Admin.webhook], [null], const WebhookNav._());
-
-  /// GLOBAL query conditions, unbound to a screen — `context.on(.query(
-  /// {…}))` (foreground) / `context.at(.query({…}))` (anywhere on stack).
-  static On<AnyPlacement, AnyView> query(Set<QueryCond> cs) =>
-      On._(const [], const [], null, [...cs]);
-
-  /// GLOBAL fragment conditions, unbound to a screen.
-  static On<AnyPlacement, AnyView> fragment(Set<FragmentCond> cs) =>
-      On._(const [], const [], null, [...cs]);
 
   /// Disambiguating push onto the current scope when a screen has
   /// 2+ parents: `Screen.on(.parentOf.x)?.goX(...)`. A namespace —
@@ -3158,657 +2404,675 @@ final class const On<N extends AnyNav, V>._(
   static _ParentSel get parentOf => const _ParentSel._();
 }
 
-final class const OnParentOf<N extends AnyNav, V>._(
+final class const OnParentOf<N extends AnyNav>._(
   final Set<_Screens> parents,
   N nav,
-) extends On<N, V> {
+  final N Function(Enum) at,
+) extends On<N> {
   this : super._(const [], const [], nav);
 }
 
 final class const _ParentSel._() {
-  OnParentOf<StoryNavParent, AnyView> get story =>
-      OnParentOf._(const {.feed, .story}, const StoryNavParent._());
-  OnParentOf<PostNavParent, PostView> get post => OnParentOf._(const {
-    .comment,
-    .feed,
-    .post,
-    .postAuthor,
-  }, const PostNavParent._());
-  OnParentOf<CommentNavParent, AnyView> get comment =>
-      OnParentOf._(const {.comment, .post}, const CommentNavParent._());
-  OnParentOf<PostAuthorNavParent, AnyView> get postAuthor =>
-      OnParentOf._(const {.post, .postAuthor}, const PostAuthorNavParent._());
-  OnParentOf<TopicNavParent, AnyView> get topic => OnParentOf._(const {
-    .subtopic,
-    .topic,
-    .trending,
-  }, const TopicNavParent._());
-  OnParentOf<SubtopicNavParent, AnyView> get subtopic =>
-      OnParentOf._(const {.subtopic, .topic}, const SubtopicNavParent._());
-  OnParentOf<HashtagNavParent, AnyView> get hashtag =>
-      OnParentOf._(const {.hashtag, .trending}, const HashtagNavParent._());
-  OnParentOf<LiveRoomNavParent, AnyView> get liveRoom =>
-      OnParentOf._(const {.liveNow, .liveRoom}, const LiveRoomNavParent._());
-  OnParentOf<CategoryNavParent, AnyView> get category =>
-      OnParentOf._(const {.categories, .category}, const CategoryNavParent._());
-  OnParentOf<ListingNavParent, AnyView> get listing => OnParentOf._(const {
-    .category,
-    .listing,
-    .sellerProfile,
-  }, const ListingNavParent._());
-  OnParentOf<ListingVariantNavParent, AnyView> get listingVariant =>
-      OnParentOf._(const {
-        .listing,
-        .listingVariant,
-      }, const ListingVariantNavParent._());
-  OnParentOf<SellerProfileNavParent, AnyView> get sellerProfile => OnParentOf._(
+  OnParentOf<StoryNavParent> get story => OnParentOf._(
+    const {.feed, .story},
+    const StoryNavParent._(),
+    StoryNavParent._,
+  );
+  OnParentOf<PostNavParent> get post => OnParentOf._(
+    const {.comment, .feed, .post, .postAuthor},
+    const PostNavParent._(),
+    PostNavParent._,
+  );
+  OnParentOf<CommentNavParent> get comment => OnParentOf._(
+    const {.comment, .post},
+    const CommentNavParent._(),
+    CommentNavParent._,
+  );
+  OnParentOf<PostAuthorNavParent> get postAuthor => OnParentOf._(
+    const {.post, .postAuthor},
+    const PostAuthorNavParent._(),
+    PostAuthorNavParent._,
+  );
+  OnParentOf<TopicNavParent> get topic => OnParentOf._(
+    const {.subtopic, .topic, .trending},
+    const TopicNavParent._(),
+    TopicNavParent._,
+  );
+  OnParentOf<SubtopicNavParent> get subtopic => OnParentOf._(
+    const {.subtopic, .topic},
+    const SubtopicNavParent._(),
+    SubtopicNavParent._,
+  );
+  OnParentOf<HashtagNavParent> get hashtag => OnParentOf._(
+    const {.hashtag, .trending},
+    const HashtagNavParent._(),
+    HashtagNavParent._,
+  );
+  OnParentOf<LiveRoomNavParent> get liveRoom => OnParentOf._(
+    const {.liveNow, .liveRoom},
+    const LiveRoomNavParent._(),
+    LiveRoomNavParent._,
+  );
+  OnParentOf<CategoryNavParent> get category => OnParentOf._(
+    const {.categories, .category},
+    const CategoryNavParent._(),
+    CategoryNavParent._,
+  );
+  OnParentOf<ListingNavParent> get listing => OnParentOf._(
+    const {.category, .listing, .sellerProfile},
+    const ListingNavParent._(),
+    ListingNavParent._,
+  );
+  OnParentOf<ListingVariantNavParent> get listingVariant => OnParentOf._(
+    const {.listing, .listingVariant},
+    const ListingVariantNavParent._(),
+    ListingVariantNavParent._,
+  );
+  OnParentOf<SellerProfileNavParent> get sellerProfile => OnParentOf._(
     const {.listing, .sellerProfile},
     const SellerProfileNavParent._(),
+    SellerProfileNavParent._,
   );
-  OnParentOf<OrderNavParent, AnyView> get order =>
-      OnParentOf._(const {.myOrders, .order}, const OrderNavParent._());
-  OnParentOf<ChatNavParent, AnyView> get chat =>
-      OnParentOf._(const {.chats, .message}, const ChatNavParent._());
-  OnParentOf<ThreadNavParent, AnyView> get thread =>
-      OnParentOf._(const {.chat, .thread}, const ThreadNavParent._());
-  OnParentOf<MessageReplyNavParent, AnyView> get messageReply => OnParentOf._(
+  OnParentOf<OrderNavParent> get order => OnParentOf._(
+    const {.myOrders, .order},
+    const OrderNavParent._(),
+    OrderNavParent._,
+  );
+  OnParentOf<ChatNavParent> get chat => OnParentOf._(
+    const {.chats, .message},
+    const ChatNavParent._(),
+    ChatNavParent._,
+  );
+  OnParentOf<ThreadNavParent> get thread => OnParentOf._(
+    const {.chat, .thread},
+    const ThreadNavParent._(),
+    ThreadNavParent._,
+  );
+  OnParentOf<MessageReplyNavParent> get messageReply => OnParentOf._(
     const {.message, .messageReply},
     const MessageReplyNavParent._(),
+    MessageReplyNavParent._,
   );
-  OnParentOf<GroupChatNavParent, AnyView> get groupChat =>
-      OnParentOf._(const {.groupChat, .messages}, const GroupChatNavParent._());
-  OnParentOf<AccountNavParent, AnyView> get account =>
-      OnParentOf._(const {.account, .accounts}, const AccountNavParent._());
-  OnParentOf<TransactionNavParent, AnyView> get transaction => OnParentOf._(
+  OnParentOf<GroupChatNavParent> get groupChat => OnParentOf._(
+    const {.groupChat, .messages},
+    const GroupChatNavParent._(),
+    GroupChatNavParent._,
+  );
+  OnParentOf<AccountNavParent> get account => OnParentOf._(
+    const {.account, .accounts},
+    const AccountNavParent._(),
+    AccountNavParent._,
+  );
+  OnParentOf<TransactionNavParent> get transaction => OnParentOf._(
     const {.transaction, .transactions},
     const TransactionNavParent._(),
+    TransactionNavParent._,
   );
-  OnParentOf<TransactionItemNavParent, AnyView> get transactionItem =>
-      OnParentOf._(const {
-        .transaction,
-        .transactionItem,
-      }, const TransactionItemNavParent._());
-  OnParentOf<UserProfileNavParent, AnyView> get userProfile => OnParentOf._(
+  OnParentOf<TransactionItemNavParent> get transactionItem => OnParentOf._(
+    const {.transaction, .transactionItem},
+    const TransactionItemNavParent._(),
+    TransactionItemNavParent._,
+  );
+  OnParentOf<UserProfileNavParent> get userProfile => OnParentOf._(
     const {.chat, .feed, .forumReply, .profile, .project, .trending},
     const UserProfileNavParent._(),
+    UserProfileNavParent._,
   );
-  OnParentOf<ConnectionNavParent, AnyView> get connection => OnParentOf._(
+  OnParentOf<ConnectionNavParent> get connection => OnParentOf._(
     const {.connection, .followers},
     const ConnectionNavParent._(),
+    ConnectionNavParent._,
   );
-  OnParentOf<BadgeNavParent, AnyView> get badge =>
-      OnParentOf._(const {.badge, .badges}, const BadgeNavParent._());
-  OnParentOf<SessionNavParent, AnyView> get session =>
-      OnParentOf._(const {.device, .session}, const SessionNavParent._());
-  OnParentOf<TaskNavParent, TaskView> get task =>
-      OnParentOf._(const {.task, .taskList}, const TaskNavParent._());
-  OnParentOf<SubtaskNavParent, AnyView> get subtask =>
-      OnParentOf._(const {.subtask, .task}, const SubtaskNavParent._());
-  OnParentOf<ChecklistItemNavParent, AnyView> get checklistItem => OnParentOf._(
+  OnParentOf<BadgeNavParent> get badge => OnParentOf._(
+    const {.badge, .badges},
+    const BadgeNavParent._(),
+    BadgeNavParent._,
+  );
+  OnParentOf<SessionNavParent> get session => OnParentOf._(
+    const {.device, .session},
+    const SessionNavParent._(),
+    SessionNavParent._,
+  );
+  OnParentOf<TaskNavParent> get task => OnParentOf._(
+    const {.task, .taskList},
+    const TaskNavParent._(),
+    TaskNavParent._,
+  );
+  OnParentOf<SubtaskNavParent> get subtask => OnParentOf._(
+    const {.subtask, .task},
+    const SubtaskNavParent._(),
+    SubtaskNavParent._,
+  );
+  OnParentOf<ChecklistItemNavParent> get checklistItem => OnParentOf._(
     const {.checklistItem, .subtask},
     const ChecklistItemNavParent._(),
+    ChecklistItemNavParent._,
   );
-  OnParentOf<ForumThreadNavParent, ForumThreadView> get forumThread =>
-      OnParentOf._(const {
-        .forumCategory,
-        .forumThread,
-      }, const ForumThreadNavParent._());
-  OnParentOf<ForumReplyNavParent, AnyView> get forumReply => OnParentOf._(
+  OnParentOf<ForumThreadNavParent> get forumThread => OnParentOf._(
+    const {.forumCategory, .forumThread},
+    const ForumThreadNavParent._(),
+    ForumThreadNavParent._,
+  );
+  OnParentOf<ForumReplyNavParent> get forumReply => OnParentOf._(
     const {.forumReply, .forumThread},
     const ForumReplyNavParent._(),
+    ForumReplyNavParent._,
   );
-  OnParentOf<QuestionNavParent, AnyView> get question =>
-      OnParentOf._(const {.question, .quiz}, const QuestionNavParent._());
-  OnParentOf<ProductNavParent, ProductView> get product => OnParentOf._(const {
-    .product,
-    .shopSubcategory,
-  }, const ProductNavParent._());
-  OnParentOf<ProductVariantNavParent, AnyView> get productVariant =>
-      OnParentOf._(const {
-        .product,
-        .productVariant,
-      }, const ProductVariantNavParent._());
-  OnParentOf<ExerciseSetNavParent, AnyView> get exerciseSet => OnParentOf._(
+  OnParentOf<QuestionNavParent> get question => OnParentOf._(
+    const {.question, .quiz},
+    const QuestionNavParent._(),
+    QuestionNavParent._,
+  );
+  OnParentOf<ProductNavParent> get product => OnParentOf._(
+    const {.product, .shopSubcategory},
+    const ProductNavParent._(),
+    ProductNavParent._,
+  );
+  OnParentOf<ProductVariantNavParent> get productVariant => OnParentOf._(
+    const {.product, .productVariant},
+    const ProductVariantNavParent._(),
+    ProductVariantNavParent._,
+  );
+  OnParentOf<ExerciseSetNavParent> get exerciseSet => OnParentOf._(
     const {.exercise, .exerciseSet},
     const ExerciseSetNavParent._(),
+    ExerciseSetNavParent._,
   );
-  OnParentOf<LevelANavParent, AnyView> get levelA =>
-      OnParentOf._(const {.deepDemo, .levelF}, const LevelANavParent._());
-  OnParentOf<LevelBNavParent, AnyView> get levelB =>
-      OnParentOf._(const {.levelA, .levelF}, const LevelBNavParent._());
-  OnParentOf<LevelCNavParent, AnyView> get levelC =>
-      OnParentOf._(const {.levelB, .levelF}, const LevelCNavParent._());
-  OnParentOf<LevelDNavParent, AnyView> get levelD =>
-      OnParentOf._(const {.levelC, .levelF}, const LevelDNavParent._());
-  OnParentOf<LevelENavParent, AnyView> get levelE =>
-      OnParentOf._(const {.levelD, .levelF}, const LevelENavParent._());
-  OnParentOf<LevelFNavParent, AnyView> get levelF =>
-      OnParentOf._(const {.levelE, .levelF}, const LevelFNavParent._());
+  OnParentOf<LevelANavParent> get levelA => OnParentOf._(
+    const {.deepDemo, .levelF},
+    const LevelANavParent._(),
+    LevelANavParent._,
+  );
+  OnParentOf<LevelBNavParent> get levelB => OnParentOf._(
+    const {.levelA, .levelF},
+    const LevelBNavParent._(),
+    LevelBNavParent._,
+  );
+  OnParentOf<LevelCNavParent> get levelC => OnParentOf._(
+    const {.levelB, .levelF},
+    const LevelCNavParent._(),
+    LevelCNavParent._,
+  );
+  OnParentOf<LevelDNavParent> get levelD => OnParentOf._(
+    const {.levelC, .levelF},
+    const LevelDNavParent._(),
+    LevelDNavParent._,
+  );
+  OnParentOf<LevelENavParent> get levelE => OnParentOf._(
+    const {.levelD, .levelF},
+    const LevelENavParent._(),
+    LevelENavParent._,
+  );
+  OnParentOf<LevelFNavParent> get levelF => OnParentOf._(
+    const {.levelE, .levelF},
+    const LevelFNavParent._(),
+    LevelFNavParent._,
+  );
 }
 
-final class const StoryNavParent._() extends AnyNav {
+final class const StoryNavParent._([final Enum? _at]) extends AnyNav {
   this : super._();
-  StoryNav goStory(String id) {
-    _Screens.graph.go(_Screens.story, id, true);
-    return const StoryNav._();
-  }
-
-  PopDestPlacement pop() {
-    _Screens.graph.pop();
-    return _resolvePopDest();
-  }
-}
-
-final class const PostNavParent._() extends AnyNav {
-  this : super._();
-  PostNav goPost(String id) {
-    _Screens.graph.go(_Screens.post, id, true);
-    return const PostNav._();
-  }
-
-  PopDestPlacement pop() {
-    _Screens.graph.pop();
-    return _resolvePopDest();
-  }
-}
-
-final class const CommentNavParent._() extends AnyNav {
-  this : super._();
-  CommentNav goComment(String id) {
-    _Screens.graph.go(_Screens.comment, id, true);
-    return const CommentNav._();
-  }
-
-  PostNav goPost(String id) {
-    _Screens.graph.go(_Screens.post, id, true);
-    return const PostNav._();
-  }
-
-  PopDestPlacement pop() {
-    _Screens.graph.pop();
-    return _resolvePopDest();
+  void goStory(String id) {
+    if (_at case final at?) {
+      _Screens.graph.goFrom(at, _Screens.story, id);
+    } else {
+      _Screens.graph.go(_Screens.story, id, true);
+    }
   }
 }
 
-final class const PostAuthorNavParent._() extends AnyNav {
+final class const PostNavParent._([final Enum? _at]) extends AnyNav {
   this : super._();
-  PostNav goPost(String id) {
-    _Screens.graph.go(_Screens.post, id, true);
-    return const PostNav._();
-  }
-
-  PostAuthorNav goPostAuthor(String id) {
-    _Screens.graph.go(_Screens.postAuthor, id, true);
-    return const PostAuthorNav._();
-  }
-
-  PopDestPlacement pop() {
-    _Screens.graph.pop();
-    return _resolvePopDest();
+  void goPost(String id) {
+    if (_at case final at?) {
+      _Screens.graph.goFrom(at, _Screens.post, id);
+    } else {
+      _Screens.graph.go(_Screens.post, id, true);
+    }
   }
 }
 
-final class const TopicNavParent._() extends AnyNav {
+final class const CommentNavParent._([final Enum? _at]) extends AnyNav {
   this : super._();
-  TopicNav goTopic(String id) {
-    _Screens.graph.go(_Screens.topic, id, true);
-    return const TopicNav._();
+  void goComment(String id) {
+    if (_at case final at?) {
+      _Screens.graph.goFrom(at, _Screens.comment, id);
+    } else {
+      _Screens.graph.go(_Screens.comment, id, true);
+    }
   }
 
-  PopDestPlacement pop() {
-    _Screens.graph.pop();
-    return _resolvePopDest();
+  void goPost(String id) {
+    if (_at case final at?) {
+      _Screens.graph.goFrom(at, _Screens.post, id);
+    } else {
+      _Screens.graph.go(_Screens.post, id, true);
+    }
   }
 }
 
-final class const SubtopicNavParent._() extends AnyNav {
+final class const PostAuthorNavParent._([final Enum? _at]) extends AnyNav {
   this : super._();
-  SubtopicNav goSubtopic(String id) {
-    _Screens.graph.go(_Screens.subtopic, id, true);
-    return const SubtopicNav._();
+  void goPost(String id) {
+    if (_at case final at?) {
+      _Screens.graph.goFrom(at, _Screens.post, id);
+    } else {
+      _Screens.graph.go(_Screens.post, id, true);
+    }
   }
 
-  TopicNav goTopic(String id) {
-    _Screens.graph.go(_Screens.topic, id, true);
-    return const TopicNav._();
-  }
-
-  PopDestPlacement pop() {
-    _Screens.graph.pop();
-    return _resolvePopDest();
+  void goPostAuthor(String id) {
+    if (_at case final at?) {
+      _Screens.graph.goFrom(at, _Screens.postAuthor, id);
+    } else {
+      _Screens.graph.go(_Screens.postAuthor, id, true);
+    }
   }
 }
 
-final class const HashtagNavParent._() extends AnyNav {
+final class const TopicNavParent._([final Enum? _at]) extends AnyNav {
   this : super._();
-  HashtagNav goHashtag(String id) {
-    _Screens.graph.go(_Screens.hashtag, id, true);
-    return const HashtagNav._();
-  }
-
-  PopDestPlacement pop() {
-    _Screens.graph.pop();
-    return _resolvePopDest();
+  void goTopic(String id) {
+    if (_at case final at?) {
+      _Screens.graph.goFrom(at, _Screens.topic, id);
+    } else {
+      _Screens.graph.go(_Screens.topic, id, true);
+    }
   }
 }
 
-final class const LiveRoomNavParent._() extends AnyNav {
+final class const SubtopicNavParent._([final Enum? _at]) extends AnyNav {
   this : super._();
-  LiveRoomNav goLiveRoom(String id) {
-    _Screens.graph.go(_Screens.liveRoom, id, true);
-    return const LiveRoomNav._();
+  void goSubtopic(String id) {
+    if (_at case final at?) {
+      _Screens.graph.goFrom(at, _Screens.subtopic, id);
+    } else {
+      _Screens.graph.go(_Screens.subtopic, id, true);
+    }
   }
 
-  PopDestPlacement pop() {
-    _Screens.graph.pop();
-    return _resolvePopDest();
+  void goTopic(String id) {
+    if (_at case final at?) {
+      _Screens.graph.goFrom(at, _Screens.topic, id);
+    } else {
+      _Screens.graph.go(_Screens.topic, id, true);
+    }
   }
 }
 
-final class const CategoryNavParent._() extends AnyNav {
+final class const HashtagNavParent._([final Enum? _at]) extends AnyNav {
   this : super._();
-  CategoryNav goCategory(String id) {
-    _Screens.graph.go(_Screens.category, id, true);
-    return const CategoryNav._();
-  }
-
-  PopDestPlacement pop() {
-    _Screens.graph.pop();
-    return _resolvePopDest();
+  void goHashtag(String id) {
+    if (_at case final at?) {
+      _Screens.graph.goFrom(at, _Screens.hashtag, id);
+    } else {
+      _Screens.graph.go(_Screens.hashtag, id, true);
+    }
   }
 }
 
-final class const ListingNavParent._() extends AnyNav {
+final class const LiveRoomNavParent._([final Enum? _at]) extends AnyNav {
   this : super._();
-  ListingNav goListing(String id) {
-    _Screens.graph.go(_Screens.listing, id, true);
-    return const ListingNav._();
-  }
-
-  PopDestPlacement pop() {
-    _Screens.graph.pop();
-    return _resolvePopDest();
+  void goLiveRoom(String id) {
+    if (_at case final at?) {
+      _Screens.graph.goFrom(at, _Screens.liveRoom, id);
+    } else {
+      _Screens.graph.go(_Screens.liveRoom, id, true);
+    }
   }
 }
 
-final class const ListingVariantNavParent._() extends AnyNav {
+final class const CategoryNavParent._([final Enum? _at]) extends AnyNav {
   this : super._();
-  ListingVariantNav goListingVariant(String id) {
-    _Screens.graph.go(_Screens.listingVariant, id, true);
-    return const ListingVariantNav._();
-  }
-
-  PopDestPlacement pop() {
-    _Screens.graph.pop();
-    return _resolvePopDest();
+  void goCategory(String id) {
+    if (_at case final at?) {
+      _Screens.graph.goFrom(at, _Screens.category, id);
+    } else {
+      _Screens.graph.go(_Screens.category, id, true);
+    }
   }
 }
 
-final class const SellerProfileNavParent._() extends AnyNav {
+final class const ListingNavParent._([final Enum? _at]) extends AnyNav {
   this : super._();
-  ListingNav goListing(String id) {
-    _Screens.graph.go(_Screens.listing, id, true);
-    return const ListingNav._();
-  }
-
-  SellerProfileNav goSellerProfile(String id) {
-    _Screens.graph.go(_Screens.sellerProfile, id, true);
-    return const SellerProfileNav._();
-  }
-
-  PopDestPlacement pop() {
-    _Screens.graph.pop();
-    return _resolvePopDest();
+  void goListing(String id) {
+    if (_at case final at?) {
+      _Screens.graph.goFrom(at, _Screens.listing, id);
+    } else {
+      _Screens.graph.go(_Screens.listing, id, true);
+    }
   }
 }
 
-final class const OrderNavParent._() extends AnyNav {
+final class const ListingVariantNavParent._([final Enum? _at]) extends AnyNav {
   this : super._();
-  OrderNav goOrder(String id) {
-    _Screens.graph.go(_Screens.order, id, true);
-    return const OrderNav._();
-  }
-
-  PopDestPlacement pop() {
-    _Screens.graph.pop();
-    return _resolvePopDest();
+  void goListingVariant(String id) {
+    if (_at case final at?) {
+      _Screens.graph.goFrom(at, _Screens.listingVariant, id);
+    } else {
+      _Screens.graph.go(_Screens.listingVariant, id, true);
+    }
   }
 }
 
-final class const ChatNavParent._() extends AnyNav {
+final class const SellerProfileNavParent._([final Enum? _at]) extends AnyNav {
   this : super._();
-  ChatNav goChat(String id) {
-    _Screens.graph.go(_Screens.chat, id, true);
-    return const ChatNav._();
+  void goListing(String id) {
+    if (_at case final at?) {
+      _Screens.graph.goFrom(at, _Screens.listing, id);
+    } else {
+      _Screens.graph.go(_Screens.listing, id, true);
+    }
   }
 
-  PopDestPlacement pop() {
-    _Screens.graph.pop();
-    return _resolvePopDest();
+  void goSellerProfile(String id) {
+    if (_at case final at?) {
+      _Screens.graph.goFrom(at, _Screens.sellerProfile, id);
+    } else {
+      _Screens.graph.go(_Screens.sellerProfile, id, true);
+    }
   }
 }
 
-final class const ThreadNavParent._() extends AnyNav {
+final class const OrderNavParent._([final Enum? _at]) extends AnyNav {
   this : super._();
-  ThreadNav goThread(String id) {
-    _Screens.graph.go(_Screens.thread, id, true);
-    return const ThreadNav._();
-  }
-
-  PopDestPlacement pop() {
-    _Screens.graph.pop();
-    return _resolvePopDest();
+  void goOrder(String id) {
+    if (_at case final at?) {
+      _Screens.graph.goFrom(at, _Screens.order, id);
+    } else {
+      _Screens.graph.go(_Screens.order, id, true);
+    }
   }
 }
 
-final class const MessageReplyNavParent._() extends AnyNav {
+final class const ChatNavParent._([final Enum? _at]) extends AnyNav {
   this : super._();
-  MessageReplyNav goMessageReply(String id) {
-    _Screens.graph.go(_Screens.messageReply, id, true);
-    return const MessageReplyNav._();
-  }
-
-  PopDestPlacement pop() {
-    _Screens.graph.pop();
-    return _resolvePopDest();
+  void goChat(String id) {
+    if (_at case final at?) {
+      _Screens.graph.goFrom(at, _Screens.chat, id);
+    } else {
+      _Screens.graph.go(_Screens.chat, id, true);
+    }
   }
 }
 
-final class const GroupChatNavParent._() extends AnyNav {
+final class const ThreadNavParent._([final Enum? _at]) extends AnyNav {
   this : super._();
-  GroupChatNav goGroupChat(String id) {
-    _Screens.graph.go(_Screens.groupChat, id, true);
-    return const GroupChatNav._();
+  void goThread(String id) {
+    if (_at case final at?) {
+      _Screens.graph.goFrom(at, _Screens.thread, id);
+    } else {
+      _Screens.graph.go(_Screens.thread, id, true);
+    }
   }
 }
 
-final class const AccountNavParent._() extends AnyNav {
+final class const MessageReplyNavParent._([final Enum? _at]) extends AnyNav {
   this : super._();
-  AccountNav goAccount(String id) {
-    _Screens.graph.go(_Screens.account, id, true);
-    return const AccountNav._();
-  }
-
-  PopDestPlacement pop() {
-    _Screens.graph.pop();
-    return _resolvePopDest();
+  void goMessageReply(String id) {
+    if (_at case final at?) {
+      _Screens.graph.goFrom(at, _Screens.messageReply, id);
+    } else {
+      _Screens.graph.go(_Screens.messageReply, id, true);
+    }
   }
 }
 
-final class const TransactionNavParent._() extends AnyNav {
+final class const GroupChatNavParent._([final Enum? _at]) extends AnyNav {
   this : super._();
-  TransactionNav goTransaction(String id) {
-    _Screens.graph.go(_Screens.transaction, id, true);
-    return const TransactionNav._();
-  }
-
-  PopDestPlacement pop() {
-    _Screens.graph.pop();
-    return _resolvePopDest();
+  void goGroupChat(String id) {
+    if (_at case final at?) {
+      _Screens.graph.goFrom(at, _Screens.groupChat, id);
+    } else {
+      _Screens.graph.go(_Screens.groupChat, id, true);
+    }
   }
 }
 
-final class const TransactionItemNavParent._() extends AnyNav {
+final class const AccountNavParent._([final Enum? _at]) extends AnyNav {
   this : super._();
-  TransactionItemNav goTransactionItem(String id) {
-    _Screens.graph.go(_Screens.transactionItem, id, true);
-    return const TransactionItemNav._();
-  }
-
-  PopDestPlacement pop() {
-    _Screens.graph.pop();
-    return _resolvePopDest();
+  void goAccount(String id) {
+    if (_at case final at?) {
+      _Screens.graph.goFrom(at, _Screens.account, id);
+    } else {
+      _Screens.graph.go(_Screens.account, id, true);
+    }
   }
 }
 
-final class const UserProfileNavParent._() extends AnyNav {
+final class const TransactionNavParent._([final Enum? _at]) extends AnyNav {
   this : super._();
-  UserProfilePlacement goUserProfile(String id) {
-    _Screens.graph.go(_Screens.userProfile, id, true);
-    return _atOf(_Screens.userProfile) as UserProfilePlacement;
+  void goTransaction(String id) {
+    if (_at case final at?) {
+      _Screens.graph.goFrom(at, _Screens.transaction, id);
+    } else {
+      _Screens.graph.go(_Screens.transaction, id, true);
+    }
   }
 }
 
-final class const ConnectionNavParent._() extends AnyNav {
+final class const TransactionItemNavParent._([final Enum? _at]) extends AnyNav {
   this : super._();
-  ConnectionNav goConnection(String id) {
-    _Screens.graph.go(_Screens.connection, id, true);
-    return const ConnectionNav._();
-  }
-
-  PopDestPlacement pop() {
-    _Screens.graph.pop();
-    return _resolvePopDest();
+  void goTransactionItem(String id) {
+    if (_at case final at?) {
+      _Screens.graph.goFrom(at, _Screens.transactionItem, id);
+    } else {
+      _Screens.graph.go(_Screens.transactionItem, id, true);
+    }
   }
 }
 
-final class const BadgeNavParent._() extends AnyNav {
+final class const UserProfileNavParent._([final Enum? _at]) extends AnyNav {
   this : super._();
-  BadgeNav goBadge(String id) {
-    _Screens.graph.go(_Screens.badge, id, true);
-    return const BadgeNav._();
-  }
-
-  PopDestPlacement pop() {
-    _Screens.graph.pop();
-    return _resolvePopDest();
+  void goUserProfile(String id) {
+    if (_at case final at?) {
+      _Screens.graph.goFrom(at, _Screens.userProfile, id);
+    } else {
+      _Screens.graph.go(_Screens.userProfile, id, true);
+    }
   }
 }
 
-final class const SessionNavParent._() extends AnyNav {
+final class const ConnectionNavParent._([final Enum? _at]) extends AnyNav {
   this : super._();
-  SessionNav goSession(String id) {
-    _Screens.graph.go(_Screens.session, id, true);
-    return const SessionNav._();
-  }
-
-  PopDestPlacement pop() {
-    _Screens.graph.pop();
-    return _resolvePopDest();
+  void goConnection(String id) {
+    if (_at case final at?) {
+      _Screens.graph.goFrom(at, _Screens.connection, id);
+    } else {
+      _Screens.graph.go(_Screens.connection, id, true);
+    }
   }
 }
 
-final class const TaskNavParent._() extends AnyNav {
+final class const BadgeNavParent._([final Enum? _at]) extends AnyNav {
   this : super._();
-  TaskNav goTask(String id) {
-    _Screens.graph.go(_Screens.task, id, true);
-    return const TaskNav._();
-  }
-
-  PopDestPlacement pop() {
-    _Screens.graph.pop();
-    return _resolvePopDest();
+  void goBadge(String id) {
+    if (_at case final at?) {
+      _Screens.graph.goFrom(at, _Screens.badge, id);
+    } else {
+      _Screens.graph.go(_Screens.badge, id, true);
+    }
   }
 }
 
-final class const SubtaskNavParent._() extends AnyNav {
+final class const SessionNavParent._([final Enum? _at]) extends AnyNav {
   this : super._();
-  SubtaskNav goSubtask(String id) {
-    _Screens.graph.go(_Screens.subtask, id, true);
-    return const SubtaskNav._();
-  }
-
-  PopDestPlacement pop() {
-    _Screens.graph.pop();
-    return _resolvePopDest();
+  void goSession(String id) {
+    if (_at case final at?) {
+      _Screens.graph.goFrom(at, _Screens.session, id);
+    } else {
+      _Screens.graph.go(_Screens.session, id, true);
+    }
   }
 }
 
-final class const ChecklistItemNavParent._() extends AnyNav {
+final class const TaskNavParent._([final Enum? _at]) extends AnyNav {
   this : super._();
-  ChecklistItemNav goChecklistItem(String id) {
-    _Screens.graph.go(_Screens.checklistItem, id, true);
-    return const ChecklistItemNav._();
-  }
-
-  PopDestPlacement pop() {
-    _Screens.graph.pop();
-    return _resolvePopDest();
+  void goTask(String id) {
+    if (_at case final at?) {
+      _Screens.graph.goFrom(at, _Screens.task, id);
+    } else {
+      _Screens.graph.go(_Screens.task, id, true);
+    }
   }
 }
 
-final class const ForumThreadNavParent._() extends AnyNav {
+final class const SubtaskNavParent._([final Enum? _at]) extends AnyNav {
   this : super._();
-  ForumThreadNav goForumThread(String id) {
-    _Screens.graph.go(_Screens.forumThread, id, true);
-    return const ForumThreadNav._();
-  }
-
-  PopDestPlacement pop() {
-    _Screens.graph.pop();
-    return _resolvePopDest();
+  void goSubtask(String id) {
+    if (_at case final at?) {
+      _Screens.graph.goFrom(at, _Screens.subtask, id);
+    } else {
+      _Screens.graph.go(_Screens.subtask, id, true);
+    }
   }
 }
 
-final class const ForumReplyNavParent._() extends AnyNav {
+final class const ChecklistItemNavParent._([final Enum? _at]) extends AnyNav {
   this : super._();
-  ForumReplyNav goForumReply(String id) {
-    _Screens.graph.go(_Screens.forumReply, id, true);
-    return const ForumReplyNav._();
-  }
-
-  PopDestPlacement pop() {
-    _Screens.graph.pop();
-    return _resolvePopDest();
+  void goChecklistItem(String id) {
+    if (_at case final at?) {
+      _Screens.graph.goFrom(at, _Screens.checklistItem, id);
+    } else {
+      _Screens.graph.go(_Screens.checklistItem, id, true);
+    }
   }
 }
 
-final class const QuestionNavParent._() extends AnyNav {
+final class const ForumThreadNavParent._([final Enum? _at]) extends AnyNav {
   this : super._();
-  QuestionNav goQuestion(String id) {
-    _Screens.graph.go(_Screens.question, id, true);
-    return const QuestionNav._();
-  }
-
-  PopDestPlacement pop() {
-    _Screens.graph.pop();
-    return _resolvePopDest();
+  void goForumThread(String id) {
+    if (_at case final at?) {
+      _Screens.graph.goFrom(at, _Screens.forumThread, id);
+    } else {
+      _Screens.graph.go(_Screens.forumThread, id, true);
+    }
   }
 }
 
-final class const ProductNavParent._() extends AnyNav {
+final class const ForumReplyNavParent._([final Enum? _at]) extends AnyNav {
   this : super._();
-  ProductNav goProduct(String id) {
-    _Screens.graph.go(_Screens.product, id, true);
-    return const ProductNav._();
-  }
-
-  PopDestPlacement pop() {
-    _Screens.graph.pop();
-    return _resolvePopDest();
+  void goForumReply(String id) {
+    if (_at case final at?) {
+      _Screens.graph.goFrom(at, _Screens.forumReply, id);
+    } else {
+      _Screens.graph.go(_Screens.forumReply, id, true);
+    }
   }
 }
 
-final class const ProductVariantNavParent._() extends AnyNav {
+final class const QuestionNavParent._([final Enum? _at]) extends AnyNav {
   this : super._();
-  ProductVariantNav goProductVariant(String id) {
-    _Screens.graph.go(_Screens.productVariant, id, true);
-    return const ProductVariantNav._();
-  }
-
-  PopDestPlacement pop() {
-    _Screens.graph.pop();
-    return _resolvePopDest();
+  void goQuestion(String id) {
+    if (_at case final at?) {
+      _Screens.graph.goFrom(at, _Screens.question, id);
+    } else {
+      _Screens.graph.go(_Screens.question, id, true);
+    }
   }
 }
 
-final class const ExerciseSetNavParent._() extends AnyNav {
+final class const ProductNavParent._([final Enum? _at]) extends AnyNav {
   this : super._();
-  ExerciseSetNav goExerciseSet(String id) {
-    _Screens.graph.go(_Screens.exerciseSet, id, true);
-    return const ExerciseSetNav._();
-  }
-
-  PopDestPlacement pop() {
-    _Screens.graph.pop();
-    return _resolvePopDest();
+  void goProduct(String id) {
+    if (_at case final at?) {
+      _Screens.graph.goFrom(at, _Screens.product, id);
+    } else {
+      _Screens.graph.go(_Screens.product, id, true);
+    }
   }
 }
 
-final class const LevelANavParent._() extends AnyNav {
+final class const ProductVariantNavParent._([final Enum? _at]) extends AnyNav {
   this : super._();
-  LevelANav goLevelA(String id) {
-    _Screens.graph.go(_Screens.levelA, id, true);
-    return const LevelANav._();
+  void goProductVariant(String id) {
+    if (_at case final at?) {
+      _Screens.graph.goFrom(at, _Screens.productVariant, id);
+    } else {
+      _Screens.graph.go(_Screens.productVariant, id, true);
+    }
   }
 }
 
-final class const LevelBNavParent._() extends AnyNav {
+final class const ExerciseSetNavParent._([final Enum? _at]) extends AnyNav {
   this : super._();
-  LevelBNav goLevelB(String id) {
-    _Screens.graph.go(_Screens.levelB, id, true);
-    return const LevelBNav._();
-  }
-
-  PopDestPlacement pop() {
-    _Screens.graph.pop();
-    return _resolvePopDest();
+  void goExerciseSet(String id) {
+    if (_at case final at?) {
+      _Screens.graph.goFrom(at, _Screens.exerciseSet, id);
+    } else {
+      _Screens.graph.go(_Screens.exerciseSet, id, true);
+    }
   }
 }
 
-final class const LevelCNavParent._() extends AnyNav {
+final class const LevelANavParent._([final Enum? _at]) extends AnyNav {
   this : super._();
-  LevelCNav goLevelC(String id) {
-    _Screens.graph.go(_Screens.levelC, id, true);
-    return const LevelCNav._();
-  }
-
-  PopDestPlacement pop() {
-    _Screens.graph.pop();
-    return _resolvePopDest();
+  void goLevelA(String id) {
+    if (_at case final at?) {
+      _Screens.graph.goFrom(at, _Screens.levelA, id);
+    } else {
+      _Screens.graph.go(_Screens.levelA, id, true);
+    }
   }
 }
 
-final class const LevelDNavParent._() extends AnyNav {
+final class const LevelBNavParent._([final Enum? _at]) extends AnyNav {
   this : super._();
-  LevelDNav goLevelD(String id) {
-    _Screens.graph.go(_Screens.levelD, id, true);
-    return const LevelDNav._();
-  }
-
-  PopDestPlacement pop() {
-    _Screens.graph.pop();
-    return _resolvePopDest();
+  void goLevelB(String id) {
+    if (_at case final at?) {
+      _Screens.graph.goFrom(at, _Screens.levelB, id);
+    } else {
+      _Screens.graph.go(_Screens.levelB, id, true);
+    }
   }
 }
 
-final class const LevelENavParent._() extends AnyNav {
+final class const LevelCNavParent._([final Enum? _at]) extends AnyNav {
   this : super._();
-  LevelENav goLevelE(String id) {
-    _Screens.graph.go(_Screens.levelE, id, true);
-    return const LevelENav._();
-  }
-
-  PopDestPlacement pop() {
-    _Screens.graph.pop();
-    return _resolvePopDest();
+  void goLevelC(String id) {
+    if (_at case final at?) {
+      _Screens.graph.goFrom(at, _Screens.levelC, id);
+    } else {
+      _Screens.graph.go(_Screens.levelC, id, true);
+    }
   }
 }
 
-final class const LevelFNavParent._() extends AnyNav {
+final class const LevelDNavParent._([final Enum? _at]) extends AnyNav {
   this : super._();
-  LevelFNav goLevelF(String id) {
-    _Screens.graph.go(_Screens.levelF, id, true);
-    return const LevelFNav._();
-  }
-
-  PopDestPlacement pop() {
-    _Screens.graph.pop();
-    return _resolvePopDest();
+  void goLevelD(String id) {
+    if (_at case final at?) {
+      _Screens.graph.goFrom(at, _Screens.levelD, id);
+    } else {
+      _Screens.graph.go(_Screens.levelD, id, true);
+    }
   }
 }
 
-final class const OnDepth<N extends AnyNav, V>._(
-  super.specs,
-  super.ids,
-  final int depth,
-  super.nav,
-) extends On<N, V> {
+final class const LevelENavParent._([final Enum? _at]) extends AnyNav {
   this : super._();
+  void goLevelE(String id) {
+    if (_at case final at?) {
+      _Screens.graph.goFrom(at, _Screens.levelE, id);
+    } else {
+      _Screens.graph.go(_Screens.levelE, id, true);
+    }
+  }
+}
+
+final class const LevelFNavParent._([final Enum? _at]) extends AnyNav {
+  this : super._();
+  void goLevelF(String id) {
+    if (_at case final at?) {
+      _Screens.graph.goFrom(at, _Screens.levelF, id);
+    } else {
+      _Screens.graph.go(_Screens.levelF, id, true);
+    }
+  }
 }
 
 final class const OnForgotPassword._(super.specs, super.ids, super.nav)
-    extends On<ForgotPasswordNav, AnyView> {
+    extends On<ForgotPasswordNav> {
   this : super._();
   OnResetPassword get resetPassword => OnResetPassword._(
     [...specs, _Screens.resetPassword],
@@ -3818,14 +3082,14 @@ final class const OnForgotPassword._(super.specs, super.ids, super.nav)
 }
 
 final class const OnResetPassword._(super.specs, super.ids, super.nav)
-    extends On<ResetPasswordNav, AnyView> {
+    extends On<ResetPasswordNav> {
   this : super._();
   OnResetPassword call(String id) =>
       OnResetPassword._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class const OnHome._(super.specs, super.ids, super.nav)
-    extends On<HomeNav, AnyView> {
+    extends On<HomeNav> {
   this : super._();
   OnFeed get feed =>
       OnFeed._([...specs, _Screens.feed], [...ids, null], const FeedNav._());
@@ -3836,54 +3100,28 @@ final class const OnHome._(super.specs, super.ids, super.nav)
   );
 }
 
-final class const OnFeed._(super.specs, super.ids, super.nav, [super.conds])
-    extends On<FeedNav, FeedView> {
+final class const OnFeed._(super.specs, super.ids, super.nav)
+    extends On<FeedNav> {
   this : super._();
-  OnFeed query(Set<FeedQueryCond> cs) =>
-      OnFeed._(specs, ids, nav, [...conds, ...cs]);
-  OnFeed fragment(Set<FeedFragmentCond> cs) =>
-      OnFeed._(specs, ids, nav, [...conds, ...cs]);
   OnPost get post =>
       OnPost._([...specs, _Screens.post], [...ids, null], const PostNav._());
   OnStory get story =>
       OnStory._([...specs, _Screens.story], [...ids, null], const StoryNav._());
-  On<ComposePostNav, AnyView> get composePost => On._(
+  On<ComposePostNav> get composePost => On._(
     [...specs, _Screens.composePost],
     [...ids, null],
     const ComposePostNav._(),
   );
-  OnHomeFeedUserProfile get userProfile => OnHomeFeedUserProfile._(
+  OnUserProfile1 get userProfile => OnUserProfile1._(
     [...specs, _Screens.userProfile],
     [...ids, null],
-    const HomeFeedUserProfileNav._(),
-  );
-  On<PostCommentsNav, AnyView> postComments(String id) => On._(
-    [...specs, _Screens.post, _Screens.postComments],
-    [...ids, id, null],
-    const PostCommentsNav._(),
-  );
-  On<PostLikesNav, AnyView> postLikes(String id) => On._(
-    [...specs, _Screens.post, _Screens.postLikes],
-    [...ids, id, null],
-    const PostLikesNav._(),
-  );
-  On<EditPostNav, AnyView> editPost(String id) => On._(
-    [...specs, _Screens.post, _Screens.editPost],
-    [...ids, id, null],
-    const EditPostNav._(),
-  );
-  On<RepostNav, AnyView> repost(String id) => On._(
-    [...specs, _Screens.post, _Screens.repost],
-    [...ids, id, null],
-    const RepostNav._(),
+    const UserProfileNav1._(),
   );
 }
 
-final class const OnPost._(super.specs, super.ids, super.nav, [super.conds])
-    extends On<PostNav, PostView> {
+final class const OnPost._(super.specs, super.ids, super.nav)
+    extends On<PostNav> {
   this : super._();
-  OnPost query(Set<PostQueryCond> cs) =>
-      OnPost._(specs, ids, nav, [...conds, ...cs]);
   OnComment get comment => OnComment._(
     [...specs, _Screens.comment],
     [...ids, null],
@@ -3896,44 +3134,38 @@ final class const OnPost._(super.specs, super.ids, super.nav, [super.conds])
   );
   OnPost call(String id) =>
       OnPost._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
-  OnDepth<PostNav, PostView> depth(int d) => OnDepth._(specs, ids, d, nav);
 }
 
 final class const OnComment._(super.specs, super.ids, super.nav)
-    extends On<CommentNav, AnyView> {
+    extends On<CommentNav> {
   this : super._();
   OnComment call(String id) =>
       OnComment._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
-  OnDepth<CommentNav, AnyView> depth(int d) => OnDepth._(specs, ids, d, nav);
 }
 
 final class const OnPostAuthor._(super.specs, super.ids, super.nav)
-    extends On<PostAuthorNav, AnyView> {
+    extends On<PostAuthorNav> {
   this : super._();
   OnPostAuthor call(String id) =>
       OnPostAuthor._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
-  OnDepth<PostAuthorNav, AnyView> depth(int d) => OnDepth._(specs, ids, d, nav);
 }
 
 final class const OnStory._(super.specs, super.ids, super.nav)
-    extends On<StoryNav, AnyView> {
+    extends On<StoryNav> {
   this : super._();
   OnStory call(String id) =>
       OnStory._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
-  OnDepth<StoryNav, AnyView> depth(int d) => OnDepth._(specs, ids, d, nav);
 }
 
-final class const OnHomeFeedUserProfile._(super.specs, super.ids, super.nav)
-    extends On<HomeFeedUserProfileNav, AnyView> {
+final class const OnUserProfile1._(super.specs, super.ids, super.nav)
+    extends On<UserProfileNav1> {
   this : super._();
-  OnHomeFeedUserProfile call(String id) => OnHomeFeedUserProfile._(specs, [
-    ...ids.sublist(0, ids.length - 1),
-    id,
-  ], nav);
+  OnUserProfile1 call(String id) =>
+      OnUserProfile1._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class const OnStudio._(super.specs, super.ids, super.nav)
-    extends On<StudioNav, AnyView> {
+    extends On<StudioNav> {
   this : super._();
   OnAnalytics get analytics => OnAnalytics._(
     [...specs, CreatorStudio.analytics],
@@ -3953,9 +3185,9 @@ final class const OnStudio._(super.specs, super.ids, super.nav)
 }
 
 final class const OnAnalytics._(super.specs, super.ids, super.nav)
-    extends On<AnalyticsNav, AnyView> {
+    extends On<AnalyticsNav> {
   this : super._();
-  On<AudienceNav, AnyView> get audience => On._(
+  On<AudienceNav> get audience => On._(
     [...specs, CreatorStudio.audience],
     [...ids, null],
     const AudienceNav._(),
@@ -3963,31 +3195,26 @@ final class const OnAnalytics._(super.specs, super.ids, super.nav)
 }
 
 final class const OnScheduled._(super.specs, super.ids, super.nav)
-    extends On<ScheduledNav, AnyView> {
+    extends On<ScheduledNav> {
   this : super._();
   OnScheduledPost get scheduledPost => OnScheduledPost._(
     [...specs, CreatorStudio.scheduledPost],
     [...ids, null],
     const ScheduledPostNav._(),
   );
-  On<EditScheduledNav, AnyView> editScheduled(String id) => On._(
-    [...specs, CreatorStudio.scheduledPost, CreatorStudio.editScheduled],
-    [...ids, id, null],
-    const EditScheduledNav._(),
-  );
 }
 
 final class const OnScheduledPost._(super.specs, super.ids, super.nav)
-    extends On<ScheduledPostNav, AnyView> {
+    extends On<ScheduledPostNav> {
   this : super._();
   OnScheduledPost call(String id) =>
       OnScheduledPost._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class const OnMonetization._(super.specs, super.ids, super.nav)
-    extends On<MonetizationNav, AnyView> {
+    extends On<MonetizationNav> {
   this : super._();
-  On<PayoutsNav, AnyView> get payouts => On._(
+  On<PayoutsNav> get payouts => On._(
     [...specs, CreatorStudio.payouts],
     [...ids, null],
     const PayoutsNav._(),
@@ -3995,51 +3222,49 @@ final class const OnMonetization._(super.specs, super.ids, super.nav)
 }
 
 final class const OnPostComments._(super.specs, super.ids, super.nav)
-    extends On<PostCommentsNav, AnyView> {
+    extends On<PostCommentsNav> {
   this : super._();
   OnPostComments call(String id) =>
       OnPostComments._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class const OnPostLikes._(super.specs, super.ids, super.nav)
-    extends On<PostLikesNav, AnyView> {
+    extends On<PostLikesNav> {
   this : super._();
   OnPostLikes call(String id) =>
       OnPostLikes._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class const OnEditPost._(super.specs, super.ids, super.nav)
-    extends On<EditPostNav, AnyView> {
+    extends On<EditPostNav> {
   this : super._();
   OnEditPost call(String id) =>
       OnEditPost._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class const OnRepost._(super.specs, super.ids, super.nav)
-    extends On<RepostNav, AnyView> {
+    extends On<RepostNav> {
   this : super._();
   OnRepost call(String id) =>
       OnRepost._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
-final class const OnDiscover._(super.specs, super.ids, super.nav, [super.conds])
-    extends On<DiscoverNav, DiscoverView> {
+final class const OnDiscover._(super.specs, super.ids, super.nav)
+    extends On<DiscoverNav> {
   this : super._();
-  OnDiscover query(Set<DiscoverQueryCond> cs) =>
-      OnDiscover._(specs, ids, nav, [...conds, ...cs]);
   OnTrending get trending => OnTrending._(
     [...specs, _Screens.trending],
     [...ids, null],
     const TrendingNav._(),
   );
-  On<TopicsNav, AnyView> get topics =>
+  On<TopicsNav> get topics =>
       On._([...specs, _Screens.topics], [...ids, null], const TopicsNav._());
   OnLiveNow get liveNow => OnLiveNow._(
     [...specs, _Screens.liveNow],
     [...ids, null],
     const LiveNowNav._(),
   );
-  On<NearbyNav, AnyView> get nearby =>
+  On<NearbyNav> get nearby =>
       On._([...specs, _Screens.nearby], [...ids, null], const NearbyNav._());
   OnEvents get events => OnEvents._(
     [...specs, Events.events],
@@ -4049,7 +3274,7 @@ final class const OnDiscover._(super.specs, super.ids, super.nav, [super.conds])
 }
 
 final class const OnTrending._(super.specs, super.ids, super.nav)
-    extends On<TrendingNav, AnyView> {
+    extends On<TrendingNav> {
   this : super._();
   OnHashtag get hashtag => OnHashtag._(
     [...specs, _Screens.hashtag],
@@ -4058,24 +3283,22 @@ final class const OnTrending._(super.specs, super.ids, super.nav)
   );
   OnTopic get topic =>
       OnTopic._([...specs, _Screens.topic], [...ids, null], const TopicNav._());
-  OnDiscoverTrendingUserProfile get userProfile =>
-      OnDiscoverTrendingUserProfile._(
-        [...specs, _Screens.userProfile],
-        [...ids, null],
-        const DiscoverTrendingUserProfileNav._(),
-      );
+  OnUserProfile2 get userProfile => OnUserProfile2._(
+    [...specs, _Screens.userProfile],
+    [...ids, null],
+    const UserProfileNav2._(),
+  );
 }
 
 final class const OnHashtag._(super.specs, super.ids, super.nav)
-    extends On<HashtagNav, AnyView> {
+    extends On<HashtagNav> {
   this : super._();
   OnHashtag call(String id) =>
       OnHashtag._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
-  OnDepth<HashtagNav, AnyView> depth(int d) => OnDepth._(specs, ids, d, nav);
 }
 
 final class const OnTopic._(super.specs, super.ids, super.nav)
-    extends On<TopicNav, AnyView> {
+    extends On<TopicNav> {
   this : super._();
   OnSubtopic get subtopic => OnSubtopic._(
     [...specs, _Screens.subtopic],
@@ -4084,32 +3307,24 @@ final class const OnTopic._(super.specs, super.ids, super.nav)
   );
   OnTopic call(String id) =>
       OnTopic._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
-  OnDepth<TopicNav, AnyView> depth(int d) => OnDepth._(specs, ids, d, nav);
 }
 
 final class const OnSubtopic._(super.specs, super.ids, super.nav)
-    extends On<SubtopicNav, AnyView> {
+    extends On<SubtopicNav> {
   this : super._();
   OnSubtopic call(String id) =>
       OnSubtopic._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
-  OnDepth<SubtopicNav, AnyView> depth(int d) => OnDepth._(specs, ids, d, nav);
 }
 
-final class const OnDiscoverTrendingUserProfile._(
-  super.specs,
-  super.ids,
-  super.nav,
-) extends On<DiscoverTrendingUserProfileNav, AnyView> {
+final class const OnUserProfile2._(super.specs, super.ids, super.nav)
+    extends On<UserProfileNav2> {
   this : super._();
-  OnDiscoverTrendingUserProfile call(String id) =>
-      OnDiscoverTrendingUserProfile._(specs, [
-        ...ids.sublist(0, ids.length - 1),
-        id,
-      ], nav);
+  OnUserProfile2 call(String id) =>
+      OnUserProfile2._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class const OnLiveNow._(super.specs, super.ids, super.nav)
-    extends On<LiveNowNav, AnyView> {
+    extends On<LiveNowNav> {
   this : super._();
   OnLiveRoom get liveRoom => OnLiveRoom._(
     [...specs, _Screens.liveRoom],
@@ -4119,56 +3334,34 @@ final class const OnLiveNow._(super.specs, super.ids, super.nav)
 }
 
 final class const OnLiveRoom._(super.specs, super.ids, super.nav)
-    extends On<LiveRoomNav, AnyView> {
+    extends On<LiveRoomNav> {
   this : super._();
   OnLiveRoom call(String id) =>
       OnLiveRoom._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
-  OnDepth<LiveRoomNav, AnyView> depth(int d) => OnDepth._(specs, ids, d, nav);
 }
 
 final class const OnEvents._(super.specs, super.ids, super.nav)
-    extends On<EventsNav, AnyView> {
+    extends On<EventsNav> {
   this : super._();
   OnEvent get event =>
       OnEvent._([...specs, Events.event], [...ids, null], const EventNav._());
-  On<CreateEventNav, AnyView> get createEvent => On._(
+  On<CreateEventNav> get createEvent => On._(
     [...specs, Events.createEvent],
     [...ids, null],
     const CreateEventNav._(),
   );
-  On<AttendeesNav, AnyView> attendees(String id) => On._(
-    [...specs, Events.event, Events.attendees],
-    [...ids, id, null],
-    const AttendeesNav._(),
-  );
-  On<EditEventNav, AnyView> editEvent(String id) => On._(
-    [...specs, Events.event, Events.editEvent],
-    [...ids, id, null],
-    const EditEventNav._(),
-  );
-  On<TicketsNav, AnyView> tickets(String id) => On._(
-    [...specs, Events.event, Events.tickets],
-    [...ids, id, null],
-    const TicketsNav._(),
-  );
 }
 
 final class const OnEvent._(super.specs, super.ids, super.nav)
-    extends On<EventNav, AnyView> {
+    extends On<EventNav> {
   this : super._();
   OnEvent call(String id) =>
       OnEvent._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
-final class const OnMarketplace._(
-  super.specs,
-  super.ids,
-  super.nav, [
-  super.conds,
-]) extends On<MarketplaceNav, MarketplaceView> {
+final class const OnMarketplace._(super.specs, super.ids, super.nav)
+    extends On<MarketplaceNav> {
   this : super._();
-  OnMarketplace query(Set<MarketplaceQueryCond> cs) =>
-      OnMarketplace._(specs, ids, nav, [...conds, ...cs]);
   OnCategories get categories => OnCategories._(
     [...specs, _Screens.categories],
     [...ids, null],
@@ -4181,7 +3374,7 @@ final class const OnMarketplace._(
     [...ids, null],
     const MyOrdersNav._(),
   );
-  On<WishlistNav, AnyView> get wishlist => On._(
+  On<WishlistNav> get wishlist => On._(
     [...specs, _Screens.wishlist],
     [...ids, null],
     const WishlistNav._(),
@@ -4189,7 +3382,7 @@ final class const OnMarketplace._(
 }
 
 final class const OnCategories._(super.specs, super.ids, super.nav)
-    extends On<CategoriesNav, AnyView> {
+    extends On<CategoriesNav> {
   this : super._();
   OnCategory get category => OnCategory._(
     [...specs, _Screens.category],
@@ -4199,25 +3392,19 @@ final class const OnCategories._(super.specs, super.ids, super.nav)
 }
 
 final class const OnCategory._(super.specs, super.ids, super.nav)
-    extends On<CategoryNav, AnyView> {
+    extends On<CategoryNav> {
   this : super._();
   OnListing get listing => OnListing._(
     [...specs, _Screens.listing],
     [...ids, null],
     const ListingNav._(),
   );
-  On<EditListingNav, AnyView> editListing(String id) => On._(
-    [...specs, _Screens.listing, _Screens.editListing],
-    [...ids, id, null],
-    const EditListingNav._(),
-  );
   OnCategory call(String id) =>
       OnCategory._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
-  OnDepth<CategoryNav, AnyView> depth(int d) => OnDepth._(specs, ids, d, nav);
 }
 
 final class const OnListing._(super.specs, super.ids, super.nav)
-    extends On<ListingNav, AnyView> {
+    extends On<ListingNav> {
   this : super._();
   OnSellerProfile get sellerProfile => OnSellerProfile._(
     [...specs, _Screens.sellerProfile],
@@ -4231,29 +3418,24 @@ final class const OnListing._(super.specs, super.ids, super.nav)
   );
   OnListing call(String id) =>
       OnListing._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
-  OnDepth<ListingNav, AnyView> depth(int d) => OnDepth._(specs, ids, d, nav);
 }
 
 final class const OnSellerProfile._(super.specs, super.ids, super.nav)
-    extends On<SellerProfileNav, AnyView> {
+    extends On<SellerProfileNav> {
   this : super._();
   OnSellerProfile call(String id) =>
       OnSellerProfile._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
-  OnDepth<SellerProfileNav, AnyView> depth(int d) =>
-      OnDepth._(specs, ids, d, nav);
 }
 
 final class const OnListingVariant._(super.specs, super.ids, super.nav)
-    extends On<ListingVariantNav, AnyView> {
+    extends On<ListingVariantNav> {
   this : super._();
   OnListingVariant call(String id) =>
       OnListingVariant._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
-  OnDepth<ListingVariantNav, AnyView> depth(int d) =>
-      OnDepth._(specs, ids, d, nav);
 }
 
 final class const OnCart._(super.specs, super.ids, super.nav)
-    extends On<CartNav, AnyView> {
+    extends On<CartNav> {
   this : super._();
   OnCheckout get checkout => OnCheckout._(
     [...specs, _Screens.checkout],
@@ -4263,7 +3445,7 @@ final class const OnCart._(super.specs, super.ids, super.nav)
 }
 
 final class const OnCheckout._(super.specs, super.ids, super.nav)
-    extends On<CheckoutNav, AnyView> {
+    extends On<CheckoutNav> {
   this : super._();
   OnOrderConfirmation get orderConfirmation => OnOrderConfirmation._(
     [...specs, _Screens.orderConfirmation],
@@ -4275,7 +3457,7 @@ final class const OnCheckout._(super.specs, super.ids, super.nav)
 }
 
 final class const OnOrderConfirmation._(super.specs, super.ids, super.nav)
-    extends On<OrderConfirmationNav, AnyView> {
+    extends On<OrderConfirmationNav> {
   this : super._();
   OnOrderConfirmation call(String id) => OnOrderConfirmation._(specs, [
     ...ids.sublist(0, ids.length - 1),
@@ -4284,79 +3466,66 @@ final class const OnOrderConfirmation._(super.specs, super.ids, super.nav)
 }
 
 final class const OnMyOrders._(super.specs, super.ids, super.nav)
-    extends On<MyOrdersNav, AnyView> {
+    extends On<MyOrdersNav> {
   this : super._();
   OnOrder get order =>
       OnOrder._([...specs, _Screens.order], [...ids, null], const OrderNav._());
 }
 
 final class const OnOrder._(super.specs, super.ids, super.nav)
-    extends On<OrderNav, AnyView> {
+    extends On<OrderNav> {
   this : super._();
   OnOrder call(String id) =>
       OnOrder._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
-  OnDepth<OrderNav, AnyView> depth(int d) => OnDepth._(specs, ids, d, nav);
 }
 
 final class const OnEditListing._(super.specs, super.ids, super.nav)
-    extends On<EditListingNav, AnyView> {
+    extends On<EditListingNav> {
   this : super._();
   OnEditListing call(String id) =>
       OnEditListing._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class const OnMessages._(super.specs, super.ids, super.nav)
-    extends On<MessagesNav, AnyView> {
+    extends On<MessagesNav> {
   this : super._();
   OnChats get chats =>
       OnChats._([...specs, _Screens.chats], [...ids, null], const ChatsNav._());
-  On<NewChatNav, AnyView> get newChat =>
+  On<NewChatNav> get newChat =>
       On._([...specs, _Screens.newChat], [...ids, null], const NewChatNav._());
   OnGroupChat get groupChat => OnGroupChat._(
     [...specs, _Screens.groupChat],
     [...ids, null],
     const GroupChatNav._(),
   );
-  On<GroupInfoNav, AnyView> groupInfo(String id) => On._(
-    [...specs, _Screens.groupChat, _Screens.groupInfo],
-    [...ids, id, null],
-    const GroupInfoNav._(),
-  );
 }
 
 final class const OnChats._(super.specs, super.ids, super.nav)
-    extends On<ChatsNav, AnyView> {
+    extends On<ChatsNav> {
   this : super._();
   OnChat get chat =>
       OnChat._([...specs, _Screens.chat], [...ids, null], const ChatNav._());
-  On<VoiceCallNav, AnyView> voiceCall(String id) => On._(
-    [...specs, _Screens.chat, _Screens.voiceCall],
-    [...ids, id, null],
-    const VoiceCallNav._(),
-  );
 }
 
 final class const OnChat._(super.specs, super.ids, super.nav)
-    extends On<ChatNav, AnyView> {
+    extends On<ChatNav> {
   this : super._();
   OnThread get thread => OnThread._(
     [...specs, _Screens.thread],
     [...ids, null],
     const ThreadNav._(),
   );
-  OnMessagesChatsChatUserProfile get userProfile =>
-      OnMessagesChatsChatUserProfile._(
-        [...specs, _Screens.userProfile],
-        [...ids, null],
-        const MessagesChatsChatUserProfileNav._(),
-      );
+  OnUserProfile3 get userProfile => OnUserProfile3._(
+    [...specs, _Screens.userProfile],
+    [...ids, null],
+    const UserProfileNav3._(),
+  );
   OnChat call(String id) =>
       OnChat._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
-  OnDepth<ChatNav, AnyView> depth(int d) => OnDepth._(specs, ids, d, nav);
 }
 
 final class const OnThread._(super.specs, super.ids, super.nav)
-    extends On<ThreadNav, AnyView> {
+    extends On<ThreadNav> {
   this : super._();
   OnMessage get message => OnMessage._(
     [...specs, _Screens.message],
@@ -4365,11 +3534,10 @@ final class const OnThread._(super.specs, super.ids, super.nav)
   );
   OnThread call(String id) =>
       OnThread._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
-  OnDepth<ThreadNav, AnyView> depth(int d) => OnDepth._(specs, ids, d, nav);
 }
 
 final class const OnMessage._(super.specs, super.ids, super.nav)
-    extends On<MessageNav, AnyView> {
+    extends On<MessageNav> {
   this : super._();
   OnMessageReply get messageReply => OnMessageReply._(
     [...specs, _Screens.messageReply],
@@ -4378,69 +3546,59 @@ final class const OnMessage._(super.specs, super.ids, super.nav)
   );
   OnMessage call(String id) =>
       OnMessage._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
-  OnDepth<MessageNav, AnyView> depth(int d) => OnDepth._(specs, ids, d, nav);
 }
 
 final class const OnMessageReply._(super.specs, super.ids, super.nav)
-    extends On<MessageReplyNav, AnyView> {
+    extends On<MessageReplyNav> {
   this : super._();
   OnMessageReply call(String id) =>
       OnMessageReply._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
-  OnDepth<MessageReplyNav, AnyView> depth(int d) =>
-      OnDepth._(specs, ids, d, nav);
 }
 
-final class const OnMessagesChatsChatUserProfile._(
-  super.specs,
-  super.ids,
-  super.nav,
-) extends On<MessagesChatsChatUserProfileNav, AnyView> {
+final class const OnUserProfile3._(super.specs, super.ids, super.nav)
+    extends On<UserProfileNav3> {
   this : super._();
-  OnMessagesChatsChatUserProfile call(String id) =>
-      OnMessagesChatsChatUserProfile._(specs, [
-        ...ids.sublist(0, ids.length - 1),
-        id,
-      ], nav);
+  OnUserProfile3 call(String id) =>
+      OnUserProfile3._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class const OnGroupChat._(super.specs, super.ids, super.nav)
-    extends On<GroupChatNav, AnyView> {
+    extends On<GroupChatNav> {
   this : super._();
   OnGroupChat call(String id) =>
       OnGroupChat._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
-  OnDepth<GroupChatNav, AnyView> depth(int d) => OnDepth._(specs, ids, d, nav);
 }
 
 final class const OnVoiceCall._(super.specs, super.ids, super.nav)
-    extends On<VoiceCallNav, AnyView> {
+    extends On<VoiceCallNav> {
   this : super._();
   OnVoiceCall call(String id) =>
       OnVoiceCall._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class const OnGroupInfo._(super.specs, super.ids, super.nav)
-    extends On<GroupInfoNav, AnyView> {
+    extends On<GroupInfoNav> {
   this : super._();
   OnGroupInfo call(String id) =>
       OnGroupInfo._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class const OnWallet._(super.specs, super.ids, super.nav)
-    extends On<WalletNav, AnyView> {
+    extends On<WalletNav> {
   this : super._();
-  On<BalanceNav, AnyView> get balance =>
+  On<BalanceNav> get balance =>
       On._([...specs, _Screens.balance], [...ids, null], const BalanceNav._());
   OnAccounts get accounts => OnAccounts._(
     [...specs, _Screens.accounts],
     [...ids, null],
     const AccountsNav._(),
   );
-  On<SendMoneyNav, AnyView> get sendMoney => On._(
+  On<SendMoneyNav> get sendMoney => On._(
     [...specs, _Screens.sendMoney],
     [...ids, null],
     const SendMoneyNav._(),
   );
-  On<ReceiveMoneyNav, AnyView> get receiveMoney => On._(
+  On<ReceiveMoneyNav> get receiveMoney => On._(
     [...specs, _Screens.receiveMoney],
     [...ids, null],
     const ReceiveMoneyNav._(),
@@ -4453,7 +3611,7 @@ final class const OnWallet._(super.specs, super.ids, super.nav)
 }
 
 final class const OnAccounts._(super.specs, super.ids, super.nav)
-    extends On<AccountsNav, AnyView> {
+    extends On<AccountsNav> {
   this : super._();
   OnAccount get account => OnAccount._(
     [...specs, _Screens.account],
@@ -4463,7 +3621,7 @@ final class const OnAccounts._(super.specs, super.ids, super.nav)
 }
 
 final class const OnAccount._(super.specs, super.ids, super.nav)
-    extends On<AccountNav, AnyView> {
+    extends On<AccountNav> {
   this : super._();
   OnTransactions get transactions => OnTransactions._(
     [...specs, _Screens.transactions],
@@ -4477,11 +3635,10 @@ final class const OnAccount._(super.specs, super.ids, super.nav)
   );
   OnAccount call(String id) =>
       OnAccount._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
-  OnDepth<AccountNav, AnyView> depth(int d) => OnDepth._(specs, ids, d, nav);
 }
 
 final class const OnTransactions._(super.specs, super.ids, super.nav)
-    extends On<TransactionsNav, AnyView> {
+    extends On<TransactionsNav> {
   this : super._();
   OnTransaction get transaction => OnTransaction._(
     [...specs, _Screens.transaction],
@@ -4491,7 +3648,7 @@ final class const OnTransactions._(super.specs, super.ids, super.nav)
 }
 
 final class const OnTransaction._(super.specs, super.ids, super.nav)
-    extends On<TransactionNav, AnyView> {
+    extends On<TransactionNav> {
   this : super._();
   OnTransactionItem get transactionItem => OnTransactionItem._(
     [...specs, _Screens.transactionItem],
@@ -4500,21 +3657,17 @@ final class const OnTransaction._(super.specs, super.ids, super.nav)
   );
   OnTransaction call(String id) =>
       OnTransaction._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
-  OnDepth<TransactionNav, AnyView> depth(int d) =>
-      OnDepth._(specs, ids, d, nav);
 }
 
 final class const OnTransactionItem._(super.specs, super.ids, super.nav)
-    extends On<TransactionItemNav, AnyView> {
+    extends On<TransactionItemNav> {
   this : super._();
   OnTransactionItem call(String id) =>
       OnTransactionItem._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
-  OnDepth<TransactionItemNav, AnyView> depth(int d) =>
-      OnDepth._(specs, ids, d, nav);
 }
 
 final class const OnStatements._(super.specs, super.ids, super.nav)
-    extends On<StatementsNav, AnyView> {
+    extends On<StatementsNav> {
   this : super._();
   OnStatement get statement => OnStatement._(
     [...specs, _Screens.statement],
@@ -4524,35 +3677,35 @@ final class const OnStatements._(super.specs, super.ids, super.nav)
 }
 
 final class const OnStatement._(super.specs, super.ids, super.nav)
-    extends On<StatementNav, AnyView> {
+    extends On<StatementNav> {
   this : super._();
   OnStatement call(String id) =>
       OnStatement._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class const OnPaymentMethods._(super.specs, super.ids, super.nav)
-    extends On<PaymentMethodsNav, AnyView> {
+    extends On<PaymentMethodsNav> {
   this : super._();
-  On<AddCardNav, AnyView> get addCard =>
+  On<AddCardNav> get addCard =>
       On._([...specs, _Screens.addCard], [...ids, null], const AddCardNav._());
   OnCard get card =>
       OnCard._([...specs, _Screens.card], [...ids, null], const CardNav._());
 }
 
 final class const OnCard._(super.specs, super.ids, super.nav)
-    extends On<CardNav, AnyView> {
+    extends On<CardNav> {
   this : super._();
   OnCard call(String id) =>
       OnCard._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class const OnProfile._(super.specs, super.ids, super.nav)
-    extends On<ProfileNav, AnyView> {
+    extends On<ProfileNav> {
   this : super._();
-  OnProfileUserProfile get userProfile => OnProfileUserProfile._(
+  OnUserProfile4 get userProfile => OnUserProfile4._(
     [...specs, _Screens.userProfile],
     [...ids, null],
-    const ProfileUserProfileNav._(),
+    const UserProfileNav4._(),
   );
   OnFollowers get followers => OnFollowers._(
     [...specs, _Screens.followers],
@@ -4564,12 +3717,12 @@ final class const OnProfile._(super.specs, super.ids, super.nav)
     [...ids, null],
     const FollowingNav._(),
   );
-  On<EditProfileNav, AnyView> get editProfile => On._(
+  On<EditProfileNav> get editProfile => On._(
     [...specs, _Screens.editProfile],
     [...ids, null],
     const EditProfileNav._(),
   );
-  On<AchievementsNav, AnyView> get achievements => On._(
+  On<AchievementsNav> get achievements => On._(
     [...specs, _Screens.achievements],
     [...ids, null],
     const AchievementsNav._(),
@@ -4579,31 +3732,29 @@ final class const OnProfile._(super.specs, super.ids, super.nav)
     [...ids, null],
     const BadgesNav._(),
   );
-  On<SavedPostsNav, AnyView> get savedPosts => On._(
+  On<SavedPostsNav> get savedPosts => On._(
     [...specs, _Screens.savedPosts],
     [...ids, null],
     const SavedPostsNav._(),
   );
-  On<DraftsNav, AnyView> get drafts =>
+  On<DraftsNav> get drafts =>
       On._([...specs, _Screens.drafts], [...ids, null], const DraftsNav._());
-  On<MyListingsNav, AnyView> get myListings => On._(
+  On<MyListingsNav> get myListings => On._(
     [...specs, _Screens.myListings],
     [...ids, null],
     const MyListingsNav._(),
   );
 }
 
-final class const OnProfileUserProfile._(super.specs, super.ids, super.nav)
-    extends On<ProfileUserProfileNav, AnyView> {
+final class const OnUserProfile4._(super.specs, super.ids, super.nav)
+    extends On<UserProfileNav4> {
   this : super._();
-  OnProfileUserProfile call(String id) => OnProfileUserProfile._(specs, [
-    ...ids.sublist(0, ids.length - 1),
-    id,
-  ], nav);
+  OnUserProfile4 call(String id) =>
+      OnUserProfile4._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class const OnFollowers._(super.specs, super.ids, super.nav)
-    extends On<FollowersNav, AnyView> {
+    extends On<FollowersNav> {
   this : super._();
   OnConnection get connection => OnConnection._(
     [...specs, _Screens.connection],
@@ -4615,65 +3766,59 @@ final class const OnFollowers._(super.specs, super.ids, super.nav)
 }
 
 final class const OnConnection._(super.specs, super.ids, super.nav)
-    extends On<ConnectionNav, AnyView> {
+    extends On<ConnectionNav> {
   this : super._();
-  On<MutualConnectionsNav, AnyView> get mutualConnections => On._(
+  On<MutualConnectionsNav> get mutualConnections => On._(
     [...specs, _Screens.mutualConnections],
     [...ids, null],
     const MutualConnectionsNav._(),
   );
   OnConnection call(String id) =>
       OnConnection._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
-  OnDepth<ConnectionNav, AnyView> depth(int d) => OnDepth._(specs, ids, d, nav);
 }
 
 final class const OnFollowing._(super.specs, super.ids, super.nav)
-    extends On<FollowingNav, AnyView> {
+    extends On<FollowingNav> {
   this : super._();
   OnFollowing call(String id) =>
       OnFollowing._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class const OnBadges._(super.specs, super.ids, super.nav)
-    extends On<BadgesNav, AnyView> {
+    extends On<BadgesNav> {
   this : super._();
   OnBadge get badge =>
       OnBadge._([...specs, _Screens.badge], [...ids, null], const BadgeNav._());
 }
 
 final class const OnBadge._(super.specs, super.ids, super.nav)
-    extends On<BadgeNav, AnyView> {
+    extends On<BadgeNav> {
   this : super._();
   OnBadge call(String id) =>
       OnBadge._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
-  OnDepth<BadgeNav, AnyView> depth(int d) => OnDepth._(specs, ids, d, nav);
 }
 
 final class const OnUserProfile._(super.specs, super.ids, super.nav)
-    extends On<UserProfilePlacement, AnyView> {
+    extends On<UserProfilePlacement> {
   this : super._();
   OnUserProfile call(String id) =>
       OnUserProfile._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class const OnNotifications._(super.specs, super.ids, super.nav)
-    extends On<NotificationsNav, AnyView> {
+    extends On<NotificationsNav> {
   this : super._();
-  On<NotificationSettingsNav, AnyView> get notificationSettings => On._(
+  On<NotificationSettingsNav> get notificationSettings => On._(
     [...specs, _Screens.notificationSettings],
     [...ids, null],
     const NotificationSettingsNav._(),
   );
 }
 
-final class const OnSearch._(super.specs, super.ids, super.nav, [super.conds])
-    extends On<SearchNav, SearchView> {
+final class const OnSearch._(super.specs, super.ids, super.nav)
+    extends On<SearchNav> {
   this : super._();
-  OnSearch query(Set<SearchQueryCond> cs) =>
-      OnSearch._(specs, ids, nav, [...conds, ...cs]);
-  OnSearch fragment(Set<SearchFragmentCond> cs) =>
-      OnSearch._(specs, ids, nav, [...conds, ...cs]);
-  On<SearchResultsNav, AnyView> get searchResults => On._(
+  On<SearchResultsNav> get searchResults => On._(
     [...specs, _Screens.searchResults],
     [...ids, null],
     const SearchResultsNav._(),
@@ -4681,9 +3826,9 @@ final class const OnSearch._(super.specs, super.ids, super.nav, [super.conds])
 }
 
 final class const OnSettings._(super.specs, super.ids, super.nav)
-    extends On<SettingsNav, AnyView> {
+    extends On<SettingsNav> {
   this : super._();
-  On<AccountSettingsNav, AnyView> get accountSettings => On._(
+  On<AccountSettingsNav> get accountSettings => On._(
     [...specs, _Screens.accountSettings],
     [...ids, null],
     const AccountSettingsNav._(),
@@ -4693,26 +3838,26 @@ final class const OnSettings._(super.specs, super.ids, super.nav)
     [...ids, null],
     const SecurityNav._(),
   );
-  On<PrivacyNav, AnyView> get privacy =>
+  On<PrivacyNav> get privacy =>
       On._([...specs, _Screens.privacy], [...ids, null], const PrivacyNav._());
-  On<AppearanceNav, AnyView> get appearance => On._(
+  On<AppearanceNav> get appearance => On._(
     [...specs, _Screens.appearance],
     [...ids, null],
     const AppearanceNav._(),
   );
-  On<LanguageNav, AnyView> get language => On._(
+  On<LanguageNav> get language => On._(
     [...specs, _Screens.language],
     [...ids, null],
     const LanguageNav._(),
   );
-  On<ConnectedAppsNav, AnyView> get connectedApps => On._(
+  On<ConnectedAppsNav> get connectedApps => On._(
     [...specs, _Screens.connectedApps],
     [...ids, null],
     const ConnectedAppsNav._(),
   );
   OnAbout get about =>
       OnAbout._([...specs, _Screens.about], [...ids, null], const AboutNav._());
-  On<BlockedUsersNav, AnyView> get blockedUsers => On._(
+  On<BlockedUsersNav> get blockedUsers => On._(
     [...specs, _Screens.blockedUsers],
     [...ids, null],
     const BlockedUsersNav._(),
@@ -4722,12 +3867,12 @@ final class const OnSettings._(super.specs, super.ids, super.nav)
     [...ids, null],
     const DevicesNav._(),
   );
-  On<DataExportNav, AnyView> get dataExport => On._(
+  On<DataExportNav> get dataExport => On._(
     [...specs, _Screens.dataExport],
     [...ids, null],
     const DataExportNav._(),
   );
-  On<DeleteAccountNav, AnyView> get deleteAccount => On._(
+  On<DeleteAccountNav> get deleteAccount => On._(
     [...specs, _Screens.deleteAccount],
     [...ids, null],
     const DeleteAccountNav._(),
@@ -4747,9 +3892,9 @@ final class const OnSettings._(super.specs, super.ids, super.nav)
 }
 
 final class const OnSecurity._(super.specs, super.ids, super.nav)
-    extends On<SecurityNav, AnyView> {
+    extends On<SecurityNav> {
   this : super._();
-  On<TwoFactorSettingsNav, AnyView> get twoFactorSettings => On._(
+  On<TwoFactorSettingsNav> get twoFactorSettings => On._(
     [...specs, _Screens.twoFactorSettings],
     [...ids, null],
     const TwoFactorSettingsNav._(),
@@ -4757,11 +3902,11 @@ final class const OnSecurity._(super.specs, super.ids, super.nav)
 }
 
 final class const OnAbout._(super.specs, super.ids, super.nav)
-    extends On<AboutNav, AnyView> {
+    extends On<AboutNav> {
   this : super._();
   OnHelp get help =>
       OnHelp._([...specs, _Screens.help], [...ids, null], const HelpNav._());
-  On<FeedbackNav, AnyView> get feedback => On._(
+  On<FeedbackNav> get feedback => On._(
     [...specs, _Screens.feedback],
     [...ids, null],
     const FeedbackNav._(),
@@ -4769,7 +3914,7 @@ final class const OnAbout._(super.specs, super.ids, super.nav)
 }
 
 final class const OnHelp._(super.specs, super.ids, super.nav)
-    extends On<HelpNav, AnyView> {
+    extends On<HelpNav> {
   this : super._();
   OnHelpCategory get helpCategory => OnHelpCategory._(
     [...specs, _Screens.helpCategory],
@@ -4779,7 +3924,7 @@ final class const OnHelp._(super.specs, super.ids, super.nav)
 }
 
 final class const OnHelpCategory._(super.specs, super.ids, super.nav)
-    extends On<HelpCategoryNav, AnyView> {
+    extends On<HelpCategoryNav> {
   this : super._();
   OnFaq get faq =>
       OnFaq._([...specs, _Screens.faq], [...ids, null], const FaqNav._());
@@ -4788,7 +3933,7 @@ final class const OnHelpCategory._(super.specs, super.ids, super.nav)
 }
 
 final class const OnFaq._(super.specs, super.ids, super.nav)
-    extends On<FaqNav, AnyView> {
+    extends On<FaqNav> {
   this : super._();
   OnFaqArticle get faqArticle => OnFaqArticle._(
     [...specs, _Screens.faqArticle],
@@ -4798,14 +3943,14 @@ final class const OnFaq._(super.specs, super.ids, super.nav)
 }
 
 final class const OnFaqArticle._(super.specs, super.ids, super.nav)
-    extends On<FaqArticleNav, AnyView> {
+    extends On<FaqArticleNav> {
   this : super._();
   OnFaqArticle call(String id) =>
       OnFaqArticle._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class const OnDevices._(super.specs, super.ids, super.nav)
-    extends On<DevicesNav, AnyView> {
+    extends On<DevicesNav> {
   this : super._();
   OnDevice get device => OnDevice._(
     [...specs, _Screens.device],
@@ -4815,9 +3960,9 @@ final class const OnDevices._(super.specs, super.ids, super.nav)
 }
 
 final class const OnDevice._(super.specs, super.ids, super.nav)
-    extends On<DeviceNav, AnyView> {
+    extends On<DeviceNav> {
   this : super._();
-  On<SessionsNav, AnyView> get sessions => On._(
+  On<SessionsNav> get sessions => On._(
     [...specs, _Screens.sessions],
     [...ids, null],
     const SessionsNav._(),
@@ -4832,29 +3977,28 @@ final class const OnDevice._(super.specs, super.ids, super.nav)
 }
 
 final class const OnSession._(super.specs, super.ids, super.nav)
-    extends On<SessionNav, AnyView> {
+    extends On<SessionNav> {
   this : super._();
   OnSession call(String id) =>
       OnSession._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
-  OnDepth<SessionNav, AnyView> depth(int d) => OnDepth._(specs, ids, d, nav);
 }
 
 final class const OnIntegrations._(super.specs, super.ids, super.nav)
-    extends On<IntegrationsNav, AnyView> {
+    extends On<IntegrationsNav> {
   this : super._();
-  On<ApiKeysNav, AnyView> get apiKeys =>
+  On<ApiKeysNav> get apiKeys =>
       On._([...specs, _Screens.apiKeys], [...ids, null], const ApiKeysNav._());
 }
 
 final class const OnSupport._(super.specs, super.ids, super.nav)
-    extends On<SupportNav, AnyView> {
+    extends On<SupportNav> {
   this : super._();
   OnSupportTickets get supportTickets => OnSupportTickets._(
     [...specs, Support.supportTickets],
     [...ids, null],
     const SupportTicketsNav._(),
   );
-  On<NewTicketNav, AnyView> get newTicket => On._(
+  On<NewTicketNav> get newTicket => On._(
     [...specs, Support.newTicket],
     [...ids, null],
     const NewTicketNav._(),
@@ -4867,7 +4011,7 @@ final class const OnSupport._(super.specs, super.ids, super.nav)
 }
 
 final class const OnSupportTickets._(super.specs, super.ids, super.nav)
-    extends On<SupportTicketsNav, AnyView> {
+    extends On<SupportTicketsNav> {
   this : super._();
   OnSupportTicket get supportTicket => OnSupportTicket._(
     [...specs, Support.supportTicket],
@@ -4877,14 +4021,14 @@ final class const OnSupportTickets._(super.specs, super.ids, super.nav)
 }
 
 final class const OnSupportTicket._(super.specs, super.ids, super.nav)
-    extends On<SupportTicketNav, AnyView> {
+    extends On<SupportTicketNav> {
   this : super._();
   OnSupportTicket call(String id) =>
       OnSupportTicket._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class const OnKnowledgeBase._(super.specs, super.ids, super.nav)
-    extends On<KnowledgeBaseNav, AnyView> {
+    extends On<KnowledgeBaseNav> {
   this : super._();
   OnArticle get article => OnArticle._(
     [...specs, Support.article],
@@ -4894,26 +4038,26 @@ final class const OnKnowledgeBase._(super.specs, super.ids, super.nav)
 }
 
 final class const OnArticle._(super.specs, super.ids, super.nav)
-    extends On<ArticleNav, AnyView> {
+    extends On<ArticleNav> {
   this : super._();
   OnArticle call(String id) =>
       OnArticle._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class const OnAdmin._(super.specs, super.ids, super.nav)
-    extends On<AdminNav, AnyView> {
+    extends On<AdminNav> {
   this : super._();
   OnAdminUsers get adminUsers => OnAdminUsers._(
     [...specs, Admin.adminUsers],
     [...ids, null],
     const AdminUsersNav._(),
   );
-  On<AdminAuditLogNav, AnyView> get adminAuditLog => On._(
+  On<AdminAuditLogNav> get adminAuditLog => On._(
     [...specs, Admin.adminAuditLog],
     [...ids, null],
     const AdminAuditLogNav._(),
   );
-  On<AdminFeatureFlagsNav, AnyView> get adminFeatureFlags => On._(
+  On<AdminFeatureFlagsNav> get adminFeatureFlags => On._(
     [...specs, Admin.adminFeatureFlags],
     [...ids, null],
     const AdminFeatureFlagsNav._(),
@@ -4926,7 +4070,7 @@ final class const OnAdmin._(super.specs, super.ids, super.nav)
 }
 
 final class const OnAdminUsers._(super.specs, super.ids, super.nav)
-    extends On<AdminUsersNav, AnyView> {
+    extends On<AdminUsersNav> {
   this : super._();
   OnAdminUser get adminUser => OnAdminUser._(
     [...specs, Admin.adminUser],
@@ -4936,7 +4080,7 @@ final class const OnAdminUsers._(super.specs, super.ids, super.nav)
 }
 
 final class const OnAdminUser._(super.specs, super.ids, super.nav)
-    extends On<AdminUserNav, AnyView> {
+    extends On<AdminUserNav> {
   this : super._();
   OnAdminRole get adminRole => OnAdminRole._(
     [...specs, Admin.adminRole],
@@ -4948,14 +4092,14 @@ final class const OnAdminUser._(super.specs, super.ids, super.nav)
 }
 
 final class const OnAdminRole._(super.specs, super.ids, super.nav)
-    extends On<AdminRoleNav, AnyView> {
+    extends On<AdminRoleNav> {
   this : super._();
   OnAdminRole call(String id) =>
       OnAdminRole._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class const OnWebhooks._(super.specs, super.ids, super.nav)
-    extends On<WebhooksNav, AnyView> {
+    extends On<WebhooksNav> {
   this : super._();
   OnWebhook get webhook => OnWebhook._(
     [...specs, Admin.webhook],
@@ -4965,21 +4109,15 @@ final class const OnWebhooks._(super.specs, super.ids, super.nav)
 }
 
 final class const OnWebhook._(super.specs, super.ids, super.nav)
-    extends On<WebhookNav, AnyView> {
+    extends On<WebhookNav> {
   this : super._();
   OnWebhook call(String id) =>
       OnWebhook._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
-final class const OnWorkspace._(
-  super.specs,
-  super.ids,
-  super.nav, [
-  super.conds,
-]) extends On<WorkspaceNav, WorkspaceView> {
+final class const OnWorkspace._(super.specs, super.ids, super.nav)
+    extends On<WorkspaceNav> {
   this : super._();
-  OnWorkspace query(Set<WorkspaceQueryCond> cs) =>
-      OnWorkspace._(specs, ids, nav, [...conds, ...cs]);
   OnProject get project => OnProject._(
     [...specs, _Screens.project],
     [...ids, null],
@@ -4987,28 +4125,23 @@ final class const OnWorkspace._(
   );
 }
 
-final class const OnProject._(super.specs, super.ids, super.nav, [super.conds])
-    extends On<ProjectNav, ProjectView> {
+final class const OnProject._(super.specs, super.ids, super.nav)
+    extends On<ProjectNav> {
   this : super._();
-  OnProject query(Set<ProjectQueryCond> cs) =>
-      OnProject._(specs, ids, nav, [...conds, ...cs]);
   OnBoard get board =>
       OnBoard._([...specs, _Screens.board], [...ids, null], const BoardNav._());
-  OnWorkspaceProjectUserProfile get userProfile =>
-      OnWorkspaceProjectUserProfile._(
-        [...specs, _Screens.userProfile],
-        [...ids, null],
-        const WorkspaceProjectUserProfileNav._(),
-      );
+  OnUserProfile5 get userProfile => OnUserProfile5._(
+    [...specs, _Screens.userProfile],
+    [...ids, null],
+    const UserProfileNav5._(),
+  );
   OnProject call(String id) =>
       OnProject._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
-final class const OnBoard._(super.specs, super.ids, super.nav, [super.conds])
-    extends On<BoardNav, BoardView> {
+final class const OnBoard._(super.specs, super.ids, super.nav)
+    extends On<BoardNav> {
   this : super._();
-  OnBoard query(Set<BoardQueryCond> cs) =>
-      OnBoard._(specs, ids, nav, [...conds, ...cs]);
   OnTaskList get taskList => OnTaskList._(
     [...specs, _Screens.taskList],
     [...ids, null],
@@ -5018,11 +4151,9 @@ final class const OnBoard._(super.specs, super.ids, super.nav, [super.conds])
       OnBoard._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
-final class const OnTaskList._(super.specs, super.ids, super.nav, [super.conds])
-    extends On<TaskListNav, TaskListView> {
+final class const OnTaskList._(super.specs, super.ids, super.nav)
+    extends On<TaskListNav> {
   this : super._();
-  OnTaskList query(Set<TaskListQueryCond> cs) =>
-      OnTaskList._(specs, ids, nav, [...conds, ...cs]);
   OnTask get task =>
       OnTask._([...specs, _Screens.task], [...ids, null], const TaskNav._());
   OnMilestone get milestone => OnMilestone._(
@@ -5035,25 +4166,13 @@ final class const OnTaskList._(super.specs, super.ids, super.nav, [super.conds])
     [...ids, null],
     const SprintNav._(),
   );
-  On<EditTaskNav, AnyView> editTask(String id) => On._(
-    [...specs, _Screens.task, _Screens.editTask],
-    [...ids, id, null],
-    const EditTaskNav._(),
-  );
-  On<TaskCommentNav, AnyView> taskComment(String id) => On._(
-    [...specs, _Screens.task, _Screens.taskComment],
-    [...ids, id, null],
-    const TaskCommentNav._(),
-  );
   OnTaskList call(String id) =>
       OnTaskList._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
-final class const OnTask._(super.specs, super.ids, super.nav, [super.conds])
-    extends On<TaskNav, TaskView> {
+final class const OnTask._(super.specs, super.ids, super.nav)
+    extends On<TaskNav> {
   this : super._();
-  OnTask query(Set<TaskQueryCond> cs) =>
-      OnTask._(specs, ids, nav, [...conds, ...cs]);
   OnSubtask get subtask => OnSubtask._(
     [...specs, _Screens.subtask],
     [...ids, null],
@@ -5068,11 +4187,10 @@ final class const OnTask._(super.specs, super.ids, super.nav, [super.conds])
       OnLabel._([...specs, _Screens.label], [...ids, null], const LabelNav._());
   OnTask call(String id) =>
       OnTask._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
-  OnDepth<TaskNav, TaskView> depth(int d) => OnDepth._(specs, ids, d, nav);
 }
 
 final class const OnSubtask._(super.specs, super.ids, super.nav)
-    extends On<SubtaskNav, AnyView> {
+    extends On<SubtaskNav> {
   this : super._();
   OnChecklistItem get checklistItem => OnChecklistItem._(
     [...specs, _Screens.checklistItem],
@@ -5081,75 +4199,66 @@ final class const OnSubtask._(super.specs, super.ids, super.nav)
   );
   OnSubtask call(String id) =>
       OnSubtask._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
-  OnDepth<SubtaskNav, AnyView> depth(int d) => OnDepth._(specs, ids, d, nav);
 }
 
 final class const OnChecklistItem._(super.specs, super.ids, super.nav)
-    extends On<ChecklistItemNav, AnyView> {
+    extends On<ChecklistItemNav> {
   this : super._();
   OnChecklistItem call(String id) =>
       OnChecklistItem._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
-  OnDepth<ChecklistItemNav, AnyView> depth(int d) =>
-      OnDepth._(specs, ids, d, nav);
 }
 
 final class const OnAssignee._(super.specs, super.ids, super.nav)
-    extends On<AssigneeNav, AnyView> {
+    extends On<AssigneeNav> {
   this : super._();
   OnAssignee call(String id) =>
       OnAssignee._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class const OnLabel._(super.specs, super.ids, super.nav)
-    extends On<LabelNav, AnyView> {
+    extends On<LabelNav> {
   this : super._();
   OnLabel call(String id) =>
       OnLabel._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class const OnMilestone._(super.specs, super.ids, super.nav)
-    extends On<MilestoneNav, AnyView> {
+    extends On<MilestoneNav> {
   this : super._();
   OnMilestone call(String id) =>
       OnMilestone._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class const OnSprint._(super.specs, super.ids, super.nav)
-    extends On<SprintNav, AnyView> {
+    extends On<SprintNav> {
   this : super._();
   OnSprint call(String id) =>
       OnSprint._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
-final class const OnWorkspaceProjectUserProfile._(
-  super.specs,
-  super.ids,
-  super.nav,
-) extends On<WorkspaceProjectUserProfileNav, AnyView> {
+final class const OnUserProfile5._(super.specs, super.ids, super.nav)
+    extends On<UserProfileNav5> {
   this : super._();
-  OnWorkspaceProjectUserProfile call(String id) =>
-      OnWorkspaceProjectUserProfile._(specs, [
-        ...ids.sublist(0, ids.length - 1),
-        id,
-      ], nav);
+  OnUserProfile5 call(String id) =>
+      OnUserProfile5._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class const OnEditTask._(super.specs, super.ids, super.nav)
-    extends On<EditTaskNav, AnyView> {
+    extends On<EditTaskNav> {
   this : super._();
   OnEditTask call(String id) =>
       OnEditTask._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class const OnTaskComment._(super.specs, super.ids, super.nav)
-    extends On<TaskCommentNav, AnyView> {
+    extends On<TaskCommentNav> {
   this : super._();
   OnTaskComment call(String id) =>
       OnTaskComment._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class const OnForum._(super.specs, super.ids, super.nav)
-    extends On<ForumNav, AnyView> {
+    extends On<ForumNav> {
   this : super._();
   OnForumCategory get forumCategory => OnForumCategory._(
     [...specs, _Screens.forumCategory],
@@ -5158,38 +4267,21 @@ final class const OnForum._(super.specs, super.ids, super.nav)
   );
 }
 
-final class const OnForumCategory._(
-  super.specs,
-  super.ids,
-  super.nav, [
-  super.conds,
-]) extends On<ForumCategoryNav, ForumCategoryView> {
+final class const OnForumCategory._(super.specs, super.ids, super.nav)
+    extends On<ForumCategoryNav> {
   this : super._();
-  OnForumCategory query(Set<ForumCategoryQueryCond> cs) =>
-      OnForumCategory._(specs, ids, nav, [...conds, ...cs]);
   OnForumThread get forumThread => OnForumThread._(
     [...specs, _Screens.forumThread],
     [...ids, null],
     const ForumThreadNav._(),
   );
-  On<ReportThreadNav, AnyView> reportThread(String id) => On._(
-    [...specs, _Screens.forumThread, _Screens.reportThread],
-    [...ids, id, null],
-    const ReportThreadNav._(),
-  );
   OnForumCategory call(String id) =>
       OnForumCategory._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
-final class const OnForumThread._(
-  super.specs,
-  super.ids,
-  super.nav, [
-  super.conds,
-]) extends On<ForumThreadNav, ForumThreadView> {
+final class const OnForumThread._(super.specs, super.ids, super.nav)
+    extends On<ForumThreadNav> {
   this : super._();
-  OnForumThread query(Set<ForumThreadQueryCond> cs) =>
-      OnForumThread._(specs, ids, nav, [...conds, ...cs]);
   OnForumReply get forumReply => OnForumReply._(
     [...specs, _Screens.forumReply],
     [...ids, null],
@@ -5197,64 +4289,47 @@ final class const OnForumThread._(
   );
   OnForumThread call(String id) =>
       OnForumThread._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
-  OnDepth<ForumThreadNav, ForumThreadView> depth(int d) =>
-      OnDepth._(specs, ids, d, nav);
 }
 
 final class const OnForumReply._(super.specs, super.ids, super.nav)
-    extends On<ForumReplyNav, AnyView> {
+    extends On<ForumReplyNav> {
   this : super._();
-  OnForumForumCategoryForumThreadForumReplyUserProfile get userProfile =>
-      OnForumForumCategoryForumThreadForumReplyUserProfile._(
-        [...specs, _Screens.userProfile],
-        [...ids, null],
-        const ForumForumCategoryForumThreadForumReplyUserProfileNav._(),
-      );
+  OnUserProfile6 get userProfile => OnUserProfile6._(
+    [...specs, _Screens.userProfile],
+    [...ids, null],
+    const UserProfileNav6._(),
+  );
   OnForumReply call(String id) =>
       OnForumReply._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
-  OnDepth<ForumReplyNav, AnyView> depth(int d) => OnDepth._(specs, ids, d, nav);
 }
 
-final class const OnForumForumCategoryForumThreadForumReplyUserProfile._(
-  super.specs,
-  super.ids,
-  super.nav,
-) extends On<ForumForumCategoryForumThreadForumReplyUserProfileNav, AnyView> {
+final class const OnUserProfile6._(super.specs, super.ids, super.nav)
+    extends On<UserProfileNav6> {
   this : super._();
-  OnForumForumCategoryForumThreadForumReplyUserProfile call(String id) =>
-      OnForumForumCategoryForumThreadForumReplyUserProfile._(specs, [
-        ...ids.sublist(0, ids.length - 1),
-        id,
-      ], nav);
+  OnUserProfile6 call(String id) =>
+      OnUserProfile6._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class const OnReportThread._(super.specs, super.ids, super.nav)
-    extends On<ReportThreadNav, AnyView> {
+    extends On<ReportThreadNav> {
   this : super._();
   OnReportThread call(String id) =>
       OnReportThread._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class const OnLearn._(super.specs, super.ids, super.nav)
-    extends On<LearnNav, AnyView> {
+    extends On<LearnNav> {
   this : super._();
   OnCourse get course => OnCourse._(
     [...specs, _Screens.course],
     [...ids, null],
     const CourseNav._(),
   );
-  On<CertificateNav, AnyView> certificate(String id) => On._(
-    [...specs, _Screens.course, _Screens.certificate],
-    [...ids, id, null],
-    const CertificateNav._(),
-  );
 }
 
-final class const OnCourse._(super.specs, super.ids, super.nav, [super.conds])
-    extends On<CourseNav, CourseView> {
+final class const OnCourse._(super.specs, super.ids, super.nav)
+    extends On<CourseNav> {
   this : super._();
-  OnCourse query(Set<CourseQueryCond> cs) =>
-      OnCourse._(specs, ids, nav, [...conds, ...cs]);
   OnCourseModule get courseModule => OnCourseModule._(
     [...specs, _Screens.courseModule],
     [...ids, null],
@@ -5265,7 +4340,7 @@ final class const OnCourse._(super.specs, super.ids, super.nav, [super.conds])
 }
 
 final class const OnCourseModule._(super.specs, super.ids, super.nav)
-    extends On<CourseModuleNav, AnyView> {
+    extends On<CourseModuleNav> {
   this : super._();
   OnLesson get lesson => OnLesson._(
     [...specs, _Screens.lesson],
@@ -5282,7 +4357,7 @@ final class const OnCourseModule._(super.specs, super.ids, super.nav)
 }
 
 final class const OnLesson._(super.specs, super.ids, super.nav)
-    extends On<LessonNav, AnyView> {
+    extends On<LessonNav> {
   this : super._();
   OnQuiz get quiz =>
       OnQuiz._([...specs, _Screens.quiz], [...ids, null], const QuizNav._());
@@ -5296,67 +4371,61 @@ final class const OnLesson._(super.specs, super.ids, super.nav)
 }
 
 final class const OnQuiz._(super.specs, super.ids, super.nav)
-    extends On<QuizNav, AnyView> {
+    extends On<QuizNav> {
   this : super._();
   OnQuestion get question => OnQuestion._(
     [...specs, _Screens.question],
     [...ids, null],
     const QuestionNav._(),
   );
-  On<AnswerNav, AnyView> answer(String id) => On._(
-    [...specs, _Screens.question, _Screens.answer],
-    [...ids, id, null],
-    const AnswerNav._(),
-  );
   OnQuiz call(String id) =>
       OnQuiz._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class const OnQuestion._(super.specs, super.ids, super.nav)
-    extends On<QuestionNav, AnyView> {
+    extends On<QuestionNav> {
   this : super._();
   OnQuestion call(String id) =>
       OnQuestion._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
-  OnDepth<QuestionNav, AnyView> depth(int d) => OnDepth._(specs, ids, d, nav);
 }
 
 final class const OnCourseReview._(super.specs, super.ids, super.nav)
-    extends On<CourseReviewNav, AnyView> {
+    extends On<CourseReviewNav> {
   this : super._();
   OnCourseReview call(String id) =>
       OnCourseReview._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class const OnInstructor._(super.specs, super.ids, super.nav)
-    extends On<InstructorNav, AnyView> {
+    extends On<InstructorNav> {
   this : super._();
   OnInstructor call(String id) =>
       OnInstructor._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class const OnAnswer._(super.specs, super.ids, super.nav)
-    extends On<AnswerNav, AnyView> {
+    extends On<AnswerNav> {
   this : super._();
   OnAnswer call(String id) =>
       OnAnswer._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class const OnCertificate._(super.specs, super.ids, super.nav)
-    extends On<CertificateNav, AnyView> {
+    extends On<CertificateNav> {
   this : super._();
   OnCertificate call(String id) =>
       OnCertificate._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class const OnShop._(super.specs, super.ids, super.nav)
-    extends On<ShopNav, AnyView> {
+    extends On<ShopNav> {
   this : super._();
   OnShopDept get shopDept => OnShopDept._(
     [...specs, _Screens.shopDept],
     [...ids, null],
     const ShopDeptNav._(),
   );
-  On<CompareProductsNav, AnyView> get compareProducts => On._(
+  On<CompareProductsNav> get compareProducts => On._(
     [...specs, _Screens.compareProducts],
     [...ids, null],
     const CompareProductsNav._(),
@@ -5364,7 +4433,7 @@ final class const OnShop._(super.specs, super.ids, super.nav)
 }
 
 final class const OnShopDept._(super.specs, super.ids, super.nav)
-    extends On<ShopDeptNav, AnyView> {
+    extends On<ShopDeptNav> {
   this : super._();
   OnShopCategory get shopCategory => OnShopCategory._(
     [...specs, _Screens.shopCategory],
@@ -5376,7 +4445,7 @@ final class const OnShopDept._(super.specs, super.ids, super.nav)
 }
 
 final class const OnShopCategory._(super.specs, super.ids, super.nav)
-    extends On<ShopCategoryNav, AnyView> {
+    extends On<ShopCategoryNav> {
   this : super._();
   OnShopSubcategory get shopSubcategory => OnShopSubcategory._(
     [...specs, _Screens.shopSubcategory],
@@ -5387,15 +4456,9 @@ final class const OnShopCategory._(super.specs, super.ids, super.nav)
       OnShopCategory._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
-final class const OnShopSubcategory._(
-  super.specs,
-  super.ids,
-  super.nav, [
-  super.conds,
-]) extends On<ShopSubcategoryNav, ShopSubcategoryView> {
+final class const OnShopSubcategory._(super.specs, super.ids, super.nav)
+    extends On<ShopSubcategoryNav> {
   this : super._();
-  OnShopSubcategory query(Set<ShopSubcategoryQueryCond> cs) =>
-      OnShopSubcategory._(specs, ids, nav, [...conds, ...cs]);
   OnProduct get product => OnProduct._(
     [...specs, _Screens.product],
     [...ids, null],
@@ -5405,11 +4468,9 @@ final class const OnShopSubcategory._(
       OnShopSubcategory._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
-final class const OnProduct._(super.specs, super.ids, super.nav, [super.conds])
-    extends On<ProductNav, ProductView> {
+final class const OnProduct._(super.specs, super.ids, super.nav)
+    extends On<ProductNav> {
   this : super._();
-  OnProduct query(Set<ProductQueryCond> cs) =>
-      OnProduct._(specs, ids, nav, [...conds, ...cs]);
   OnProductVariant get productVariant => OnProductVariant._(
     [...specs, _Screens.productVariant],
     [...ids, null],
@@ -5424,35 +4485,31 @@ final class const OnProduct._(super.specs, super.ids, super.nav, [super.conds])
       OnBrand._([...specs, _Screens.brand], [...ids, null], const BrandNav._());
   OnProduct call(String id) =>
       OnProduct._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
-  OnDepth<ProductNav, ProductView> depth(int d) =>
-      OnDepth._(specs, ids, d, nav);
 }
 
 final class const OnProductVariant._(super.specs, super.ids, super.nav)
-    extends On<ProductVariantNav, AnyView> {
+    extends On<ProductVariantNav> {
   this : super._();
   OnProductVariant call(String id) =>
       OnProductVariant._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
-  OnDepth<ProductVariantNav, AnyView> depth(int d) =>
-      OnDepth._(specs, ids, d, nav);
 }
 
 final class const OnProductReview._(super.specs, super.ids, super.nav)
-    extends On<ProductReviewNav, AnyView> {
+    extends On<ProductReviewNav> {
   this : super._();
   OnProductReview call(String id) =>
       OnProductReview._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class const OnBrand._(super.specs, super.ids, super.nav)
-    extends On<BrandNav, AnyView> {
+    extends On<BrandNav> {
   this : super._();
   OnBrand call(String id) =>
       OnBrand._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class const OnActivity._(super.specs, super.ids, super.nav)
-    extends On<ActivityNav, AnyView> {
+    extends On<ActivityNav> {
   this : super._();
   OnWorkout get workout => OnWorkout._(
     [...specs, _Screens.workout],
@@ -5461,11 +4518,9 @@ final class const OnActivity._(super.specs, super.ids, super.nav)
   );
 }
 
-final class const OnWorkout._(super.specs, super.ids, super.nav, [super.conds])
-    extends On<WorkoutNav, WorkoutView> {
+final class const OnWorkout._(super.specs, super.ids, super.nav)
+    extends On<WorkoutNav> {
   this : super._();
-  OnWorkout query(Set<WorkoutQueryCond> cs) =>
-      OnWorkout._(specs, ids, nav, [...conds, ...cs]);
   OnExercise get exercise => OnExercise._(
     [...specs, _Screens.exercise],
     [...ids, null],
@@ -5476,7 +4531,7 @@ final class const OnWorkout._(super.specs, super.ids, super.nav, [super.conds])
 }
 
 final class const OnExercise._(super.specs, super.ids, super.nav)
-    extends On<ExerciseNav, AnyView> {
+    extends On<ExerciseNav> {
   this : super._();
   OnExerciseSet get exerciseSet => OnExerciseSet._(
     [...specs, _Screens.exerciseSet],
@@ -5488,16 +4543,14 @@ final class const OnExercise._(super.specs, super.ids, super.nav)
 }
 
 final class const OnExerciseSet._(super.specs, super.ids, super.nav)
-    extends On<ExerciseSetNav, AnyView> {
+    extends On<ExerciseSetNav> {
   this : super._();
   OnExerciseSet call(String id) =>
       OnExerciseSet._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
-  OnDepth<ExerciseSetNav, AnyView> depth(int d) =>
-      OnDepth._(specs, ids, d, nav);
 }
 
 final class const OnDeepDemo._(super.specs, super.ids, super.nav)
-    extends On<DeepDemoNav, AnyView> {
+    extends On<DeepDemoNav> {
   this : super._();
   OnLevelA get levelA => OnLevelA._(
     [...specs, _Screens.levelA],
@@ -5507,7 +4560,7 @@ final class const OnDeepDemo._(super.specs, super.ids, super.nav)
 }
 
 final class const OnLevelA._(super.specs, super.ids, super.nav)
-    extends On<LevelANav, AnyView> {
+    extends On<LevelANav> {
   this : super._();
   OnLevelB get levelB => OnLevelB._(
     [...specs, _Screens.levelB],
@@ -5516,11 +4569,10 @@ final class const OnLevelA._(super.specs, super.ids, super.nav)
   );
   OnLevelA call(String id) =>
       OnLevelA._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
-  OnDepth<LevelANav, AnyView> depth(int d) => OnDepth._(specs, ids, d, nav);
 }
 
 final class const OnLevelB._(super.specs, super.ids, super.nav)
-    extends On<LevelBNav, AnyView> {
+    extends On<LevelBNav> {
   this : super._();
   OnLevelC get levelC => OnLevelC._(
     [...specs, _Screens.levelC],
@@ -5529,11 +4581,10 @@ final class const OnLevelB._(super.specs, super.ids, super.nav)
   );
   OnLevelB call(String id) =>
       OnLevelB._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
-  OnDepth<LevelBNav, AnyView> depth(int d) => OnDepth._(specs, ids, d, nav);
 }
 
 final class const OnLevelC._(super.specs, super.ids, super.nav)
-    extends On<LevelCNav, AnyView> {
+    extends On<LevelCNav> {
   this : super._();
   OnLevelD get levelD => OnLevelD._(
     [...specs, _Screens.levelD],
@@ -5542,11 +4593,10 @@ final class const OnLevelC._(super.specs, super.ids, super.nav)
   );
   OnLevelC call(String id) =>
       OnLevelC._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
-  OnDepth<LevelCNav, AnyView> depth(int d) => OnDepth._(specs, ids, d, nav);
 }
 
 final class const OnLevelD._(super.specs, super.ids, super.nav)
-    extends On<LevelDNav, AnyView> {
+    extends On<LevelDNav> {
   this : super._();
   OnLevelE get levelE => OnLevelE._(
     [...specs, _Screens.levelE],
@@ -5555,11 +4605,10 @@ final class const OnLevelD._(super.specs, super.ids, super.nav)
   );
   OnLevelD call(String id) =>
       OnLevelD._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
-  OnDepth<LevelDNav, AnyView> depth(int d) => OnDepth._(specs, ids, d, nav);
 }
 
 final class const OnLevelE._(super.specs, super.ids, super.nav)
-    extends On<LevelENav, AnyView> {
+    extends On<LevelENav> {
   this : super._();
   OnLevelF get levelF => OnLevelF._(
     [...specs, _Screens.levelF],
@@ -5568,40 +4617,38 @@ final class const OnLevelE._(super.specs, super.ids, super.nav)
   );
   OnLevelE call(String id) =>
       OnLevelE._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
-  OnDepth<LevelENav, AnyView> depth(int d) => OnDepth._(specs, ids, d, nav);
 }
 
 final class const OnLevelF._(super.specs, super.ids, super.nav)
-    extends On<LevelFNav, AnyView> {
+    extends On<LevelFNav> {
   this : super._();
   OnLevelF call(String id) =>
       OnLevelF._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
-  OnDepth<LevelFNav, AnyView> depth(int d) => OnDepth._(specs, ids, d, nav);
 }
 
 final class const OnEditScheduled._(super.specs, super.ids, super.nav)
-    extends On<EditScheduledNav, AnyView> {
+    extends On<EditScheduledNav> {
   this : super._();
   OnEditScheduled call(String id) =>
       OnEditScheduled._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class const OnAttendees._(super.specs, super.ids, super.nav)
-    extends On<AttendeesNav, AnyView> {
+    extends On<AttendeesNav> {
   this : super._();
   OnAttendees call(String id) =>
       OnAttendees._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class const OnEditEvent._(super.specs, super.ids, super.nav)
-    extends On<EditEventNav, AnyView> {
+    extends On<EditEventNav> {
   this : super._();
   OnEditEvent call(String id) =>
       OnEditEvent._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
 }
 
 final class const OnTickets._(super.specs, super.ids, super.nav)
-    extends On<TicketsNav, AnyView> {
+    extends On<TicketsNav> {
   this : super._();
   OnTickets call(String id) =>
       OnTickets._(specs, [...ids.sublist(0, ids.length - 1), id], nav);
@@ -5613,1430 +4660,196 @@ sealed class const AnyPlacement._() extends AnyNav {
 
 AnyPlacement _atOf(Enum s) {
   final c = _Screens.graph.currentChain;
-  final p = c.sublist(0, c.lastIndexOf(s) + 1);
-  return switch (s) {
-    _Screens.splash => const SplashNav._(),
-    _Screens.signIn => const SignInNav._(),
-    _Screens.signUp => const SignUpNav._(),
-    _Screens.onboarding => const OnboardingNav._(),
-    _Screens.forgotPassword => const ForgotPasswordNav._(),
-    _Screens.resetPassword => const ResetPasswordNav._(),
-    _Screens.verifyEmail => const VerifyEmailNav._(),
-    _Screens.twoFactor => const TwoFactorNav._(),
-    _Screens.home => const HomeNav._(),
-    _Screens.feed => const FeedNav._(),
-    _Screens.composePost => const ComposePostNav._(),
-    _Screens.story => const StoryNav._(),
-    _Screens.post => const PostNav._(),
-    _Screens.comment => const CommentNav._(),
-    _Screens.postAuthor => const PostAuthorNav._(),
-    _Screens.postComments => const PostCommentsNav._(),
-    _Screens.postLikes => const PostLikesNav._(),
-    _Screens.editPost => const EditPostNav._(),
-    _Screens.repost => const RepostNav._(),
-    _Screens.discover => const DiscoverNav._(),
-    _Screens.trending => const TrendingNav._(),
-    _Screens.topics => const TopicsNav._(),
-    _Screens.topic => const TopicNav._(),
-    _Screens.subtopic => const SubtopicNav._(),
-    _Screens.hashtag => const HashtagNav._(),
-    _Screens.liveNow => const LiveNowNav._(),
-    _Screens.liveRoom => const LiveRoomNav._(),
-    _Screens.nearby => const NearbyNav._(),
-    _Screens.marketplace => const MarketplaceNav._(),
-    _Screens.categories => const CategoriesNav._(),
-    _Screens.category => const CategoryNav._(),
-    _Screens.listing => const ListingNav._(),
-    _Screens.listingVariant => const ListingVariantNav._(),
-    _Screens.editListing => const EditListingNav._(),
-    _Screens.sellerProfile => const SellerProfileNav._(),
-    _Screens.cart => const CartNav._(),
-    _Screens.checkout => const CheckoutNav._(),
-    _Screens.orderConfirmation => const OrderConfirmationNav._(),
-    _Screens.myOrders => const MyOrdersNav._(),
-    _Screens.order => const OrderNav._(),
-    _Screens.wishlist => const WishlistNav._(),
-    _Screens.messages => const MessagesNav._(),
-    _Screens.chats => const ChatsNav._(),
-    _Screens.chat => const ChatNav._(),
-    _Screens.thread => const ThreadNav._(),
-    _Screens.message => const MessageNav._(),
-    _Screens.messageReply => const MessageReplyNav._(),
-    _Screens.voiceCall => const VoiceCallNav._(),
-    _Screens.newChat => const NewChatNav._(),
-    _Screens.groupChat => const GroupChatNav._(),
-    _Screens.groupInfo => const GroupInfoNav._(),
-    _Screens.wallet => const WalletNav._(),
-    _Screens.balance => const BalanceNav._(),
-    _Screens.accounts => const AccountsNav._(),
-    _Screens.account => const AccountNav._(),
-    _Screens.transactions => const TransactionsNav._(),
-    _Screens.transaction => const TransactionNav._(),
-    _Screens.transactionItem => const TransactionItemNav._(),
-    _Screens.sendMoney => const SendMoneyNav._(),
-    _Screens.receiveMoney => const ReceiveMoneyNav._(),
-    _Screens.paymentMethods => const PaymentMethodsNav._(),
-    _Screens.addCard => const AddCardNav._(),
-    _Screens.card => const CardNav._(),
-    _Screens.statements => const StatementsNav._(),
-    _Screens.statement => const StatementNav._(),
-    _Screens.profile => const ProfileNav._(),
-    _Screens.userProfile => _resolveUserProfilePlacement(p),
-    _Screens.followers => const FollowersNav._(),
-    _Screens.following => const FollowingNav._(),
-    _Screens.connection => const ConnectionNav._(),
-    _Screens.mutualConnections => const MutualConnectionsNav._(),
-    _Screens.editProfile => const EditProfileNav._(),
-    _Screens.achievements => const AchievementsNav._(),
-    _Screens.badges => const BadgesNav._(),
-    _Screens.badge => const BadgeNav._(),
-    _Screens.savedPosts => const SavedPostsNav._(),
-    _Screens.drafts => const DraftsNav._(),
-    _Screens.myListings => const MyListingsNav._(),
-    _Screens.notifications => const NotificationsNav._(),
-    _Screens.notificationSettings => const NotificationSettingsNav._(),
-    _Screens.search => const SearchNav._(),
-    _Screens.searchResults => const SearchResultsNav._(),
-    _Screens.settings => const SettingsNav._(),
-    _Screens.accountSettings => const AccountSettingsNav._(),
-    _Screens.security => const SecurityNav._(),
-    _Screens.twoFactorSettings => const TwoFactorSettingsNav._(),
-    _Screens.privacy => const PrivacyNav._(),
-    _Screens.appearance => const AppearanceNav._(),
-    _Screens.language => const LanguageNav._(),
-    _Screens.connectedApps => const ConnectedAppsNav._(),
-    _Screens.about => const AboutNav._(),
-    _Screens.help => const HelpNav._(),
-    _Screens.helpCategory => const HelpCategoryNav._(),
-    _Screens.faq => const FaqNav._(),
-    _Screens.faqArticle => const FaqArticleNav._(),
-    _Screens.feedback => const FeedbackNav._(),
-    _Screens.blockedUsers => const BlockedUsersNav._(),
-    _Screens.devices => const DevicesNav._(),
-    _Screens.device => const DeviceNav._(),
-    _Screens.sessions => const SessionsNav._(),
-    _Screens.session => const SessionNav._(),
-    _Screens.dataExport => const DataExportNav._(),
-    _Screens.deleteAccount => const DeleteAccountNav._(),
-    _Screens.workspace => const WorkspaceNav._(),
-    _Screens.project => const ProjectNav._(),
-    _Screens.board => const BoardNav._(),
-    _Screens.taskList => const TaskListNav._(),
-    _Screens.task => const TaskNav._(),
-    _Screens.subtask => const SubtaskNav._(),
-    _Screens.checklistItem => const ChecklistItemNav._(),
-    _Screens.editTask => const EditTaskNav._(),
-    _Screens.taskComment => const TaskCommentNav._(),
-    _Screens.assignee => const AssigneeNav._(),
-    _Screens.label => const LabelNav._(),
-    _Screens.milestone => const MilestoneNav._(),
-    _Screens.sprint => const SprintNav._(),
-    _Screens.forum => const ForumNav._(),
-    _Screens.forumCategory => const ForumCategoryNav._(),
-    _Screens.forumThread => const ForumThreadNav._(),
-    _Screens.forumReply => const ForumReplyNav._(),
-    _Screens.reportThread => const ReportThreadNav._(),
-    _Screens.learn => const LearnNav._(),
-    _Screens.course => const CourseNav._(),
-    _Screens.courseModule => const CourseModuleNav._(),
-    _Screens.lesson => const LessonNav._(),
-    _Screens.quiz => const QuizNav._(),
-    _Screens.question => const QuestionNav._(),
-    _Screens.answer => const AnswerNav._(),
-    _Screens.courseReview => const CourseReviewNav._(),
-    _Screens.instructor => const InstructorNav._(),
-    _Screens.certificate => const CertificateNav._(),
-    _Screens.shop => const ShopNav._(),
-    _Screens.shopDept => const ShopDeptNav._(),
-    _Screens.shopCategory => const ShopCategoryNav._(),
-    _Screens.shopSubcategory => const ShopSubcategoryNav._(),
-    _Screens.product => const ProductNav._(),
-    _Screens.productVariant => const ProductVariantNav._(),
-    _Screens.productReview => const ProductReviewNav._(),
-    _Screens.brand => const BrandNav._(),
-    _Screens.compareProducts => const CompareProductsNav._(),
-    _Screens.activity => const ActivityNav._(),
-    _Screens.workout => const WorkoutNav._(),
-    _Screens.exercise => const ExerciseNav._(),
-    _Screens.exerciseSet => const ExerciseSetNav._(),
-    _Screens.deepDemo => const DeepDemoNav._(),
-    _Screens.levelA => const LevelANav._(),
-    _Screens.levelB => const LevelBNav._(),
-    _Screens.levelC => const LevelCNav._(),
-    _Screens.levelD => const LevelDNav._(),
-    _Screens.levelE => const LevelENav._(),
-    _Screens.levelF => const LevelFNav._(),
-    _Screens.integrations => const IntegrationsNav._(),
-    _Screens.apiKeys => const ApiKeysNav._(),
-    CreatorStudio.studio => const StudioNav._(),
-    CreatorStudio.analytics => const AnalyticsNav._(),
-    CreatorStudio.audience => const AudienceNav._(),
-    CreatorStudio.scheduled => const ScheduledNav._(),
-    CreatorStudio.scheduledPost => const ScheduledPostNav._(),
-    CreatorStudio.editScheduled => const EditScheduledNav._(),
-    CreatorStudio.monetization => const MonetizationNav._(),
-    CreatorStudio.payouts => const PayoutsNav._(),
-    Events.events => const EventsNav._(),
-    Events.event => const EventNav._(),
-    Events.attendees => const AttendeesNav._(),
-    Events.editEvent => const EditEventNav._(),
-    Events.createEvent => const CreateEventNav._(),
-    Events.tickets => const TicketsNav._(),
-    Support.support => const SupportNav._(),
-    Support.supportTickets => const SupportTicketsNav._(),
-    Support.supportTicket => const SupportTicketNav._(),
-    Support.newTicket => const NewTicketNav._(),
-    Support.knowledgeBase => const KnowledgeBaseNav._(),
-    Support.article => const ArticleNav._(),
-    Admin.admin => const AdminNav._(),
-    Admin.adminUsers => const AdminUsersNav._(),
-    Admin.adminUser => const AdminUserNav._(),
-    Admin.adminAuditLog => const AdminAuditLogNav._(),
-    Admin.adminRole => const AdminRoleNav._(),
-    Admin.adminFeatureFlags => const AdminFeatureFlagsNav._(),
-    Admin.webhooks => const WebhooksNav._(),
-    Admin.webhook => const WebhookNav._(),
-    BootScreen.root => const Root._(),
-    _ => throw StateError('not a _Screens screen'),
-  };
+  return _placementOf(s, c.sublist(0, c.lastIndexOf(s) + 1));
 }
+
+AnyPlacement _placementOf(Enum s, List<Enum> p) => switch (s) {
+  _Screens.splash => const SplashNav._(),
+  _Screens.signIn => const SignInNav._(),
+  _Screens.signUp => const SignUpNav._(),
+  _Screens.onboarding => const OnboardingNav._(),
+  _Screens.forgotPassword => const ForgotPasswordNav._(),
+  _Screens.resetPassword => const ResetPasswordNav._(),
+  _Screens.verifyEmail => const VerifyEmailNav._(),
+  _Screens.twoFactor => const TwoFactorNav._(),
+  _Screens.home => const HomeNav._(),
+  _Screens.feed => const FeedNav._(),
+  _Screens.composePost => const ComposePostNav._(),
+  _Screens.story => const StoryNav._(),
+  _Screens.post => const PostNav._(),
+  _Screens.comment => const CommentNav._(),
+  _Screens.postAuthor => const PostAuthorNav._(),
+  _Screens.postComments => const PostCommentsNav._(),
+  _Screens.postLikes => const PostLikesNav._(),
+  _Screens.editPost => const EditPostNav._(),
+  _Screens.repost => const RepostNav._(),
+  _Screens.discover => const DiscoverNav._(),
+  _Screens.trending => const TrendingNav._(),
+  _Screens.topics => const TopicsNav._(),
+  _Screens.topic => const TopicNav._(),
+  _Screens.subtopic => const SubtopicNav._(),
+  _Screens.hashtag => const HashtagNav._(),
+  _Screens.liveNow => const LiveNowNav._(),
+  _Screens.liveRoom => const LiveRoomNav._(),
+  _Screens.nearby => const NearbyNav._(),
+  _Screens.marketplace => const MarketplaceNav._(),
+  _Screens.categories => const CategoriesNav._(),
+  _Screens.category => const CategoryNav._(),
+  _Screens.listing => const ListingNav._(),
+  _Screens.listingVariant => const ListingVariantNav._(),
+  _Screens.editListing => const EditListingNav._(),
+  _Screens.sellerProfile => const SellerProfileNav._(),
+  _Screens.cart => const CartNav._(),
+  _Screens.checkout => const CheckoutNav._(),
+  _Screens.orderConfirmation => const OrderConfirmationNav._(),
+  _Screens.myOrders => const MyOrdersNav._(),
+  _Screens.order => const OrderNav._(),
+  _Screens.wishlist => const WishlistNav._(),
+  _Screens.messages => const MessagesNav._(),
+  _Screens.chats => const ChatsNav._(),
+  _Screens.chat => const ChatNav._(),
+  _Screens.thread => const ThreadNav._(),
+  _Screens.message => const MessageNav._(),
+  _Screens.messageReply => const MessageReplyNav._(),
+  _Screens.voiceCall => const VoiceCallNav._(),
+  _Screens.newChat => const NewChatNav._(),
+  _Screens.groupChat => const GroupChatNav._(),
+  _Screens.groupInfo => const GroupInfoNav._(),
+  _Screens.wallet => const WalletNav._(),
+  _Screens.balance => const BalanceNav._(),
+  _Screens.accounts => const AccountsNav._(),
+  _Screens.account => const AccountNav._(),
+  _Screens.transactions => const TransactionsNav._(),
+  _Screens.transaction => const TransactionNav._(),
+  _Screens.transactionItem => const TransactionItemNav._(),
+  _Screens.sendMoney => const SendMoneyNav._(),
+  _Screens.receiveMoney => const ReceiveMoneyNav._(),
+  _Screens.paymentMethods => const PaymentMethodsNav._(),
+  _Screens.addCard => const AddCardNav._(),
+  _Screens.card => const CardNav._(),
+  _Screens.statements => const StatementsNav._(),
+  _Screens.statement => const StatementNav._(),
+  _Screens.profile => const ProfileNav._(),
+  _Screens.userProfile => _resolveUserProfilePlacement(p),
+  _Screens.followers => const FollowersNav._(),
+  _Screens.following => const FollowingNav._(),
+  _Screens.connection => const ConnectionNav._(),
+  _Screens.mutualConnections => const MutualConnectionsNav._(),
+  _Screens.editProfile => const EditProfileNav._(),
+  _Screens.achievements => const AchievementsNav._(),
+  _Screens.badges => const BadgesNav._(),
+  _Screens.badge => const BadgeNav._(),
+  _Screens.savedPosts => const SavedPostsNav._(),
+  _Screens.drafts => const DraftsNav._(),
+  _Screens.myListings => const MyListingsNav._(),
+  _Screens.notifications => const NotificationsNav._(),
+  _Screens.notificationSettings => const NotificationSettingsNav._(),
+  _Screens.search => const SearchNav._(),
+  _Screens.searchResults => const SearchResultsNav._(),
+  _Screens.settings => const SettingsNav._(),
+  _Screens.accountSettings => const AccountSettingsNav._(),
+  _Screens.security => const SecurityNav._(),
+  _Screens.twoFactorSettings => const TwoFactorSettingsNav._(),
+  _Screens.privacy => const PrivacyNav._(),
+  _Screens.appearance => const AppearanceNav._(),
+  _Screens.language => const LanguageNav._(),
+  _Screens.connectedApps => const ConnectedAppsNav._(),
+  _Screens.about => const AboutNav._(),
+  _Screens.help => const HelpNav._(),
+  _Screens.helpCategory => const HelpCategoryNav._(),
+  _Screens.faq => const FaqNav._(),
+  _Screens.faqArticle => const FaqArticleNav._(),
+  _Screens.feedback => const FeedbackNav._(),
+  _Screens.blockedUsers => const BlockedUsersNav._(),
+  _Screens.devices => const DevicesNav._(),
+  _Screens.device => const DeviceNav._(),
+  _Screens.sessions => const SessionsNav._(),
+  _Screens.session => const SessionNav._(),
+  _Screens.dataExport => const DataExportNav._(),
+  _Screens.deleteAccount => const DeleteAccountNav._(),
+  _Screens.workspace => const WorkspaceNav._(),
+  _Screens.project => const ProjectNav._(),
+  _Screens.board => const BoardNav._(),
+  _Screens.taskList => const TaskListNav._(),
+  _Screens.task => const TaskNav._(),
+  _Screens.subtask => const SubtaskNav._(),
+  _Screens.checklistItem => const ChecklistItemNav._(),
+  _Screens.editTask => const EditTaskNav._(),
+  _Screens.taskComment => const TaskCommentNav._(),
+  _Screens.assignee => const AssigneeNav._(),
+  _Screens.label => const LabelNav._(),
+  _Screens.milestone => const MilestoneNav._(),
+  _Screens.sprint => const SprintNav._(),
+  _Screens.forum => const ForumNav._(),
+  _Screens.forumCategory => const ForumCategoryNav._(),
+  _Screens.forumThread => const ForumThreadNav._(),
+  _Screens.forumReply => const ForumReplyNav._(),
+  _Screens.reportThread => const ReportThreadNav._(),
+  _Screens.learn => const LearnNav._(),
+  _Screens.course => const CourseNav._(),
+  _Screens.courseModule => const CourseModuleNav._(),
+  _Screens.lesson => const LessonNav._(),
+  _Screens.quiz => const QuizNav._(),
+  _Screens.question => const QuestionNav._(),
+  _Screens.answer => const AnswerNav._(),
+  _Screens.courseReview => const CourseReviewNav._(),
+  _Screens.instructor => const InstructorNav._(),
+  _Screens.certificate => const CertificateNav._(),
+  _Screens.shop => const ShopNav._(),
+  _Screens.shopDept => const ShopDeptNav._(),
+  _Screens.shopCategory => const ShopCategoryNav._(),
+  _Screens.shopSubcategory => const ShopSubcategoryNav._(),
+  _Screens.product => const ProductNav._(),
+  _Screens.productVariant => const ProductVariantNav._(),
+  _Screens.productReview => const ProductReviewNav._(),
+  _Screens.brand => const BrandNav._(),
+  _Screens.compareProducts => const CompareProductsNav._(),
+  _Screens.activity => const ActivityNav._(),
+  _Screens.workout => const WorkoutNav._(),
+  _Screens.exercise => const ExerciseNav._(),
+  _Screens.exerciseSet => const ExerciseSetNav._(),
+  _Screens.deepDemo => const DeepDemoNav._(),
+  _Screens.levelA => const LevelANav._(),
+  _Screens.levelB => const LevelBNav._(),
+  _Screens.levelC => const LevelCNav._(),
+  _Screens.levelD => const LevelDNav._(),
+  _Screens.levelE => const LevelENav._(),
+  _Screens.levelF => const LevelFNav._(),
+  _Screens.integrations => const IntegrationsNav._(),
+  _Screens.apiKeys => const ApiKeysNav._(),
+  CreatorStudio.studio => const StudioNav._(),
+  CreatorStudio.analytics => const AnalyticsNav._(),
+  CreatorStudio.audience => const AudienceNav._(),
+  CreatorStudio.scheduled => const ScheduledNav._(),
+  CreatorStudio.scheduledPost => const ScheduledPostNav._(),
+  CreatorStudio.editScheduled => const EditScheduledNav._(),
+  CreatorStudio.monetization => const MonetizationNav._(),
+  CreatorStudio.payouts => const PayoutsNav._(),
+  Events.events => const EventsNav._(),
+  Events.event => const EventNav._(),
+  Events.attendees => const AttendeesNav._(),
+  Events.editEvent => const EditEventNav._(),
+  Events.createEvent => const CreateEventNav._(),
+  Events.tickets => const TicketsNav._(),
+  Support.support => const SupportNav._(),
+  Support.supportTickets => const SupportTicketsNav._(),
+  Support.supportTicket => const SupportTicketNav._(),
+  Support.newTicket => const NewTicketNav._(),
+  Support.knowledgeBase => const KnowledgeBaseNav._(),
+  Support.article => const ArticleNav._(),
+  Admin.admin => const AdminNav._(),
+  Admin.adminUsers => const AdminUsersNav._(),
+  Admin.adminUser => const AdminUserNav._(),
+  Admin.adminAuditLog => const AdminAuditLogNav._(),
+  Admin.adminRole => const AdminRoleNav._(),
+  Admin.adminFeatureFlags => const AdminFeatureFlagsNav._(),
+  Admin.webhooks => const WebhooksNav._(),
+  Admin.webhook => const WebhookNav._(),
+  BootScreen.root => const Root._(),
+  _ => throw StateError('not a _Screens screen'),
+};
 
 abstract base class const AnyNav._();
-
-sealed class FeedStoryPopPlacement {}
-
-FeedStoryPopPlacement _resolveFeedStoryPopPlacement() {
-  final c = _Screens.graph.currentChain;
-  if (_endsWith(c, const [_Screens.home, _Screens.feed, _Screens.story]))
-    return const StoryNav._();
-  if (_endsWith(c, const [_Screens.home, _Screens.feed]))
-    return const FeedNav._();
-  throw StateError('unresolved FeedStoryPopPlacement: $c');
-}
-
-sealed class CommentFeedPostPostAuthorPopPlacement {}
-
-CommentFeedPostPostAuthorPopPlacement
-_resolveCommentFeedPostPostAuthorPopPlacement() {
-  final c = _Screens.graph.currentChain;
-  if (_endsWith(c, const [
-    _Screens.home,
-    _Screens.feed,
-    _Screens.post,
-    _Screens.comment,
-  ]))
-    return const CommentNav._();
-  if (_endsWith(c, const [
-    _Screens.home,
-    _Screens.feed,
-    _Screens.post,
-    _Screens.postAuthor,
-  ]))
-    return const PostAuthorNav._();
-  if (_endsWith(c, const [_Screens.home, _Screens.feed, _Screens.post]))
-    return const PostNav._();
-  if (_endsWith(c, const [_Screens.home, _Screens.feed]))
-    return const FeedNav._();
-  throw StateError('unresolved CommentFeedPostPostAuthorPopPlacement: $c');
-}
-
-sealed class CommentPostPopPlacement {}
-
-CommentPostPopPlacement _resolveCommentPostPopPlacement() {
-  final c = _Screens.graph.currentChain;
-  if (_endsWith(c, const [
-    _Screens.home,
-    _Screens.feed,
-    _Screens.post,
-    _Screens.comment,
-  ]))
-    return const CommentNav._();
-  if (_endsWith(c, const [_Screens.home, _Screens.feed, _Screens.post]))
-    return const PostNav._();
-  throw StateError('unresolved CommentPostPopPlacement: $c');
-}
-
-sealed class PostPostAuthorPopPlacement {}
-
-PostPostAuthorPopPlacement _resolvePostPostAuthorPopPlacement() {
-  final c = _Screens.graph.currentChain;
-  if (_endsWith(c, const [
-    _Screens.home,
-    _Screens.feed,
-    _Screens.post,
-    _Screens.postAuthor,
-  ]))
-    return const PostAuthorNav._();
-  if (_endsWith(c, const [_Screens.home, _Screens.feed, _Screens.post]))
-    return const PostNav._();
-  throw StateError('unresolved PostPostAuthorPopPlacement: $c');
-}
-
-sealed class SubtopicTopicTrendingPopPlacement {}
-
-SubtopicTopicTrendingPopPlacement _resolveSubtopicTopicTrendingPopPlacement() {
-  final c = _Screens.graph.currentChain;
-  if (_endsWith(c, const [
-    _Screens.discover,
-    _Screens.trending,
-    _Screens.topic,
-    _Screens.subtopic,
-  ]))
-    return const SubtopicNav._();
-  if (_endsWith(c, const [
-    _Screens.discover,
-    _Screens.trending,
-    _Screens.topic,
-  ]))
-    return const TopicNav._();
-  if (_endsWith(c, const [_Screens.discover, _Screens.trending]))
-    return const TrendingNav._();
-  throw StateError('unresolved SubtopicTopicTrendingPopPlacement: $c');
-}
-
-sealed class SubtopicTopicPopPlacement {}
-
-SubtopicTopicPopPlacement _resolveSubtopicTopicPopPlacement() {
-  final c = _Screens.graph.currentChain;
-  if (_endsWith(c, const [
-    _Screens.discover,
-    _Screens.trending,
-    _Screens.topic,
-    _Screens.subtopic,
-  ]))
-    return const SubtopicNav._();
-  if (_endsWith(c, const [
-    _Screens.discover,
-    _Screens.trending,
-    _Screens.topic,
-  ]))
-    return const TopicNav._();
-  throw StateError('unresolved SubtopicTopicPopPlacement: $c');
-}
-
-sealed class HashtagTrendingPopPlacement {}
-
-HashtagTrendingPopPlacement _resolveHashtagTrendingPopPlacement() {
-  final c = _Screens.graph.currentChain;
-  if (_endsWith(c, const [
-    _Screens.discover,
-    _Screens.trending,
-    _Screens.hashtag,
-  ]))
-    return const HashtagNav._();
-  if (_endsWith(c, const [_Screens.discover, _Screens.trending]))
-    return const TrendingNav._();
-  throw StateError('unresolved HashtagTrendingPopPlacement: $c');
-}
-
-sealed class LiveNowLiveRoomPopPlacement {}
-
-LiveNowLiveRoomPopPlacement _resolveLiveNowLiveRoomPopPlacement() {
-  final c = _Screens.graph.currentChain;
-  if (_endsWith(c, const [
-    _Screens.discover,
-    _Screens.liveNow,
-    _Screens.liveRoom,
-  ]))
-    return const LiveRoomNav._();
-  if (_endsWith(c, const [_Screens.discover, _Screens.liveNow]))
-    return const LiveNowNav._();
-  throw StateError('unresolved LiveNowLiveRoomPopPlacement: $c');
-}
-
-sealed class CategoriesCategoryPopPlacement {}
-
-CategoriesCategoryPopPlacement _resolveCategoriesCategoryPopPlacement() {
-  final c = _Screens.graph.currentChain;
-  if (_endsWith(c, const [
-    _Screens.marketplace,
-    _Screens.categories,
-    _Screens.category,
-  ]))
-    return const CategoryNav._();
-  if (_endsWith(c, const [_Screens.marketplace, _Screens.categories]))
-    return const CategoriesNav._();
-  throw StateError('unresolved CategoriesCategoryPopPlacement: $c');
-}
-
-sealed class CategoryListingSellerProfilePopPlacement {}
-
-CategoryListingSellerProfilePopPlacement
-_resolveCategoryListingSellerProfilePopPlacement() {
-  final c = _Screens.graph.currentChain;
-  if (_endsWith(c, const [
-    _Screens.marketplace,
-    _Screens.categories,
-    _Screens.category,
-    _Screens.listing,
-    _Screens.sellerProfile,
-  ]))
-    return const SellerProfileNav._();
-  if (_endsWith(c, const [
-    _Screens.marketplace,
-    _Screens.categories,
-    _Screens.category,
-    _Screens.listing,
-  ]))
-    return const ListingNav._();
-  if (_endsWith(c, const [
-    _Screens.marketplace,
-    _Screens.categories,
-    _Screens.category,
-  ]))
-    return const CategoryNav._();
-  throw StateError('unresolved CategoryListingSellerProfilePopPlacement: $c');
-}
-
-sealed class ListingListingVariantPopPlacement {}
-
-ListingListingVariantPopPlacement _resolveListingListingVariantPopPlacement() {
-  final c = _Screens.graph.currentChain;
-  if (_endsWith(c, const [
-    _Screens.marketplace,
-    _Screens.categories,
-    _Screens.category,
-    _Screens.listing,
-    _Screens.listingVariant,
-  ]))
-    return const ListingVariantNav._();
-  if (_endsWith(c, const [
-    _Screens.marketplace,
-    _Screens.categories,
-    _Screens.category,
-    _Screens.listing,
-  ]))
-    return const ListingNav._();
-  throw StateError('unresolved ListingListingVariantPopPlacement: $c');
-}
-
-sealed class ListingSellerProfilePopPlacement {}
-
-ListingSellerProfilePopPlacement _resolveListingSellerProfilePopPlacement() {
-  final c = _Screens.graph.currentChain;
-  if (_endsWith(c, const [
-    _Screens.marketplace,
-    _Screens.categories,
-    _Screens.category,
-    _Screens.listing,
-    _Screens.sellerProfile,
-  ]))
-    return const SellerProfileNav._();
-  if (_endsWith(c, const [
-    _Screens.marketplace,
-    _Screens.categories,
-    _Screens.category,
-    _Screens.listing,
-  ]))
-    return const ListingNav._();
-  throw StateError('unresolved ListingSellerProfilePopPlacement: $c');
-}
-
-sealed class MyOrdersOrderPopPlacement {}
-
-MyOrdersOrderPopPlacement _resolveMyOrdersOrderPopPlacement() {
-  final c = _Screens.graph.currentChain;
-  if (_endsWith(c, const [
-    _Screens.marketplace,
-    _Screens.myOrders,
-    _Screens.order,
-  ]))
-    return const OrderNav._();
-  if (_endsWith(c, const [_Screens.marketplace, _Screens.myOrders]))
-    return const MyOrdersNav._();
-  throw StateError('unresolved MyOrdersOrderPopPlacement: $c');
-}
-
-sealed class ChatsMessagePopPlacement {}
-
-ChatsMessagePopPlacement _resolveChatsMessagePopPlacement() {
-  final c = _Screens.graph.currentChain;
-  if (_endsWith(c, const [
-    _Screens.messages,
-    _Screens.chats,
-    _Screens.chat,
-    _Screens.thread,
-    _Screens.message,
-  ]))
-    return const MessageNav._();
-  if (_endsWith(c, const [_Screens.messages, _Screens.chats]))
-    return const ChatsNav._();
-  throw StateError('unresolved ChatsMessagePopPlacement: $c');
-}
-
-sealed class ChatThreadPopPlacement {}
-
-ChatThreadPopPlacement _resolveChatThreadPopPlacement() {
-  final c = _Screens.graph.currentChain;
-  if (_endsWith(c, const [
-    _Screens.messages,
-    _Screens.chats,
-    _Screens.chat,
-    _Screens.thread,
-  ]))
-    return const ThreadNav._();
-  if (_endsWith(c, const [_Screens.messages, _Screens.chats, _Screens.chat]))
-    return const ChatNav._();
-  throw StateError('unresolved ChatThreadPopPlacement: $c');
-}
-
-sealed class MessageMessageReplyPopPlacement {}
-
-MessageMessageReplyPopPlacement _resolveMessageMessageReplyPopPlacement() {
-  final c = _Screens.graph.currentChain;
-  if (_endsWith(c, const [
-    _Screens.messages,
-    _Screens.chats,
-    _Screens.chat,
-    _Screens.thread,
-    _Screens.message,
-    _Screens.messageReply,
-  ]))
-    return const MessageReplyNav._();
-  if (_endsWith(c, const [
-    _Screens.messages,
-    _Screens.chats,
-    _Screens.chat,
-    _Screens.thread,
-    _Screens.message,
-  ]))
-    return const MessageNav._();
-  throw StateError('unresolved MessageMessageReplyPopPlacement: $c');
-}
-
-sealed class GroupChatMessagesPopPlacement {}
-
-GroupChatMessagesPopPlacement _resolveGroupChatMessagesPopPlacement() {
-  final c = _Screens.graph.currentChain;
-  if (_endsWith(c, const [_Screens.messages, _Screens.groupChat]))
-    return const GroupChatNav._();
-  if (_endsWith(c, const [_Screens.messages])) return const MessagesNav._();
-  throw StateError('unresolved GroupChatMessagesPopPlacement: $c');
-}
-
-sealed class AccountAccountsPopPlacement {}
-
-AccountAccountsPopPlacement _resolveAccountAccountsPopPlacement() {
-  final c = _Screens.graph.currentChain;
-  if (_endsWith(c, const [
-    _Screens.wallet,
-    _Screens.accounts,
-    _Screens.account,
-  ]))
-    return const AccountNav._();
-  if (_endsWith(c, const [_Screens.wallet, _Screens.accounts]))
-    return const AccountsNav._();
-  throw StateError('unresolved AccountAccountsPopPlacement: $c');
-}
-
-sealed class TransactionTransactionsPopPlacement {}
-
-TransactionTransactionsPopPlacement
-_resolveTransactionTransactionsPopPlacement() {
-  final c = _Screens.graph.currentChain;
-  if (_endsWith(c, const [
-    _Screens.wallet,
-    _Screens.accounts,
-    _Screens.account,
-    _Screens.transactions,
-    _Screens.transaction,
-  ]))
-    return const TransactionNav._();
-  if (_endsWith(c, const [
-    _Screens.wallet,
-    _Screens.accounts,
-    _Screens.account,
-    _Screens.transactions,
-  ]))
-    return const TransactionsNav._();
-  throw StateError('unresolved TransactionTransactionsPopPlacement: $c');
-}
-
-sealed class TransactionTransactionItemPopPlacement {}
-
-TransactionTransactionItemPopPlacement
-_resolveTransactionTransactionItemPopPlacement() {
-  final c = _Screens.graph.currentChain;
-  if (_endsWith(c, const [
-    _Screens.wallet,
-    _Screens.accounts,
-    _Screens.account,
-    _Screens.transactions,
-    _Screens.transaction,
-    _Screens.transactionItem,
-  ]))
-    return const TransactionItemNav._();
-  if (_endsWith(c, const [
-    _Screens.wallet,
-    _Screens.accounts,
-    _Screens.account,
-    _Screens.transactions,
-    _Screens.transaction,
-  ]))
-    return const TransactionNav._();
-  throw StateError('unresolved TransactionTransactionItemPopPlacement: $c');
-}
-
-sealed class ConnectionFollowersPopPlacement {}
-
-ConnectionFollowersPopPlacement _resolveConnectionFollowersPopPlacement() {
-  final c = _Screens.graph.currentChain;
-  if (_endsWith(c, const [
-    _Screens.profile,
-    _Screens.followers,
-    _Screens.connection,
-  ]))
-    return const ConnectionNav._();
-  if (_endsWith(c, const [_Screens.profile, _Screens.followers]))
-    return const FollowersNav._();
-  throw StateError('unresolved ConnectionFollowersPopPlacement: $c');
-}
-
-sealed class BadgeBadgesPopPlacement {}
-
-BadgeBadgesPopPlacement _resolveBadgeBadgesPopPlacement() {
-  final c = _Screens.graph.currentChain;
-  if (_endsWith(c, const [_Screens.profile, _Screens.badges, _Screens.badge]))
-    return const BadgeNav._();
-  if (_endsWith(c, const [_Screens.profile, _Screens.badges]))
-    return const BadgesNav._();
-  throw StateError('unresolved BadgeBadgesPopPlacement: $c');
-}
-
-sealed class DeviceSessionPopPlacement {}
-
-DeviceSessionPopPlacement _resolveDeviceSessionPopPlacement() {
-  final c = _Screens.graph.currentChain;
-  if (_endsWith(c, const [
-    _Screens.settings,
-    _Screens.devices,
-    _Screens.device,
-    _Screens.session,
-  ]))
-    return const SessionNav._();
-  if (_endsWith(c, const [
-    _Screens.settings,
-    _Screens.devices,
-    _Screens.device,
-  ]))
-    return const DeviceNav._();
-  throw StateError('unresolved DeviceSessionPopPlacement: $c');
-}
-
-sealed class TaskTaskListPopPlacement {}
-
-TaskTaskListPopPlacement _resolveTaskTaskListPopPlacement() {
-  final c = _Screens.graph.currentChain;
-  if (_endsWith(c, const [
-    _Screens.workspace,
-    _Screens.project,
-    _Screens.board,
-    _Screens.taskList,
-    _Screens.task,
-  ]))
-    return const TaskNav._();
-  if (_endsWith(c, const [
-    _Screens.workspace,
-    _Screens.project,
-    _Screens.board,
-    _Screens.taskList,
-  ]))
-    return const TaskListNav._();
-  throw StateError('unresolved TaskTaskListPopPlacement: $c');
-}
-
-sealed class SubtaskTaskPopPlacement {}
-
-SubtaskTaskPopPlacement _resolveSubtaskTaskPopPlacement() {
-  final c = _Screens.graph.currentChain;
-  if (_endsWith(c, const [
-    _Screens.workspace,
-    _Screens.project,
-    _Screens.board,
-    _Screens.taskList,
-    _Screens.task,
-    _Screens.subtask,
-  ]))
-    return const SubtaskNav._();
-  if (_endsWith(c, const [
-    _Screens.workspace,
-    _Screens.project,
-    _Screens.board,
-    _Screens.taskList,
-    _Screens.task,
-  ]))
-    return const TaskNav._();
-  throw StateError('unresolved SubtaskTaskPopPlacement: $c');
-}
-
-sealed class ChecklistItemSubtaskPopPlacement {}
-
-ChecklistItemSubtaskPopPlacement _resolveChecklistItemSubtaskPopPlacement() {
-  final c = _Screens.graph.currentChain;
-  if (_endsWith(c, const [
-    _Screens.workspace,
-    _Screens.project,
-    _Screens.board,
-    _Screens.taskList,
-    _Screens.task,
-    _Screens.subtask,
-    _Screens.checklistItem,
-  ]))
-    return const ChecklistItemNav._();
-  if (_endsWith(c, const [
-    _Screens.workspace,
-    _Screens.project,
-    _Screens.board,
-    _Screens.taskList,
-    _Screens.task,
-    _Screens.subtask,
-  ]))
-    return const SubtaskNav._();
-  throw StateError('unresolved ChecklistItemSubtaskPopPlacement: $c');
-}
-
-sealed class ForumCategoryForumThreadPopPlacement {}
-
-ForumCategoryForumThreadPopPlacement
-_resolveForumCategoryForumThreadPopPlacement() {
-  final c = _Screens.graph.currentChain;
-  if (_endsWith(c, const [
-    _Screens.forum,
-    _Screens.forumCategory,
-    _Screens.forumThread,
-  ]))
-    return const ForumThreadNav._();
-  if (_endsWith(c, const [_Screens.forum, _Screens.forumCategory]))
-    return const ForumCategoryNav._();
-  throw StateError('unresolved ForumCategoryForumThreadPopPlacement: $c');
-}
-
-sealed class ForumReplyForumThreadPopPlacement {}
-
-ForumReplyForumThreadPopPlacement _resolveForumReplyForumThreadPopPlacement() {
-  final c = _Screens.graph.currentChain;
-  if (_endsWith(c, const [
-    _Screens.forum,
-    _Screens.forumCategory,
-    _Screens.forumThread,
-    _Screens.forumReply,
-  ]))
-    return const ForumReplyNav._();
-  if (_endsWith(c, const [
-    _Screens.forum,
-    _Screens.forumCategory,
-    _Screens.forumThread,
-  ]))
-    return const ForumThreadNav._();
-  throw StateError('unresolved ForumReplyForumThreadPopPlacement: $c');
-}
-
-sealed class QuestionQuizPopPlacement {}
-
-QuestionQuizPopPlacement _resolveQuestionQuizPopPlacement() {
-  final c = _Screens.graph.currentChain;
-  if (_endsWith(c, const [
-    _Screens.learn,
-    _Screens.course,
-    _Screens.courseModule,
-    _Screens.lesson,
-    _Screens.quiz,
-    _Screens.question,
-  ]))
-    return const QuestionNav._();
-  if (_endsWith(c, const [
-    _Screens.learn,
-    _Screens.course,
-    _Screens.courseModule,
-    _Screens.lesson,
-    _Screens.quiz,
-  ]))
-    return const QuizNav._();
-  throw StateError('unresolved QuestionQuizPopPlacement: $c');
-}
-
-sealed class ProductShopSubcategoryPopPlacement {}
-
-ProductShopSubcategoryPopPlacement
-_resolveProductShopSubcategoryPopPlacement() {
-  final c = _Screens.graph.currentChain;
-  if (_endsWith(c, const [
-    _Screens.shop,
-    _Screens.shopDept,
-    _Screens.shopCategory,
-    _Screens.shopSubcategory,
-    _Screens.product,
-  ]))
-    return const ProductNav._();
-  if (_endsWith(c, const [
-    _Screens.shop,
-    _Screens.shopDept,
-    _Screens.shopCategory,
-    _Screens.shopSubcategory,
-  ]))
-    return const ShopSubcategoryNav._();
-  throw StateError('unresolved ProductShopSubcategoryPopPlacement: $c');
-}
-
-sealed class ProductProductVariantPopPlacement {}
-
-ProductProductVariantPopPlacement _resolveProductProductVariantPopPlacement() {
-  final c = _Screens.graph.currentChain;
-  if (_endsWith(c, const [
-    _Screens.shop,
-    _Screens.shopDept,
-    _Screens.shopCategory,
-    _Screens.shopSubcategory,
-    _Screens.product,
-    _Screens.productVariant,
-  ]))
-    return const ProductVariantNav._();
-  if (_endsWith(c, const [
-    _Screens.shop,
-    _Screens.shopDept,
-    _Screens.shopCategory,
-    _Screens.shopSubcategory,
-    _Screens.product,
-  ]))
-    return const ProductNav._();
-  throw StateError('unresolved ProductProductVariantPopPlacement: $c');
-}
-
-sealed class ExerciseExerciseSetPopPlacement {}
-
-ExerciseExerciseSetPopPlacement _resolveExerciseExerciseSetPopPlacement() {
-  final c = _Screens.graph.currentChain;
-  if (_endsWith(c, const [
-    _Screens.activity,
-    _Screens.workout,
-    _Screens.exercise,
-    _Screens.exerciseSet,
-  ]))
-    return const ExerciseSetNav._();
-  if (_endsWith(c, const [
-    _Screens.activity,
-    _Screens.workout,
-    _Screens.exercise,
-  ]))
-    return const ExerciseNav._();
-  throw StateError('unresolved ExerciseExerciseSetPopPlacement: $c');
-}
-
-sealed class DeepDemoLevelFPopPlacement {}
-
-DeepDemoLevelFPopPlacement _resolveDeepDemoLevelFPopPlacement() {
-  final c = _Screens.graph.currentChain;
-  if (_endsWith(c, const [
-    _Screens.deepDemo,
-    _Screens.levelA,
-    _Screens.levelB,
-    _Screens.levelC,
-    _Screens.levelD,
-    _Screens.levelE,
-    _Screens.levelF,
-  ]))
-    return const LevelFNav._();
-  if (_endsWith(c, const [_Screens.deepDemo])) return const DeepDemoNav._();
-  throw StateError('unresolved DeepDemoLevelFPopPlacement: $c');
-}
-
-sealed class LevelALevelFPopPlacement {}
-
-LevelALevelFPopPlacement _resolveLevelALevelFPopPlacement() {
-  final c = _Screens.graph.currentChain;
-  if (_endsWith(c, const [
-    _Screens.deepDemo,
-    _Screens.levelA,
-    _Screens.levelB,
-    _Screens.levelC,
-    _Screens.levelD,
-    _Screens.levelE,
-    _Screens.levelF,
-  ]))
-    return const LevelFNav._();
-  if (_endsWith(c, const [_Screens.deepDemo, _Screens.levelA]))
-    return const LevelANav._();
-  throw StateError('unresolved LevelALevelFPopPlacement: $c');
-}
-
-sealed class LevelBLevelFPopPlacement {}
-
-LevelBLevelFPopPlacement _resolveLevelBLevelFPopPlacement() {
-  final c = _Screens.graph.currentChain;
-  if (_endsWith(c, const [
-    _Screens.deepDemo,
-    _Screens.levelA,
-    _Screens.levelB,
-    _Screens.levelC,
-    _Screens.levelD,
-    _Screens.levelE,
-    _Screens.levelF,
-  ]))
-    return const LevelFNav._();
-  if (_endsWith(c, const [_Screens.deepDemo, _Screens.levelA, _Screens.levelB]))
-    return const LevelBNav._();
-  throw StateError('unresolved LevelBLevelFPopPlacement: $c');
-}
-
-sealed class LevelCLevelFPopPlacement {}
-
-LevelCLevelFPopPlacement _resolveLevelCLevelFPopPlacement() {
-  final c = _Screens.graph.currentChain;
-  if (_endsWith(c, const [
-    _Screens.deepDemo,
-    _Screens.levelA,
-    _Screens.levelB,
-    _Screens.levelC,
-    _Screens.levelD,
-    _Screens.levelE,
-    _Screens.levelF,
-  ]))
-    return const LevelFNav._();
-  if (_endsWith(c, const [
-    _Screens.deepDemo,
-    _Screens.levelA,
-    _Screens.levelB,
-    _Screens.levelC,
-  ]))
-    return const LevelCNav._();
-  throw StateError('unresolved LevelCLevelFPopPlacement: $c');
-}
-
-sealed class LevelDLevelFPopPlacement {}
-
-LevelDLevelFPopPlacement _resolveLevelDLevelFPopPlacement() {
-  final c = _Screens.graph.currentChain;
-  if (_endsWith(c, const [
-    _Screens.deepDemo,
-    _Screens.levelA,
-    _Screens.levelB,
-    _Screens.levelC,
-    _Screens.levelD,
-    _Screens.levelE,
-    _Screens.levelF,
-  ]))
-    return const LevelFNav._();
-  if (_endsWith(c, const [
-    _Screens.deepDemo,
-    _Screens.levelA,
-    _Screens.levelB,
-    _Screens.levelC,
-    _Screens.levelD,
-  ]))
-    return const LevelDNav._();
-  throw StateError('unresolved LevelDLevelFPopPlacement: $c');
-}
-
-sealed class LevelELevelFPopPlacement {}
-
-LevelELevelFPopPlacement _resolveLevelELevelFPopPlacement() {
-  final c = _Screens.graph.currentChain;
-  if (_endsWith(c, const [
-    _Screens.deepDemo,
-    _Screens.levelA,
-    _Screens.levelB,
-    _Screens.levelC,
-    _Screens.levelD,
-    _Screens.levelE,
-    _Screens.levelF,
-  ]))
-    return const LevelFNav._();
-  if (_endsWith(c, const [
-    _Screens.deepDemo,
-    _Screens.levelA,
-    _Screens.levelB,
-    _Screens.levelC,
-    _Screens.levelD,
-    _Screens.levelE,
-  ]))
-    return const LevelENav._();
-  throw StateError('unresolved LevelELevelFPopPlacement: $c');
-}
-
-sealed class PopDestPlacement {}
-
-final class const CanPopNav._() extends AnyNav {
-  this : super._();
-  PopDestPlacement pop() {
-    _Screens.graph.pop();
-    return _resolvePopDest();
-  }
-}
-
-PopDestPlacement _resolvePopDest() {
-  final c = _Screens.graph.currentChain;
-  if (_chainIs(c, const [
-    _Screens.deepDemo,
-    _Screens.levelA,
-    _Screens.levelB,
-    _Screens.levelC,
-    _Screens.levelD,
-    _Screens.levelE,
-    _Screens.levelF,
-  ]))
-    return const LevelFNav._();
-  if (_chainIs(c, const [
-    _Screens.workspace,
-    _Screens.project,
-    _Screens.board,
-    _Screens.taskList,
-    _Screens.task,
-    _Screens.subtask,
-    _Screens.checklistItem,
-  ]))
-    return const ChecklistItemNav._();
-  if (_chainIs(c, const [
-    _Screens.workspace,
-    _Screens.project,
-    _Screens.board,
-    _Screens.taskList,
-    _Screens.task,
-    _Screens.subtask,
-  ]))
-    return const SubtaskNav._();
-  if (_chainIs(c, const [
-    _Screens.deepDemo,
-    _Screens.levelA,
-    _Screens.levelB,
-    _Screens.levelC,
-    _Screens.levelD,
-    _Screens.levelE,
-  ]))
-    return const LevelENav._();
-  if (_chainIs(c, const [
-    _Screens.messages,
-    _Screens.chats,
-    _Screens.chat,
-    _Screens.thread,
-    _Screens.message,
-    _Screens.messageReply,
-  ]))
-    return const MessageReplyNav._();
-  if (_chainIs(c, const [
-    _Screens.wallet,
-    _Screens.accounts,
-    _Screens.account,
-    _Screens.transactions,
-    _Screens.transaction,
-    _Screens.transactionItem,
-  ]))
-    return const TransactionItemNav._();
-  if (_chainIs(c, const [
-    _Screens.shop,
-    _Screens.shopDept,
-    _Screens.shopCategory,
-    _Screens.shopSubcategory,
-    _Screens.product,
-    _Screens.productVariant,
-  ]))
-    return const ProductVariantNav._();
-  if (_chainIs(c, const [
-    _Screens.learn,
-    _Screens.course,
-    _Screens.courseModule,
-    _Screens.lesson,
-    _Screens.quiz,
-    _Screens.question,
-  ]))
-    return const QuestionNav._();
-  if (_chainIs(c, const [
-    _Screens.wallet,
-    _Screens.accounts,
-    _Screens.account,
-    _Screens.transactions,
-    _Screens.transaction,
-  ]))
-    return const TransactionNav._();
-  if (_chainIs(c, const [
-    _Screens.deepDemo,
-    _Screens.levelA,
-    _Screens.levelB,
-    _Screens.levelC,
-    _Screens.levelD,
-  ]))
-    return const LevelDNav._();
-  if (_chainIs(c, const [
-    _Screens.marketplace,
-    _Screens.categories,
-    _Screens.category,
-    _Screens.listing,
-    _Screens.sellerProfile,
-  ]))
-    return const SellerProfileNav._();
-  if (_chainIs(c, const [
-    _Screens.marketplace,
-    _Screens.categories,
-    _Screens.category,
-    _Screens.listing,
-    _Screens.listingVariant,
-  ]))
-    return const ListingVariantNav._();
-  if (_chainIs(c, const [
-    _Screens.messages,
-    _Screens.chats,
-    _Screens.chat,
-    _Screens.thread,
-    _Screens.message,
-  ]))
-    return const MessageNav._();
-  if (_chainIs(c, const [
-    _Screens.settings,
-    _Screens.about,
-    _Screens.help,
-    _Screens.helpCategory,
-    _Screens.faq,
-  ]))
-    return const FaqNav._();
-  if (_chainIs(c, const [
-    _Screens.workspace,
-    _Screens.project,
-    _Screens.board,
-    _Screens.taskList,
-    _Screens.task,
-  ]))
-    return const TaskNav._();
-  if (_chainIs(c, const [
-    _Screens.learn,
-    _Screens.course,
-    _Screens.courseModule,
-    _Screens.lesson,
-    _Screens.quiz,
-  ]))
-    return const QuizNav._();
-  if (_chainIs(c, const [
-    _Screens.shop,
-    _Screens.shopDept,
-    _Screens.shopCategory,
-    _Screens.shopSubcategory,
-    _Screens.product,
-  ]))
-    return const ProductNav._();
-  if (_chainIs(c, const [
-    _Screens.deepDemo,
-    _Screens.levelA,
-    _Screens.levelB,
-    _Screens.levelC,
-  ]))
-    return const LevelCNav._();
-  if (_chainIs(c, const [
-    _Screens.learn,
-    _Screens.course,
-    _Screens.courseModule,
-    _Screens.lesson,
-  ]))
-    return const LessonNav._();
-  if (_chainIs(c, const [
-    _Screens.home,
-    CreatorStudio.studio,
-    CreatorStudio.scheduled,
-    CreatorStudio.scheduledPost,
-  ]))
-    return const ScheduledPostNav._();
-  if (_chainIs(c, const [
-    _Screens.marketplace,
-    _Screens.categories,
-    _Screens.category,
-    _Screens.listing,
-  ]))
-    return const ListingNav._();
-  if (_chainIs(c, const [
-    _Screens.discover,
-    _Screens.trending,
-    _Screens.topic,
-    _Screens.subtopic,
-  ]))
-    return const SubtopicNav._();
-  if (_chainIs(c, const [
-    _Screens.workspace,
-    _Screens.project,
-    _Screens.board,
-    _Screens.taskList,
-  ]))
-    return const TaskListNav._();
-  if (_chainIs(c, const [
-    _Screens.forum,
-    _Screens.forumCategory,
-    _Screens.forumThread,
-    _Screens.forumReply,
-  ]))
-    return const ForumReplyNav._();
-  if (_chainIs(c, const [
-    _Screens.settings,
-    Admin.admin,
-    Admin.adminUsers,
-    Admin.adminUser,
-  ]))
-    return const AdminUserNav._();
-  if (_chainIs(c, const [
-    _Screens.settings,
-    _Screens.devices,
-    _Screens.device,
-    _Screens.session,
-  ]))
-    return const SessionNav._();
-  if (_chainIs(c, const [
-    _Screens.shop,
-    _Screens.shopDept,
-    _Screens.shopCategory,
-    _Screens.shopSubcategory,
-  ]))
-    return const ShopSubcategoryNav._();
-  if (_chainIs(c, const [
-    _Screens.messages,
-    _Screens.chats,
-    _Screens.chat,
-    _Screens.thread,
-  ]))
-    return const ThreadNav._();
-  if (_chainIs(c, const [
-    _Screens.home,
-    _Screens.feed,
-    _Screens.post,
-    _Screens.postAuthor,
-  ]))
-    return const PostAuthorNav._();
-  if (_chainIs(c, const [
-    _Screens.wallet,
-    _Screens.accounts,
-    _Screens.account,
-    _Screens.statements,
-  ]))
-    return const StatementsNav._();
-  if (_chainIs(c, const [
-    _Screens.activity,
-    _Screens.workout,
-    _Screens.exercise,
-    _Screens.exerciseSet,
-  ]))
-    return const ExerciseSetNav._();
-  if (_chainIs(c, const [
-    _Screens.home,
-    _Screens.feed,
-    _Screens.post,
-    _Screens.comment,
-  ]))
-    return const CommentNav._();
-  if (_chainIs(c, const [
-    _Screens.wallet,
-    _Screens.accounts,
-    _Screens.account,
-    _Screens.transactions,
-  ]))
-    return const TransactionsNav._();
-  if (_chainIs(c, const [
-    _Screens.settings,
-    _Screens.about,
-    _Screens.help,
-    _Screens.helpCategory,
-  ]))
-    return const HelpCategoryNav._();
-  if (_chainIs(c, const [_Screens.home, _Screens.feed, _Screens.story]))
-    return const StoryNav._();
-  if (_chainIs(c, const [_Screens.wallet, _Screens.accounts, _Screens.account]))
-    return const AccountNav._();
-  if (_chainIs(c, const [_Screens.deepDemo, _Screens.levelA, _Screens.levelB]))
-    return const LevelBNav._();
-  if (_chainIs(c, const [
-    _Screens.learn,
-    _Screens.course,
-    _Screens.courseModule,
-  ]))
-    return const CourseModuleNav._();
-  if (_chainIs(c, const [_Screens.settings, Admin.admin, Admin.adminUsers]))
-    return const AdminUsersNav._();
-  if (_chainIs(c, const [_Screens.messages, _Screens.chats, _Screens.chat]))
-    return const ChatNav._();
-  if (_chainIs(c, const [_Screens.discover, _Screens.trending, _Screens.topic]))
-    return const TopicNav._();
-  if (_chainIs(c, const [
-    _Screens.home,
-    CreatorStudio.studio,
-    CreatorStudio.analytics,
-  ]))
-    return const AnalyticsNav._();
-  if (_chainIs(c, const [
-    _Screens.marketplace,
-    _Screens.myOrders,
-    _Screens.order,
-  ]))
-    return const OrderNav._();
-  if (_chainIs(c, const [
-    _Screens.marketplace,
-    _Screens.cart,
-    _Screens.checkout,
-  ]))
-    return const CheckoutNav._();
-  if (_chainIs(c, const [_Screens.profile, _Screens.badges, _Screens.badge]))
-    return const BadgeNav._();
-  if (_chainIs(c, const [
-    _Screens.shop,
-    _Screens.shopDept,
-    _Screens.shopCategory,
-  ]))
-    return const ShopCategoryNav._();
-  if (_chainIs(c, const [
-    _Screens.home,
-    CreatorStudio.studio,
-    CreatorStudio.scheduled,
-  ]))
-    return const ScheduledNav._();
-  if (_chainIs(c, const [_Screens.home, _Screens.feed, _Screens.post]))
-    return const PostNav._();
-  if (_chainIs(c, const [
-    _Screens.marketplace,
-    _Screens.categories,
-    _Screens.category,
-  ]))
-    return const CategoryNav._();
-  if (_chainIs(c, const [_Screens.settings, Admin.admin, Admin.webhooks]))
-    return const WebhooksNav._();
-  if (_chainIs(c, const [
-    _Screens.forum,
-    _Screens.forumCategory,
-    _Screens.forumThread,
-  ]))
-    return const ForumThreadNav._();
-  if (_chainIs(c, const [
-    _Screens.home,
-    CreatorStudio.studio,
-    CreatorStudio.monetization,
-  ]))
-    return const MonetizationNav._();
-  if (_chainIs(c, const [
-    _Screens.profile,
-    _Screens.followers,
-    _Screens.connection,
-  ]))
-    return const ConnectionNav._();
-  if (_chainIs(c, const [_Screens.discover, Events.events, Events.event]))
-    return const EventNav._();
-  if (_chainIs(c, const [
-    _Screens.settings,
-    Support.support,
-    Support.knowledgeBase,
-  ]))
-    return const KnowledgeBaseNav._();
-  if (_chainIs(c, const [_Screens.settings, _Screens.devices, _Screens.device]))
-    return const DeviceNav._();
-  if (_chainIs(c, const [
-    _Screens.discover,
-    _Screens.liveNow,
-    _Screens.liveRoom,
-  ]))
-    return const LiveRoomNav._();
-  if (_chainIs(c, const [
-    _Screens.discover,
-    _Screens.trending,
-    _Screens.hashtag,
-  ]))
-    return const HashtagNav._();
-  if (_chainIs(c, const [_Screens.workspace, _Screens.project, _Screens.board]))
-    return const BoardNav._();
-  if (_chainIs(c, const [
-    _Screens.settings,
-    Support.support,
-    Support.supportTickets,
-  ]))
-    return const SupportTicketsNav._();
-  if (_chainIs(c, const [
-    _Screens.activity,
-    _Screens.workout,
-    _Screens.exercise,
-  ]))
-    return const ExerciseNav._();
-  if (_chainIs(c, const [_Screens.settings, _Screens.about, _Screens.help]))
-    return const HelpNav._();
-  if (_chainIs(c, const [_Screens.wallet, _Screens.accounts]))
-    return const AccountsNav._();
-  if (_chainIs(c, const [_Screens.home, _Screens.feed]))
-    return const FeedNav._();
-  if (_chainIs(c, const [_Screens.settings, _Screens.about]))
-    return const AboutNav._();
-  if (_chainIs(c, const [_Screens.forum, _Screens.forumCategory]))
-    return const ForumCategoryNav._();
-  if (_chainIs(c, const [_Screens.settings, Admin.admin]))
-    return const AdminNav._();
-  if (_chainIs(c, const [_Screens.learn, _Screens.course]))
-    return const CourseNav._();
-  if (_chainIs(c, const [_Screens.settings, _Screens.security]))
-    return const SecurityNav._();
-  if (_chainIs(c, const [_Screens.profile, _Screens.followers]))
-    return const FollowersNav._();
-  if (_chainIs(c, const [_Screens.discover, _Screens.trending]))
-    return const TrendingNav._();
-  if (_chainIs(c, const [_Screens.settings, Support.support]))
-    return const SupportNav._();
-  if (_chainIs(c, const [_Screens.discover, Events.events]))
-    return const EventsNav._();
-  if (_chainIs(c, const [_Screens.shop, _Screens.shopDept]))
-    return const ShopDeptNav._();
-  if (_chainIs(c, const [_Screens.profile, _Screens.badges]))
-    return const BadgesNav._();
-  if (_chainIs(c, const [_Screens.settings, _Screens.devices]))
-    return const DevicesNav._();
-  if (_chainIs(c, const [_Screens.workspace, _Screens.project]))
-    return const ProjectNav._();
-  if (_chainIs(c, const [_Screens.marketplace, _Screens.categories]))
-    return const CategoriesNav._();
-  if (_chainIs(c, const [_Screens.marketplace, _Screens.cart]))
-    return const CartNav._();
-  if (_chainIs(c, const [_Screens.activity, _Screens.workout]))
-    return const WorkoutNav._();
-  if (_chainIs(c, const [_Screens.wallet, _Screens.paymentMethods]))
-    return const PaymentMethodsNav._();
-  if (_chainIs(c, const [_Screens.marketplace, _Screens.myOrders]))
-    return const MyOrdersNav._();
-  if (_chainIs(c, const [_Screens.settings, _Screens.integrations]))
-    return const IntegrationsNav._();
-  if (_chainIs(c, const [_Screens.home, CreatorStudio.studio]))
-    return const StudioNav._();
-  if (_chainIs(c, const [_Screens.deepDemo, _Screens.levelA]))
-    return const LevelANav._();
-  if (_chainIs(c, const [_Screens.messages, _Screens.chats]))
-    return const ChatsNav._();
-  if (_chainIs(c, const [_Screens.messages, _Screens.groupChat]))
-    return const GroupChatNav._();
-  if (_chainIs(c, const [_Screens.discover, _Screens.liveNow]))
-    return const LiveNowNav._();
-  if (_chainIs(c, const [_Screens.messages])) return const MessagesNav._();
-  if (_chainIs(c, const [_Screens.workspace])) return const WorkspaceNav._();
-  if (_chainIs(c, const [_Screens.deepDemo])) return const DeepDemoNav._();
-  if (_chainIs(c, const [_Screens.forgotPassword]))
-    return const ForgotPasswordNav._();
-  if (_chainIs(c, const [_Screens.activity])) return const ActivityNav._();
-  if (_chainIs(c, const [_Screens.profile])) return const ProfileNav._();
-  if (_chainIs(c, const [_Screens.marketplace]))
-    return const MarketplaceNav._();
-  if (_chainIs(c, const [_Screens.shop])) return const ShopNav._();
-  if (_chainIs(c, const [_Screens.settings])) return const SettingsNav._();
-  if (_chainIs(c, const [_Screens.notifications]))
-    return const NotificationsNav._();
-  if (_chainIs(c, const [_Screens.search])) return const SearchNav._();
-  if (_chainIs(c, const [_Screens.discover])) return const DiscoverNav._();
-  if (_chainIs(c, const [_Screens.learn])) return const LearnNav._();
-  if (_chainIs(c, const [_Screens.forum])) return const ForumNav._();
-  if (_chainIs(c, const [_Screens.home])) return const HomeNav._();
-  if (_chainIs(c, const [_Screens.wallet])) return const WalletNav._();
-  throw StateError('unresolved pop destination: $c');
-}
-
-final class const Keep._(final _Screens spec) {
-  static const activity = Keep._(.activity);
-  static const deepDemo = Keep._(.deepDemo);
-  static const discover = Keep._(.discover);
-  static const forum = Keep._(.forum);
-  static const home = Keep._(.home);
-  static const learn = Keep._(.learn);
-  static const marketplace = Keep._(.marketplace);
-  static const messages = Keep._(.messages);
-  static const notifications = Keep._(.notifications);
-  static const profile = Keep._(.profile);
-  static const search = Keep._(.search);
-  static const settings = Keep._(.settings);
-  static const shop = Keep._(.shop);
-  static const wallet = Keep._(.wallet);
-  static const workspace = Keep._(.workspace);
-}
 
 final class const SplashNav._() extends AnyPlacement {
   this : super._();
@@ -7070,9 +4883,7 @@ final class const OnboardingNav._() extends AnyPlacement {
   }
 }
 
-final class const ForgotPasswordNav._()
-    extends AnyPlacement
-    implements PopDestPlacement {
+final class const ForgotPasswordNav._() extends AnyPlacement {
   this : super._();
   ForgotPasswordNav surface() {
     _Screens.graph.popTo(_Screens.forgotPassword);
@@ -7080,8 +4891,7 @@ final class const ForgotPasswordNav._()
   }
 
   ResetPasswordNav goResetPassword(String id) {
-    _Screens.graph.popTo(_Screens.forgotPassword);
-    _Screens.graph.go(_Screens.resetPassword, id, true);
+    _Screens.graph.goFrom(_Screens.forgotPassword, _Screens.resetPassword, id);
     return const ResetPasswordNav._();
   }
 }
@@ -7091,11 +4901,6 @@ final class const ResetPasswordNav._() extends AnyPlacement {
   ResetPasswordNav surface() {
     _Screens.graph.popTo(_Screens.resetPassword);
     return const ResetPasswordNav._();
-  }
-
-  ForgotPasswordNav pop() {
-    _Screens.graph.pop();
-    return const ForgotPasswordNav._();
   }
 }
 
@@ -7115,7 +4920,7 @@ final class const TwoFactorNav._() extends AnyPlacement {
   }
 }
 
-final class const HomeNav._() extends AnyPlacement implements PopDestPlacement {
+final class const HomeNav._() extends AnyPlacement {
   this : super._();
   HomeNav surface() {
     _Screens.graph.popTo(_Screens.home);
@@ -7123,98 +4928,17 @@ final class const HomeNav._() extends AnyPlacement implements PopDestPlacement {
   }
 
   FeedNav goFeed() {
-    _Screens.graph.popTo(_Screens.home);
-    _Screens.graph.go(_Screens.feed, null, true);
+    _Screens.graph.goFrom(_Screens.home, _Screens.feed, null);
     return const FeedNav._();
   }
 
   StudioNav goStudio() {
-    _Screens.graph.popTo(_Screens.home);
-    _Screens.graph.go(CreatorStudio.studio, null, true);
+    _Screens.graph.goFrom(_Screens.home, CreatorStudio.studio, null);
     return const StudioNav._();
   }
-
-  StoryNav goStory(String id) {
-    _Screens.graph.go(_Screens.feed, null, true);
-    _Screens.graph.go(_Screens.story, id, true);
-    return const StoryNav._();
-  }
-
-  PostNav goPost(String id) {
-    _Screens.graph.go(_Screens.feed, null, true);
-    _Screens.graph.go(_Screens.post, id, true);
-    return const PostNav._();
-  }
-
-  PostCommentsNav goPostComments(String id) {
-    _Screens.graph.go(_Screens.feed, null, true);
-    _Screens.graph.go(_Screens.post, id, true);
-    _Screens.graph.go(_Screens.postComments, id, true);
-    return const PostCommentsNav._();
-  }
-
-  PostLikesNav goPostLikes(String id) {
-    _Screens.graph.go(_Screens.feed, null, true);
-    _Screens.graph.go(_Screens.post, id, true);
-    _Screens.graph.go(_Screens.postLikes, id, true);
-    return const PostLikesNav._();
-  }
-
-  EditPostNav goEditPost(String id) {
-    _Screens.graph.go(_Screens.feed, null, true);
-    _Screens.graph.go(_Screens.post, id, true);
-    _Screens.graph.go(_Screens.editPost, id, true);
-    return const EditPostNav._();
-  }
-
-  RepostNav goRepost(String id) {
-    _Screens.graph.go(_Screens.feed, null, true);
-    _Screens.graph.go(_Screens.post, id, true);
-    _Screens.graph.go(_Screens.repost, id, true);
-    return const RepostNav._();
-  }
-
-  ScheduledPostNav goScheduledPost(String id) {
-    _Screens.graph.go(CreatorStudio.studio, null, true);
-    _Screens.graph.go(CreatorStudio.scheduled, null, true);
-    _Screens.graph.go(CreatorStudio.scheduledPost, id, true);
-    return const ScheduledPostNav._();
-  }
-
-  EditScheduledNav goEditScheduled(String id) {
-    _Screens.graph.go(CreatorStudio.studio, null, true);
-    _Screens.graph.go(CreatorStudio.scheduled, null, true);
-    _Screens.graph.go(CreatorStudio.scheduledPost, id, true);
-    _Screens.graph.go(CreatorStudio.editScheduled, id, true);
-    return const EditScheduledNav._();
-  }
-
-  N go<N extends AnyNav>(HomeHop<N> hop) {
-    _Screens.graph.go(hop.spec, hop.id, true);
-    return hop.nav;
-  }
 }
 
-final class const HomeHop<N extends AnyNav>._(
-  final Enum spec,
-  final Object? id,
-  final N nav,
-) {
-  static const feed = HomeHop<FeedNav>._(_Screens.feed, null, FeedNav._());
-  static const studio = HomeHop<StudioNav>._(
-    CreatorStudio.studio,
-    null,
-    StudioNav._(),
-  );
-}
-
-final class const FeedNav._()
-    extends AnyPlacement
-    implements
-        FeedView,
-        FeedStoryPopPlacement,
-        CommentFeedPostPostAuthorPopPlacement,
-        PopDestPlacement {
+final class const FeedNav._() extends AnyPlacement {
   this : super._();
   FeedNav surface() {
     _Screens.graph.popTo(_Screens.feed);
@@ -7224,80 +4948,24 @@ final class const FeedNav._()
   FeedQueryMut get query => const FeedQueryMut._();
   FeedFragmentMut get fragment => const FeedFragmentMut._();
   PostNav goPost(String id) {
-    _Screens.graph.popTo(_Screens.feed);
-    _Screens.graph.go(_Screens.post, id, true);
+    _Screens.graph.goFrom(_Screens.feed, _Screens.post, id);
     return const PostNav._();
   }
 
   StoryNav goStory(String id) {
-    _Screens.graph.popTo(_Screens.feed);
-    _Screens.graph.go(_Screens.story, id, true);
+    _Screens.graph.goFrom(_Screens.feed, _Screens.story, id);
     return const StoryNav._();
   }
 
   ComposePostNav goComposePost() {
-    _Screens.graph.popTo(_Screens.feed);
-    _Screens.graph.go(_Screens.composePost, null, true);
+    _Screens.graph.goFrom(_Screens.feed, _Screens.composePost, null);
     return const ComposePostNav._();
   }
 
-  HomeFeedUserProfileNav goUserProfile(String id) {
-    _Screens.graph.popTo(_Screens.feed);
-    _Screens.graph.go(_Screens.userProfile, id, true);
-    return const HomeFeedUserProfileNav._();
+  UserProfileNav1 goUserProfile(String id) {
+    _Screens.graph.goFrom(_Screens.feed, _Screens.userProfile, id);
+    return const UserProfileNav1._();
   }
-
-  PostCommentsNav goPostComments(String id) {
-    _Screens.graph.go(_Screens.post, id, true);
-    _Screens.graph.go(_Screens.postComments, id, true);
-    return const PostCommentsNav._();
-  }
-
-  PostLikesNav goPostLikes(String id) {
-    _Screens.graph.go(_Screens.post, id, true);
-    _Screens.graph.go(_Screens.postLikes, id, true);
-    return const PostLikesNav._();
-  }
-
-  EditPostNav goEditPost(String id) {
-    _Screens.graph.go(_Screens.post, id, true);
-    _Screens.graph.go(_Screens.editPost, id, true);
-    return const EditPostNav._();
-  }
-
-  RepostNav goRepost(String id) {
-    _Screens.graph.go(_Screens.post, id, true);
-    _Screens.graph.go(_Screens.repost, id, true);
-    return const RepostNav._();
-  }
-
-  N go<N extends AnyNav>(FeedHop<N> hop) {
-    _Screens.graph.go(hop.spec, hop.id, true);
-    return hop.nav;
-  }
-
-  HomeNav pop() {
-    _Screens.graph.pop();
-    return const HomeNav._();
-  }
-}
-
-final class const FeedHop<N extends AnyNav>._(
-  final _Screens spec,
-  final Object? id,
-  final N nav,
-) {
-  static FeedHop<PostNav> post(String id) =>
-      FeedHop._(.post, id, const PostNav._());
-  static FeedHop<StoryNav> story(String id) =>
-      FeedHop._(.story, id, const StoryNav._());
-  static const composePost = FeedHop<ComposePostNav>._(
-    .composePost,
-    null,
-    ComposePostNav._(),
-  );
-  static FeedHop<HomeFeedUserProfileNav> userProfile(String id) =>
-      FeedHop._(.userProfile, id, const HomeFeedUserProfileNav._());
 }
 
 final class const ComposePostNav._() extends AnyPlacement {
@@ -7306,85 +4974,22 @@ final class const ComposePostNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.composePost);
     return const ComposePostNav._();
   }
-
-  FeedNav pop() {
-    _Screens.graph.pop();
-    return const FeedNav._();
-  }
-
-  HomeNav popToHome() {
-    _Screens.graph.pop(_Screens.home);
-    return const HomeNav._();
-  }
-
-  N popTo<N extends AnyNav>(ComposePostPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const ComposePostPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const feed = ComposePostPop<FeedNav>._(.feed, FeedNav._());
-  static const home = ComposePostPop<HomeNav>._(.home, HomeNav._());
-}
-
-final class const StoryNav._()
-    extends AnyPlacement
-    implements FeedStoryPopPlacement, PopDestPlacement {
+final class const StoryNav._() extends AnyPlacement {
   this : super._();
   StoryNav surface() {
     _Screens.graph.popTo(_Screens.story);
     return const StoryNav._();
   }
 
-  int get depth => _Screens.graph.countOf(_Screens.story);
   StoryNav goStory(String id) {
-    _Screens.graph.popTo(_Screens.story);
-    _Screens.graph.go(_Screens.story, id, true);
+    _Screens.graph.goFrom(_Screens.story, _Screens.story, id);
     return const StoryNav._();
-  }
-
-  FeedStoryPopPlacement pop() {
-    _Screens.graph.pop();
-    return _resolveFeedStoryPopPlacement();
-  }
-
-  HomeNav popToHome() {
-    _Screens.graph.pop(_Screens.home);
-    return const HomeNav._();
-  }
-
-  StoryNav popToStory() {
-    _Screens.graph.pop(_Screens.story);
-    return const StoryNav._();
-  }
-
-  N popTo<N extends AnyNav>(StoryPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
   }
 }
 
-final class const StoryPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const feed = StoryPop<FeedNav>._(.feed, FeedNav._());
-  static const home = StoryPop<HomeNav>._(.home, HomeNav._());
-  static const story = StoryPop<StoryNav>._(.story, StoryNav._());
-}
-
-final class const PostNav._()
-    extends AnyPlacement
-    implements
-        PostView,
-        CommentFeedPostPostAuthorPopPlacement,
-        CommentPostPopPlacement,
-        PostPostAuthorPopPlacement,
-        PopDestPlacement {
+final class const PostNav._() extends AnyPlacement {
   this : super._();
   PostNav surface() {
     _Screens.graph.popTo(_Screens.post);
@@ -7392,267 +4997,88 @@ final class const PostNav._()
   }
 
   PostQueryMut get query => const PostQueryMut._();
-  int get depth => _Screens.graph.countOf(_Screens.post);
   CommentNav goComment(String id) {
-    _Screens.graph.popTo(_Screens.post);
-    _Screens.graph.go(_Screens.comment, id, true);
+    _Screens.graph.goFrom(_Screens.post, _Screens.comment, id);
     return const CommentNav._();
   }
 
   PostAuthorNav goPostAuthor(String id) {
-    _Screens.graph.popTo(_Screens.post);
-    _Screens.graph.go(_Screens.postAuthor, id, true);
+    _Screens.graph.goFrom(_Screens.post, _Screens.postAuthor, id);
     return const PostAuthorNav._();
   }
 
   PostCommentsNav goPostComments() {
-    _Screens.graph.popTo(_Screens.post);
-    _Screens.graph.go(_Screens.postComments, _idOf(_Screens.post), true);
+    _Screens.graph.goFrom(
+      _Screens.post,
+      _Screens.postComments,
+      _idOf(_Screens.post),
+    );
     return const PostCommentsNav._();
   }
 
   PostLikesNav goPostLikes() {
-    _Screens.graph.popTo(_Screens.post);
-    _Screens.graph.go(_Screens.postLikes, _idOf(_Screens.post), true);
+    _Screens.graph.goFrom(
+      _Screens.post,
+      _Screens.postLikes,
+      _idOf(_Screens.post),
+    );
     return const PostLikesNav._();
   }
 
   EditPostNav goEditPost() {
-    _Screens.graph.popTo(_Screens.post);
-    _Screens.graph.go(_Screens.editPost, _idOf(_Screens.post), true);
+    _Screens.graph.goFrom(
+      _Screens.post,
+      _Screens.editPost,
+      _idOf(_Screens.post),
+    );
     return const EditPostNav._();
   }
 
   RepostNav goRepost() {
-    _Screens.graph.popTo(_Screens.post);
-    _Screens.graph.go(_Screens.repost, _idOf(_Screens.post), true);
+    _Screens.graph.goFrom(_Screens.post, _Screens.repost, _idOf(_Screens.post));
     return const RepostNav._();
   }
 
   PostNav goPost(String id) {
-    _Screens.graph.popTo(_Screens.post);
-    _Screens.graph.go(_Screens.post, id, true);
+    _Screens.graph.goFrom(_Screens.post, _Screens.post, id);
     return const PostNav._();
   }
-
-  N go<N extends AnyNav>(PostHop<N> hop) {
-    _Screens.graph.go(hop.spec, hop.id, true);
-    return hop.nav;
-  }
-
-  CommentFeedPostPostAuthorPopPlacement pop() {
-    _Screens.graph.pop();
-    return _resolveCommentFeedPostPostAuthorPopPlacement();
-  }
-
-  HomeNav popToHome() {
-    _Screens.graph.pop(_Screens.home);
-    return const HomeNav._();
-  }
-
-  CommentNav popToComment() {
-    _Screens.graph.pop(_Screens.comment);
-    return const CommentNav._();
-  }
-
-  PostNav popToPost() {
-    _Screens.graph.pop(_Screens.post);
-    return const PostNav._();
-  }
-
-  PostAuthorNav popToPostAuthor() {
-    _Screens.graph.pop(_Screens.postAuthor);
-    return const PostAuthorNav._();
-  }
-
-  N popTo<N extends AnyNav>(PostPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const PostPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const feed = PostPop<FeedNav>._(.feed, FeedNav._());
-  static const home = PostPop<HomeNav>._(.home, HomeNav._());
-  static const comment = PostPop<CommentNav>._(.comment, CommentNav._());
-  static const post = PostPop<PostNav>._(.post, PostNav._());
-  static const postAuthor = PostPop<PostAuthorNav>._(
-    .postAuthor,
-    PostAuthorNav._(),
-  );
-}
-
-final class const PostHop<N extends AnyNav>._(
-  final _Screens spec,
-  final Object? id,
-  final N nav,
-) {
-  static PostHop<CommentNav> comment(String id) =>
-      PostHop._(.comment, id, const CommentNav._());
-  static PostHop<PostAuthorNav> postAuthor(String id) =>
-      PostHop._(.postAuthor, id, const PostAuthorNav._());
-  static PostHop<PostNav> post(String id) =>
-      PostHop._(.post, id, const PostNav._());
-}
-
-final class const CommentNav._()
-    extends AnyPlacement
-    implements
-        CommentFeedPostPostAuthorPopPlacement,
-        CommentPostPopPlacement,
-        PopDestPlacement {
+final class const CommentNav._() extends AnyPlacement {
   this : super._();
   CommentNav surface() {
     _Screens.graph.popTo(_Screens.comment);
     return const CommentNav._();
   }
 
-  int get depth => _Screens.graph.countOf(_Screens.comment);
   CommentNav goComment(String id) {
-    _Screens.graph.popTo(_Screens.comment);
-    _Screens.graph.go(_Screens.comment, id, true);
+    _Screens.graph.goFrom(_Screens.comment, _Screens.comment, id);
     return const CommentNav._();
   }
 
   PostNav goPost(String id) {
-    _Screens.graph.popTo(_Screens.comment);
-    _Screens.graph.go(_Screens.post, id, true);
+    _Screens.graph.goFrom(_Screens.comment, _Screens.post, id);
     return const PostNav._();
   }
-
-  N go<N extends AnyNav>(CommentHop<N> hop) {
-    _Screens.graph.go(hop.spec, hop.id, true);
-    return hop.nav;
-  }
-
-  CommentPostPopPlacement pop() {
-    _Screens.graph.pop();
-    return _resolveCommentPostPopPlacement();
-  }
-
-  FeedNav popToFeed() {
-    _Screens.graph.pop(_Screens.feed);
-    return const FeedNav._();
-  }
-
-  HomeNav popToHome() {
-    _Screens.graph.pop(_Screens.home);
-    return const HomeNav._();
-  }
-
-  CommentNav popToComment() {
-    _Screens.graph.pop(_Screens.comment);
-    return const CommentNav._();
-  }
-
-  N popTo<N extends AnyNav>(CommentPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const CommentPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const post = CommentPop<PostNav>._(.post, PostNav._());
-  static const feed = CommentPop<FeedNav>._(.feed, FeedNav._());
-  static const home = CommentPop<HomeNav>._(.home, HomeNav._());
-  static const comment = CommentPop<CommentNav>._(.comment, CommentNav._());
-}
-
-final class const CommentHop<N extends AnyNav>._(
-  final _Screens spec,
-  final Object? id,
-  final N nav,
-) {
-  static CommentHop<CommentNav> comment(String id) =>
-      CommentHop._(.comment, id, const CommentNav._());
-  static CommentHop<PostNav> post(String id) =>
-      CommentHop._(.post, id, const PostNav._());
-}
-
-final class const PostAuthorNav._()
-    extends AnyPlacement
-    implements
-        CommentFeedPostPostAuthorPopPlacement,
-        PostPostAuthorPopPlacement,
-        PopDestPlacement {
+final class const PostAuthorNav._() extends AnyPlacement {
   this : super._();
   PostAuthorNav surface() {
     _Screens.graph.popTo(_Screens.postAuthor);
     return const PostAuthorNav._();
   }
 
-  int get depth => _Screens.graph.countOf(_Screens.postAuthor);
   PostAuthorNav goPostAuthor(String id) {
-    _Screens.graph.popTo(_Screens.postAuthor);
-    _Screens.graph.go(_Screens.postAuthor, id, true);
+    _Screens.graph.goFrom(_Screens.postAuthor, _Screens.postAuthor, id);
     return const PostAuthorNav._();
   }
 
   PostNav goPost(String id) {
-    _Screens.graph.popTo(_Screens.postAuthor);
-    _Screens.graph.go(_Screens.post, id, true);
+    _Screens.graph.goFrom(_Screens.postAuthor, _Screens.post, id);
     return const PostNav._();
   }
-
-  N go<N extends AnyNav>(PostAuthorHop<N> hop) {
-    _Screens.graph.go(hop.spec, hop.id, true);
-    return hop.nav;
-  }
-
-  PostPostAuthorPopPlacement pop() {
-    _Screens.graph.pop();
-    return _resolvePostPostAuthorPopPlacement();
-  }
-
-  FeedNav popToFeed() {
-    _Screens.graph.pop(_Screens.feed);
-    return const FeedNav._();
-  }
-
-  HomeNav popToHome() {
-    _Screens.graph.pop(_Screens.home);
-    return const HomeNav._();
-  }
-
-  PostAuthorNav popToPostAuthor() {
-    _Screens.graph.pop(_Screens.postAuthor);
-    return const PostAuthorNav._();
-  }
-
-  N popTo<N extends AnyNav>(PostAuthorPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const PostAuthorPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const post = PostAuthorPop<PostNav>._(.post, PostNav._());
-  static const feed = PostAuthorPop<FeedNav>._(.feed, FeedNav._());
-  static const home = PostAuthorPop<HomeNav>._(.home, HomeNav._());
-  static const postAuthor = PostAuthorPop<PostAuthorNav>._(
-    .postAuthor,
-    PostAuthorNav._(),
-  );
-}
-
-final class const PostAuthorHop<N extends AnyNav>._(
-  final _Screens spec,
-  final Object? id,
-  final N nav,
-) {
-  static PostAuthorHop<PostAuthorNav> postAuthor(String id) =>
-      PostAuthorHop._(.postAuthor, id, const PostAuthorNav._());
-  static PostAuthorHop<PostNav> post(String id) =>
-      PostAuthorHop._(.post, id, const PostNav._());
 }
 
 final class const PostCommentsNav._() extends AnyPlacement {
@@ -7661,35 +5087,6 @@ final class const PostCommentsNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.postComments);
     return const PostCommentsNav._();
   }
-
-  PostNav pop() {
-    _Screens.graph.pop();
-    return const PostNav._();
-  }
-
-  FeedNav popToFeed() {
-    _Screens.graph.pop(_Screens.feed);
-    return const FeedNav._();
-  }
-
-  HomeNav popToHome() {
-    _Screens.graph.pop(_Screens.home);
-    return const HomeNav._();
-  }
-
-  N popTo<N extends AnyNav>(PostCommentsPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const PostCommentsPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const post = PostCommentsPop<PostNav>._(.post, PostNav._());
-  static const feed = PostCommentsPop<FeedNav>._(.feed, FeedNav._());
-  static const home = PostCommentsPop<HomeNav>._(.home, HomeNav._());
 }
 
 final class const PostLikesNav._() extends AnyPlacement {
@@ -7698,35 +5095,6 @@ final class const PostLikesNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.postLikes);
     return const PostLikesNav._();
   }
-
-  PostNav pop() {
-    _Screens.graph.pop();
-    return const PostNav._();
-  }
-
-  FeedNav popToFeed() {
-    _Screens.graph.pop(_Screens.feed);
-    return const FeedNav._();
-  }
-
-  HomeNav popToHome() {
-    _Screens.graph.pop(_Screens.home);
-    return const HomeNav._();
-  }
-
-  N popTo<N extends AnyNav>(PostLikesPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const PostLikesPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const post = PostLikesPop<PostNav>._(.post, PostNav._());
-  static const feed = PostLikesPop<FeedNav>._(.feed, FeedNav._());
-  static const home = PostLikesPop<HomeNav>._(.home, HomeNav._());
 }
 
 final class const EditPostNav._() extends AnyPlacement {
@@ -7735,35 +5103,6 @@ final class const EditPostNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.editPost);
     return const EditPostNav._();
   }
-
-  PostNav pop() {
-    _Screens.graph.pop();
-    return const PostNav._();
-  }
-
-  FeedNav popToFeed() {
-    _Screens.graph.pop(_Screens.feed);
-    return const FeedNav._();
-  }
-
-  HomeNav popToHome() {
-    _Screens.graph.pop(_Screens.home);
-    return const HomeNav._();
-  }
-
-  N popTo<N extends AnyNav>(EditPostPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const EditPostPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const post = EditPostPop<PostNav>._(.post, PostNav._());
-  static const feed = EditPostPop<FeedNav>._(.feed, FeedNav._());
-  static const home = EditPostPop<HomeNav>._(.home, HomeNav._());
 }
 
 final class const RepostNav._() extends AnyPlacement {
@@ -7772,40 +5111,9 @@ final class const RepostNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.repost);
     return const RepostNav._();
   }
-
-  PostNav pop() {
-    _Screens.graph.pop();
-    return const PostNav._();
-  }
-
-  FeedNav popToFeed() {
-    _Screens.graph.pop(_Screens.feed);
-    return const FeedNav._();
-  }
-
-  HomeNav popToHome() {
-    _Screens.graph.pop(_Screens.home);
-    return const HomeNav._();
-  }
-
-  N popTo<N extends AnyNav>(RepostPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const RepostPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const post = RepostPop<PostNav>._(.post, PostNav._());
-  static const feed = RepostPop<FeedNav>._(.feed, FeedNav._());
-  static const home = RepostPop<HomeNav>._(.home, HomeNav._());
-}
-
-final class const DiscoverNav._()
-    extends AnyPlacement
-    implements DiscoverView, PopDestPlacement {
+final class const DiscoverNav._() extends AnyPlacement {
   this : super._();
   DiscoverNav surface() {
     _Screens.graph.popTo(_Screens.discover);
@@ -7814,124 +5122,32 @@ final class const DiscoverNav._()
 
   DiscoverQueryMut get query => const DiscoverQueryMut._();
   TrendingNav goTrending() {
-    _Screens.graph.popTo(_Screens.discover);
-    _Screens.graph.go(_Screens.trending, null, true);
+    _Screens.graph.goFrom(_Screens.discover, _Screens.trending, null);
     return const TrendingNav._();
   }
 
   TopicsNav goTopics() {
-    _Screens.graph.popTo(_Screens.discover);
-    _Screens.graph.go(_Screens.topics, null, true);
+    _Screens.graph.goFrom(_Screens.discover, _Screens.topics, null);
     return const TopicsNav._();
   }
 
   LiveNowNav goLiveNow() {
-    _Screens.graph.popTo(_Screens.discover);
-    _Screens.graph.go(_Screens.liveNow, null, true);
+    _Screens.graph.goFrom(_Screens.discover, _Screens.liveNow, null);
     return const LiveNowNav._();
   }
 
   NearbyNav goNearby() {
-    _Screens.graph.popTo(_Screens.discover);
-    _Screens.graph.go(_Screens.nearby, null, true);
+    _Screens.graph.goFrom(_Screens.discover, _Screens.nearby, null);
     return const NearbyNav._();
   }
 
   EventsNav goEvents() {
-    _Screens.graph.popTo(_Screens.discover);
-    _Screens.graph.go(Events.events, null, true);
+    _Screens.graph.goFrom(_Screens.discover, Events.events, null);
     return const EventsNav._();
   }
-
-  TopicNav goTopic(String id) {
-    _Screens.graph.go(_Screens.trending, null, true);
-    _Screens.graph.go(_Screens.topic, id, true);
-    return const TopicNav._();
-  }
-
-  HashtagNav goHashtag(String id) {
-    _Screens.graph.go(_Screens.trending, null, true);
-    _Screens.graph.go(_Screens.hashtag, id, true);
-    return const HashtagNav._();
-  }
-
-  LiveRoomNav goLiveRoom(String id) {
-    _Screens.graph.go(_Screens.liveNow, null, true);
-    _Screens.graph.go(_Screens.liveRoom, id, true);
-    return const LiveRoomNav._();
-  }
-
-  EventNav goEvent(String id) {
-    _Screens.graph.go(Events.events, null, true);
-    _Screens.graph.go(Events.event, id, true);
-    return const EventNav._();
-  }
-
-  AttendeesNav goAttendees(String id) {
-    _Screens.graph.go(Events.events, null, true);
-    _Screens.graph.go(Events.event, id, true);
-    _Screens.graph.go(Events.attendees, id, true);
-    return const AttendeesNav._();
-  }
-
-  EditEventNav goEditEvent(String id) {
-    _Screens.graph.go(Events.events, null, true);
-    _Screens.graph.go(Events.event, id, true);
-    _Screens.graph.go(Events.editEvent, id, true);
-    return const EditEventNav._();
-  }
-
-  TicketsNav goTickets(String id) {
-    _Screens.graph.go(Events.events, null, true);
-    _Screens.graph.go(Events.event, id, true);
-    _Screens.graph.go(Events.tickets, id, true);
-    return const TicketsNav._();
-  }
-
-  N go<N extends AnyNav>(DiscoverHop<N> hop) {
-    _Screens.graph.go(hop.spec, hop.id, true);
-    return hop.nav;
-  }
 }
 
-final class const DiscoverHop<N extends AnyNav>._(
-  final Enum spec,
-  final Object? id,
-  final N nav,
-) {
-  static const trending = DiscoverHop<TrendingNav>._(
-    _Screens.trending,
-    null,
-    TrendingNav._(),
-  );
-  static const topics = DiscoverHop<TopicsNav>._(
-    _Screens.topics,
-    null,
-    TopicsNav._(),
-  );
-  static const liveNow = DiscoverHop<LiveNowNav>._(
-    _Screens.liveNow,
-    null,
-    LiveNowNav._(),
-  );
-  static const nearby = DiscoverHop<NearbyNav>._(
-    _Screens.nearby,
-    null,
-    NearbyNav._(),
-  );
-  static const events = DiscoverHop<EventsNav>._(
-    Events.events,
-    null,
-    EventsNav._(),
-  );
-}
-
-final class const TrendingNav._()
-    extends AnyPlacement
-    implements
-        SubtopicTopicTrendingPopPlacement,
-        HashtagTrendingPopPlacement,
-        PopDestPlacement {
+final class const TrendingNav._() extends AnyPlacement {
   this : super._();
   TrendingNav surface() {
     _Screens.graph.popTo(_Screens.trending);
@@ -7939,45 +5155,19 @@ final class const TrendingNav._()
   }
 
   HashtagNav goHashtag(String id) {
-    _Screens.graph.popTo(_Screens.trending);
-    _Screens.graph.go(_Screens.hashtag, id, true);
+    _Screens.graph.goFrom(_Screens.trending, _Screens.hashtag, id);
     return const HashtagNav._();
   }
 
   TopicNav goTopic(String id) {
-    _Screens.graph.popTo(_Screens.trending);
-    _Screens.graph.go(_Screens.topic, id, true);
+    _Screens.graph.goFrom(_Screens.trending, _Screens.topic, id);
     return const TopicNav._();
   }
 
-  DiscoverTrendingUserProfileNav goUserProfile(String id) {
-    _Screens.graph.popTo(_Screens.trending);
-    _Screens.graph.go(_Screens.userProfile, id, true);
-    return const DiscoverTrendingUserProfileNav._();
+  UserProfileNav2 goUserProfile(String id) {
+    _Screens.graph.goFrom(_Screens.trending, _Screens.userProfile, id);
+    return const UserProfileNav2._();
   }
-
-  N go<N extends AnyNav>(TrendingHop<N> hop) {
-    _Screens.graph.go(hop.spec, hop.id, true);
-    return hop.nav;
-  }
-
-  DiscoverNav pop() {
-    _Screens.graph.pop();
-    return const DiscoverNav._();
-  }
-}
-
-final class const TrendingHop<N extends AnyNav>._(
-  final _Screens spec,
-  final Object? id,
-  final N nav,
-) {
-  static TrendingHop<HashtagNav> hashtag(String id) =>
-      TrendingHop._(.hashtag, id, const HashtagNav._());
-  static TrendingHop<TopicNav> topic(String id) =>
-      TrendingHop._(.topic, id, const TopicNav._());
-  static TrendingHop<DiscoverTrendingUserProfileNav> userProfile(String id) =>
-      TrendingHop._(.userProfile, id, const DiscoverTrendingUserProfileNav._());
 }
 
 final class const TopicsNav._() extends AnyPlacement {
@@ -7986,225 +5176,58 @@ final class const TopicsNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.topics);
     return const TopicsNav._();
   }
-
-  DiscoverNav pop() {
-    _Screens.graph.pop();
-    return const DiscoverNav._();
-  }
 }
 
-final class const TopicNav._()
-    extends AnyPlacement
-    implements
-        SubtopicTopicTrendingPopPlacement,
-        SubtopicTopicPopPlacement,
-        PopDestPlacement {
+final class const TopicNav._() extends AnyPlacement {
   this : super._();
   TopicNav surface() {
     _Screens.graph.popTo(_Screens.topic);
     return const TopicNav._();
   }
 
-  int get depth => _Screens.graph.countOf(_Screens.topic);
   SubtopicNav goSubtopic(String id) {
-    _Screens.graph.popTo(_Screens.topic);
-    _Screens.graph.go(_Screens.subtopic, id, true);
+    _Screens.graph.goFrom(_Screens.topic, _Screens.subtopic, id);
     return const SubtopicNav._();
   }
 
   TopicNav goTopic(String id) {
-    _Screens.graph.popTo(_Screens.topic);
-    _Screens.graph.go(_Screens.topic, id, true);
+    _Screens.graph.goFrom(_Screens.topic, _Screens.topic, id);
     return const TopicNav._();
   }
-
-  N go<N extends AnyNav>(TopicHop<N> hop) {
-    _Screens.graph.go(hop.spec, hop.id, true);
-    return hop.nav;
-  }
-
-  SubtopicTopicTrendingPopPlacement pop() {
-    _Screens.graph.pop();
-    return _resolveSubtopicTopicTrendingPopPlacement();
-  }
-
-  DiscoverNav popToDiscover() {
-    _Screens.graph.pop(_Screens.discover);
-    return const DiscoverNav._();
-  }
-
-  SubtopicNav popToSubtopic() {
-    _Screens.graph.pop(_Screens.subtopic);
-    return const SubtopicNav._();
-  }
-
-  TopicNav popToTopic() {
-    _Screens.graph.pop(_Screens.topic);
-    return const TopicNav._();
-  }
-
-  N popTo<N extends AnyNav>(TopicPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const TopicPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const trending = TopicPop<TrendingNav>._(.trending, TrendingNav._());
-  static const discover = TopicPop<DiscoverNav>._(.discover, DiscoverNav._());
-  static const subtopic = TopicPop<SubtopicNav>._(.subtopic, SubtopicNav._());
-  static const topic = TopicPop<TopicNav>._(.topic, TopicNav._());
-}
-
-final class const TopicHop<N extends AnyNav>._(
-  final _Screens spec,
-  final Object? id,
-  final N nav,
-) {
-  static TopicHop<SubtopicNav> subtopic(String id) =>
-      TopicHop._(.subtopic, id, const SubtopicNav._());
-  static TopicHop<TopicNav> topic(String id) =>
-      TopicHop._(.topic, id, const TopicNav._());
-}
-
-final class const SubtopicNav._()
-    extends AnyPlacement
-    implements
-        SubtopicTopicTrendingPopPlacement,
-        SubtopicTopicPopPlacement,
-        PopDestPlacement {
+final class const SubtopicNav._() extends AnyPlacement {
   this : super._();
   SubtopicNav surface() {
     _Screens.graph.popTo(_Screens.subtopic);
     return const SubtopicNav._();
   }
 
-  int get depth => _Screens.graph.countOf(_Screens.subtopic);
   SubtopicNav goSubtopic(String id) {
-    _Screens.graph.popTo(_Screens.subtopic);
-    _Screens.graph.go(_Screens.subtopic, id, true);
+    _Screens.graph.goFrom(_Screens.subtopic, _Screens.subtopic, id);
     return const SubtopicNav._();
   }
 
   TopicNav goTopic(String id) {
-    _Screens.graph.popTo(_Screens.subtopic);
-    _Screens.graph.go(_Screens.topic, id, true);
+    _Screens.graph.goFrom(_Screens.subtopic, _Screens.topic, id);
     return const TopicNav._();
   }
-
-  N go<N extends AnyNav>(SubtopicHop<N> hop) {
-    _Screens.graph.go(hop.spec, hop.id, true);
-    return hop.nav;
-  }
-
-  SubtopicTopicPopPlacement pop() {
-    _Screens.graph.pop();
-    return _resolveSubtopicTopicPopPlacement();
-  }
-
-  TrendingNav popToTrending() {
-    _Screens.graph.pop(_Screens.trending);
-    return const TrendingNav._();
-  }
-
-  DiscoverNav popToDiscover() {
-    _Screens.graph.pop(_Screens.discover);
-    return const DiscoverNav._();
-  }
-
-  SubtopicNav popToSubtopic() {
-    _Screens.graph.pop(_Screens.subtopic);
-    return const SubtopicNav._();
-  }
-
-  N popTo<N extends AnyNav>(SubtopicPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const SubtopicPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const topic = SubtopicPop<TopicNav>._(.topic, TopicNav._());
-  static const trending = SubtopicPop<TrendingNav>._(
-    .trending,
-    TrendingNav._(),
-  );
-  static const discover = SubtopicPop<DiscoverNav>._(
-    .discover,
-    DiscoverNav._(),
-  );
-  static const subtopic = SubtopicPop<SubtopicNav>._(
-    .subtopic,
-    SubtopicNav._(),
-  );
-}
-
-final class const SubtopicHop<N extends AnyNav>._(
-  final _Screens spec,
-  final Object? id,
-  final N nav,
-) {
-  static SubtopicHop<SubtopicNav> subtopic(String id) =>
-      SubtopicHop._(.subtopic, id, const SubtopicNav._());
-  static SubtopicHop<TopicNav> topic(String id) =>
-      SubtopicHop._(.topic, id, const TopicNav._());
-}
-
-final class const HashtagNav._()
-    extends AnyPlacement
-    implements HashtagTrendingPopPlacement, PopDestPlacement {
+final class const HashtagNav._() extends AnyPlacement {
   this : super._();
   HashtagNav surface() {
     _Screens.graph.popTo(_Screens.hashtag);
     return const HashtagNav._();
   }
 
-  int get depth => _Screens.graph.countOf(_Screens.hashtag);
   HashtagNav goHashtag(String id) {
-    _Screens.graph.popTo(_Screens.hashtag);
-    _Screens.graph.go(_Screens.hashtag, id, true);
+    _Screens.graph.goFrom(_Screens.hashtag, _Screens.hashtag, id);
     return const HashtagNav._();
-  }
-
-  HashtagTrendingPopPlacement pop() {
-    _Screens.graph.pop();
-    return _resolveHashtagTrendingPopPlacement();
-  }
-
-  DiscoverNav popToDiscover() {
-    _Screens.graph.pop(_Screens.discover);
-    return const DiscoverNav._();
-  }
-
-  HashtagNav popToHashtag() {
-    _Screens.graph.pop(_Screens.hashtag);
-    return const HashtagNav._();
-  }
-
-  N popTo<N extends AnyNav>(HashtagPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
   }
 }
 
-final class const HashtagPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const trending = HashtagPop<TrendingNav>._(.trending, TrendingNav._());
-  static const discover = HashtagPop<DiscoverNav>._(.discover, DiscoverNav._());
-  static const hashtag = HashtagPop<HashtagNav>._(.hashtag, HashtagNav._());
-}
-
-final class const LiveNowNav._()
-    extends AnyPlacement
-    implements LiveNowLiveRoomPopPlacement, PopDestPlacement {
+final class const LiveNowNav._() extends AnyPlacement {
   this : super._();
   LiveNowNav surface() {
     _Screens.graph.popTo(_Screens.liveNow);
@@ -8212,67 +5235,22 @@ final class const LiveNowNav._()
   }
 
   LiveRoomNav goLiveRoom(String id) {
-    _Screens.graph.popTo(_Screens.liveNow);
-    _Screens.graph.go(_Screens.liveRoom, id, true);
+    _Screens.graph.goFrom(_Screens.liveNow, _Screens.liveRoom, id);
     return const LiveRoomNav._();
-  }
-
-  DiscoverNav pop() {
-    _Screens.graph.pop();
-    return const DiscoverNav._();
   }
 }
 
-final class const LiveRoomNav._()
-    extends AnyPlacement
-    implements LiveNowLiveRoomPopPlacement, PopDestPlacement {
+final class const LiveRoomNav._() extends AnyPlacement {
   this : super._();
   LiveRoomNav surface() {
     _Screens.graph.popTo(_Screens.liveRoom);
     return const LiveRoomNav._();
   }
 
-  int get depth => _Screens.graph.countOf(_Screens.liveRoom);
   LiveRoomNav goLiveRoom(String id) {
-    _Screens.graph.popTo(_Screens.liveRoom);
-    _Screens.graph.go(_Screens.liveRoom, id, true);
+    _Screens.graph.goFrom(_Screens.liveRoom, _Screens.liveRoom, id);
     return const LiveRoomNav._();
   }
-
-  LiveNowLiveRoomPopPlacement pop() {
-    _Screens.graph.pop();
-    return _resolveLiveNowLiveRoomPopPlacement();
-  }
-
-  DiscoverNav popToDiscover() {
-    _Screens.graph.pop(_Screens.discover);
-    return const DiscoverNav._();
-  }
-
-  LiveRoomNav popToLiveRoom() {
-    _Screens.graph.pop(_Screens.liveRoom);
-    return const LiveRoomNav._();
-  }
-
-  N popTo<N extends AnyNav>(LiveRoomPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const LiveRoomPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const liveNow = LiveRoomPop<LiveNowNav>._(.liveNow, LiveNowNav._());
-  static const discover = LiveRoomPop<DiscoverNav>._(
-    .discover,
-    DiscoverNav._(),
-  );
-  static const liveRoom = LiveRoomPop<LiveRoomNav>._(
-    .liveRoom,
-    LiveRoomNav._(),
-  );
 }
 
 final class const NearbyNav._() extends AnyPlacement {
@@ -8281,16 +5259,9 @@ final class const NearbyNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.nearby);
     return const NearbyNav._();
   }
-
-  DiscoverNav pop() {
-    _Screens.graph.pop();
-    return const DiscoverNav._();
-  }
 }
 
-final class const MarketplaceNav._()
-    extends AnyPlacement
-    implements MarketplaceView, PopDestPlacement {
+final class const MarketplaceNav._() extends AnyPlacement {
   this : super._();
   MarketplaceNav surface() {
     _Screens.graph.popTo(_Screens.marketplace);
@@ -8299,79 +5270,27 @@ final class const MarketplaceNav._()
 
   MarketplaceQueryMut get query => const MarketplaceQueryMut._();
   CategoriesNav goCategories() {
-    _Screens.graph.popTo(_Screens.marketplace);
-    _Screens.graph.go(_Screens.categories, null, true);
+    _Screens.graph.goFrom(_Screens.marketplace, _Screens.categories, null);
     return const CategoriesNav._();
   }
 
   CartNav goCart() {
-    _Screens.graph.popTo(_Screens.marketplace);
-    _Screens.graph.go(_Screens.cart, null, true);
+    _Screens.graph.goFrom(_Screens.marketplace, _Screens.cart, null);
     return const CartNav._();
   }
 
   MyOrdersNav goMyOrders() {
-    _Screens.graph.popTo(_Screens.marketplace);
-    _Screens.graph.go(_Screens.myOrders, null, true);
+    _Screens.graph.goFrom(_Screens.marketplace, _Screens.myOrders, null);
     return const MyOrdersNav._();
   }
 
   WishlistNav goWishlist() {
-    _Screens.graph.popTo(_Screens.marketplace);
-    _Screens.graph.go(_Screens.wishlist, null, true);
+    _Screens.graph.goFrom(_Screens.marketplace, _Screens.wishlist, null);
     return const WishlistNav._();
   }
-
-  CategoryNav goCategory(String id) {
-    _Screens.graph.go(_Screens.categories, null, true);
-    _Screens.graph.go(_Screens.category, id, true);
-    return const CategoryNav._();
-  }
-
-  CheckoutNav goCheckout(String id) {
-    _Screens.graph.go(_Screens.cart, null, true);
-    _Screens.graph.go(_Screens.checkout, id, true);
-    return const CheckoutNav._();
-  }
-
-  OrderNav goOrder(String id) {
-    _Screens.graph.go(_Screens.myOrders, null, true);
-    _Screens.graph.go(_Screens.order, id, true);
-    return const OrderNav._();
-  }
-
-  N go<N extends AnyNav>(MarketplaceHop<N> hop) {
-    _Screens.graph.go(hop.spec, hop.id, true);
-    return hop.nav;
-  }
 }
 
-final class const MarketplaceHop<N extends AnyNav>._(
-  final _Screens spec,
-  final Object? id,
-  final N nav,
-) {
-  static const categories = MarketplaceHop<CategoriesNav>._(
-    .categories,
-    null,
-    CategoriesNav._(),
-  );
-  static const cart = MarketplaceHop<CartNav>._(.cart, null, CartNav._());
-  static const myOrders = MarketplaceHop<MyOrdersNav>._(
-    .myOrders,
-    null,
-    MyOrdersNav._(),
-  );
-  static const wishlist = MarketplaceHop<WishlistNav>._(
-    .wishlist,
-    null,
-    WishlistNav._(),
-  );
-}
-
-final class const CategoriesNav._()
-    extends AnyPlacement
-    implements CategoriesCategoryPopPlacement, PopDestPlacement {
+final class const CategoriesNav._() extends AnyPlacement {
   this : super._();
   CategoriesNav surface() {
     _Screens.graph.popTo(_Screens.categories);
@@ -8379,281 +5298,72 @@ final class const CategoriesNav._()
   }
 
   CategoryNav goCategory(String id) {
-    _Screens.graph.popTo(_Screens.categories);
-    _Screens.graph.go(_Screens.category, id, true);
+    _Screens.graph.goFrom(_Screens.categories, _Screens.category, id);
     return const CategoryNav._();
-  }
-
-  MarketplaceNav pop() {
-    _Screens.graph.pop();
-    return const MarketplaceNav._();
   }
 }
 
-final class const CategoryNav._()
-    extends AnyPlacement
-    implements
-        CategoriesCategoryPopPlacement,
-        CategoryListingSellerProfilePopPlacement,
-        PopDestPlacement {
+final class const CategoryNav._() extends AnyPlacement {
   this : super._();
   CategoryNav surface() {
     _Screens.graph.popTo(_Screens.category);
     return const CategoryNav._();
   }
 
-  int get depth => _Screens.graph.countOf(_Screens.category);
   CategoryNav goCategory(String id) {
-    _Screens.graph.popTo(_Screens.category);
-    _Screens.graph.go(_Screens.category, id, true);
+    _Screens.graph.goFrom(_Screens.category, _Screens.category, id);
     return const CategoryNav._();
   }
 
   ListingNav goListing(String id) {
-    _Screens.graph.popTo(_Screens.category);
-    _Screens.graph.go(_Screens.listing, id, true);
+    _Screens.graph.goFrom(_Screens.category, _Screens.listing, id);
     return const ListingNav._();
   }
-
-  EditListingNav goEditListing(String id) {
-    _Screens.graph.go(_Screens.listing, id, true);
-    _Screens.graph.go(_Screens.editListing, id, true);
-    return const EditListingNav._();
-  }
-
-  N go<N extends AnyNav>(CategoryHop<N> hop) {
-    _Screens.graph.go(hop.spec, hop.id, true);
-    return hop.nav;
-  }
-
-  CategoriesCategoryPopPlacement pop() {
-    _Screens.graph.pop();
-    return _resolveCategoriesCategoryPopPlacement();
-  }
-
-  MarketplaceNav popToMarketplace() {
-    _Screens.graph.pop(_Screens.marketplace);
-    return const MarketplaceNav._();
-  }
-
-  CategoryNav popToCategory() {
-    _Screens.graph.pop(_Screens.category);
-    return const CategoryNav._();
-  }
-
-  N popTo<N extends AnyNav>(CategoryPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const CategoryPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const categories = CategoryPop<CategoriesNav>._(
-    .categories,
-    CategoriesNav._(),
-  );
-  static const marketplace = CategoryPop<MarketplaceNav>._(
-    .marketplace,
-    MarketplaceNav._(),
-  );
-  static const category = CategoryPop<CategoryNav>._(
-    .category,
-    CategoryNav._(),
-  );
-}
-
-final class const CategoryHop<N extends AnyNav>._(
-  final _Screens spec,
-  final Object? id,
-  final N nav,
-) {
-  static CategoryHop<CategoryNav> category(String id) =>
-      CategoryHop._(.category, id, const CategoryNav._());
-  static CategoryHop<ListingNav> listing(String id) =>
-      CategoryHop._(.listing, id, const ListingNav._());
-}
-
-final class const ListingNav._()
-    extends AnyPlacement
-    implements
-        CategoryListingSellerProfilePopPlacement,
-        ListingListingVariantPopPlacement,
-        ListingSellerProfilePopPlacement,
-        PopDestPlacement {
+final class const ListingNav._() extends AnyPlacement {
   this : super._();
   ListingNav surface() {
     _Screens.graph.popTo(_Screens.listing);
     return const ListingNav._();
   }
 
-  int get depth => _Screens.graph.countOf(_Screens.listing);
   EditListingNav goEditListing() {
-    _Screens.graph.popTo(_Screens.listing);
-    _Screens.graph.go(_Screens.editListing, _idOf(_Screens.listing), true);
+    _Screens.graph.goFrom(
+      _Screens.listing,
+      _Screens.editListing,
+      _idOf(_Screens.listing),
+    );
     return const EditListingNav._();
   }
 
   SellerProfileNav goSellerProfile(String id) {
-    _Screens.graph.popTo(_Screens.listing);
-    _Screens.graph.go(_Screens.sellerProfile, id, true);
+    _Screens.graph.goFrom(_Screens.listing, _Screens.sellerProfile, id);
     return const SellerProfileNav._();
   }
 
   ListingVariantNav goListingVariant(String id) {
-    _Screens.graph.popTo(_Screens.listing);
-    _Screens.graph.go(_Screens.listingVariant, id, true);
+    _Screens.graph.goFrom(_Screens.listing, _Screens.listingVariant, id);
     return const ListingVariantNav._();
   }
 
   ListingNav goListing(String id) {
-    _Screens.graph.popTo(_Screens.listing);
-    _Screens.graph.go(_Screens.listing, id, true);
+    _Screens.graph.goFrom(_Screens.listing, _Screens.listing, id);
     return const ListingNav._();
   }
-
-  N go<N extends AnyNav>(ListingHop<N> hop) {
-    _Screens.graph.go(hop.spec, hop.id, true);
-    return hop.nav;
-  }
-
-  CategoryListingSellerProfilePopPlacement pop() {
-    _Screens.graph.pop();
-    return _resolveCategoryListingSellerProfilePopPlacement();
-  }
-
-  CategoriesNav popToCategories() {
-    _Screens.graph.pop(_Screens.categories);
-    return const CategoriesNav._();
-  }
-
-  MarketplaceNav popToMarketplace() {
-    _Screens.graph.pop(_Screens.marketplace);
-    return const MarketplaceNav._();
-  }
-
-  SellerProfileNav popToSellerProfile() {
-    _Screens.graph.pop(_Screens.sellerProfile);
-    return const SellerProfileNav._();
-  }
-
-  ListingNav popToListing() {
-    _Screens.graph.pop(_Screens.listing);
-    return const ListingNav._();
-  }
-
-  N popTo<N extends AnyNav>(ListingPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const ListingPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const category = ListingPop<CategoryNav>._(.category, CategoryNav._());
-  static const categories = ListingPop<CategoriesNav>._(
-    .categories,
-    CategoriesNav._(),
-  );
-  static const marketplace = ListingPop<MarketplaceNav>._(
-    .marketplace,
-    MarketplaceNav._(),
-  );
-  static const sellerProfile = ListingPop<SellerProfileNav>._(
-    .sellerProfile,
-    SellerProfileNav._(),
-  );
-  static const listing = ListingPop<ListingNav>._(.listing, ListingNav._());
-}
-
-final class const ListingHop<N extends AnyNav>._(
-  final _Screens spec,
-  final Object? id,
-  final N nav,
-) {
-  static ListingHop<SellerProfileNav> sellerProfile(String id) =>
-      ListingHop._(.sellerProfile, id, const SellerProfileNav._());
-  static ListingHop<ListingVariantNav> listingVariant(String id) =>
-      ListingHop._(.listingVariant, id, const ListingVariantNav._());
-  static ListingHop<ListingNav> listing(String id) =>
-      ListingHop._(.listing, id, const ListingNav._());
-}
-
-final class const ListingVariantNav._()
-    extends AnyPlacement
-    implements ListingListingVariantPopPlacement, PopDestPlacement {
+final class const ListingVariantNav._() extends AnyPlacement {
   this : super._();
   ListingVariantNav surface() {
     _Screens.graph.popTo(_Screens.listingVariant);
     return const ListingVariantNav._();
   }
 
-  int get depth => _Screens.graph.countOf(_Screens.listingVariant);
   ListingVariantNav goListingVariant(String id) {
-    _Screens.graph.popTo(_Screens.listingVariant);
-    _Screens.graph.go(_Screens.listingVariant, id, true);
+    _Screens.graph.goFrom(_Screens.listingVariant, _Screens.listingVariant, id);
     return const ListingVariantNav._();
   }
-
-  ListingListingVariantPopPlacement pop() {
-    _Screens.graph.pop();
-    return _resolveListingListingVariantPopPlacement();
-  }
-
-  CategoryNav popToCategory() {
-    _Screens.graph.pop(_Screens.category);
-    return const CategoryNav._();
-  }
-
-  CategoriesNav popToCategories() {
-    _Screens.graph.pop(_Screens.categories);
-    return const CategoriesNav._();
-  }
-
-  MarketplaceNav popToMarketplace() {
-    _Screens.graph.pop(_Screens.marketplace);
-    return const MarketplaceNav._();
-  }
-
-  ListingVariantNav popToListingVariant() {
-    _Screens.graph.pop(_Screens.listingVariant);
-    return const ListingVariantNav._();
-  }
-
-  N popTo<N extends AnyNav>(ListingVariantPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const ListingVariantPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const listing = ListingVariantPop<ListingNav>._(
-    .listing,
-    ListingNav._(),
-  );
-  static const category = ListingVariantPop<CategoryNav>._(
-    .category,
-    CategoryNav._(),
-  );
-  static const categories = ListingVariantPop<CategoriesNav>._(
-    .categories,
-    CategoriesNav._(),
-  );
-  static const marketplace = ListingVariantPop<MarketplaceNav>._(
-    .marketplace,
-    MarketplaceNav._(),
-  );
-  static const listingVariant = ListingVariantPop<ListingVariantNav>._(
-    .listingVariant,
-    ListingVariantNav._(),
-  );
 }
 
 final class const EditListingNav._() extends AnyPlacement {
@@ -8662,151 +5372,27 @@ final class const EditListingNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.editListing);
     return const EditListingNav._();
   }
-
-  ListingNav pop() {
-    _Screens.graph.pop();
-    return const ListingNav._();
-  }
-
-  CategoryNav popToCategory() {
-    _Screens.graph.pop(_Screens.category);
-    return const CategoryNav._();
-  }
-
-  CategoriesNav popToCategories() {
-    _Screens.graph.pop(_Screens.categories);
-    return const CategoriesNav._();
-  }
-
-  MarketplaceNav popToMarketplace() {
-    _Screens.graph.pop(_Screens.marketplace);
-    return const MarketplaceNav._();
-  }
-
-  N popTo<N extends AnyNav>(EditListingPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const EditListingPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const listing = EditListingPop<ListingNav>._(.listing, ListingNav._());
-  static const category = EditListingPop<CategoryNav>._(
-    .category,
-    CategoryNav._(),
-  );
-  static const categories = EditListingPop<CategoriesNav>._(
-    .categories,
-    CategoriesNav._(),
-  );
-  static const marketplace = EditListingPop<MarketplaceNav>._(
-    .marketplace,
-    MarketplaceNav._(),
-  );
-}
-
-final class const SellerProfileNav._()
-    extends AnyPlacement
-    implements
-        CategoryListingSellerProfilePopPlacement,
-        ListingSellerProfilePopPlacement,
-        PopDestPlacement {
+final class const SellerProfileNav._() extends AnyPlacement {
   this : super._();
   SellerProfileNav surface() {
     _Screens.graph.popTo(_Screens.sellerProfile);
     return const SellerProfileNav._();
   }
 
-  int get depth => _Screens.graph.countOf(_Screens.sellerProfile);
   SellerProfileNav goSellerProfile(String id) {
-    _Screens.graph.popTo(_Screens.sellerProfile);
-    _Screens.graph.go(_Screens.sellerProfile, id, true);
+    _Screens.graph.goFrom(_Screens.sellerProfile, _Screens.sellerProfile, id);
     return const SellerProfileNav._();
   }
 
   ListingNav goListing(String id) {
-    _Screens.graph.popTo(_Screens.sellerProfile);
-    _Screens.graph.go(_Screens.listing, id, true);
+    _Screens.graph.goFrom(_Screens.sellerProfile, _Screens.listing, id);
     return const ListingNav._();
   }
-
-  N go<N extends AnyNav>(SellerProfileHop<N> hop) {
-    _Screens.graph.go(hop.spec, hop.id, true);
-    return hop.nav;
-  }
-
-  ListingSellerProfilePopPlacement pop() {
-    _Screens.graph.pop();
-    return _resolveListingSellerProfilePopPlacement();
-  }
-
-  CategoryNav popToCategory() {
-    _Screens.graph.pop(_Screens.category);
-    return const CategoryNav._();
-  }
-
-  CategoriesNav popToCategories() {
-    _Screens.graph.pop(_Screens.categories);
-    return const CategoriesNav._();
-  }
-
-  MarketplaceNav popToMarketplace() {
-    _Screens.graph.pop(_Screens.marketplace);
-    return const MarketplaceNav._();
-  }
-
-  SellerProfileNav popToSellerProfile() {
-    _Screens.graph.pop(_Screens.sellerProfile);
-    return const SellerProfileNav._();
-  }
-
-  N popTo<N extends AnyNav>(SellerProfilePop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const SellerProfilePop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const listing = SellerProfilePop<ListingNav>._(
-    .listing,
-    ListingNav._(),
-  );
-  static const category = SellerProfilePop<CategoryNav>._(
-    .category,
-    CategoryNav._(),
-  );
-  static const categories = SellerProfilePop<CategoriesNav>._(
-    .categories,
-    CategoriesNav._(),
-  );
-  static const marketplace = SellerProfilePop<MarketplaceNav>._(
-    .marketplace,
-    MarketplaceNav._(),
-  );
-  static const sellerProfile = SellerProfilePop<SellerProfileNav>._(
-    .sellerProfile,
-    SellerProfileNav._(),
-  );
-}
-
-final class const SellerProfileHop<N extends AnyNav>._(
-  final _Screens spec,
-  final Object? id,
-  final N nav,
-) {
-  static SellerProfileHop<SellerProfileNav> sellerProfile(String id) =>
-      SellerProfileHop._(.sellerProfile, id, const SellerProfileNav._());
-  static SellerProfileHop<ListingNav> listing(String id) =>
-      SellerProfileHop._(.listing, id, const ListingNav._());
-}
-
-final class const CartNav._() extends AnyPlacement implements PopDestPlacement {
+final class const CartNav._() extends AnyPlacement {
   this : super._();
   CartNav surface() {
     _Screens.graph.popTo(_Screens.cart);
@@ -8814,20 +5400,12 @@ final class const CartNav._() extends AnyPlacement implements PopDestPlacement {
   }
 
   CheckoutNav goCheckout(String id) {
-    _Screens.graph.popTo(_Screens.cart);
-    _Screens.graph.go(_Screens.checkout, id, true);
+    _Screens.graph.goFrom(_Screens.cart, _Screens.checkout, id);
     return const CheckoutNav._();
-  }
-
-  MarketplaceNav pop() {
-    _Screens.graph.pop();
-    return const MarketplaceNav._();
   }
 }
 
-final class const CheckoutNav._()
-    extends AnyPlacement
-    implements PopDestPlacement {
+final class const CheckoutNav._() extends AnyPlacement {
   this : super._();
   CheckoutNav surface() {
     _Screens.graph.popTo(_Screens.checkout);
@@ -8835,36 +5413,9 @@ final class const CheckoutNav._()
   }
 
   OrderConfirmationNav goOrderConfirmation(String id) {
-    _Screens.graph.popTo(_Screens.checkout);
-    _Screens.graph.go(_Screens.orderConfirmation, id, true);
+    _Screens.graph.goFrom(_Screens.checkout, _Screens.orderConfirmation, id);
     return const OrderConfirmationNav._();
   }
-
-  CartNav pop() {
-    _Screens.graph.pop();
-    return const CartNav._();
-  }
-
-  MarketplaceNav popToMarketplace() {
-    _Screens.graph.pop(_Screens.marketplace);
-    return const MarketplaceNav._();
-  }
-
-  N popTo<N extends AnyNav>(CheckoutPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const CheckoutPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const cart = CheckoutPop<CartNav>._(.cart, CartNav._());
-  static const marketplace = CheckoutPop<MarketplaceNav>._(
-    .marketplace,
-    MarketplaceNav._(),
-  );
 }
 
 final class const OrderConfirmationNav._() extends AnyPlacement {
@@ -8873,46 +5424,9 @@ final class const OrderConfirmationNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.orderConfirmation);
     return const OrderConfirmationNav._();
   }
-
-  CheckoutNav pop() {
-    _Screens.graph.pop();
-    return const CheckoutNav._();
-  }
-
-  CartNav popToCart() {
-    _Screens.graph.pop(_Screens.cart);
-    return const CartNav._();
-  }
-
-  MarketplaceNav popToMarketplace() {
-    _Screens.graph.pop(_Screens.marketplace);
-    return const MarketplaceNav._();
-  }
-
-  N popTo<N extends AnyNav>(OrderConfirmationPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const OrderConfirmationPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const checkout = OrderConfirmationPop<CheckoutNav>._(
-    .checkout,
-    CheckoutNav._(),
-  );
-  static const cart = OrderConfirmationPop<CartNav>._(.cart, CartNav._());
-  static const marketplace = OrderConfirmationPop<MarketplaceNav>._(
-    .marketplace,
-    MarketplaceNav._(),
-  );
-}
-
-final class const MyOrdersNav._()
-    extends AnyPlacement
-    implements MyOrdersOrderPopPlacement, PopDestPlacement {
+final class const MyOrdersNav._() extends AnyPlacement {
   this : super._();
   MyOrdersNav surface() {
     _Screens.graph.popTo(_Screens.myOrders);
@@ -8920,64 +5434,22 @@ final class const MyOrdersNav._()
   }
 
   OrderNav goOrder(String id) {
-    _Screens.graph.popTo(_Screens.myOrders);
-    _Screens.graph.go(_Screens.order, id, true);
+    _Screens.graph.goFrom(_Screens.myOrders, _Screens.order, id);
     return const OrderNav._();
-  }
-
-  MarketplaceNav pop() {
-    _Screens.graph.pop();
-    return const MarketplaceNav._();
   }
 }
 
-final class const OrderNav._()
-    extends AnyPlacement
-    implements MyOrdersOrderPopPlacement, PopDestPlacement {
+final class const OrderNav._() extends AnyPlacement {
   this : super._();
   OrderNav surface() {
     _Screens.graph.popTo(_Screens.order);
     return const OrderNav._();
   }
 
-  int get depth => _Screens.graph.countOf(_Screens.order);
   OrderNav goOrder(String id) {
-    _Screens.graph.popTo(_Screens.order);
-    _Screens.graph.go(_Screens.order, id, true);
+    _Screens.graph.goFrom(_Screens.order, _Screens.order, id);
     return const OrderNav._();
   }
-
-  MyOrdersOrderPopPlacement pop() {
-    _Screens.graph.pop();
-    return _resolveMyOrdersOrderPopPlacement();
-  }
-
-  MarketplaceNav popToMarketplace() {
-    _Screens.graph.pop(_Screens.marketplace);
-    return const MarketplaceNav._();
-  }
-
-  OrderNav popToOrder() {
-    _Screens.graph.pop(_Screens.order);
-    return const OrderNav._();
-  }
-
-  N popTo<N extends AnyNav>(OrderPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const OrderPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const myOrders = OrderPop<MyOrdersNav>._(.myOrders, MyOrdersNav._());
-  static const marketplace = OrderPop<MarketplaceNav>._(
-    .marketplace,
-    MarketplaceNav._(),
-  );
-  static const order = OrderPop<OrderNav>._(.order, OrderNav._());
 }
 
 final class const WishlistNav._() extends AnyPlacement {
@@ -8986,16 +5458,9 @@ final class const WishlistNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.wishlist);
     return const WishlistNav._();
   }
-
-  MarketplaceNav pop() {
-    _Screens.graph.pop();
-    return const MarketplaceNav._();
-  }
 }
 
-final class const MessagesNav._()
-    extends AnyPlacement
-    implements GroupChatMessagesPopPlacement, PopDestPlacement {
+final class const MessagesNav._() extends AnyPlacement {
   this : super._();
   MessagesNav surface() {
     _Screens.graph.popTo(_Screens.messages);
@@ -9003,66 +5468,22 @@ final class const MessagesNav._()
   }
 
   ChatsNav goChats() {
-    _Screens.graph.popTo(_Screens.messages);
-    _Screens.graph.go(_Screens.chats, null, true);
+    _Screens.graph.goFrom(_Screens.messages, _Screens.chats, null);
     return const ChatsNav._();
   }
 
   NewChatNav goNewChat() {
-    _Screens.graph.popTo(_Screens.messages);
-    _Screens.graph.go(_Screens.newChat, null, true);
+    _Screens.graph.goFrom(_Screens.messages, _Screens.newChat, null);
     return const NewChatNav._();
   }
 
   GroupChatNav goGroupChat(String id) {
-    _Screens.graph.popTo(_Screens.messages);
-    _Screens.graph.go(_Screens.groupChat, id, true);
+    _Screens.graph.goFrom(_Screens.messages, _Screens.groupChat, id);
     return const GroupChatNav._();
   }
-
-  ChatNav goChat(String id) {
-    _Screens.graph.go(_Screens.chats, null, true);
-    _Screens.graph.go(_Screens.chat, id, true);
-    return const ChatNav._();
-  }
-
-  VoiceCallNav goVoiceCall(String id) {
-    _Screens.graph.go(_Screens.chats, null, true);
-    _Screens.graph.go(_Screens.chat, id, true);
-    _Screens.graph.go(_Screens.voiceCall, id, true);
-    return const VoiceCallNav._();
-  }
-
-  GroupInfoNav goGroupInfo(String id) {
-    _Screens.graph.go(_Screens.groupChat, id, true);
-    _Screens.graph.go(_Screens.groupInfo, id, true);
-    return const GroupInfoNav._();
-  }
-
-  N go<N extends AnyNav>(MessagesHop<N> hop) {
-    _Screens.graph.go(hop.spec, hop.id, true);
-    return hop.nav;
-  }
 }
 
-final class const MessagesHop<N extends AnyNav>._(
-  final _Screens spec,
-  final Object? id,
-  final N nav,
-) {
-  static const chats = MessagesHop<ChatsNav>._(.chats, null, ChatsNav._());
-  static const newChat = MessagesHop<NewChatNav>._(
-    .newChat,
-    null,
-    NewChatNav._(),
-  );
-  static MessagesHop<GroupChatNav> groupChat(String id) =>
-      MessagesHop._(.groupChat, id, const GroupChatNav._());
-}
-
-final class const ChatsNav._()
-    extends AnyPlacement
-    implements ChatsMessagePopPlacement, PopDestPlacement {
+final class const ChatsNav._() extends AnyPlacement {
   this : super._();
   ChatsNav surface() {
     _Screens.graph.popTo(_Screens.chats);
@@ -9070,343 +5491,85 @@ final class const ChatsNav._()
   }
 
   ChatNav goChat(String id) {
-    _Screens.graph.popTo(_Screens.chats);
-    _Screens.graph.go(_Screens.chat, id, true);
+    _Screens.graph.goFrom(_Screens.chats, _Screens.chat, id);
     return const ChatNav._();
-  }
-
-  VoiceCallNav goVoiceCall(String id) {
-    _Screens.graph.go(_Screens.chat, id, true);
-    _Screens.graph.go(_Screens.voiceCall, id, true);
-    return const VoiceCallNav._();
-  }
-
-  MessagesNav pop() {
-    _Screens.graph.pop();
-    return const MessagesNav._();
   }
 }
 
-final class const ChatNav._()
-    extends AnyPlacement
-    implements ChatThreadPopPlacement, PopDestPlacement {
+final class const ChatNav._() extends AnyPlacement {
   this : super._();
   ChatNav surface() {
     _Screens.graph.popTo(_Screens.chat);
     return const ChatNav._();
   }
 
-  int get depth => _Screens.graph.countOf(_Screens.chat);
   ThreadNav goThread(String id) {
-    _Screens.graph.popTo(_Screens.chat);
-    _Screens.graph.go(_Screens.thread, id, true);
+    _Screens.graph.goFrom(_Screens.chat, _Screens.thread, id);
     return const ThreadNav._();
   }
 
   VoiceCallNav goVoiceCall() {
-    _Screens.graph.popTo(_Screens.chat);
-    _Screens.graph.go(_Screens.voiceCall, _idOf(_Screens.chat), true);
+    _Screens.graph.goFrom(
+      _Screens.chat,
+      _Screens.voiceCall,
+      _idOf(_Screens.chat),
+    );
     return const VoiceCallNav._();
   }
 
-  MessagesChatsChatUserProfileNav goUserProfile(String id) {
-    _Screens.graph.popTo(_Screens.chat);
-    _Screens.graph.go(_Screens.userProfile, id, true);
-    return const MessagesChatsChatUserProfileNav._();
-  }
-
-  N go<N extends AnyNav>(ChatHop<N> hop) {
-    _Screens.graph.go(hop.spec, hop.id, true);
-    return hop.nav;
-  }
-
-  ChatsMessagePopPlacement pop() {
-    _Screens.graph.pop();
-    return _resolveChatsMessagePopPlacement();
-  }
-
-  MessagesNav popToMessages() {
-    _Screens.graph.pop(_Screens.messages);
-    return const MessagesNav._();
-  }
-
-  MessageNav popToMessage() {
-    _Screens.graph.pop(_Screens.message);
-    return const MessageNav._();
-  }
-
-  ThreadNav popToThread() {
-    _Screens.graph.pop(_Screens.thread);
-    return const ThreadNav._();
-  }
-
-  ChatNav popToChat() {
-    _Screens.graph.pop(_Screens.chat);
-    return const ChatNav._();
-  }
-
-  N popTo<N extends AnyNav>(ChatPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
+  UserProfileNav3 goUserProfile(String id) {
+    _Screens.graph.goFrom(_Screens.chat, _Screens.userProfile, id);
+    return const UserProfileNav3._();
   }
 }
 
-final class const ChatPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const chats = ChatPop<ChatsNav>._(.chats, ChatsNav._());
-  static const messages = ChatPop<MessagesNav>._(.messages, MessagesNav._());
-  static const message = ChatPop<MessageNav>._(.message, MessageNav._());
-  static const thread = ChatPop<ThreadNav>._(.thread, ThreadNav._());
-  static const chat = ChatPop<ChatNav>._(.chat, ChatNav._());
-}
-
-final class const ChatHop<N extends AnyNav>._(
-  final _Screens spec,
-  final Object? id,
-  final N nav,
-) {
-  static ChatHop<ThreadNav> thread(String id) =>
-      ChatHop._(.thread, id, const ThreadNav._());
-  static ChatHop<MessagesChatsChatUserProfileNav> userProfile(String id) =>
-      ChatHop._(.userProfile, id, const MessagesChatsChatUserProfileNav._());
-}
-
-final class const ThreadNav._()
-    extends AnyPlacement
-    implements ChatThreadPopPlacement, PopDestPlacement {
+final class const ThreadNav._() extends AnyPlacement {
   this : super._();
   ThreadNav surface() {
     _Screens.graph.popTo(_Screens.thread);
     return const ThreadNav._();
   }
 
-  int get depth => _Screens.graph.countOf(_Screens.thread);
   MessageNav goMessage(String id) {
-    _Screens.graph.popTo(_Screens.thread);
-    _Screens.graph.go(_Screens.message, id, true);
+    _Screens.graph.goFrom(_Screens.thread, _Screens.message, id);
     return const MessageNav._();
   }
 
   ThreadNav goThread(String id) {
-    _Screens.graph.popTo(_Screens.thread);
-    _Screens.graph.go(_Screens.thread, id, true);
+    _Screens.graph.goFrom(_Screens.thread, _Screens.thread, id);
     return const ThreadNav._();
   }
-
-  N go<N extends AnyNav>(ThreadHop<N> hop) {
-    _Screens.graph.go(hop.spec, hop.id, true);
-    return hop.nav;
-  }
-
-  ChatThreadPopPlacement pop() {
-    _Screens.graph.pop();
-    return _resolveChatThreadPopPlacement();
-  }
-
-  ChatsNav popToChats() {
-    _Screens.graph.pop(_Screens.chats);
-    return const ChatsNav._();
-  }
-
-  MessagesNav popToMessages() {
-    _Screens.graph.pop(_Screens.messages);
-    return const MessagesNav._();
-  }
-
-  MessageNav popToMessage() {
-    _Screens.graph.pop(_Screens.message);
-    return const MessageNav._();
-  }
-
-  ThreadNav popToThread() {
-    _Screens.graph.pop(_Screens.thread);
-    return const ThreadNav._();
-  }
-
-  N popTo<N extends AnyNav>(ThreadPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const ThreadPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const chat = ThreadPop<ChatNav>._(.chat, ChatNav._());
-  static const chats = ThreadPop<ChatsNav>._(.chats, ChatsNav._());
-  static const messages = ThreadPop<MessagesNav>._(.messages, MessagesNav._());
-  static const message = ThreadPop<MessageNav>._(.message, MessageNav._());
-  static const thread = ThreadPop<ThreadNav>._(.thread, ThreadNav._());
-}
-
-final class const ThreadHop<N extends AnyNav>._(
-  final _Screens spec,
-  final Object? id,
-  final N nav,
-) {
-  static ThreadHop<MessageNav> message(String id) =>
-      ThreadHop._(.message, id, const MessageNav._());
-  static ThreadHop<ThreadNav> thread(String id) =>
-      ThreadHop._(.thread, id, const ThreadNav._());
-}
-
-final class const MessageNav._()
-    extends AnyPlacement
-    implements
-        ChatsMessagePopPlacement,
-        MessageMessageReplyPopPlacement,
-        PopDestPlacement {
+final class const MessageNav._() extends AnyPlacement {
   this : super._();
   MessageNav surface() {
     _Screens.graph.popTo(_Screens.message);
     return const MessageNav._();
   }
 
-  int get depth => _Screens.graph.countOf(_Screens.message);
   MessageReplyNav goMessageReply(String id) {
-    _Screens.graph.popTo(_Screens.message);
-    _Screens.graph.go(_Screens.messageReply, id, true);
+    _Screens.graph.goFrom(_Screens.message, _Screens.messageReply, id);
     return const MessageReplyNav._();
   }
 
   ChatNav goChat(String id) {
-    _Screens.graph.popTo(_Screens.message);
-    _Screens.graph.go(_Screens.chat, id, true);
+    _Screens.graph.goFrom(_Screens.message, _Screens.chat, id);
     return const ChatNav._();
   }
-
-  N go<N extends AnyNav>(MessageHop<N> hop) {
-    _Screens.graph.go(hop.spec, hop.id, true);
-    return hop.nav;
-  }
-
-  ThreadNav pop() {
-    _Screens.graph.pop();
-    return const ThreadNav._();
-  }
-
-  ChatNav popToChat() {
-    _Screens.graph.pop(_Screens.chat);
-    return const ChatNav._();
-  }
-
-  ChatsNav popToChats() {
-    _Screens.graph.pop(_Screens.chats);
-    return const ChatsNav._();
-  }
-
-  MessagesNav popToMessages() {
-    _Screens.graph.pop(_Screens.messages);
-    return const MessagesNav._();
-  }
-
-  MessageNav popToMessage() {
-    _Screens.graph.pop(_Screens.message);
-    return const MessageNav._();
-  }
-
-  N popTo<N extends AnyNav>(MessagePop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const MessagePop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const thread = MessagePop<ThreadNav>._(.thread, ThreadNav._());
-  static const chat = MessagePop<ChatNav>._(.chat, ChatNav._());
-  static const chats = MessagePop<ChatsNav>._(.chats, ChatsNav._());
-  static const messages = MessagePop<MessagesNav>._(.messages, MessagesNav._());
-  static const message = MessagePop<MessageNav>._(.message, MessageNav._());
-}
-
-final class const MessageHop<N extends AnyNav>._(
-  final _Screens spec,
-  final Object? id,
-  final N nav,
-) {
-  static MessageHop<MessageReplyNav> messageReply(String id) =>
-      MessageHop._(.messageReply, id, const MessageReplyNav._());
-  static MessageHop<ChatNav> chat(String id) =>
-      MessageHop._(.chat, id, const ChatNav._());
-}
-
-final class const MessageReplyNav._()
-    extends AnyPlacement
-    implements MessageMessageReplyPopPlacement, PopDestPlacement {
+final class const MessageReplyNav._() extends AnyPlacement {
   this : super._();
   MessageReplyNav surface() {
     _Screens.graph.popTo(_Screens.messageReply);
     return const MessageReplyNav._();
   }
 
-  int get depth => _Screens.graph.countOf(_Screens.messageReply);
   MessageReplyNav goMessageReply(String id) {
-    _Screens.graph.popTo(_Screens.messageReply);
-    _Screens.graph.go(_Screens.messageReply, id, true);
+    _Screens.graph.goFrom(_Screens.messageReply, _Screens.messageReply, id);
     return const MessageReplyNav._();
   }
-
-  MessageMessageReplyPopPlacement pop() {
-    _Screens.graph.pop();
-    return _resolveMessageMessageReplyPopPlacement();
-  }
-
-  ThreadNav popToThread() {
-    _Screens.graph.pop(_Screens.thread);
-    return const ThreadNav._();
-  }
-
-  ChatNav popToChat() {
-    _Screens.graph.pop(_Screens.chat);
-    return const ChatNav._();
-  }
-
-  ChatsNav popToChats() {
-    _Screens.graph.pop(_Screens.chats);
-    return const ChatsNav._();
-  }
-
-  MessagesNav popToMessages() {
-    _Screens.graph.pop(_Screens.messages);
-    return const MessagesNav._();
-  }
-
-  MessageReplyNav popToMessageReply() {
-    _Screens.graph.pop(_Screens.messageReply);
-    return const MessageReplyNav._();
-  }
-
-  N popTo<N extends AnyNav>(MessageReplyPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const MessageReplyPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const message = MessageReplyPop<MessageNav>._(
-    .message,
-    MessageNav._(),
-  );
-  static const thread = MessageReplyPop<ThreadNav>._(.thread, ThreadNav._());
-  static const chat = MessageReplyPop<ChatNav>._(.chat, ChatNav._());
-  static const chats = MessageReplyPop<ChatsNav>._(.chats, ChatsNav._());
-  static const messages = MessageReplyPop<MessagesNav>._(
-    .messages,
-    MessagesNav._(),
-  );
-  static const messageReply = MessageReplyPop<MessageReplyNav>._(
-    .messageReply,
-    MessageReplyNav._(),
-  );
 }
 
 final class const VoiceCallNav._() extends AnyPlacement {
@@ -9415,38 +5578,6 @@ final class const VoiceCallNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.voiceCall);
     return const VoiceCallNav._();
   }
-
-  ChatNav pop() {
-    _Screens.graph.pop();
-    return const ChatNav._();
-  }
-
-  ChatsNav popToChats() {
-    _Screens.graph.pop(_Screens.chats);
-    return const ChatsNav._();
-  }
-
-  MessagesNav popToMessages() {
-    _Screens.graph.pop(_Screens.messages);
-    return const MessagesNav._();
-  }
-
-  N popTo<N extends AnyNav>(VoiceCallPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const VoiceCallPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const chat = VoiceCallPop<ChatNav>._(.chat, ChatNav._());
-  static const chats = VoiceCallPop<ChatsNav>._(.chats, ChatsNav._());
-  static const messages = VoiceCallPop<MessagesNav>._(
-    .messages,
-    MessagesNav._(),
-  );
 }
 
 final class const NewChatNav._() extends AnyPlacement {
@@ -9455,63 +5586,28 @@ final class const NewChatNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.newChat);
     return const NewChatNav._();
   }
-
-  MessagesNav pop() {
-    _Screens.graph.pop();
-    return const MessagesNav._();
-  }
 }
 
-final class const GroupChatNav._()
-    extends AnyPlacement
-    implements GroupChatMessagesPopPlacement, PopDestPlacement {
+final class const GroupChatNav._() extends AnyPlacement {
   this : super._();
   GroupChatNav surface() {
     _Screens.graph.popTo(_Screens.groupChat);
     return const GroupChatNav._();
   }
 
-  int get depth => _Screens.graph.countOf(_Screens.groupChat);
   GroupInfoNav goGroupInfo() {
-    _Screens.graph.popTo(_Screens.groupChat);
-    _Screens.graph.go(_Screens.groupInfo, _idOf(_Screens.groupChat), true);
+    _Screens.graph.goFrom(
+      _Screens.groupChat,
+      _Screens.groupInfo,
+      _idOf(_Screens.groupChat),
+    );
     return const GroupInfoNav._();
   }
 
   GroupChatNav goGroupChat(String id) {
-    _Screens.graph.popTo(_Screens.groupChat);
-    _Screens.graph.go(_Screens.groupChat, id, true);
+    _Screens.graph.goFrom(_Screens.groupChat, _Screens.groupChat, id);
     return const GroupChatNav._();
   }
-
-  GroupChatMessagesPopPlacement pop() {
-    _Screens.graph.pop();
-    return _resolveGroupChatMessagesPopPlacement();
-  }
-
-  GroupChatNav popToGroupChat() {
-    _Screens.graph.pop(_Screens.groupChat);
-    return const GroupChatNav._();
-  }
-
-  N popTo<N extends AnyNav>(GroupChatPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const GroupChatPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const messages = GroupChatPop<MessagesNav>._(
-    .messages,
-    MessagesNav._(),
-  );
-  static const groupChat = GroupChatPop<GroupChatNav>._(
-    .groupChat,
-    GroupChatNav._(),
-  );
 }
 
 final class const GroupInfoNav._() extends AnyPlacement {
@@ -9520,40 +5616,9 @@ final class const GroupInfoNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.groupInfo);
     return const GroupInfoNav._();
   }
-
-  GroupChatNav pop() {
-    _Screens.graph.pop();
-    return const GroupChatNav._();
-  }
-
-  MessagesNav popToMessages() {
-    _Screens.graph.pop(_Screens.messages);
-    return const MessagesNav._();
-  }
-
-  N popTo<N extends AnyNav>(GroupInfoPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const GroupInfoPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const groupChat = GroupInfoPop<GroupChatNav>._(
-    .groupChat,
-    GroupChatNav._(),
-  );
-  static const messages = GroupInfoPop<MessagesNav>._(
-    .messages,
-    MessagesNav._(),
-  );
-}
-
-final class const WalletNav._()
-    extends AnyPlacement
-    implements PopDestPlacement {
+final class const WalletNav._() extends AnyPlacement {
   this : super._();
   WalletNav surface() {
     _Screens.graph.popTo(_Screens.wallet);
@@ -9561,83 +5626,29 @@ final class const WalletNav._()
   }
 
   BalanceNav goBalance() {
-    _Screens.graph.popTo(_Screens.wallet);
-    _Screens.graph.go(_Screens.balance, null, true);
+    _Screens.graph.goFrom(_Screens.wallet, _Screens.balance, null);
     return const BalanceNav._();
   }
 
   AccountsNav goAccounts() {
-    _Screens.graph.popTo(_Screens.wallet);
-    _Screens.graph.go(_Screens.accounts, null, true);
+    _Screens.graph.goFrom(_Screens.wallet, _Screens.accounts, null);
     return const AccountsNav._();
   }
 
   SendMoneyNav goSendMoney() {
-    _Screens.graph.popTo(_Screens.wallet);
-    _Screens.graph.go(_Screens.sendMoney, null, true);
+    _Screens.graph.goFrom(_Screens.wallet, _Screens.sendMoney, null);
     return const SendMoneyNav._();
   }
 
   ReceiveMoneyNav goReceiveMoney() {
-    _Screens.graph.popTo(_Screens.wallet);
-    _Screens.graph.go(_Screens.receiveMoney, null, true);
+    _Screens.graph.goFrom(_Screens.wallet, _Screens.receiveMoney, null);
     return const ReceiveMoneyNav._();
   }
 
   PaymentMethodsNav goPaymentMethods() {
-    _Screens.graph.popTo(_Screens.wallet);
-    _Screens.graph.go(_Screens.paymentMethods, null, true);
+    _Screens.graph.goFrom(_Screens.wallet, _Screens.paymentMethods, null);
     return const PaymentMethodsNav._();
   }
-
-  AccountNav goAccount(String id) {
-    _Screens.graph.go(_Screens.accounts, null, true);
-    _Screens.graph.go(_Screens.account, id, true);
-    return const AccountNav._();
-  }
-
-  CardNav goCard(String id) {
-    _Screens.graph.go(_Screens.paymentMethods, null, true);
-    _Screens.graph.go(_Screens.card, id, true);
-    return const CardNav._();
-  }
-
-  N go<N extends AnyNav>(WalletHop<N> hop) {
-    _Screens.graph.go(hop.spec, hop.id, true);
-    return hop.nav;
-  }
-}
-
-final class const WalletHop<N extends AnyNav>._(
-  final _Screens spec,
-  final Object? id,
-  final N nav,
-) {
-  static const balance = WalletHop<BalanceNav>._(
-    .balance,
-    null,
-    BalanceNav._(),
-  );
-  static const accounts = WalletHop<AccountsNav>._(
-    .accounts,
-    null,
-    AccountsNav._(),
-  );
-  static const sendMoney = WalletHop<SendMoneyNav>._(
-    .sendMoney,
-    null,
-    SendMoneyNav._(),
-  );
-  static const receiveMoney = WalletHop<ReceiveMoneyNav>._(
-    .receiveMoney,
-    null,
-    ReceiveMoneyNav._(),
-  );
-  static const paymentMethods = WalletHop<PaymentMethodsNav>._(
-    .paymentMethods,
-    null,
-    PaymentMethodsNav._(),
-  );
 }
 
 final class const BalanceNav._() extends AnyPlacement {
@@ -9646,16 +5657,9 @@ final class const BalanceNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.balance);
     return const BalanceNav._();
   }
-
-  WalletNav pop() {
-    _Screens.graph.pop();
-    return const WalletNav._();
-  }
 }
 
-final class const AccountsNav._()
-    extends AnyPlacement
-    implements AccountAccountsPopPlacement, PopDestPlacement {
+final class const AccountsNav._() extends AnyPlacement {
   this : super._();
   AccountsNav surface() {
     _Screens.graph.popTo(_Screens.accounts);
@@ -9663,114 +5667,35 @@ final class const AccountsNav._()
   }
 
   AccountNav goAccount(String id) {
-    _Screens.graph.popTo(_Screens.accounts);
-    _Screens.graph.go(_Screens.account, id, true);
+    _Screens.graph.goFrom(_Screens.accounts, _Screens.account, id);
     return const AccountNav._();
-  }
-
-  WalletNav pop() {
-    _Screens.graph.pop();
-    return const WalletNav._();
   }
 }
 
-final class const AccountNav._()
-    extends AnyPlacement
-    implements AccountAccountsPopPlacement, PopDestPlacement {
+final class const AccountNav._() extends AnyPlacement {
   this : super._();
   AccountNav surface() {
     _Screens.graph.popTo(_Screens.account);
     return const AccountNav._();
   }
 
-  int get depth => _Screens.graph.countOf(_Screens.account);
   TransactionsNav goTransactions() {
-    _Screens.graph.popTo(_Screens.account);
-    _Screens.graph.go(_Screens.transactions, null, true);
+    _Screens.graph.goFrom(_Screens.account, _Screens.transactions, null);
     return const TransactionsNav._();
   }
 
   StatementsNav goStatements() {
-    _Screens.graph.popTo(_Screens.account);
-    _Screens.graph.go(_Screens.statements, null, true);
+    _Screens.graph.goFrom(_Screens.account, _Screens.statements, null);
     return const StatementsNav._();
   }
 
   AccountNav goAccount(String id) {
-    _Screens.graph.popTo(_Screens.account);
-    _Screens.graph.go(_Screens.account, id, true);
+    _Screens.graph.goFrom(_Screens.account, _Screens.account, id);
     return const AccountNav._();
   }
-
-  TransactionNav goTransaction(String id) {
-    _Screens.graph.go(_Screens.transactions, null, true);
-    _Screens.graph.go(_Screens.transaction, id, true);
-    return const TransactionNav._();
-  }
-
-  StatementNav goStatement(String id) {
-    _Screens.graph.go(_Screens.statements, null, true);
-    _Screens.graph.go(_Screens.statement, id, true);
-    return const StatementNav._();
-  }
-
-  N go<N extends AnyNav>(AccountHop<N> hop) {
-    _Screens.graph.go(hop.spec, hop.id, true);
-    return hop.nav;
-  }
-
-  AccountAccountsPopPlacement pop() {
-    _Screens.graph.pop();
-    return _resolveAccountAccountsPopPlacement();
-  }
-
-  WalletNav popToWallet() {
-    _Screens.graph.pop(_Screens.wallet);
-    return const WalletNav._();
-  }
-
-  AccountNav popToAccount() {
-    _Screens.graph.pop(_Screens.account);
-    return const AccountNav._();
-  }
-
-  N popTo<N extends AnyNav>(AccountPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const AccountPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const accounts = AccountPop<AccountsNav>._(.accounts, AccountsNav._());
-  static const wallet = AccountPop<WalletNav>._(.wallet, WalletNav._());
-  static const account = AccountPop<AccountNav>._(.account, AccountNav._());
-}
-
-final class const AccountHop<N extends AnyNav>._(
-  final _Screens spec,
-  final Object? id,
-  final N nav,
-) {
-  static const transactions = AccountHop<TransactionsNav>._(
-    .transactions,
-    null,
-    TransactionsNav._(),
-  );
-  static const statements = AccountHop<StatementsNav>._(
-    .statements,
-    null,
-    StatementsNav._(),
-  );
-  static AccountHop<AccountNav> account(String id) =>
-      AccountHop._(.account, id, const AccountNav._());
-}
-
-final class const TransactionsNav._()
-    extends AnyPlacement
-    implements TransactionTransactionsPopPlacement, PopDestPlacement {
+final class const TransactionsNav._() extends AnyPlacement {
   this : super._();
   TransactionsNav surface() {
     _Screens.graph.popTo(_Screens.transactions);
@@ -9778,216 +5703,44 @@ final class const TransactionsNav._()
   }
 
   TransactionNav goTransaction(String id) {
-    _Screens.graph.popTo(_Screens.transactions);
-    _Screens.graph.go(_Screens.transaction, id, true);
+    _Screens.graph.goFrom(_Screens.transactions, _Screens.transaction, id);
     return const TransactionNav._();
   }
-
-  AccountNav pop() {
-    _Screens.graph.pop();
-    return const AccountNav._();
-  }
-
-  AccountsNav popToAccounts() {
-    _Screens.graph.pop(_Screens.accounts);
-    return const AccountsNav._();
-  }
-
-  WalletNav popToWallet() {
-    _Screens.graph.pop(_Screens.wallet);
-    return const WalletNav._();
-  }
-
-  N popTo<N extends AnyNav>(TransactionsPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const TransactionsPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const account = TransactionsPop<AccountNav>._(
-    .account,
-    AccountNav._(),
-  );
-  static const accounts = TransactionsPop<AccountsNav>._(
-    .accounts,
-    AccountsNav._(),
-  );
-  static const wallet = TransactionsPop<WalletNav>._(.wallet, WalletNav._());
-}
-
-final class const TransactionNav._()
-    extends AnyPlacement
-    implements
-        TransactionTransactionsPopPlacement,
-        TransactionTransactionItemPopPlacement,
-        PopDestPlacement {
+final class const TransactionNav._() extends AnyPlacement {
   this : super._();
   TransactionNav surface() {
     _Screens.graph.popTo(_Screens.transaction);
     return const TransactionNav._();
   }
 
-  int get depth => _Screens.graph.countOf(_Screens.transaction);
   TransactionItemNav goTransactionItem(String id) {
-    _Screens.graph.popTo(_Screens.transaction);
-    _Screens.graph.go(_Screens.transactionItem, id, true);
+    _Screens.graph.goFrom(_Screens.transaction, _Screens.transactionItem, id);
     return const TransactionItemNav._();
   }
 
   TransactionNav goTransaction(String id) {
-    _Screens.graph.popTo(_Screens.transaction);
-    _Screens.graph.go(_Screens.transaction, id, true);
+    _Screens.graph.goFrom(_Screens.transaction, _Screens.transaction, id);
     return const TransactionNav._();
   }
-
-  N go<N extends AnyNav>(TransactionHop<N> hop) {
-    _Screens.graph.go(hop.spec, hop.id, true);
-    return hop.nav;
-  }
-
-  TransactionTransactionsPopPlacement pop() {
-    _Screens.graph.pop();
-    return _resolveTransactionTransactionsPopPlacement();
-  }
-
-  AccountNav popToAccount() {
-    _Screens.graph.pop(_Screens.account);
-    return const AccountNav._();
-  }
-
-  AccountsNav popToAccounts() {
-    _Screens.graph.pop(_Screens.accounts);
-    return const AccountsNav._();
-  }
-
-  WalletNav popToWallet() {
-    _Screens.graph.pop(_Screens.wallet);
-    return const WalletNav._();
-  }
-
-  TransactionNav popToTransaction() {
-    _Screens.graph.pop(_Screens.transaction);
-    return const TransactionNav._();
-  }
-
-  N popTo<N extends AnyNav>(TransactionPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const TransactionPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const transactions = TransactionPop<TransactionsNav>._(
-    .transactions,
-    TransactionsNav._(),
-  );
-  static const account = TransactionPop<AccountNav>._(.account, AccountNav._());
-  static const accounts = TransactionPop<AccountsNav>._(
-    .accounts,
-    AccountsNav._(),
-  );
-  static const wallet = TransactionPop<WalletNav>._(.wallet, WalletNav._());
-  static const transaction = TransactionPop<TransactionNav>._(
-    .transaction,
-    TransactionNav._(),
-  );
-}
-
-final class const TransactionHop<N extends AnyNav>._(
-  final _Screens spec,
-  final Object? id,
-  final N nav,
-) {
-  static TransactionHop<TransactionItemNav> transactionItem(String id) =>
-      TransactionHop._(.transactionItem, id, const TransactionItemNav._());
-  static TransactionHop<TransactionNav> transaction(String id) =>
-      TransactionHop._(.transaction, id, const TransactionNav._());
-}
-
-final class const TransactionItemNav._()
-    extends AnyPlacement
-    implements TransactionTransactionItemPopPlacement, PopDestPlacement {
+final class const TransactionItemNav._() extends AnyPlacement {
   this : super._();
   TransactionItemNav surface() {
     _Screens.graph.popTo(_Screens.transactionItem);
     return const TransactionItemNav._();
   }
 
-  int get depth => _Screens.graph.countOf(_Screens.transactionItem);
   TransactionItemNav goTransactionItem(String id) {
-    _Screens.graph.popTo(_Screens.transactionItem);
-    _Screens.graph.go(_Screens.transactionItem, id, true);
+    _Screens.graph.goFrom(
+      _Screens.transactionItem,
+      _Screens.transactionItem,
+      id,
+    );
     return const TransactionItemNav._();
   }
-
-  TransactionTransactionItemPopPlacement pop() {
-    _Screens.graph.pop();
-    return _resolveTransactionTransactionItemPopPlacement();
-  }
-
-  TransactionsNav popToTransactions() {
-    _Screens.graph.pop(_Screens.transactions);
-    return const TransactionsNav._();
-  }
-
-  AccountNav popToAccount() {
-    _Screens.graph.pop(_Screens.account);
-    return const AccountNav._();
-  }
-
-  AccountsNav popToAccounts() {
-    _Screens.graph.pop(_Screens.accounts);
-    return const AccountsNav._();
-  }
-
-  WalletNav popToWallet() {
-    _Screens.graph.pop(_Screens.wallet);
-    return const WalletNav._();
-  }
-
-  TransactionItemNav popToTransactionItem() {
-    _Screens.graph.pop(_Screens.transactionItem);
-    return const TransactionItemNav._();
-  }
-
-  N popTo<N extends AnyNav>(TransactionItemPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const TransactionItemPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const transaction = TransactionItemPop<TransactionNav>._(
-    .transaction,
-    TransactionNav._(),
-  );
-  static const transactions = TransactionItemPop<TransactionsNav>._(
-    .transactions,
-    TransactionsNav._(),
-  );
-  static const account = TransactionItemPop<AccountNav>._(
-    .account,
-    AccountNav._(),
-  );
-  static const accounts = TransactionItemPop<AccountsNav>._(
-    .accounts,
-    AccountsNav._(),
-  );
-  static const wallet = TransactionItemPop<WalletNav>._(.wallet, WalletNav._());
-  static const transactionItem = TransactionItemPop<TransactionItemNav>._(
-    .transactionItem,
-    TransactionItemNav._(),
-  );
 }
 
 final class const SendMoneyNav._() extends AnyPlacement {
@@ -9995,11 +5748,6 @@ final class const SendMoneyNav._() extends AnyPlacement {
   SendMoneyNav surface() {
     _Screens.graph.popTo(_Screens.sendMoney);
     return const SendMoneyNav._();
-  }
-
-  WalletNav pop() {
-    _Screens.graph.pop();
-    return const WalletNav._();
   }
 }
 
@@ -10009,16 +5757,9 @@ final class const ReceiveMoneyNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.receiveMoney);
     return const ReceiveMoneyNav._();
   }
-
-  WalletNav pop() {
-    _Screens.graph.pop();
-    return const WalletNav._();
-  }
 }
 
-final class const PaymentMethodsNav._()
-    extends AnyPlacement
-    implements PopDestPlacement {
+final class const PaymentMethodsNav._() extends AnyPlacement {
   this : super._();
   PaymentMethodsNav surface() {
     _Screens.graph.popTo(_Screens.paymentMethods);
@@ -10026,40 +5767,14 @@ final class const PaymentMethodsNav._()
   }
 
   AddCardNav goAddCard() {
-    _Screens.graph.popTo(_Screens.paymentMethods);
-    _Screens.graph.go(_Screens.addCard, null, true);
+    _Screens.graph.goFrom(_Screens.paymentMethods, _Screens.addCard, null);
     return const AddCardNav._();
   }
 
   CardNav goCard(String id) {
-    _Screens.graph.popTo(_Screens.paymentMethods);
-    _Screens.graph.go(_Screens.card, id, true);
+    _Screens.graph.goFrom(_Screens.paymentMethods, _Screens.card, id);
     return const CardNav._();
   }
-
-  N go<N extends AnyNav>(PaymentMethodsHop<N> hop) {
-    _Screens.graph.go(hop.spec, hop.id, true);
-    return hop.nav;
-  }
-
-  WalletNav pop() {
-    _Screens.graph.pop();
-    return const WalletNav._();
-  }
-}
-
-final class const PaymentMethodsHop<N extends AnyNav>._(
-  final _Screens spec,
-  final Object? id,
-  final N nav,
-) {
-  static const addCard = PaymentMethodsHop<AddCardNav>._(
-    .addCard,
-    null,
-    AddCardNav._(),
-  );
-  static PaymentMethodsHop<CardNav> card(String id) =>
-      PaymentMethodsHop._(.card, id, const CardNav._());
 }
 
 final class const AddCardNav._() extends AnyPlacement {
@@ -10068,32 +5783,6 @@ final class const AddCardNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.addCard);
     return const AddCardNav._();
   }
-
-  PaymentMethodsNav pop() {
-    _Screens.graph.pop();
-    return const PaymentMethodsNav._();
-  }
-
-  WalletNav popToWallet() {
-    _Screens.graph.pop(_Screens.wallet);
-    return const WalletNav._();
-  }
-
-  N popTo<N extends AnyNav>(AddCardPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const AddCardPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const paymentMethods = AddCardPop<PaymentMethodsNav>._(
-    .paymentMethods,
-    PaymentMethodsNav._(),
-  );
-  static const wallet = AddCardPop<WalletNav>._(.wallet, WalletNav._());
 }
 
 final class const CardNav._() extends AnyPlacement {
@@ -10102,37 +5791,9 @@ final class const CardNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.card);
     return const CardNav._();
   }
-
-  PaymentMethodsNav pop() {
-    _Screens.graph.pop();
-    return const PaymentMethodsNav._();
-  }
-
-  WalletNav popToWallet() {
-    _Screens.graph.pop(_Screens.wallet);
-    return const WalletNav._();
-  }
-
-  N popTo<N extends AnyNav>(CardPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const CardPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const paymentMethods = CardPop<PaymentMethodsNav>._(
-    .paymentMethods,
-    PaymentMethodsNav._(),
-  );
-  static const wallet = CardPop<WalletNav>._(.wallet, WalletNav._());
-}
-
-final class const StatementsNav._()
-    extends AnyPlacement
-    implements PopDestPlacement {
+final class const StatementsNav._() extends AnyPlacement {
   this : super._();
   StatementsNav surface() {
     _Screens.graph.popTo(_Screens.statements);
@@ -10140,42 +5801,9 @@ final class const StatementsNav._()
   }
 
   StatementNav goStatement(String id) {
-    _Screens.graph.popTo(_Screens.statements);
-    _Screens.graph.go(_Screens.statement, id, true);
+    _Screens.graph.goFrom(_Screens.statements, _Screens.statement, id);
     return const StatementNav._();
   }
-
-  AccountNav pop() {
-    _Screens.graph.pop();
-    return const AccountNav._();
-  }
-
-  AccountsNav popToAccounts() {
-    _Screens.graph.pop(_Screens.accounts);
-    return const AccountsNav._();
-  }
-
-  WalletNav popToWallet() {
-    _Screens.graph.pop(_Screens.wallet);
-    return const WalletNav._();
-  }
-
-  N popTo<N extends AnyNav>(StatementsPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const StatementsPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const account = StatementsPop<AccountNav>._(.account, AccountNav._());
-  static const accounts = StatementsPop<AccountsNav>._(
-    .accounts,
-    AccountsNav._(),
-  );
-  static const wallet = StatementsPop<WalletNav>._(.wallet, WalletNav._());
 }
 
 final class const StatementNav._() extends AnyPlacement {
@@ -10184,183 +5812,85 @@ final class const StatementNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.statement);
     return const StatementNav._();
   }
-
-  StatementsNav pop() {
-    _Screens.graph.pop();
-    return const StatementsNav._();
-  }
-
-  AccountNav popToAccount() {
-    _Screens.graph.pop(_Screens.account);
-    return const AccountNav._();
-  }
-
-  AccountsNav popToAccounts() {
-    _Screens.graph.pop(_Screens.accounts);
-    return const AccountsNav._();
-  }
-
-  WalletNav popToWallet() {
-    _Screens.graph.pop(_Screens.wallet);
-    return const WalletNav._();
-  }
-
-  N popTo<N extends AnyNav>(StatementPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const StatementPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const statements = StatementPop<StatementsNav>._(
-    .statements,
-    StatementsNav._(),
-  );
-  static const account = StatementPop<AccountNav>._(.account, AccountNav._());
-  static const accounts = StatementPop<AccountsNav>._(
-    .accounts,
-    AccountsNav._(),
-  );
-  static const wallet = StatementPop<WalletNav>._(.wallet, WalletNav._());
-}
-
-final class const ProfileNav._()
-    extends AnyPlacement
-    implements PopDestPlacement {
+final class const ProfileNav._() extends AnyPlacement {
   this : super._();
   ProfileNav surface() {
     _Screens.graph.popTo(_Screens.profile);
     return const ProfileNav._();
   }
 
-  ProfileUserProfileNav goUserProfile(String id) {
-    _Screens.graph.popTo(_Screens.profile);
-    _Screens.graph.go(_Screens.userProfile, id, true);
-    return const ProfileUserProfileNav._();
+  UserProfileNav4 goUserProfile(String id) {
+    _Screens.graph.goFrom(_Screens.profile, _Screens.userProfile, id);
+    return const UserProfileNav4._();
   }
 
   FollowersNav goFollowers(String id) {
-    _Screens.graph.popTo(_Screens.profile);
-    _Screens.graph.go(_Screens.followers, id, true);
+    _Screens.graph.goFrom(_Screens.profile, _Screens.followers, id);
     return const FollowersNav._();
   }
 
   FollowingNav goFollowing(String id) {
-    _Screens.graph.popTo(_Screens.profile);
-    _Screens.graph.go(_Screens.following, id, true);
+    _Screens.graph.goFrom(_Screens.profile, _Screens.following, id);
     return const FollowingNav._();
   }
 
   EditProfileNav goEditProfile() {
-    _Screens.graph.popTo(_Screens.profile);
-    _Screens.graph.go(_Screens.editProfile, null, true);
+    _Screens.graph.goFrom(_Screens.profile, _Screens.editProfile, null);
     return const EditProfileNav._();
   }
 
   AchievementsNav goAchievements() {
-    _Screens.graph.popTo(_Screens.profile);
-    _Screens.graph.go(_Screens.achievements, null, true);
+    _Screens.graph.goFrom(_Screens.profile, _Screens.achievements, null);
     return const AchievementsNav._();
   }
 
   BadgesNav goBadges() {
-    _Screens.graph.popTo(_Screens.profile);
-    _Screens.graph.go(_Screens.badges, null, true);
+    _Screens.graph.goFrom(_Screens.profile, _Screens.badges, null);
     return const BadgesNav._();
   }
 
   SavedPostsNav goSavedPosts() {
-    _Screens.graph.popTo(_Screens.profile);
-    _Screens.graph.go(_Screens.savedPosts, null, true);
+    _Screens.graph.goFrom(_Screens.profile, _Screens.savedPosts, null);
     return const SavedPostsNav._();
   }
 
   DraftsNav goDrafts() {
-    _Screens.graph.popTo(_Screens.profile);
-    _Screens.graph.go(_Screens.drafts, null, true);
+    _Screens.graph.goFrom(_Screens.profile, _Screens.drafts, null);
     return const DraftsNav._();
   }
 
   MyListingsNav goMyListings() {
-    _Screens.graph.popTo(_Screens.profile);
-    _Screens.graph.go(_Screens.myListings, null, true);
+    _Screens.graph.goFrom(_Screens.profile, _Screens.myListings, null);
     return const MyListingsNav._();
   }
-
-  BadgeNav goBadge(String id) {
-    _Screens.graph.go(_Screens.badges, null, true);
-    _Screens.graph.go(_Screens.badge, id, true);
-    return const BadgeNav._();
-  }
-
-  N go<N extends AnyNav>(ProfileHop<N> hop) {
-    _Screens.graph.go(hop.spec, hop.id, true);
-    return hop.nav;
-  }
-}
-
-final class const ProfileHop<N extends AnyNav>._(
-  final _Screens spec,
-  final Object? id,
-  final N nav,
-) {
-  static ProfileHop<ProfileUserProfileNav> userProfile(String id) =>
-      ProfileHop._(.userProfile, id, const ProfileUserProfileNav._());
-  static ProfileHop<FollowersNav> followers(String id) =>
-      ProfileHop._(.followers, id, const FollowersNav._());
-  static ProfileHop<FollowingNav> following(String id) =>
-      ProfileHop._(.following, id, const FollowingNav._());
-  static const editProfile = ProfileHop<EditProfileNav>._(
-    .editProfile,
-    null,
-    EditProfileNav._(),
-  );
-  static const achievements = ProfileHop<AchievementsNav>._(
-    .achievements,
-    null,
-    AchievementsNav._(),
-  );
-  static const badges = ProfileHop<BadgesNav>._(.badges, null, BadgesNav._());
-  static const savedPosts = ProfileHop<SavedPostsNav>._(
-    .savedPosts,
-    null,
-    SavedPostsNav._(),
-  );
-  static const drafts = ProfileHop<DraftsNav>._(.drafts, null, DraftsNav._());
-  static const myListings = ProfileHop<MyListingsNav>._(
-    .myListings,
-    null,
-    MyListingsNav._(),
-  );
 }
 
 UserProfilePlacement _resolveUserProfilePlacement(List<Enum> c) {
   if (_chainIs(c, const [_Screens.home, _Screens.feed, _Screens.userProfile]))
-    return const HomeFeedUserProfileNav._();
+    return const UserProfileNav1._();
   if (_chainIs(c, const [
     _Screens.discover,
     _Screens.trending,
     _Screens.userProfile,
   ]))
-    return const DiscoverTrendingUserProfileNav._();
+    return const UserProfileNav2._();
   if (_chainIs(c, const [
     _Screens.messages,
     _Screens.chats,
     _Screens.chat,
     _Screens.userProfile,
   ]))
-    return const MessagesChatsChatUserProfileNav._();
+    return const UserProfileNav3._();
   if (_chainIs(c, const [_Screens.profile, _Screens.userProfile]))
-    return const ProfileUserProfileNav._();
+    return const UserProfileNav4._();
   if (_chainIs(c, const [
     _Screens.workspace,
     _Screens.project,
     _Screens.userProfile,
   ]))
-    return const WorkspaceProjectUserProfileNav._();
+    return const UserProfileNav5._();
   if (_chainIs(c, const [
     _Screens.forum,
     _Screens.forumCategory,
@@ -10368,7 +5898,7 @@ UserProfilePlacement _resolveUserProfilePlacement(List<Enum> c) {
     _Screens.forumReply,
     _Screens.userProfile,
   ]))
-    return const ForumForumCategoryForumThreadForumReplyUserProfileNav._();
+    return const UserProfileNav6._();
   throw StateError('unresolved userProfile placement: $c');
 }
 
@@ -10376,245 +5906,67 @@ sealed class UserProfilePlacement implements AnyPlacement {
   UserProfilePlacement surface();
 }
 
-final class const HomeFeedUserProfileNav._()
+final class const UserProfileNav1._()
     extends AnyPlacement
     implements UserProfilePlacement {
   this : super._();
-  HomeFeedUserProfileNav surface() {
+  UserProfileNav1 surface() {
     _Screens.graph.popTo(_Screens.userProfile);
-    return const HomeFeedUserProfileNav._();
-  }
-
-  FeedNav pop() {
-    _Screens.graph.pop();
-    return const FeedNav._();
-  }
-
-  HomeNav popToHome() {
-    _Screens.graph.pop(_Screens.home);
-    return const HomeNav._();
-  }
-
-  N popTo<N extends AnyNav>(HomeFeedUserProfilePop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
+    return const UserProfileNav1._();
   }
 }
 
-final class const HomeFeedUserProfilePop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const feed = HomeFeedUserProfilePop<FeedNav>._(.feed, FeedNav._());
-  static const home = HomeFeedUserProfilePop<HomeNav>._(.home, HomeNav._());
-}
-
-final class const DiscoverTrendingUserProfileNav._()
+final class const UserProfileNav2._()
     extends AnyPlacement
     implements UserProfilePlacement {
   this : super._();
-  DiscoverTrendingUserProfileNav surface() {
+  UserProfileNav2 surface() {
     _Screens.graph.popTo(_Screens.userProfile);
-    return const DiscoverTrendingUserProfileNav._();
-  }
-
-  TrendingNav pop() {
-    _Screens.graph.pop();
-    return const TrendingNav._();
-  }
-
-  DiscoverNav popToDiscover() {
-    _Screens.graph.pop(_Screens.discover);
-    return const DiscoverNav._();
-  }
-
-  N popTo<N extends AnyNav>(DiscoverTrendingUserProfilePop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
+    return const UserProfileNav2._();
   }
 }
 
-final class const DiscoverTrendingUserProfilePop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const trending = DiscoverTrendingUserProfilePop<TrendingNav>._(
-    .trending,
-    TrendingNav._(),
-  );
-  static const discover = DiscoverTrendingUserProfilePop<DiscoverNav>._(
-    .discover,
-    DiscoverNav._(),
-  );
-}
-
-final class const MessagesChatsChatUserProfileNav._()
+final class const UserProfileNav3._()
     extends AnyPlacement
     implements UserProfilePlacement {
   this : super._();
-  MessagesChatsChatUserProfileNav surface() {
+  UserProfileNav3 surface() {
     _Screens.graph.popTo(_Screens.userProfile);
-    return const MessagesChatsChatUserProfileNav._();
-  }
-
-  ChatNav pop() {
-    _Screens.graph.pop();
-    return const ChatNav._();
-  }
-
-  ChatsNav popToChats() {
-    _Screens.graph.pop(_Screens.chats);
-    return const ChatsNav._();
-  }
-
-  MessagesNav popToMessages() {
-    _Screens.graph.pop(_Screens.messages);
-    return const MessagesNav._();
-  }
-
-  N popTo<N extends AnyNav>(MessagesChatsChatUserProfilePop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
+    return const UserProfileNav3._();
   }
 }
 
-final class const MessagesChatsChatUserProfilePop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const chat = MessagesChatsChatUserProfilePop<ChatNav>._(
-    .chat,
-    ChatNav._(),
-  );
-  static const chats = MessagesChatsChatUserProfilePop<ChatsNav>._(
-    .chats,
-    ChatsNav._(),
-  );
-  static const messages = MessagesChatsChatUserProfilePop<MessagesNav>._(
-    .messages,
-    MessagesNav._(),
-  );
-}
-
-final class const ProfileUserProfileNav._()
+final class const UserProfileNav4._()
     extends AnyPlacement
     implements UserProfilePlacement {
   this : super._();
-  ProfileUserProfileNav surface() {
+  UserProfileNav4 surface() {
     _Screens.graph.popTo(_Screens.userProfile);
-    return const ProfileUserProfileNav._();
-  }
-
-  ProfileNav pop() {
-    _Screens.graph.pop();
-    return const ProfileNav._();
+    return const UserProfileNav4._();
   }
 }
 
-final class const WorkspaceProjectUserProfileNav._()
+final class const UserProfileNav5._()
     extends AnyPlacement
     implements UserProfilePlacement {
   this : super._();
-  WorkspaceProjectUserProfileNav surface() {
+  UserProfileNav5 surface() {
     _Screens.graph.popTo(_Screens.userProfile);
-    return const WorkspaceProjectUserProfileNav._();
-  }
-
-  ProjectNav pop() {
-    _Screens.graph.pop();
-    return const ProjectNav._();
-  }
-
-  WorkspaceNav popToWorkspace() {
-    _Screens.graph.pop(_Screens.workspace);
-    return const WorkspaceNav._();
-  }
-
-  N popTo<N extends AnyNav>(WorkspaceProjectUserProfilePop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
+    return const UserProfileNav5._();
   }
 }
 
-final class const WorkspaceProjectUserProfilePop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const project = WorkspaceProjectUserProfilePop<ProjectNav>._(
-    .project,
-    ProjectNav._(),
-  );
-  static const workspace = WorkspaceProjectUserProfilePop<WorkspaceNav>._(
-    .workspace,
-    WorkspaceNav._(),
-  );
-}
-
-final class const ForumForumCategoryForumThreadForumReplyUserProfileNav._()
+final class const UserProfileNav6._()
     extends AnyPlacement
     implements UserProfilePlacement {
   this : super._();
-  ForumForumCategoryForumThreadForumReplyUserProfileNav surface() {
+  UserProfileNav6 surface() {
     _Screens.graph.popTo(_Screens.userProfile);
-    return const ForumForumCategoryForumThreadForumReplyUserProfileNav._();
-  }
-
-  ForumReplyNav pop() {
-    _Screens.graph.pop();
-    return const ForumReplyNav._();
-  }
-
-  ForumThreadNav popToForumThread() {
-    _Screens.graph.pop(_Screens.forumThread);
-    return const ForumThreadNav._();
-  }
-
-  ForumCategoryNav popToForumCategory() {
-    _Screens.graph.pop(_Screens.forumCategory);
-    return const ForumCategoryNav._();
-  }
-
-  ForumNav popToForum() {
-    _Screens.graph.pop(_Screens.forum);
-    return const ForumNav._();
-  }
-
-  N popTo<N extends AnyNav>(
-    ForumForumCategoryForumThreadForumReplyUserProfilePop<N> to,
-  ) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
+    return const UserProfileNav6._();
   }
 }
 
-final class const ForumForumCategoryForumThreadForumReplyUserProfilePop<
-  N extends AnyNav
->._(final _Screens spec, final N? nav) {
-  static const forumReply =
-      ForumForumCategoryForumThreadForumReplyUserProfilePop<ForumReplyNav>._(
-        .forumReply,
-        ForumReplyNav._(),
-      );
-  static const forumThread =
-      ForumForumCategoryForumThreadForumReplyUserProfilePop<ForumThreadNav>._(
-        .forumThread,
-        ForumThreadNav._(),
-      );
-  static const forumCategory =
-      ForumForumCategoryForumThreadForumReplyUserProfilePop<ForumCategoryNav>._(
-        .forumCategory,
-        ForumCategoryNav._(),
-      );
-  static const forum =
-      ForumForumCategoryForumThreadForumReplyUserProfilePop<ForumNav>._(
-        .forum,
-        ForumNav._(),
-      );
-}
-
-final class const FollowersNav._()
-    extends AnyPlacement
-    implements ConnectionFollowersPopPlacement, PopDestPlacement {
+final class const FollowersNav._() extends AnyPlacement {
   this : super._();
   FollowersNav surface() {
     _Screens.graph.popTo(_Screens.followers);
@@ -10622,14 +5974,8 @@ final class const FollowersNav._()
   }
 
   ConnectionNav goConnection(String id) {
-    _Screens.graph.popTo(_Screens.followers);
-    _Screens.graph.go(_Screens.connection, id, true);
+    _Screens.graph.goFrom(_Screens.followers, _Screens.connection, id);
     return const ConnectionNav._();
-  }
-
-  ProfileNav pop() {
-    _Screens.graph.pop();
-    return const ProfileNav._();
   }
 }
 
@@ -10639,88 +5985,28 @@ final class const FollowingNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.following);
     return const FollowingNav._();
   }
-
-  ProfileNav pop() {
-    _Screens.graph.pop();
-    return const ProfileNav._();
-  }
 }
 
-final class const ConnectionNav._()
-    extends AnyPlacement
-    implements ConnectionFollowersPopPlacement, PopDestPlacement {
+final class const ConnectionNav._() extends AnyPlacement {
   this : super._();
   ConnectionNav surface() {
     _Screens.graph.popTo(_Screens.connection);
     return const ConnectionNav._();
   }
 
-  int get depth => _Screens.graph.countOf(_Screens.connection);
   ConnectionNav goConnection(String id) {
-    _Screens.graph.popTo(_Screens.connection);
-    _Screens.graph.go(_Screens.connection, id, true);
+    _Screens.graph.goFrom(_Screens.connection, _Screens.connection, id);
     return const ConnectionNav._();
   }
 
   MutualConnectionsNav goMutualConnections() {
-    _Screens.graph.popTo(_Screens.connection);
-    _Screens.graph.go(_Screens.mutualConnections, null, true);
+    _Screens.graph.goFrom(
+      _Screens.connection,
+      _Screens.mutualConnections,
+      null,
+    );
     return const MutualConnectionsNav._();
   }
-
-  N go<N extends AnyNav>(ConnectionHop<N> hop) {
-    _Screens.graph.go(hop.spec, hop.id, true);
-    return hop.nav;
-  }
-
-  ConnectionFollowersPopPlacement pop() {
-    _Screens.graph.pop();
-    return _resolveConnectionFollowersPopPlacement();
-  }
-
-  ProfileNav popToProfile() {
-    _Screens.graph.pop(_Screens.profile);
-    return const ProfileNav._();
-  }
-
-  ConnectionNav popToConnection() {
-    _Screens.graph.pop(_Screens.connection);
-    return const ConnectionNav._();
-  }
-
-  N popTo<N extends AnyNav>(ConnectionPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const ConnectionPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const followers = ConnectionPop<FollowersNav>._(
-    .followers,
-    FollowersNav._(),
-  );
-  static const profile = ConnectionPop<ProfileNav>._(.profile, ProfileNav._());
-  static const connection = ConnectionPop<ConnectionNav>._(
-    .connection,
-    ConnectionNav._(),
-  );
-}
-
-final class const ConnectionHop<N extends AnyNav>._(
-  final _Screens spec,
-  final Object? id,
-  final N nav,
-) {
-  static ConnectionHop<ConnectionNav> connection(String id) =>
-      ConnectionHop._(.connection, id, const ConnectionNav._());
-  static const mutualConnections = ConnectionHop<MutualConnectionsNav>._(
-    .mutualConnections,
-    null,
-    MutualConnectionsNav._(),
-  );
 }
 
 final class const MutualConnectionsNav._() extends AnyPlacement {
@@ -10729,44 +6015,6 @@ final class const MutualConnectionsNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.mutualConnections);
     return const MutualConnectionsNav._();
   }
-
-  ConnectionNav pop() {
-    _Screens.graph.pop();
-    return const ConnectionNav._();
-  }
-
-  FollowersNav popToFollowers() {
-    _Screens.graph.pop(_Screens.followers);
-    return const FollowersNav._();
-  }
-
-  ProfileNav popToProfile() {
-    _Screens.graph.pop(_Screens.profile);
-    return const ProfileNav._();
-  }
-
-  N popTo<N extends AnyNav>(MutualConnectionsPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const MutualConnectionsPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const connection = MutualConnectionsPop<ConnectionNav>._(
-    .connection,
-    ConnectionNav._(),
-  );
-  static const followers = MutualConnectionsPop<FollowersNav>._(
-    .followers,
-    FollowersNav._(),
-  );
-  static const profile = MutualConnectionsPop<ProfileNav>._(
-    .profile,
-    ProfileNav._(),
-  );
 }
 
 final class const EditProfileNav._() extends AnyPlacement {
@@ -10774,11 +6022,6 @@ final class const EditProfileNav._() extends AnyPlacement {
   EditProfileNav surface() {
     _Screens.graph.popTo(_Screens.editProfile);
     return const EditProfileNav._();
-  }
-
-  ProfileNav pop() {
-    _Screens.graph.pop();
-    return const ProfileNav._();
   }
 }
 
@@ -10788,16 +6031,9 @@ final class const AchievementsNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.achievements);
     return const AchievementsNav._();
   }
-
-  ProfileNav pop() {
-    _Screens.graph.pop();
-    return const ProfileNav._();
-  }
 }
 
-final class const BadgesNav._()
-    extends AnyPlacement
-    implements BadgeBadgesPopPlacement, PopDestPlacement {
+final class const BadgesNav._() extends AnyPlacement {
   this : super._();
   BadgesNav surface() {
     _Screens.graph.popTo(_Screens.badges);
@@ -10805,61 +6041,22 @@ final class const BadgesNav._()
   }
 
   BadgeNav goBadge(String id) {
-    _Screens.graph.popTo(_Screens.badges);
-    _Screens.graph.go(_Screens.badge, id, true);
+    _Screens.graph.goFrom(_Screens.badges, _Screens.badge, id);
     return const BadgeNav._();
-  }
-
-  ProfileNav pop() {
-    _Screens.graph.pop();
-    return const ProfileNav._();
   }
 }
 
-final class const BadgeNav._()
-    extends AnyPlacement
-    implements BadgeBadgesPopPlacement, PopDestPlacement {
+final class const BadgeNav._() extends AnyPlacement {
   this : super._();
   BadgeNav surface() {
     _Screens.graph.popTo(_Screens.badge);
     return const BadgeNav._();
   }
 
-  int get depth => _Screens.graph.countOf(_Screens.badge);
   BadgeNav goBadge(String id) {
-    _Screens.graph.popTo(_Screens.badge);
-    _Screens.graph.go(_Screens.badge, id, true);
+    _Screens.graph.goFrom(_Screens.badge, _Screens.badge, id);
     return const BadgeNav._();
   }
-
-  BadgeBadgesPopPlacement pop() {
-    _Screens.graph.pop();
-    return _resolveBadgeBadgesPopPlacement();
-  }
-
-  ProfileNav popToProfile() {
-    _Screens.graph.pop(_Screens.profile);
-    return const ProfileNav._();
-  }
-
-  BadgeNav popToBadge() {
-    _Screens.graph.pop(_Screens.badge);
-    return const BadgeNav._();
-  }
-
-  N popTo<N extends AnyNav>(BadgePop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const BadgePop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const badges = BadgePop<BadgesNav>._(.badges, BadgesNav._());
-  static const profile = BadgePop<ProfileNav>._(.profile, ProfileNav._());
-  static const badge = BadgePop<BadgeNav>._(.badge, BadgeNav._());
 }
 
 final class const SavedPostsNav._() extends AnyPlacement {
@@ -10867,11 +6064,6 @@ final class const SavedPostsNav._() extends AnyPlacement {
   SavedPostsNav surface() {
     _Screens.graph.popTo(_Screens.savedPosts);
     return const SavedPostsNav._();
-  }
-
-  ProfileNav pop() {
-    _Screens.graph.pop();
-    return const ProfileNav._();
   }
 }
 
@@ -10881,11 +6073,6 @@ final class const DraftsNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.drafts);
     return const DraftsNav._();
   }
-
-  ProfileNav pop() {
-    _Screens.graph.pop();
-    return const ProfileNav._();
-  }
 }
 
 final class const MyListingsNav._() extends AnyPlacement {
@@ -10894,16 +6081,9 @@ final class const MyListingsNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.myListings);
     return const MyListingsNav._();
   }
-
-  ProfileNav pop() {
-    _Screens.graph.pop();
-    return const ProfileNav._();
-  }
 }
 
-final class const NotificationsNav._()
-    extends AnyPlacement
-    implements PopDestPlacement {
+final class const NotificationsNav._() extends AnyPlacement {
   this : super._();
   NotificationsNav surface() {
     _Screens.graph.popTo(_Screens.notifications);
@@ -10911,8 +6091,11 @@ final class const NotificationsNav._()
   }
 
   NotificationSettingsNav goNotificationSettings() {
-    _Screens.graph.popTo(_Screens.notifications);
-    _Screens.graph.go(_Screens.notificationSettings, null, true);
+    _Screens.graph.goFrom(
+      _Screens.notifications,
+      _Screens.notificationSettings,
+      null,
+    );
     return const NotificationSettingsNav._();
   }
 }
@@ -10923,16 +6106,9 @@ final class const NotificationSettingsNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.notificationSettings);
     return const NotificationSettingsNav._();
   }
-
-  NotificationsNav pop() {
-    _Screens.graph.pop();
-    return const NotificationsNav._();
-  }
 }
 
-final class const SearchNav._()
-    extends AnyPlacement
-    implements SearchView, PopDestPlacement {
+final class const SearchNav._() extends AnyPlacement {
   this : super._();
   SearchNav surface() {
     _Screens.graph.popTo(_Screens.search);
@@ -10942,8 +6118,7 @@ final class const SearchNav._()
   SearchQueryMut get query => const SearchQueryMut._();
   SearchFragmentMut get fragment => const SearchFragmentMut._();
   SearchResultsNav goSearchResults() {
-    _Screens.graph.popTo(_Screens.search);
-    _Screens.graph.go(_Screens.searchResults, null, true);
+    _Screens.graph.goFrom(_Screens.search, _Screens.searchResults, null);
     return const SearchResultsNav._();
   }
 }
@@ -10954,16 +6129,9 @@ final class const SearchResultsNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.searchResults);
     return const SearchResultsNav._();
   }
-
-  SearchNav pop() {
-    _Screens.graph.pop();
-    return const SearchNav._();
-  }
 }
 
-final class const SettingsNav._()
-    extends AnyPlacement
-    implements PopDestPlacement {
+final class const SettingsNav._() extends AnyPlacement {
   this : super._();
   SettingsNav surface() {
     _Screens.graph.popTo(_Screens.settings);
@@ -10971,207 +6139,74 @@ final class const SettingsNav._()
   }
 
   AccountSettingsNav goAccountSettings() {
-    _Screens.graph.popTo(_Screens.settings);
-    _Screens.graph.go(_Screens.accountSettings, null, true);
+    _Screens.graph.goFrom(_Screens.settings, _Screens.accountSettings, null);
     return const AccountSettingsNav._();
   }
 
   SecurityNav goSecurity() {
-    _Screens.graph.popTo(_Screens.settings);
-    _Screens.graph.go(_Screens.security, null, true);
+    _Screens.graph.goFrom(_Screens.settings, _Screens.security, null);
     return const SecurityNav._();
   }
 
   PrivacyNav goPrivacy() {
-    _Screens.graph.popTo(_Screens.settings);
-    _Screens.graph.go(_Screens.privacy, null, true);
+    _Screens.graph.goFrom(_Screens.settings, _Screens.privacy, null);
     return const PrivacyNav._();
   }
 
   AppearanceNav goAppearance() {
-    _Screens.graph.popTo(_Screens.settings);
-    _Screens.graph.go(_Screens.appearance, null, true);
+    _Screens.graph.goFrom(_Screens.settings, _Screens.appearance, null);
     return const AppearanceNav._();
   }
 
   LanguageNav goLanguage() {
-    _Screens.graph.popTo(_Screens.settings);
-    _Screens.graph.go(_Screens.language, null, true);
+    _Screens.graph.goFrom(_Screens.settings, _Screens.language, null);
     return const LanguageNav._();
   }
 
   ConnectedAppsNav goConnectedApps() {
-    _Screens.graph.popTo(_Screens.settings);
-    _Screens.graph.go(_Screens.connectedApps, null, true);
+    _Screens.graph.goFrom(_Screens.settings, _Screens.connectedApps, null);
     return const ConnectedAppsNav._();
   }
 
   AboutNav goAbout() {
-    _Screens.graph.popTo(_Screens.settings);
-    _Screens.graph.go(_Screens.about, null, true);
+    _Screens.graph.goFrom(_Screens.settings, _Screens.about, null);
     return const AboutNav._();
   }
 
   BlockedUsersNav goBlockedUsers() {
-    _Screens.graph.popTo(_Screens.settings);
-    _Screens.graph.go(_Screens.blockedUsers, null, true);
+    _Screens.graph.goFrom(_Screens.settings, _Screens.blockedUsers, null);
     return const BlockedUsersNav._();
   }
 
   DevicesNav goDevices() {
-    _Screens.graph.popTo(_Screens.settings);
-    _Screens.graph.go(_Screens.devices, null, true);
+    _Screens.graph.goFrom(_Screens.settings, _Screens.devices, null);
     return const DevicesNav._();
   }
 
   DataExportNav goDataExport() {
-    _Screens.graph.popTo(_Screens.settings);
-    _Screens.graph.go(_Screens.dataExport, null, true);
+    _Screens.graph.goFrom(_Screens.settings, _Screens.dataExport, null);
     return const DataExportNav._();
   }
 
   DeleteAccountNav goDeleteAccount() {
-    _Screens.graph.popTo(_Screens.settings);
-    _Screens.graph.go(_Screens.deleteAccount, null, true);
+    _Screens.graph.goFrom(_Screens.settings, _Screens.deleteAccount, null);
     return const DeleteAccountNav._();
   }
 
   IntegrationsNav goIntegrations() {
-    _Screens.graph.popTo(_Screens.settings);
-    _Screens.graph.go(_Screens.integrations, null, true);
+    _Screens.graph.goFrom(_Screens.settings, _Screens.integrations, null);
     return const IntegrationsNav._();
   }
 
   SupportNav goSupport() {
-    _Screens.graph.popTo(_Screens.settings);
-    _Screens.graph.go(Support.support, null, true);
+    _Screens.graph.goFrom(_Screens.settings, Support.support, null);
     return const SupportNav._();
   }
 
   AdminNav goAdmin() {
-    _Screens.graph.popTo(_Screens.settings);
-    _Screens.graph.go(Admin.admin, null, true);
+    _Screens.graph.goFrom(_Screens.settings, Admin.admin, null);
     return const AdminNav._();
   }
-
-  HelpCategoryNav goHelpCategory(String id) {
-    _Screens.graph.go(_Screens.about, null, true);
-    _Screens.graph.go(_Screens.help, null, true);
-    _Screens.graph.go(_Screens.helpCategory, id, true);
-    return const HelpCategoryNav._();
-  }
-
-  DeviceNav goDevice(String id) {
-    _Screens.graph.go(_Screens.devices, null, true);
-    _Screens.graph.go(_Screens.device, id, true);
-    return const DeviceNav._();
-  }
-
-  SupportTicketNav goSupportTicket(String id) {
-    _Screens.graph.go(Support.support, null, true);
-    _Screens.graph.go(Support.supportTickets, null, true);
-    _Screens.graph.go(Support.supportTicket, id, true);
-    return const SupportTicketNav._();
-  }
-
-  ArticleNav goArticle(String id) {
-    _Screens.graph.go(Support.support, null, true);
-    _Screens.graph.go(Support.knowledgeBase, null, true);
-    _Screens.graph.go(Support.article, id, true);
-    return const ArticleNav._();
-  }
-
-  AdminUserNav goAdminUser(String id) {
-    _Screens.graph.go(Admin.admin, null, true);
-    _Screens.graph.go(Admin.adminUsers, null, true);
-    _Screens.graph.go(Admin.adminUser, id, true);
-    return const AdminUserNav._();
-  }
-
-  WebhookNav goWebhook(String id) {
-    _Screens.graph.go(Admin.admin, null, true);
-    _Screens.graph.go(Admin.webhooks, null, true);
-    _Screens.graph.go(Admin.webhook, id, true);
-    return const WebhookNav._();
-  }
-
-  N go<N extends AnyNav>(SettingsHop<N> hop) {
-    _Screens.graph.go(hop.spec, hop.id, true);
-    return hop.nav;
-  }
-}
-
-final class const SettingsHop<N extends AnyNav>._(
-  final Enum spec,
-  final Object? id,
-  final N nav,
-) {
-  static const accountSettings = SettingsHop<AccountSettingsNav>._(
-    _Screens.accountSettings,
-    null,
-    AccountSettingsNav._(),
-  );
-  static const security = SettingsHop<SecurityNav>._(
-    _Screens.security,
-    null,
-    SecurityNav._(),
-  );
-  static const privacy = SettingsHop<PrivacyNav>._(
-    _Screens.privacy,
-    null,
-    PrivacyNav._(),
-  );
-  static const appearance = SettingsHop<AppearanceNav>._(
-    _Screens.appearance,
-    null,
-    AppearanceNav._(),
-  );
-  static const language = SettingsHop<LanguageNav>._(
-    _Screens.language,
-    null,
-    LanguageNav._(),
-  );
-  static const connectedApps = SettingsHop<ConnectedAppsNav>._(
-    _Screens.connectedApps,
-    null,
-    ConnectedAppsNav._(),
-  );
-  static const about = SettingsHop<AboutNav>._(
-    _Screens.about,
-    null,
-    AboutNav._(),
-  );
-  static const blockedUsers = SettingsHop<BlockedUsersNav>._(
-    _Screens.blockedUsers,
-    null,
-    BlockedUsersNav._(),
-  );
-  static const devices = SettingsHop<DevicesNav>._(
-    _Screens.devices,
-    null,
-    DevicesNav._(),
-  );
-  static const dataExport = SettingsHop<DataExportNav>._(
-    _Screens.dataExport,
-    null,
-    DataExportNav._(),
-  );
-  static const deleteAccount = SettingsHop<DeleteAccountNav>._(
-    _Screens.deleteAccount,
-    null,
-    DeleteAccountNav._(),
-  );
-  static const integrations = SettingsHop<IntegrationsNav>._(
-    _Screens.integrations,
-    null,
-    IntegrationsNav._(),
-  );
-  static const support = SettingsHop<SupportNav>._(
-    Support.support,
-    null,
-    SupportNav._(),
-  );
-  static const admin = SettingsHop<AdminNav>._(Admin.admin, null, AdminNav._());
 }
 
 final class const AccountSettingsNav._() extends AnyPlacement {
@@ -11180,16 +6215,9 @@ final class const AccountSettingsNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.accountSettings);
     return const AccountSettingsNav._();
   }
-
-  SettingsNav pop() {
-    _Screens.graph.pop();
-    return const SettingsNav._();
-  }
 }
 
-final class const SecurityNav._()
-    extends AnyPlacement
-    implements PopDestPlacement {
+final class const SecurityNav._() extends AnyPlacement {
   this : super._();
   SecurityNav surface() {
     _Screens.graph.popTo(_Screens.security);
@@ -11197,14 +6225,8 @@ final class const SecurityNav._()
   }
 
   TwoFactorSettingsNav goTwoFactorSettings() {
-    _Screens.graph.popTo(_Screens.security);
-    _Screens.graph.go(_Screens.twoFactorSettings, null, true);
+    _Screens.graph.goFrom(_Screens.security, _Screens.twoFactorSettings, null);
     return const TwoFactorSettingsNav._();
-  }
-
-  SettingsNav pop() {
-    _Screens.graph.pop();
-    return const SettingsNav._();
   }
 }
 
@@ -11214,35 +6236,6 @@ final class const TwoFactorSettingsNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.twoFactorSettings);
     return const TwoFactorSettingsNav._();
   }
-
-  SecurityNav pop() {
-    _Screens.graph.pop();
-    return const SecurityNav._();
-  }
-
-  SettingsNav popToSettings() {
-    _Screens.graph.pop(_Screens.settings);
-    return const SettingsNav._();
-  }
-
-  N popTo<N extends AnyNav>(TwoFactorSettingsPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const TwoFactorSettingsPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const security = TwoFactorSettingsPop<SecurityNav>._(
-    .security,
-    SecurityNav._(),
-  );
-  static const settings = TwoFactorSettingsPop<SettingsNav>._(
-    .settings,
-    SettingsNav._(),
-  );
 }
 
 final class const PrivacyNav._() extends AnyPlacement {
@@ -11250,11 +6243,6 @@ final class const PrivacyNav._() extends AnyPlacement {
   PrivacyNav surface() {
     _Screens.graph.popTo(_Screens.privacy);
     return const PrivacyNav._();
-  }
-
-  SettingsNav pop() {
-    _Screens.graph.pop();
-    return const SettingsNav._();
   }
 }
 
@@ -11264,11 +6252,6 @@ final class const AppearanceNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.appearance);
     return const AppearanceNav._();
   }
-
-  SettingsNav pop() {
-    _Screens.graph.pop();
-    return const SettingsNav._();
-  }
 }
 
 final class const LanguageNav._() extends AnyPlacement {
@@ -11276,11 +6259,6 @@ final class const LanguageNav._() extends AnyPlacement {
   LanguageNav surface() {
     _Screens.graph.popTo(_Screens.language);
     return const LanguageNav._();
-  }
-
-  SettingsNav pop() {
-    _Screens.graph.pop();
-    return const SettingsNav._();
   }
 }
 
@@ -11290,16 +6268,9 @@ final class const ConnectedAppsNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.connectedApps);
     return const ConnectedAppsNav._();
   }
-
-  SettingsNav pop() {
-    _Screens.graph.pop();
-    return const SettingsNav._();
-  }
 }
 
-final class const AboutNav._()
-    extends AnyPlacement
-    implements PopDestPlacement {
+final class const AboutNav._() extends AnyPlacement {
   this : super._();
   AboutNav surface() {
     _Screens.graph.popTo(_Screens.about);
@@ -11307,48 +6278,17 @@ final class const AboutNav._()
   }
 
   HelpNav goHelp() {
-    _Screens.graph.popTo(_Screens.about);
-    _Screens.graph.go(_Screens.help, null, true);
+    _Screens.graph.goFrom(_Screens.about, _Screens.help, null);
     return const HelpNav._();
   }
 
   FeedbackNav goFeedback() {
-    _Screens.graph.popTo(_Screens.about);
-    _Screens.graph.go(_Screens.feedback, null, true);
+    _Screens.graph.goFrom(_Screens.about, _Screens.feedback, null);
     return const FeedbackNav._();
   }
-
-  HelpCategoryNav goHelpCategory(String id) {
-    _Screens.graph.go(_Screens.help, null, true);
-    _Screens.graph.go(_Screens.helpCategory, id, true);
-    return const HelpCategoryNav._();
-  }
-
-  N go<N extends AnyNav>(AboutHop<N> hop) {
-    _Screens.graph.go(hop.spec, hop.id, true);
-    return hop.nav;
-  }
-
-  SettingsNav pop() {
-    _Screens.graph.pop();
-    return const SettingsNav._();
-  }
 }
 
-final class const AboutHop<N extends AnyNav>._(
-  final _Screens spec,
-  final Object? id,
-  final N nav,
-) {
-  static const help = AboutHop<HelpNav>._(.help, null, HelpNav._());
-  static const feedback = AboutHop<FeedbackNav>._(
-    .feedback,
-    null,
-    FeedbackNav._(),
-  );
-}
-
-final class const HelpNav._() extends AnyPlacement implements PopDestPlacement {
+final class const HelpNav._() extends AnyPlacement {
   this : super._();
   HelpNav surface() {
     _Screens.graph.popTo(_Screens.help);
@@ -11356,38 +6296,12 @@ final class const HelpNav._() extends AnyPlacement implements PopDestPlacement {
   }
 
   HelpCategoryNav goHelpCategory(String id) {
-    _Screens.graph.popTo(_Screens.help);
-    _Screens.graph.go(_Screens.helpCategory, id, true);
+    _Screens.graph.goFrom(_Screens.help, _Screens.helpCategory, id);
     return const HelpCategoryNav._();
   }
-
-  AboutNav pop() {
-    _Screens.graph.pop();
-    return const AboutNav._();
-  }
-
-  SettingsNav popToSettings() {
-    _Screens.graph.pop(_Screens.settings);
-    return const SettingsNav._();
-  }
-
-  N popTo<N extends AnyNav>(HelpPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const HelpPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const about = HelpPop<AboutNav>._(.about, AboutNav._());
-  static const settings = HelpPop<SettingsNav>._(.settings, SettingsNav._());
-}
-
-final class const HelpCategoryNav._()
-    extends AnyPlacement
-    implements PopDestPlacement {
+final class const HelpCategoryNav._() extends AnyPlacement {
   this : super._();
   HelpCategoryNav surface() {
     _Screens.graph.popTo(_Screens.helpCategory);
@@ -11395,51 +6309,12 @@ final class const HelpCategoryNav._()
   }
 
   FaqNav goFaq() {
-    _Screens.graph.popTo(_Screens.helpCategory);
-    _Screens.graph.go(_Screens.faq, null, true);
+    _Screens.graph.goFrom(_Screens.helpCategory, _Screens.faq, null);
     return const FaqNav._();
   }
-
-  FaqArticleNav goFaqArticle(String id) {
-    _Screens.graph.go(_Screens.faq, null, true);
-    _Screens.graph.go(_Screens.faqArticle, id, true);
-    return const FaqArticleNav._();
-  }
-
-  HelpNav pop() {
-    _Screens.graph.pop();
-    return const HelpNav._();
-  }
-
-  AboutNav popToAbout() {
-    _Screens.graph.pop(_Screens.about);
-    return const AboutNav._();
-  }
-
-  SettingsNav popToSettings() {
-    _Screens.graph.pop(_Screens.settings);
-    return const SettingsNav._();
-  }
-
-  N popTo<N extends AnyNav>(HelpCategoryPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const HelpCategoryPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const help = HelpCategoryPop<HelpNav>._(.help, HelpNav._());
-  static const about = HelpCategoryPop<AboutNav>._(.about, AboutNav._());
-  static const settings = HelpCategoryPop<SettingsNav>._(
-    .settings,
-    SettingsNav._(),
-  );
-}
-
-final class const FaqNav._() extends AnyPlacement implements PopDestPlacement {
+final class const FaqNav._() extends AnyPlacement {
   this : super._();
   FaqNav surface() {
     _Screens.graph.popTo(_Screens.faq);
@@ -11447,48 +6322,9 @@ final class const FaqNav._() extends AnyPlacement implements PopDestPlacement {
   }
 
   FaqArticleNav goFaqArticle(String id) {
-    _Screens.graph.popTo(_Screens.faq);
-    _Screens.graph.go(_Screens.faqArticle, id, true);
+    _Screens.graph.goFrom(_Screens.faq, _Screens.faqArticle, id);
     return const FaqArticleNav._();
   }
-
-  HelpCategoryNav pop() {
-    _Screens.graph.pop();
-    return const HelpCategoryNav._();
-  }
-
-  HelpNav popToHelp() {
-    _Screens.graph.pop(_Screens.help);
-    return const HelpNav._();
-  }
-
-  AboutNav popToAbout() {
-    _Screens.graph.pop(_Screens.about);
-    return const AboutNav._();
-  }
-
-  SettingsNav popToSettings() {
-    _Screens.graph.pop(_Screens.settings);
-    return const SettingsNav._();
-  }
-
-  N popTo<N extends AnyNav>(FaqPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const FaqPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const helpCategory = FaqPop<HelpCategoryNav>._(
-    .helpCategory,
-    HelpCategoryNav._(),
-  );
-  static const help = FaqPop<HelpNav>._(.help, HelpNav._());
-  static const about = FaqPop<AboutNav>._(.about, AboutNav._());
-  static const settings = FaqPop<SettingsNav>._(.settings, SettingsNav._());
 }
 
 final class const FaqArticleNav._() extends AnyPlacement {
@@ -11497,53 +6333,6 @@ final class const FaqArticleNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.faqArticle);
     return const FaqArticleNav._();
   }
-
-  FaqNav pop() {
-    _Screens.graph.pop();
-    return const FaqNav._();
-  }
-
-  HelpCategoryNav popToHelpCategory() {
-    _Screens.graph.pop(_Screens.helpCategory);
-    return const HelpCategoryNav._();
-  }
-
-  HelpNav popToHelp() {
-    _Screens.graph.pop(_Screens.help);
-    return const HelpNav._();
-  }
-
-  AboutNav popToAbout() {
-    _Screens.graph.pop(_Screens.about);
-    return const AboutNav._();
-  }
-
-  SettingsNav popToSettings() {
-    _Screens.graph.pop(_Screens.settings);
-    return const SettingsNav._();
-  }
-
-  N popTo<N extends AnyNav>(FaqArticlePop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const FaqArticlePop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const faq = FaqArticlePop<FaqNav>._(.faq, FaqNav._());
-  static const helpCategory = FaqArticlePop<HelpCategoryNav>._(
-    .helpCategory,
-    HelpCategoryNav._(),
-  );
-  static const help = FaqArticlePop<HelpNav>._(.help, HelpNav._());
-  static const about = FaqArticlePop<AboutNav>._(.about, AboutNav._());
-  static const settings = FaqArticlePop<SettingsNav>._(
-    .settings,
-    SettingsNav._(),
-  );
 }
 
 final class const FeedbackNav._() extends AnyPlacement {
@@ -11552,32 +6341,6 @@ final class const FeedbackNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.feedback);
     return const FeedbackNav._();
   }
-
-  AboutNav pop() {
-    _Screens.graph.pop();
-    return const AboutNav._();
-  }
-
-  SettingsNav popToSettings() {
-    _Screens.graph.pop(_Screens.settings);
-    return const SettingsNav._();
-  }
-
-  N popTo<N extends AnyNav>(FeedbackPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const FeedbackPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const about = FeedbackPop<AboutNav>._(.about, AboutNav._());
-  static const settings = FeedbackPop<SettingsNav>._(
-    .settings,
-    SettingsNav._(),
-  );
 }
 
 final class const BlockedUsersNav._() extends AnyPlacement {
@@ -11586,16 +6349,9 @@ final class const BlockedUsersNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.blockedUsers);
     return const BlockedUsersNav._();
   }
-
-  SettingsNav pop() {
-    _Screens.graph.pop();
-    return const SettingsNav._();
-  }
 }
 
-final class const DevicesNav._()
-    extends AnyPlacement
-    implements PopDestPlacement {
+final class const DevicesNav._() extends AnyPlacement {
   this : super._();
   DevicesNav surface() {
     _Screens.graph.popTo(_Screens.devices);
@@ -11603,20 +6359,12 @@ final class const DevicesNav._()
   }
 
   DeviceNav goDevice(String id) {
-    _Screens.graph.popTo(_Screens.devices);
-    _Screens.graph.go(_Screens.device, id, true);
+    _Screens.graph.goFrom(_Screens.devices, _Screens.device, id);
     return const DeviceNav._();
-  }
-
-  SettingsNav pop() {
-    _Screens.graph.pop();
-    return const SettingsNav._();
   }
 }
 
-final class const DeviceNav._()
-    extends AnyPlacement
-    implements DeviceSessionPopPlacement, PopDestPlacement {
+final class const DeviceNav._() extends AnyPlacement {
   this : super._();
   DeviceNav surface() {
     _Screens.graph.popTo(_Screens.device);
@@ -11624,58 +6372,14 @@ final class const DeviceNav._()
   }
 
   SessionsNav goSessions() {
-    _Screens.graph.popTo(_Screens.device);
-    _Screens.graph.go(_Screens.sessions, null, true);
+    _Screens.graph.goFrom(_Screens.device, _Screens.sessions, null);
     return const SessionsNav._();
   }
 
   SessionNav goSession(String id) {
-    _Screens.graph.popTo(_Screens.device);
-    _Screens.graph.go(_Screens.session, id, true);
+    _Screens.graph.goFrom(_Screens.device, _Screens.session, id);
     return const SessionNav._();
   }
-
-  N go<N extends AnyNav>(DeviceHop<N> hop) {
-    _Screens.graph.go(hop.spec, hop.id, true);
-    return hop.nav;
-  }
-
-  DevicesNav pop() {
-    _Screens.graph.pop();
-    return const DevicesNav._();
-  }
-
-  SettingsNav popToSettings() {
-    _Screens.graph.pop(_Screens.settings);
-    return const SettingsNav._();
-  }
-
-  N popTo<N extends AnyNav>(DevicePop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const DevicePop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const devices = DevicePop<DevicesNav>._(.devices, DevicesNav._());
-  static const settings = DevicePop<SettingsNav>._(.settings, SettingsNav._());
-}
-
-final class const DeviceHop<N extends AnyNav>._(
-  final _Screens spec,
-  final Object? id,
-  final N nav,
-) {
-  static const sessions = DeviceHop<SessionsNav>._(
-    .sessions,
-    null,
-    SessionsNav._(),
-  );
-  static DeviceHop<SessionNav> session(String id) =>
-      DeviceHop._(.session, id, const SessionNav._());
 }
 
 final class const SessionsNav._() extends AnyPlacement {
@@ -11684,90 +6388,19 @@ final class const SessionsNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.sessions);
     return const SessionsNav._();
   }
-
-  DeviceNav pop() {
-    _Screens.graph.pop();
-    return const DeviceNav._();
-  }
-
-  DevicesNav popToDevices() {
-    _Screens.graph.pop(_Screens.devices);
-    return const DevicesNav._();
-  }
-
-  SettingsNav popToSettings() {
-    _Screens.graph.pop(_Screens.settings);
-    return const SettingsNav._();
-  }
-
-  N popTo<N extends AnyNav>(SessionsPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const SessionsPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const device = SessionsPop<DeviceNav>._(.device, DeviceNav._());
-  static const devices = SessionsPop<DevicesNav>._(.devices, DevicesNav._());
-  static const settings = SessionsPop<SettingsNav>._(
-    .settings,
-    SettingsNav._(),
-  );
-}
-
-final class const SessionNav._()
-    extends AnyPlacement
-    implements DeviceSessionPopPlacement, PopDestPlacement {
+final class const SessionNav._() extends AnyPlacement {
   this : super._();
   SessionNav surface() {
     _Screens.graph.popTo(_Screens.session);
     return const SessionNav._();
   }
 
-  int get depth => _Screens.graph.countOf(_Screens.session);
   SessionNav goSession(String id) {
-    _Screens.graph.popTo(_Screens.session);
-    _Screens.graph.go(_Screens.session, id, true);
+    _Screens.graph.goFrom(_Screens.session, _Screens.session, id);
     return const SessionNav._();
   }
-
-  DeviceSessionPopPlacement pop() {
-    _Screens.graph.pop();
-    return _resolveDeviceSessionPopPlacement();
-  }
-
-  DevicesNav popToDevices() {
-    _Screens.graph.pop(_Screens.devices);
-    return const DevicesNav._();
-  }
-
-  SettingsNav popToSettings() {
-    _Screens.graph.pop(_Screens.settings);
-    return const SettingsNav._();
-  }
-
-  SessionNav popToSession() {
-    _Screens.graph.pop(_Screens.session);
-    return const SessionNav._();
-  }
-
-  N popTo<N extends AnyNav>(SessionPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const SessionPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const device = SessionPop<DeviceNav>._(.device, DeviceNav._());
-  static const devices = SessionPop<DevicesNav>._(.devices, DevicesNav._());
-  static const settings = SessionPop<SettingsNav>._(.settings, SettingsNav._());
-  static const session = SessionPop<SessionNav>._(.session, SessionNav._());
 }
 
 final class const DataExportNav._() extends AnyPlacement {
@@ -11775,11 +6408,6 @@ final class const DataExportNav._() extends AnyPlacement {
   DataExportNav surface() {
     _Screens.graph.popTo(_Screens.dataExport);
     return const DataExportNav._();
-  }
-
-  SettingsNav pop() {
-    _Screens.graph.pop();
-    return const SettingsNav._();
   }
 }
 
@@ -11789,16 +6417,9 @@ final class const DeleteAccountNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.deleteAccount);
     return const DeleteAccountNav._();
   }
-
-  SettingsNav pop() {
-    _Screens.graph.pop();
-    return const SettingsNav._();
-  }
 }
 
-final class const WorkspaceNav._()
-    extends AnyPlacement
-    implements WorkspaceView, PopDestPlacement {
+final class const WorkspaceNav._() extends AnyPlacement {
   this : super._();
   WorkspaceNav surface() {
     _Screens.graph.popTo(_Screens.workspace);
@@ -11807,15 +6428,12 @@ final class const WorkspaceNav._()
 
   WorkspaceQueryMut get query => const WorkspaceQueryMut._();
   ProjectNav goProject(String id) {
-    _Screens.graph.popTo(_Screens.workspace);
-    _Screens.graph.go(_Screens.project, id, true);
+    _Screens.graph.goFrom(_Screens.workspace, _Screens.project, id);
     return const ProjectNav._();
   }
 }
 
-final class const ProjectNav._()
-    extends AnyPlacement
-    implements ProjectView, PopDestPlacement {
+final class const ProjectNav._() extends AnyPlacement {
   this : super._();
   ProjectNav surface() {
     _Screens.graph.popTo(_Screens.project);
@@ -11824,42 +6442,17 @@ final class const ProjectNav._()
 
   ProjectQueryMut get query => const ProjectQueryMut._();
   BoardNav goBoard(String id) {
-    _Screens.graph.popTo(_Screens.project);
-    _Screens.graph.go(_Screens.board, id, true);
+    _Screens.graph.goFrom(_Screens.project, _Screens.board, id);
     return const BoardNav._();
   }
 
-  WorkspaceProjectUserProfileNav goUserProfile(String id) {
-    _Screens.graph.popTo(_Screens.project);
-    _Screens.graph.go(_Screens.userProfile, id, true);
-    return const WorkspaceProjectUserProfileNav._();
-  }
-
-  N go<N extends AnyNav>(ProjectHop<N> hop) {
-    _Screens.graph.go(hop.spec, hop.id, true);
-    return hop.nav;
-  }
-
-  WorkspaceNav pop() {
-    _Screens.graph.pop();
-    return const WorkspaceNav._();
+  UserProfileNav5 goUserProfile(String id) {
+    _Screens.graph.goFrom(_Screens.project, _Screens.userProfile, id);
+    return const UserProfileNav5._();
   }
 }
 
-final class const ProjectHop<N extends AnyNav>._(
-  final _Screens spec,
-  final Object? id,
-  final N nav,
-) {
-  static ProjectHop<BoardNav> board(String id) =>
-      ProjectHop._(.board, id, const BoardNav._());
-  static ProjectHop<WorkspaceProjectUserProfileNav> userProfile(String id) =>
-      ProjectHop._(.userProfile, id, const WorkspaceProjectUserProfileNav._());
-}
-
-final class const BoardNav._()
-    extends AnyPlacement
-    implements BoardView, PopDestPlacement {
+final class const BoardNav._() extends AnyPlacement {
   this : super._();
   BoardNav surface() {
     _Screens.graph.popTo(_Screens.board);
@@ -11868,41 +6461,12 @@ final class const BoardNav._()
 
   BoardQueryMut get query => const BoardQueryMut._();
   TaskListNav goTaskList(String id) {
-    _Screens.graph.popTo(_Screens.board);
-    _Screens.graph.go(_Screens.taskList, id, true);
+    _Screens.graph.goFrom(_Screens.board, _Screens.taskList, id);
     return const TaskListNav._();
   }
-
-  ProjectNav pop() {
-    _Screens.graph.pop();
-    return const ProjectNav._();
-  }
-
-  WorkspaceNav popToWorkspace() {
-    _Screens.graph.pop(_Screens.workspace);
-    return const WorkspaceNav._();
-  }
-
-  N popTo<N extends AnyNav>(BoardPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const BoardPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const project = BoardPop<ProjectNav>._(.project, ProjectNav._());
-  static const workspace = BoardPop<WorkspaceNav>._(
-    .workspace,
-    WorkspaceNav._(),
-  );
-}
-
-final class const TaskListNav._()
-    extends AnyPlacement
-    implements TaskListView, TaskTaskListPopPlacement, PopDestPlacement {
+final class const TaskListNav._() extends AnyPlacement {
   this : super._();
   TaskListNav surface() {
     _Screens.graph.popTo(_Screens.taskList);
@@ -11911,93 +6475,22 @@ final class const TaskListNav._()
 
   TaskListQueryMut get query => const TaskListQueryMut._();
   TaskNav goTask(String id) {
-    _Screens.graph.popTo(_Screens.taskList);
-    _Screens.graph.go(_Screens.task, id, true);
+    _Screens.graph.goFrom(_Screens.taskList, _Screens.task, id);
     return const TaskNav._();
   }
 
   MilestoneNav goMilestone(String id) {
-    _Screens.graph.popTo(_Screens.taskList);
-    _Screens.graph.go(_Screens.milestone, id, true);
+    _Screens.graph.goFrom(_Screens.taskList, _Screens.milestone, id);
     return const MilestoneNav._();
   }
 
   SprintNav goSprint(String id) {
-    _Screens.graph.popTo(_Screens.taskList);
-    _Screens.graph.go(_Screens.sprint, id, true);
+    _Screens.graph.goFrom(_Screens.taskList, _Screens.sprint, id);
     return const SprintNav._();
   }
-
-  EditTaskNav goEditTask(String id) {
-    _Screens.graph.go(_Screens.task, id, true);
-    _Screens.graph.go(_Screens.editTask, id, true);
-    return const EditTaskNav._();
-  }
-
-  TaskCommentNav goTaskComment(String id) {
-    _Screens.graph.go(_Screens.task, id, true);
-    _Screens.graph.go(_Screens.taskComment, id, true);
-    return const TaskCommentNav._();
-  }
-
-  N go<N extends AnyNav>(TaskListHop<N> hop) {
-    _Screens.graph.go(hop.spec, hop.id, true);
-    return hop.nav;
-  }
-
-  BoardNav pop() {
-    _Screens.graph.pop();
-    return const BoardNav._();
-  }
-
-  ProjectNav popToProject() {
-    _Screens.graph.pop(_Screens.project);
-    return const ProjectNav._();
-  }
-
-  WorkspaceNav popToWorkspace() {
-    _Screens.graph.pop(_Screens.workspace);
-    return const WorkspaceNav._();
-  }
-
-  N popTo<N extends AnyNav>(TaskListPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const TaskListPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const board = TaskListPop<BoardNav>._(.board, BoardNav._());
-  static const project = TaskListPop<ProjectNav>._(.project, ProjectNav._());
-  static const workspace = TaskListPop<WorkspaceNav>._(
-    .workspace,
-    WorkspaceNav._(),
-  );
-}
-
-final class const TaskListHop<N extends AnyNav>._(
-  final _Screens spec,
-  final Object? id,
-  final N nav,
-) {
-  static TaskListHop<TaskNav> task(String id) =>
-      TaskListHop._(.task, id, const TaskNav._());
-  static TaskListHop<MilestoneNav> milestone(String id) =>
-      TaskListHop._(.milestone, id, const MilestoneNav._());
-  static TaskListHop<SprintNav> sprint(String id) =>
-      TaskListHop._(.sprint, id, const SprintNav._());
-}
-
-final class const TaskNav._()
-    extends AnyPlacement
-    implements
-        TaskView,
-        TaskTaskListPopPlacement,
-        SubtaskTaskPopPlacement,
-        PopDestPlacement {
+final class const TaskNav._() extends AnyPlacement {
   this : super._();
   TaskNav surface() {
     _Screens.graph.popTo(_Screens.task);
@@ -12005,283 +6498,74 @@ final class const TaskNav._()
   }
 
   TaskQueryMut get query => const TaskQueryMut._();
-  int get depth => _Screens.graph.countOf(_Screens.task);
   SubtaskNav goSubtask(String id) {
-    _Screens.graph.popTo(_Screens.task);
-    _Screens.graph.go(_Screens.subtask, id, true);
+    _Screens.graph.goFrom(_Screens.task, _Screens.subtask, id);
     return const SubtaskNav._();
   }
 
   EditTaskNav goEditTask() {
-    _Screens.graph.popTo(_Screens.task);
-    _Screens.graph.go(_Screens.editTask, _idOf(_Screens.task), true);
+    _Screens.graph.goFrom(
+      _Screens.task,
+      _Screens.editTask,
+      _idOf(_Screens.task),
+    );
     return const EditTaskNav._();
   }
 
   TaskCommentNav goTaskComment() {
-    _Screens.graph.popTo(_Screens.task);
-    _Screens.graph.go(_Screens.taskComment, _idOf(_Screens.task), true);
+    _Screens.graph.goFrom(
+      _Screens.task,
+      _Screens.taskComment,
+      _idOf(_Screens.task),
+    );
     return const TaskCommentNav._();
   }
 
   AssigneeNav goAssignee(String id) {
-    _Screens.graph.popTo(_Screens.task);
-    _Screens.graph.go(_Screens.assignee, id, true);
+    _Screens.graph.goFrom(_Screens.task, _Screens.assignee, id);
     return const AssigneeNav._();
   }
 
   LabelNav goLabel(String id) {
-    _Screens.graph.popTo(_Screens.task);
-    _Screens.graph.go(_Screens.label, id, true);
+    _Screens.graph.goFrom(_Screens.task, _Screens.label, id);
     return const LabelNav._();
   }
 
   TaskNav goTask(String id) {
-    _Screens.graph.popTo(_Screens.task);
-    _Screens.graph.go(_Screens.task, id, true);
+    _Screens.graph.goFrom(_Screens.task, _Screens.task, id);
     return const TaskNav._();
   }
-
-  N go<N extends AnyNav>(TaskHop<N> hop) {
-    _Screens.graph.go(hop.spec, hop.id, true);
-    return hop.nav;
-  }
-
-  TaskTaskListPopPlacement pop() {
-    _Screens.graph.pop();
-    return _resolveTaskTaskListPopPlacement();
-  }
-
-  BoardNav popToBoard() {
-    _Screens.graph.pop(_Screens.board);
-    return const BoardNav._();
-  }
-
-  ProjectNav popToProject() {
-    _Screens.graph.pop(_Screens.project);
-    return const ProjectNav._();
-  }
-
-  WorkspaceNav popToWorkspace() {
-    _Screens.graph.pop(_Screens.workspace);
-    return const WorkspaceNav._();
-  }
-
-  TaskNav popToTask() {
-    _Screens.graph.pop(_Screens.task);
-    return const TaskNav._();
-  }
-
-  N popTo<N extends AnyNav>(TaskPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const TaskPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const taskList = TaskPop<TaskListNav>._(.taskList, TaskListNav._());
-  static const board = TaskPop<BoardNav>._(.board, BoardNav._());
-  static const project = TaskPop<ProjectNav>._(.project, ProjectNav._());
-  static const workspace = TaskPop<WorkspaceNav>._(
-    .workspace,
-    WorkspaceNav._(),
-  );
-  static const task = TaskPop<TaskNav>._(.task, TaskNav._());
-}
-
-final class const TaskHop<N extends AnyNav>._(
-  final _Screens spec,
-  final Object? id,
-  final N nav,
-) {
-  static TaskHop<SubtaskNav> subtask(String id) =>
-      TaskHop._(.subtask, id, const SubtaskNav._());
-  static TaskHop<AssigneeNav> assignee(String id) =>
-      TaskHop._(.assignee, id, const AssigneeNav._());
-  static TaskHop<LabelNav> label(String id) =>
-      TaskHop._(.label, id, const LabelNav._());
-  static TaskHop<TaskNav> task(String id) =>
-      TaskHop._(.task, id, const TaskNav._());
-}
-
-final class const SubtaskNav._()
-    extends AnyPlacement
-    implements
-        SubtaskTaskPopPlacement,
-        ChecklistItemSubtaskPopPlacement,
-        PopDestPlacement {
+final class const SubtaskNav._() extends AnyPlacement {
   this : super._();
   SubtaskNav surface() {
     _Screens.graph.popTo(_Screens.subtask);
     return const SubtaskNav._();
   }
 
-  int get depth => _Screens.graph.countOf(_Screens.subtask);
   ChecklistItemNav goChecklistItem(String id) {
-    _Screens.graph.popTo(_Screens.subtask);
-    _Screens.graph.go(_Screens.checklistItem, id, true);
+    _Screens.graph.goFrom(_Screens.subtask, _Screens.checklistItem, id);
     return const ChecklistItemNav._();
   }
 
   SubtaskNav goSubtask(String id) {
-    _Screens.graph.popTo(_Screens.subtask);
-    _Screens.graph.go(_Screens.subtask, id, true);
+    _Screens.graph.goFrom(_Screens.subtask, _Screens.subtask, id);
     return const SubtaskNav._();
   }
-
-  N go<N extends AnyNav>(SubtaskHop<N> hop) {
-    _Screens.graph.go(hop.spec, hop.id, true);
-    return hop.nav;
-  }
-
-  SubtaskTaskPopPlacement pop() {
-    _Screens.graph.pop();
-    return _resolveSubtaskTaskPopPlacement();
-  }
-
-  TaskListNav popToTaskList() {
-    _Screens.graph.pop(_Screens.taskList);
-    return const TaskListNav._();
-  }
-
-  BoardNav popToBoard() {
-    _Screens.graph.pop(_Screens.board);
-    return const BoardNav._();
-  }
-
-  ProjectNav popToProject() {
-    _Screens.graph.pop(_Screens.project);
-    return const ProjectNav._();
-  }
-
-  WorkspaceNav popToWorkspace() {
-    _Screens.graph.pop(_Screens.workspace);
-    return const WorkspaceNav._();
-  }
-
-  SubtaskNav popToSubtask() {
-    _Screens.graph.pop(_Screens.subtask);
-    return const SubtaskNav._();
-  }
-
-  N popTo<N extends AnyNav>(SubtaskPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const SubtaskPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const task = SubtaskPop<TaskNav>._(.task, TaskNav._());
-  static const taskList = SubtaskPop<TaskListNav>._(.taskList, TaskListNav._());
-  static const board = SubtaskPop<BoardNav>._(.board, BoardNav._());
-  static const project = SubtaskPop<ProjectNav>._(.project, ProjectNav._());
-  static const workspace = SubtaskPop<WorkspaceNav>._(
-    .workspace,
-    WorkspaceNav._(),
-  );
-  static const subtask = SubtaskPop<SubtaskNav>._(.subtask, SubtaskNav._());
-}
-
-final class const SubtaskHop<N extends AnyNav>._(
-  final _Screens spec,
-  final Object? id,
-  final N nav,
-) {
-  static SubtaskHop<ChecklistItemNav> checklistItem(String id) =>
-      SubtaskHop._(.checklistItem, id, const ChecklistItemNav._());
-  static SubtaskHop<SubtaskNav> subtask(String id) =>
-      SubtaskHop._(.subtask, id, const SubtaskNav._());
-}
-
-final class const ChecklistItemNav._()
-    extends AnyPlacement
-    implements ChecklistItemSubtaskPopPlacement, PopDestPlacement {
+final class const ChecklistItemNav._() extends AnyPlacement {
   this : super._();
   ChecklistItemNav surface() {
     _Screens.graph.popTo(_Screens.checklistItem);
     return const ChecklistItemNav._();
   }
 
-  int get depth => _Screens.graph.countOf(_Screens.checklistItem);
   ChecklistItemNav goChecklistItem(String id) {
-    _Screens.graph.popTo(_Screens.checklistItem);
-    _Screens.graph.go(_Screens.checklistItem, id, true);
+    _Screens.graph.goFrom(_Screens.checklistItem, _Screens.checklistItem, id);
     return const ChecklistItemNav._();
   }
-
-  ChecklistItemSubtaskPopPlacement pop() {
-    _Screens.graph.pop();
-    return _resolveChecklistItemSubtaskPopPlacement();
-  }
-
-  TaskNav popToTask() {
-    _Screens.graph.pop(_Screens.task);
-    return const TaskNav._();
-  }
-
-  TaskListNav popToTaskList() {
-    _Screens.graph.pop(_Screens.taskList);
-    return const TaskListNav._();
-  }
-
-  BoardNav popToBoard() {
-    _Screens.graph.pop(_Screens.board);
-    return const BoardNav._();
-  }
-
-  ProjectNav popToProject() {
-    _Screens.graph.pop(_Screens.project);
-    return const ProjectNav._();
-  }
-
-  WorkspaceNav popToWorkspace() {
-    _Screens.graph.pop(_Screens.workspace);
-    return const WorkspaceNav._();
-  }
-
-  ChecklistItemNav popToChecklistItem() {
-    _Screens.graph.pop(_Screens.checklistItem);
-    return const ChecklistItemNav._();
-  }
-
-  N popTo<N extends AnyNav>(ChecklistItemPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const ChecklistItemPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const subtask = ChecklistItemPop<SubtaskNav>._(
-    .subtask,
-    SubtaskNav._(),
-  );
-  static const task = ChecklistItemPop<TaskNav>._(.task, TaskNav._());
-  static const taskList = ChecklistItemPop<TaskListNav>._(
-    .taskList,
-    TaskListNav._(),
-  );
-  static const board = ChecklistItemPop<BoardNav>._(.board, BoardNav._());
-  static const project = ChecklistItemPop<ProjectNav>._(
-    .project,
-    ProjectNav._(),
-  );
-  static const workspace = ChecklistItemPop<WorkspaceNav>._(
-    .workspace,
-    WorkspaceNav._(),
-  );
-  static const checklistItem = ChecklistItemPop<ChecklistItemNav>._(
-    .checklistItem,
-    ChecklistItemNav._(),
-  );
 }
 
 final class const EditTaskNav._() extends AnyPlacement {
@@ -12290,53 +6574,6 @@ final class const EditTaskNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.editTask);
     return const EditTaskNav._();
   }
-
-  TaskNav pop() {
-    _Screens.graph.pop();
-    return const TaskNav._();
-  }
-
-  TaskListNav popToTaskList() {
-    _Screens.graph.pop(_Screens.taskList);
-    return const TaskListNav._();
-  }
-
-  BoardNav popToBoard() {
-    _Screens.graph.pop(_Screens.board);
-    return const BoardNav._();
-  }
-
-  ProjectNav popToProject() {
-    _Screens.graph.pop(_Screens.project);
-    return const ProjectNav._();
-  }
-
-  WorkspaceNav popToWorkspace() {
-    _Screens.graph.pop(_Screens.workspace);
-    return const WorkspaceNav._();
-  }
-
-  N popTo<N extends AnyNav>(EditTaskPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const EditTaskPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const task = EditTaskPop<TaskNav>._(.task, TaskNav._());
-  static const taskList = EditTaskPop<TaskListNav>._(
-    .taskList,
-    TaskListNav._(),
-  );
-  static const board = EditTaskPop<BoardNav>._(.board, BoardNav._());
-  static const project = EditTaskPop<ProjectNav>._(.project, ProjectNav._());
-  static const workspace = EditTaskPop<WorkspaceNav>._(
-    .workspace,
-    WorkspaceNav._(),
-  );
 }
 
 final class const TaskCommentNav._() extends AnyPlacement {
@@ -12345,53 +6582,6 @@ final class const TaskCommentNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.taskComment);
     return const TaskCommentNav._();
   }
-
-  TaskNav pop() {
-    _Screens.graph.pop();
-    return const TaskNav._();
-  }
-
-  TaskListNav popToTaskList() {
-    _Screens.graph.pop(_Screens.taskList);
-    return const TaskListNav._();
-  }
-
-  BoardNav popToBoard() {
-    _Screens.graph.pop(_Screens.board);
-    return const BoardNav._();
-  }
-
-  ProjectNav popToProject() {
-    _Screens.graph.pop(_Screens.project);
-    return const ProjectNav._();
-  }
-
-  WorkspaceNav popToWorkspace() {
-    _Screens.graph.pop(_Screens.workspace);
-    return const WorkspaceNav._();
-  }
-
-  N popTo<N extends AnyNav>(TaskCommentPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const TaskCommentPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const task = TaskCommentPop<TaskNav>._(.task, TaskNav._());
-  static const taskList = TaskCommentPop<TaskListNav>._(
-    .taskList,
-    TaskListNav._(),
-  );
-  static const board = TaskCommentPop<BoardNav>._(.board, BoardNav._());
-  static const project = TaskCommentPop<ProjectNav>._(.project, ProjectNav._());
-  static const workspace = TaskCommentPop<WorkspaceNav>._(
-    .workspace,
-    WorkspaceNav._(),
-  );
 }
 
 final class const AssigneeNav._() extends AnyPlacement {
@@ -12400,53 +6590,6 @@ final class const AssigneeNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.assignee);
     return const AssigneeNav._();
   }
-
-  TaskNav pop() {
-    _Screens.graph.pop();
-    return const TaskNav._();
-  }
-
-  TaskListNav popToTaskList() {
-    _Screens.graph.pop(_Screens.taskList);
-    return const TaskListNav._();
-  }
-
-  BoardNav popToBoard() {
-    _Screens.graph.pop(_Screens.board);
-    return const BoardNav._();
-  }
-
-  ProjectNav popToProject() {
-    _Screens.graph.pop(_Screens.project);
-    return const ProjectNav._();
-  }
-
-  WorkspaceNav popToWorkspace() {
-    _Screens.graph.pop(_Screens.workspace);
-    return const WorkspaceNav._();
-  }
-
-  N popTo<N extends AnyNav>(AssigneePop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const AssigneePop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const task = AssigneePop<TaskNav>._(.task, TaskNav._());
-  static const taskList = AssigneePop<TaskListNav>._(
-    .taskList,
-    TaskListNav._(),
-  );
-  static const board = AssigneePop<BoardNav>._(.board, BoardNav._());
-  static const project = AssigneePop<ProjectNav>._(.project, ProjectNav._());
-  static const workspace = AssigneePop<WorkspaceNav>._(
-    .workspace,
-    WorkspaceNav._(),
-  );
 }
 
 final class const LabelNav._() extends AnyPlacement {
@@ -12455,50 +6598,6 @@ final class const LabelNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.label);
     return const LabelNav._();
   }
-
-  TaskNav pop() {
-    _Screens.graph.pop();
-    return const TaskNav._();
-  }
-
-  TaskListNav popToTaskList() {
-    _Screens.graph.pop(_Screens.taskList);
-    return const TaskListNav._();
-  }
-
-  BoardNav popToBoard() {
-    _Screens.graph.pop(_Screens.board);
-    return const BoardNav._();
-  }
-
-  ProjectNav popToProject() {
-    _Screens.graph.pop(_Screens.project);
-    return const ProjectNav._();
-  }
-
-  WorkspaceNav popToWorkspace() {
-    _Screens.graph.pop(_Screens.workspace);
-    return const WorkspaceNav._();
-  }
-
-  N popTo<N extends AnyNav>(LabelPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const LabelPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const task = LabelPop<TaskNav>._(.task, TaskNav._());
-  static const taskList = LabelPop<TaskListNav>._(.taskList, TaskListNav._());
-  static const board = LabelPop<BoardNav>._(.board, BoardNav._());
-  static const project = LabelPop<ProjectNav>._(.project, ProjectNav._());
-  static const workspace = LabelPop<WorkspaceNav>._(
-    .workspace,
-    WorkspaceNav._(),
-  );
 }
 
 final class const MilestoneNav._() extends AnyPlacement {
@@ -12507,47 +6606,6 @@ final class const MilestoneNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.milestone);
     return const MilestoneNav._();
   }
-
-  TaskListNav pop() {
-    _Screens.graph.pop();
-    return const TaskListNav._();
-  }
-
-  BoardNav popToBoard() {
-    _Screens.graph.pop(_Screens.board);
-    return const BoardNav._();
-  }
-
-  ProjectNav popToProject() {
-    _Screens.graph.pop(_Screens.project);
-    return const ProjectNav._();
-  }
-
-  WorkspaceNav popToWorkspace() {
-    _Screens.graph.pop(_Screens.workspace);
-    return const WorkspaceNav._();
-  }
-
-  N popTo<N extends AnyNav>(MilestonePop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const MilestonePop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const taskList = MilestonePop<TaskListNav>._(
-    .taskList,
-    TaskListNav._(),
-  );
-  static const board = MilestonePop<BoardNav>._(.board, BoardNav._());
-  static const project = MilestonePop<ProjectNav>._(.project, ProjectNav._());
-  static const workspace = MilestonePop<WorkspaceNav>._(
-    .workspace,
-    WorkspaceNav._(),
-  );
 }
 
 final class const SprintNav._() extends AnyPlacement {
@@ -12556,49 +6614,9 @@ final class const SprintNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.sprint);
     return const SprintNav._();
   }
-
-  TaskListNav pop() {
-    _Screens.graph.pop();
-    return const TaskListNav._();
-  }
-
-  BoardNav popToBoard() {
-    _Screens.graph.pop(_Screens.board);
-    return const BoardNav._();
-  }
-
-  ProjectNav popToProject() {
-    _Screens.graph.pop(_Screens.project);
-    return const ProjectNav._();
-  }
-
-  WorkspaceNav popToWorkspace() {
-    _Screens.graph.pop(_Screens.workspace);
-    return const WorkspaceNav._();
-  }
-
-  N popTo<N extends AnyNav>(SprintPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const SprintPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const taskList = SprintPop<TaskListNav>._(.taskList, TaskListNav._());
-  static const board = SprintPop<BoardNav>._(.board, BoardNav._());
-  static const project = SprintPop<ProjectNav>._(.project, ProjectNav._());
-  static const workspace = SprintPop<WorkspaceNav>._(
-    .workspace,
-    WorkspaceNav._(),
-  );
-}
-
-final class const ForumNav._()
-    extends AnyPlacement
-    implements PopDestPlacement {
+final class const ForumNav._() extends AnyPlacement {
   this : super._();
   ForumNav surface() {
     _Screens.graph.popTo(_Screens.forum);
@@ -12606,18 +6624,12 @@ final class const ForumNav._()
   }
 
   ForumCategoryNav goForumCategory(String id) {
-    _Screens.graph.popTo(_Screens.forum);
-    _Screens.graph.go(_Screens.forumCategory, id, true);
+    _Screens.graph.goFrom(_Screens.forum, _Screens.forumCategory, id);
     return const ForumCategoryNav._();
   }
 }
 
-final class const ForumCategoryNav._()
-    extends AnyPlacement
-    implements
-        ForumCategoryView,
-        ForumCategoryForumThreadPopPlacement,
-        PopDestPlacement {
+final class const ForumCategoryNav._() extends AnyPlacement {
   this : super._();
   ForumCategoryNav surface() {
     _Screens.graph.popTo(_Screens.forumCategory);
@@ -12626,30 +6638,12 @@ final class const ForumCategoryNav._()
 
   ForumCategoryQueryMut get query => const ForumCategoryQueryMut._();
   ForumThreadNav goForumThread(String id) {
-    _Screens.graph.popTo(_Screens.forumCategory);
-    _Screens.graph.go(_Screens.forumThread, id, true);
+    _Screens.graph.goFrom(_Screens.forumCategory, _Screens.forumThread, id);
     return const ForumThreadNav._();
-  }
-
-  ReportThreadNav goReportThread(String id) {
-    _Screens.graph.go(_Screens.forumThread, id, true);
-    _Screens.graph.go(_Screens.reportThread, id, true);
-    return const ReportThreadNav._();
-  }
-
-  ForumNav pop() {
-    _Screens.graph.pop();
-    return const ForumNav._();
   }
 }
 
-final class const ForumThreadNav._()
-    extends AnyPlacement
-    implements
-        ForumThreadView,
-        ForumCategoryForumThreadPopPlacement,
-        ForumReplyForumThreadPopPlacement,
-        PopDestPlacement {
+final class const ForumThreadNav._() extends AnyPlacement {
   this : super._();
   ForumThreadNav surface() {
     _Screens.graph.popTo(_Screens.forumThread);
@@ -12657,164 +6651,42 @@ final class const ForumThreadNav._()
   }
 
   ForumThreadQueryMut get query => const ForumThreadQueryMut._();
-  int get depth => _Screens.graph.countOf(_Screens.forumThread);
   ForumReplyNav goForumReply(String id) {
-    _Screens.graph.popTo(_Screens.forumThread);
-    _Screens.graph.go(_Screens.forumReply, id, true);
+    _Screens.graph.goFrom(_Screens.forumThread, _Screens.forumReply, id);
     return const ForumReplyNav._();
   }
 
   ReportThreadNav goReportThread() {
-    _Screens.graph.popTo(_Screens.forumThread);
-    _Screens.graph.go(_Screens.reportThread, _idOf(_Screens.forumThread), true);
+    _Screens.graph.goFrom(
+      _Screens.forumThread,
+      _Screens.reportThread,
+      _idOf(_Screens.forumThread),
+    );
     return const ReportThreadNav._();
   }
 
   ForumThreadNav goForumThread(String id) {
-    _Screens.graph.popTo(_Screens.forumThread);
-    _Screens.graph.go(_Screens.forumThread, id, true);
+    _Screens.graph.goFrom(_Screens.forumThread, _Screens.forumThread, id);
     return const ForumThreadNav._();
   }
-
-  N go<N extends AnyNav>(ForumThreadHop<N> hop) {
-    _Screens.graph.go(hop.spec, hop.id, true);
-    return hop.nav;
-  }
-
-  ForumCategoryForumThreadPopPlacement pop() {
-    _Screens.graph.pop();
-    return _resolveForumCategoryForumThreadPopPlacement();
-  }
-
-  ForumNav popToForum() {
-    _Screens.graph.pop(_Screens.forum);
-    return const ForumNav._();
-  }
-
-  ForumThreadNav popToForumThread() {
-    _Screens.graph.pop(_Screens.forumThread);
-    return const ForumThreadNav._();
-  }
-
-  N popTo<N extends AnyNav>(ForumThreadPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const ForumThreadPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const forumCategory = ForumThreadPop<ForumCategoryNav>._(
-    .forumCategory,
-    ForumCategoryNav._(),
-  );
-  static const forum = ForumThreadPop<ForumNav>._(.forum, ForumNav._());
-  static const forumThread = ForumThreadPop<ForumThreadNav>._(
-    .forumThread,
-    ForumThreadNav._(),
-  );
-}
-
-final class const ForumThreadHop<N extends AnyNav>._(
-  final _Screens spec,
-  final Object? id,
-  final N nav,
-) {
-  static ForumThreadHop<ForumReplyNav> forumReply(String id) =>
-      ForumThreadHop._(.forumReply, id, const ForumReplyNav._());
-  static ForumThreadHop<ForumThreadNav> forumThread(String id) =>
-      ForumThreadHop._(.forumThread, id, const ForumThreadNav._());
-}
-
-final class const ForumReplyNav._()
-    extends AnyPlacement
-    implements ForumReplyForumThreadPopPlacement, PopDestPlacement {
+final class const ForumReplyNav._() extends AnyPlacement {
   this : super._();
   ForumReplyNav surface() {
     _Screens.graph.popTo(_Screens.forumReply);
     return const ForumReplyNav._();
   }
 
-  int get depth => _Screens.graph.countOf(_Screens.forumReply);
   ForumReplyNav goForumReply(String id) {
-    _Screens.graph.popTo(_Screens.forumReply);
-    _Screens.graph.go(_Screens.forumReply, id, true);
+    _Screens.graph.goFrom(_Screens.forumReply, _Screens.forumReply, id);
     return const ForumReplyNav._();
   }
 
-  ForumForumCategoryForumThreadForumReplyUserProfileNav goUserProfile(
-    String id,
-  ) {
-    _Screens.graph.popTo(_Screens.forumReply);
-    _Screens.graph.go(_Screens.userProfile, id, true);
-    return const ForumForumCategoryForumThreadForumReplyUserProfileNav._();
+  UserProfileNav6 goUserProfile(String id) {
+    _Screens.graph.goFrom(_Screens.forumReply, _Screens.userProfile, id);
+    return const UserProfileNav6._();
   }
-
-  N go<N extends AnyNav>(ForumReplyHop<N> hop) {
-    _Screens.graph.go(hop.spec, hop.id, true);
-    return hop.nav;
-  }
-
-  ForumReplyForumThreadPopPlacement pop() {
-    _Screens.graph.pop();
-    return _resolveForumReplyForumThreadPopPlacement();
-  }
-
-  ForumCategoryNav popToForumCategory() {
-    _Screens.graph.pop(_Screens.forumCategory);
-    return const ForumCategoryNav._();
-  }
-
-  ForumNav popToForum() {
-    _Screens.graph.pop(_Screens.forum);
-    return const ForumNav._();
-  }
-
-  ForumReplyNav popToForumReply() {
-    _Screens.graph.pop(_Screens.forumReply);
-    return const ForumReplyNav._();
-  }
-
-  N popTo<N extends AnyNav>(ForumReplyPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const ForumReplyPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const forumThread = ForumReplyPop<ForumThreadNav>._(
-    .forumThread,
-    ForumThreadNav._(),
-  );
-  static const forumCategory = ForumReplyPop<ForumCategoryNav>._(
-    .forumCategory,
-    ForumCategoryNav._(),
-  );
-  static const forum = ForumReplyPop<ForumNav>._(.forum, ForumNav._());
-  static const forumReply = ForumReplyPop<ForumReplyNav>._(
-    .forumReply,
-    ForumReplyNav._(),
-  );
-}
-
-final class const ForumReplyHop<N extends AnyNav>._(
-  final _Screens spec,
-  final Object? id,
-  final N nav,
-) {
-  static ForumReplyHop<ForumReplyNav> forumReply(String id) =>
-      ForumReplyHop._(.forumReply, id, const ForumReplyNav._());
-  static ForumReplyHop<ForumForumCategoryForumThreadForumReplyUserProfileNav>
-  userProfile(String id) => ForumReplyHop._(
-    .userProfile,
-    id,
-    const ForumForumCategoryForumThreadForumReplyUserProfileNav._(),
-  );
 }
 
 final class const ReportThreadNav._() extends AnyPlacement {
@@ -12823,46 +6695,9 @@ final class const ReportThreadNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.reportThread);
     return const ReportThreadNav._();
   }
-
-  ForumThreadNav pop() {
-    _Screens.graph.pop();
-    return const ForumThreadNav._();
-  }
-
-  ForumCategoryNav popToForumCategory() {
-    _Screens.graph.pop(_Screens.forumCategory);
-    return const ForumCategoryNav._();
-  }
-
-  ForumNav popToForum() {
-    _Screens.graph.pop(_Screens.forum);
-    return const ForumNav._();
-  }
-
-  N popTo<N extends AnyNav>(ReportThreadPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const ReportThreadPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const forumThread = ReportThreadPop<ForumThreadNav>._(
-    .forumThread,
-    ForumThreadNav._(),
-  );
-  static const forumCategory = ReportThreadPop<ForumCategoryNav>._(
-    .forumCategory,
-    ForumCategoryNav._(),
-  );
-  static const forum = ReportThreadPop<ForumNav>._(.forum, ForumNav._());
-}
-
-final class const LearnNav._()
-    extends AnyPlacement
-    implements PopDestPlacement {
+final class const LearnNav._() extends AnyPlacement {
   this : super._();
   LearnNav surface() {
     _Screens.graph.popTo(_Screens.learn);
@@ -12870,21 +6705,12 @@ final class const LearnNav._()
   }
 
   CourseNav goCourse(String id) {
-    _Screens.graph.popTo(_Screens.learn);
-    _Screens.graph.go(_Screens.course, id, true);
+    _Screens.graph.goFrom(_Screens.learn, _Screens.course, id);
     return const CourseNav._();
-  }
-
-  CertificateNav goCertificate(String id) {
-    _Screens.graph.go(_Screens.course, id, true);
-    _Screens.graph.go(_Screens.certificate, id, true);
-    return const CertificateNav._();
   }
 }
 
-final class const CourseNav._()
-    extends AnyPlacement
-    implements CourseView, PopDestPlacement {
+final class const CourseNav._() extends AnyPlacement {
   this : super._();
   CourseNav surface() {
     _Screens.graph.popTo(_Screens.course);
@@ -12893,26 +6719,21 @@ final class const CourseNav._()
 
   CourseQueryMut get query => const CourseQueryMut._();
   CourseModuleNav goCourseModule(String id) {
-    _Screens.graph.popTo(_Screens.course);
-    _Screens.graph.go(_Screens.courseModule, id, true);
+    _Screens.graph.goFrom(_Screens.course, _Screens.courseModule, id);
     return const CourseModuleNav._();
   }
 
   CertificateNav goCertificate() {
-    _Screens.graph.popTo(_Screens.course);
-    _Screens.graph.go(_Screens.certificate, _idOf(_Screens.course), true);
+    _Screens.graph.goFrom(
+      _Screens.course,
+      _Screens.certificate,
+      _idOf(_Screens.course),
+    );
     return const CertificateNav._();
-  }
-
-  LearnNav pop() {
-    _Screens.graph.pop();
-    return const LearnNav._();
   }
 }
 
-final class const CourseModuleNav._()
-    extends AnyPlacement
-    implements PopDestPlacement {
+final class const CourseModuleNav._() extends AnyPlacement {
   this : super._();
   CourseModuleNav surface() {
     _Screens.graph.popTo(_Screens.courseModule);
@@ -12920,60 +6741,17 @@ final class const CourseModuleNav._()
   }
 
   LessonNav goLesson(String id) {
-    _Screens.graph.popTo(_Screens.courseModule);
-    _Screens.graph.go(_Screens.lesson, id, true);
+    _Screens.graph.goFrom(_Screens.courseModule, _Screens.lesson, id);
     return const LessonNav._();
   }
 
   InstructorNav goInstructor(String id) {
-    _Screens.graph.popTo(_Screens.courseModule);
-    _Screens.graph.go(_Screens.instructor, id, true);
+    _Screens.graph.goFrom(_Screens.courseModule, _Screens.instructor, id);
     return const InstructorNav._();
   }
-
-  N go<N extends AnyNav>(CourseModuleHop<N> hop) {
-    _Screens.graph.go(hop.spec, hop.id, true);
-    return hop.nav;
-  }
-
-  CourseNav pop() {
-    _Screens.graph.pop();
-    return const CourseNav._();
-  }
-
-  LearnNav popToLearn() {
-    _Screens.graph.pop(_Screens.learn);
-    return const LearnNav._();
-  }
-
-  N popTo<N extends AnyNav>(CourseModulePop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const CourseModulePop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const course = CourseModulePop<CourseNav>._(.course, CourseNav._());
-  static const learn = CourseModulePop<LearnNav>._(.learn, LearnNav._());
-}
-
-final class const CourseModuleHop<N extends AnyNav>._(
-  final _Screens spec,
-  final Object? id,
-  final N nav,
-) {
-  static CourseModuleHop<LessonNav> lesson(String id) =>
-      CourseModuleHop._(.lesson, id, const LessonNav._());
-  static CourseModuleHop<InstructorNav> instructor(String id) =>
-      CourseModuleHop._(.instructor, id, const InstructorNav._());
-}
-
-final class const LessonNav._()
-    extends AnyPlacement
-    implements PopDestPlacement {
+final class const LessonNav._() extends AnyPlacement {
   this : super._();
   LessonNav surface() {
     _Screens.graph.popTo(_Screens.lesson);
@@ -12981,69 +6759,17 @@ final class const LessonNav._()
   }
 
   QuizNav goQuiz(String id) {
-    _Screens.graph.popTo(_Screens.lesson);
-    _Screens.graph.go(_Screens.quiz, id, true);
+    _Screens.graph.goFrom(_Screens.lesson, _Screens.quiz, id);
     return const QuizNav._();
   }
 
   CourseReviewNav goCourseReview(String id) {
-    _Screens.graph.popTo(_Screens.lesson);
-    _Screens.graph.go(_Screens.courseReview, id, true);
+    _Screens.graph.goFrom(_Screens.lesson, _Screens.courseReview, id);
     return const CourseReviewNav._();
   }
-
-  N go<N extends AnyNav>(LessonHop<N> hop) {
-    _Screens.graph.go(hop.spec, hop.id, true);
-    return hop.nav;
-  }
-
-  CourseModuleNav pop() {
-    _Screens.graph.pop();
-    return const CourseModuleNav._();
-  }
-
-  CourseNav popToCourse() {
-    _Screens.graph.pop(_Screens.course);
-    return const CourseNav._();
-  }
-
-  LearnNav popToLearn() {
-    _Screens.graph.pop(_Screens.learn);
-    return const LearnNav._();
-  }
-
-  N popTo<N extends AnyNav>(LessonPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const LessonPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const courseModule = LessonPop<CourseModuleNav>._(
-    .courseModule,
-    CourseModuleNav._(),
-  );
-  static const course = LessonPop<CourseNav>._(.course, CourseNav._());
-  static const learn = LessonPop<LearnNav>._(.learn, LearnNav._());
-}
-
-final class const LessonHop<N extends AnyNav>._(
-  final _Screens spec,
-  final Object? id,
-  final N nav,
-) {
-  static LessonHop<QuizNav> quiz(String id) =>
-      LessonHop._(.quiz, id, const QuizNav._());
-  static LessonHop<CourseReviewNav> courseReview(String id) =>
-      LessonHop._(.courseReview, id, const CourseReviewNav._());
-}
-
-final class const QuizNav._()
-    extends AnyPlacement
-    implements QuestionQuizPopPlacement, PopDestPlacement {
+final class const QuizNav._() extends AnyPlacement {
   this : super._();
   QuizNav surface() {
     _Screens.graph.popTo(_Screens.quiz);
@@ -13051,130 +6777,31 @@ final class const QuizNav._()
   }
 
   QuestionNav goQuestion(String id) {
-    _Screens.graph.popTo(_Screens.quiz);
-    _Screens.graph.go(_Screens.question, id, true);
+    _Screens.graph.goFrom(_Screens.quiz, _Screens.question, id);
     return const QuestionNav._();
   }
-
-  AnswerNav goAnswer(String id) {
-    _Screens.graph.go(_Screens.question, id, true);
-    _Screens.graph.go(_Screens.answer, id, true);
-    return const AnswerNav._();
-  }
-
-  LessonNav pop() {
-    _Screens.graph.pop();
-    return const LessonNav._();
-  }
-
-  CourseModuleNav popToCourseModule() {
-    _Screens.graph.pop(_Screens.courseModule);
-    return const CourseModuleNav._();
-  }
-
-  CourseNav popToCourse() {
-    _Screens.graph.pop(_Screens.course);
-    return const CourseNav._();
-  }
-
-  LearnNav popToLearn() {
-    _Screens.graph.pop(_Screens.learn);
-    return const LearnNav._();
-  }
-
-  N popTo<N extends AnyNav>(QuizPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const QuizPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const lesson = QuizPop<LessonNav>._(.lesson, LessonNav._());
-  static const courseModule = QuizPop<CourseModuleNav>._(
-    .courseModule,
-    CourseModuleNav._(),
-  );
-  static const course = QuizPop<CourseNav>._(.course, CourseNav._());
-  static const learn = QuizPop<LearnNav>._(.learn, LearnNav._());
-}
-
-final class const QuestionNav._()
-    extends AnyPlacement
-    implements QuestionQuizPopPlacement, PopDestPlacement {
+final class const QuestionNav._() extends AnyPlacement {
   this : super._();
   QuestionNav surface() {
     _Screens.graph.popTo(_Screens.question);
     return const QuestionNav._();
   }
 
-  int get depth => _Screens.graph.countOf(_Screens.question);
   QuestionNav goQuestion(String id) {
-    _Screens.graph.popTo(_Screens.question);
-    _Screens.graph.go(_Screens.question, id, true);
+    _Screens.graph.goFrom(_Screens.question, _Screens.question, id);
     return const QuestionNav._();
   }
 
   AnswerNav goAnswer() {
-    _Screens.graph.popTo(_Screens.question);
-    _Screens.graph.go(_Screens.answer, _idOf(_Screens.question), true);
+    _Screens.graph.goFrom(
+      _Screens.question,
+      _Screens.answer,
+      _idOf(_Screens.question),
+    );
     return const AnswerNav._();
   }
-
-  QuestionQuizPopPlacement pop() {
-    _Screens.graph.pop();
-    return _resolveQuestionQuizPopPlacement();
-  }
-
-  LessonNav popToLesson() {
-    _Screens.graph.pop(_Screens.lesson);
-    return const LessonNav._();
-  }
-
-  CourseModuleNav popToCourseModule() {
-    _Screens.graph.pop(_Screens.courseModule);
-    return const CourseModuleNav._();
-  }
-
-  CourseNav popToCourse() {
-    _Screens.graph.pop(_Screens.course);
-    return const CourseNav._();
-  }
-
-  LearnNav popToLearn() {
-    _Screens.graph.pop(_Screens.learn);
-    return const LearnNav._();
-  }
-
-  QuestionNav popToQuestion() {
-    _Screens.graph.pop(_Screens.question);
-    return const QuestionNav._();
-  }
-
-  N popTo<N extends AnyNav>(QuestionPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const QuestionPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const quiz = QuestionPop<QuizNav>._(.quiz, QuizNav._());
-  static const lesson = QuestionPop<LessonNav>._(.lesson, LessonNav._());
-  static const courseModule = QuestionPop<CourseModuleNav>._(
-    .courseModule,
-    CourseModuleNav._(),
-  );
-  static const course = QuestionPop<CourseNav>._(.course, CourseNav._());
-  static const learn = QuestionPop<LearnNav>._(.learn, LearnNav._());
-  static const question = QuestionPop<QuestionNav>._(
-    .question,
-    QuestionNav._(),
-  );
 }
 
 final class const AnswerNav._() extends AnyPlacement {
@@ -13183,56 +6810,6 @@ final class const AnswerNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.answer);
     return const AnswerNav._();
   }
-
-  QuestionNav pop() {
-    _Screens.graph.pop();
-    return const QuestionNav._();
-  }
-
-  QuizNav popToQuiz() {
-    _Screens.graph.pop(_Screens.quiz);
-    return const QuizNav._();
-  }
-
-  LessonNav popToLesson() {
-    _Screens.graph.pop(_Screens.lesson);
-    return const LessonNav._();
-  }
-
-  CourseModuleNav popToCourseModule() {
-    _Screens.graph.pop(_Screens.courseModule);
-    return const CourseModuleNav._();
-  }
-
-  CourseNav popToCourse() {
-    _Screens.graph.pop(_Screens.course);
-    return const CourseNav._();
-  }
-
-  LearnNav popToLearn() {
-    _Screens.graph.pop(_Screens.learn);
-    return const LearnNav._();
-  }
-
-  N popTo<N extends AnyNav>(AnswerPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const AnswerPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const question = AnswerPop<QuestionNav>._(.question, QuestionNav._());
-  static const quiz = AnswerPop<QuizNav>._(.quiz, QuizNav._());
-  static const lesson = AnswerPop<LessonNav>._(.lesson, LessonNav._());
-  static const courseModule = AnswerPop<CourseModuleNav>._(
-    .courseModule,
-    CourseModuleNav._(),
-  );
-  static const course = AnswerPop<CourseNav>._(.course, CourseNav._());
-  static const learn = AnswerPop<LearnNav>._(.learn, LearnNav._());
 }
 
 final class const CourseReviewNav._() extends AnyPlacement {
@@ -13241,44 +6818,6 @@ final class const CourseReviewNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.courseReview);
     return const CourseReviewNav._();
   }
-
-  LessonNav pop() {
-    _Screens.graph.pop();
-    return const LessonNav._();
-  }
-
-  CourseModuleNav popToCourseModule() {
-    _Screens.graph.pop(_Screens.courseModule);
-    return const CourseModuleNav._();
-  }
-
-  CourseNav popToCourse() {
-    _Screens.graph.pop(_Screens.course);
-    return const CourseNav._();
-  }
-
-  LearnNav popToLearn() {
-    _Screens.graph.pop(_Screens.learn);
-    return const LearnNav._();
-  }
-
-  N popTo<N extends AnyNav>(CourseReviewPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const CourseReviewPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const lesson = CourseReviewPop<LessonNav>._(.lesson, LessonNav._());
-  static const courseModule = CourseReviewPop<CourseModuleNav>._(
-    .courseModule,
-    CourseModuleNav._(),
-  );
-  static const course = CourseReviewPop<CourseNav>._(.course, CourseNav._());
-  static const learn = CourseReviewPop<LearnNav>._(.learn, LearnNav._());
 }
 
 final class const InstructorNav._() extends AnyPlacement {
@@ -13287,38 +6826,6 @@ final class const InstructorNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.instructor);
     return const InstructorNav._();
   }
-
-  CourseModuleNav pop() {
-    _Screens.graph.pop();
-    return const CourseModuleNav._();
-  }
-
-  CourseNav popToCourse() {
-    _Screens.graph.pop(_Screens.course);
-    return const CourseNav._();
-  }
-
-  LearnNav popToLearn() {
-    _Screens.graph.pop(_Screens.learn);
-    return const LearnNav._();
-  }
-
-  N popTo<N extends AnyNav>(InstructorPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const InstructorPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const courseModule = InstructorPop<CourseModuleNav>._(
-    .courseModule,
-    CourseModuleNav._(),
-  );
-  static const course = InstructorPop<CourseNav>._(.course, CourseNav._());
-  static const learn = InstructorPop<LearnNav>._(.learn, LearnNav._());
 }
 
 final class const CertificateNav._() extends AnyPlacement {
@@ -13327,32 +6834,9 @@ final class const CertificateNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.certificate);
     return const CertificateNav._();
   }
-
-  CourseNav pop() {
-    _Screens.graph.pop();
-    return const CourseNav._();
-  }
-
-  LearnNav popToLearn() {
-    _Screens.graph.pop(_Screens.learn);
-    return const LearnNav._();
-  }
-
-  N popTo<N extends AnyNav>(CertificatePop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const CertificatePop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const course = CertificatePop<CourseNav>._(.course, CourseNav._());
-  static const learn = CertificatePop<LearnNav>._(.learn, LearnNav._());
-}
-
-final class const ShopNav._() extends AnyPlacement implements PopDestPlacement {
+final class const ShopNav._() extends AnyPlacement {
   this : super._();
   ShopNav surface() {
     _Screens.graph.popTo(_Screens.shop);
@@ -13360,40 +6844,17 @@ final class const ShopNav._() extends AnyPlacement implements PopDestPlacement {
   }
 
   ShopDeptNav goShopDept(String id) {
-    _Screens.graph.popTo(_Screens.shop);
-    _Screens.graph.go(_Screens.shopDept, id, true);
+    _Screens.graph.goFrom(_Screens.shop, _Screens.shopDept, id);
     return const ShopDeptNav._();
   }
 
   CompareProductsNav goCompareProducts() {
-    _Screens.graph.popTo(_Screens.shop);
-    _Screens.graph.go(_Screens.compareProducts, null, true);
+    _Screens.graph.goFrom(_Screens.shop, _Screens.compareProducts, null);
     return const CompareProductsNav._();
   }
-
-  N go<N extends AnyNav>(ShopHop<N> hop) {
-    _Screens.graph.go(hop.spec, hop.id, true);
-    return hop.nav;
-  }
 }
 
-final class const ShopHop<N extends AnyNav>._(
-  final _Screens spec,
-  final Object? id,
-  final N nav,
-) {
-  static ShopHop<ShopDeptNav> shopDept(String id) =>
-      ShopHop._(.shopDept, id, const ShopDeptNav._());
-  static const compareProducts = ShopHop<CompareProductsNav>._(
-    .compareProducts,
-    null,
-    CompareProductsNav._(),
-  );
-}
-
-final class const ShopDeptNav._()
-    extends AnyPlacement
-    implements PopDestPlacement {
+final class const ShopDeptNav._() extends AnyPlacement {
   this : super._();
   ShopDeptNav surface() {
     _Screens.graph.popTo(_Screens.shopDept);
@@ -13401,20 +6862,12 @@ final class const ShopDeptNav._()
   }
 
   ShopCategoryNav goShopCategory(String id) {
-    _Screens.graph.popTo(_Screens.shopDept);
-    _Screens.graph.go(_Screens.shopCategory, id, true);
+    _Screens.graph.goFrom(_Screens.shopDept, _Screens.shopCategory, id);
     return const ShopCategoryNav._();
-  }
-
-  ShopNav pop() {
-    _Screens.graph.pop();
-    return const ShopNav._();
   }
 }
 
-final class const ShopCategoryNav._()
-    extends AnyPlacement
-    implements PopDestPlacement {
+final class const ShopCategoryNav._() extends AnyPlacement {
   this : super._();
   ShopCategoryNav surface() {
     _Screens.graph.popTo(_Screens.shopCategory);
@@ -13422,44 +6875,12 @@ final class const ShopCategoryNav._()
   }
 
   ShopSubcategoryNav goShopSubcategory(String id) {
-    _Screens.graph.popTo(_Screens.shopCategory);
-    _Screens.graph.go(_Screens.shopSubcategory, id, true);
+    _Screens.graph.goFrom(_Screens.shopCategory, _Screens.shopSubcategory, id);
     return const ShopSubcategoryNav._();
   }
-
-  ShopDeptNav pop() {
-    _Screens.graph.pop();
-    return const ShopDeptNav._();
-  }
-
-  ShopNav popToShop() {
-    _Screens.graph.pop(_Screens.shop);
-    return const ShopNav._();
-  }
-
-  N popTo<N extends AnyNav>(ShopCategoryPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const ShopCategoryPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const shopDept = ShopCategoryPop<ShopDeptNav>._(
-    .shopDept,
-    ShopDeptNav._(),
-  );
-  static const shop = ShopCategoryPop<ShopNav>._(.shop, ShopNav._());
-}
-
-final class const ShopSubcategoryNav._()
-    extends AnyPlacement
-    implements
-        ShopSubcategoryView,
-        ProductShopSubcategoryPopPlacement,
-        PopDestPlacement {
+final class const ShopSubcategoryNav._() extends AnyPlacement {
   this : super._();
   ShopSubcategoryNav surface() {
     _Screens.graph.popTo(_Screens.shopSubcategory);
@@ -13468,54 +6889,12 @@ final class const ShopSubcategoryNav._()
 
   ShopSubcategoryQueryMut get query => const ShopSubcategoryQueryMut._();
   ProductNav goProduct(String id) {
-    _Screens.graph.popTo(_Screens.shopSubcategory);
-    _Screens.graph.go(_Screens.product, id, true);
+    _Screens.graph.goFrom(_Screens.shopSubcategory, _Screens.product, id);
     return const ProductNav._();
   }
-
-  ShopCategoryNav pop() {
-    _Screens.graph.pop();
-    return const ShopCategoryNav._();
-  }
-
-  ShopDeptNav popToShopDept() {
-    _Screens.graph.pop(_Screens.shopDept);
-    return const ShopDeptNav._();
-  }
-
-  ShopNav popToShop() {
-    _Screens.graph.pop(_Screens.shop);
-    return const ShopNav._();
-  }
-
-  N popTo<N extends AnyNav>(ShopSubcategoryPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const ShopSubcategoryPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const shopCategory = ShopSubcategoryPop<ShopCategoryNav>._(
-    .shopCategory,
-    ShopCategoryNav._(),
-  );
-  static const shopDept = ShopSubcategoryPop<ShopDeptNav>._(
-    .shopDept,
-    ShopDeptNav._(),
-  );
-  static const shop = ShopSubcategoryPop<ShopNav>._(.shop, ShopNav._());
-}
-
-final class const ProductNav._()
-    extends AnyPlacement
-    implements
-        ProductView,
-        ProductShopSubcategoryPopPlacement,
-        ProductProductVariantPopPlacement,
-        PopDestPlacement {
+final class const ProductNav._() extends AnyPlacement {
   this : super._();
   ProductNav surface() {
     _Screens.graph.popTo(_Screens.product);
@@ -13523,176 +6902,38 @@ final class const ProductNav._()
   }
 
   ProductQueryMut get query => const ProductQueryMut._();
-  int get depth => _Screens.graph.countOf(_Screens.product);
   ProductVariantNav goProductVariant(String id) {
-    _Screens.graph.popTo(_Screens.product);
-    _Screens.graph.go(_Screens.productVariant, id, true);
+    _Screens.graph.goFrom(_Screens.product, _Screens.productVariant, id);
     return const ProductVariantNav._();
   }
 
   ProductReviewNav goProductReview(String id) {
-    _Screens.graph.popTo(_Screens.product);
-    _Screens.graph.go(_Screens.productReview, id, true);
+    _Screens.graph.goFrom(_Screens.product, _Screens.productReview, id);
     return const ProductReviewNav._();
   }
 
   BrandNav goBrand(String id) {
-    _Screens.graph.popTo(_Screens.product);
-    _Screens.graph.go(_Screens.brand, id, true);
+    _Screens.graph.goFrom(_Screens.product, _Screens.brand, id);
     return const BrandNav._();
   }
 
   ProductNav goProduct(String id) {
-    _Screens.graph.popTo(_Screens.product);
-    _Screens.graph.go(_Screens.product, id, true);
+    _Screens.graph.goFrom(_Screens.product, _Screens.product, id);
     return const ProductNav._();
   }
-
-  N go<N extends AnyNav>(ProductHop<N> hop) {
-    _Screens.graph.go(hop.spec, hop.id, true);
-    return hop.nav;
-  }
-
-  ProductShopSubcategoryPopPlacement pop() {
-    _Screens.graph.pop();
-    return _resolveProductShopSubcategoryPopPlacement();
-  }
-
-  ShopCategoryNav popToShopCategory() {
-    _Screens.graph.pop(_Screens.shopCategory);
-    return const ShopCategoryNav._();
-  }
-
-  ShopDeptNav popToShopDept() {
-    _Screens.graph.pop(_Screens.shopDept);
-    return const ShopDeptNav._();
-  }
-
-  ShopNav popToShop() {
-    _Screens.graph.pop(_Screens.shop);
-    return const ShopNav._();
-  }
-
-  ProductNav popToProduct() {
-    _Screens.graph.pop(_Screens.product);
-    return const ProductNav._();
-  }
-
-  N popTo<N extends AnyNav>(ProductPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const ProductPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const shopSubcategory = ProductPop<ShopSubcategoryNav>._(
-    .shopSubcategory,
-    ShopSubcategoryNav._(),
-  );
-  static const shopCategory = ProductPop<ShopCategoryNav>._(
-    .shopCategory,
-    ShopCategoryNav._(),
-  );
-  static const shopDept = ProductPop<ShopDeptNav>._(.shopDept, ShopDeptNav._());
-  static const shop = ProductPop<ShopNav>._(.shop, ShopNav._());
-  static const product = ProductPop<ProductNav>._(.product, ProductNav._());
-}
-
-final class const ProductHop<N extends AnyNav>._(
-  final _Screens spec,
-  final Object? id,
-  final N nav,
-) {
-  static ProductHop<ProductVariantNav> productVariant(String id) =>
-      ProductHop._(.productVariant, id, const ProductVariantNav._());
-  static ProductHop<ProductReviewNav> productReview(String id) =>
-      ProductHop._(.productReview, id, const ProductReviewNav._());
-  static ProductHop<BrandNav> brand(String id) =>
-      ProductHop._(.brand, id, const BrandNav._());
-  static ProductHop<ProductNav> product(String id) =>
-      ProductHop._(.product, id, const ProductNav._());
-}
-
-final class const ProductVariantNav._()
-    extends AnyPlacement
-    implements ProductProductVariantPopPlacement, PopDestPlacement {
+final class const ProductVariantNav._() extends AnyPlacement {
   this : super._();
   ProductVariantNav surface() {
     _Screens.graph.popTo(_Screens.productVariant);
     return const ProductVariantNav._();
   }
 
-  int get depth => _Screens.graph.countOf(_Screens.productVariant);
   ProductVariantNav goProductVariant(String id) {
-    _Screens.graph.popTo(_Screens.productVariant);
-    _Screens.graph.go(_Screens.productVariant, id, true);
+    _Screens.graph.goFrom(_Screens.productVariant, _Screens.productVariant, id);
     return const ProductVariantNav._();
   }
-
-  ProductProductVariantPopPlacement pop() {
-    _Screens.graph.pop();
-    return _resolveProductProductVariantPopPlacement();
-  }
-
-  ShopSubcategoryNav popToShopSubcategory() {
-    _Screens.graph.pop(_Screens.shopSubcategory);
-    return const ShopSubcategoryNav._();
-  }
-
-  ShopCategoryNav popToShopCategory() {
-    _Screens.graph.pop(_Screens.shopCategory);
-    return const ShopCategoryNav._();
-  }
-
-  ShopDeptNav popToShopDept() {
-    _Screens.graph.pop(_Screens.shopDept);
-    return const ShopDeptNav._();
-  }
-
-  ShopNav popToShop() {
-    _Screens.graph.pop(_Screens.shop);
-    return const ShopNav._();
-  }
-
-  ProductVariantNav popToProductVariant() {
-    _Screens.graph.pop(_Screens.productVariant);
-    return const ProductVariantNav._();
-  }
-
-  N popTo<N extends AnyNav>(ProductVariantPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const ProductVariantPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const product = ProductVariantPop<ProductNav>._(
-    .product,
-    ProductNav._(),
-  );
-  static const shopSubcategory = ProductVariantPop<ShopSubcategoryNav>._(
-    .shopSubcategory,
-    ShopSubcategoryNav._(),
-  );
-  static const shopCategory = ProductVariantPop<ShopCategoryNav>._(
-    .shopCategory,
-    ShopCategoryNav._(),
-  );
-  static const shopDept = ProductVariantPop<ShopDeptNav>._(
-    .shopDept,
-    ShopDeptNav._(),
-  );
-  static const shop = ProductVariantPop<ShopNav>._(.shop, ShopNav._());
-  static const productVariant = ProductVariantPop<ProductVariantNav>._(
-    .productVariant,
-    ProductVariantNav._(),
-  );
 }
 
 final class const ProductReviewNav._() extends AnyPlacement {
@@ -13701,59 +6942,6 @@ final class const ProductReviewNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.productReview);
     return const ProductReviewNav._();
   }
-
-  ProductNav pop() {
-    _Screens.graph.pop();
-    return const ProductNav._();
-  }
-
-  ShopSubcategoryNav popToShopSubcategory() {
-    _Screens.graph.pop(_Screens.shopSubcategory);
-    return const ShopSubcategoryNav._();
-  }
-
-  ShopCategoryNav popToShopCategory() {
-    _Screens.graph.pop(_Screens.shopCategory);
-    return const ShopCategoryNav._();
-  }
-
-  ShopDeptNav popToShopDept() {
-    _Screens.graph.pop(_Screens.shopDept);
-    return const ShopDeptNav._();
-  }
-
-  ShopNav popToShop() {
-    _Screens.graph.pop(_Screens.shop);
-    return const ShopNav._();
-  }
-
-  N popTo<N extends AnyNav>(ProductReviewPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const ProductReviewPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const product = ProductReviewPop<ProductNav>._(
-    .product,
-    ProductNav._(),
-  );
-  static const shopSubcategory = ProductReviewPop<ShopSubcategoryNav>._(
-    .shopSubcategory,
-    ShopSubcategoryNav._(),
-  );
-  static const shopCategory = ProductReviewPop<ShopCategoryNav>._(
-    .shopCategory,
-    ShopCategoryNav._(),
-  );
-  static const shopDept = ProductReviewPop<ShopDeptNav>._(
-    .shopDept,
-    ShopDeptNav._(),
-  );
-  static const shop = ProductReviewPop<ShopNav>._(.shop, ShopNav._());
 }
 
 final class const BrandNav._() extends AnyPlacement {
@@ -13762,53 +6950,6 @@ final class const BrandNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.brand);
     return const BrandNav._();
   }
-
-  ProductNav pop() {
-    _Screens.graph.pop();
-    return const ProductNav._();
-  }
-
-  ShopSubcategoryNav popToShopSubcategory() {
-    _Screens.graph.pop(_Screens.shopSubcategory);
-    return const ShopSubcategoryNav._();
-  }
-
-  ShopCategoryNav popToShopCategory() {
-    _Screens.graph.pop(_Screens.shopCategory);
-    return const ShopCategoryNav._();
-  }
-
-  ShopDeptNav popToShopDept() {
-    _Screens.graph.pop(_Screens.shopDept);
-    return const ShopDeptNav._();
-  }
-
-  ShopNav popToShop() {
-    _Screens.graph.pop(_Screens.shop);
-    return const ShopNav._();
-  }
-
-  N popTo<N extends AnyNav>(BrandPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const BrandPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const product = BrandPop<ProductNav>._(.product, ProductNav._());
-  static const shopSubcategory = BrandPop<ShopSubcategoryNav>._(
-    .shopSubcategory,
-    ShopSubcategoryNav._(),
-  );
-  static const shopCategory = BrandPop<ShopCategoryNav>._(
-    .shopCategory,
-    ShopCategoryNav._(),
-  );
-  static const shopDept = BrandPop<ShopDeptNav>._(.shopDept, ShopDeptNav._());
-  static const shop = BrandPop<ShopNav>._(.shop, ShopNav._());
 }
 
 final class const CompareProductsNav._() extends AnyPlacement {
@@ -13817,16 +6958,9 @@ final class const CompareProductsNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.compareProducts);
     return const CompareProductsNav._();
   }
-
-  ShopNav pop() {
-    _Screens.graph.pop();
-    return const ShopNav._();
-  }
 }
 
-final class const ActivityNav._()
-    extends AnyPlacement
-    implements PopDestPlacement {
+final class const ActivityNav._() extends AnyPlacement {
   this : super._();
   ActivityNav surface() {
     _Screens.graph.popTo(_Screens.activity);
@@ -13834,15 +6968,12 @@ final class const ActivityNav._()
   }
 
   WorkoutNav goWorkout(String id) {
-    _Screens.graph.popTo(_Screens.activity);
-    _Screens.graph.go(_Screens.workout, id, true);
+    _Screens.graph.goFrom(_Screens.activity, _Screens.workout, id);
     return const WorkoutNav._();
   }
 }
 
-final class const WorkoutNav._()
-    extends AnyPlacement
-    implements WorkoutView, PopDestPlacement {
+final class const WorkoutNav._() extends AnyPlacement {
   this : super._();
   WorkoutNav surface() {
     _Screens.graph.popTo(_Screens.workout);
@@ -13851,20 +6982,12 @@ final class const WorkoutNav._()
 
   WorkoutQueryMut get query => const WorkoutQueryMut._();
   ExerciseNav goExercise(String id) {
-    _Screens.graph.popTo(_Screens.workout);
-    _Screens.graph.go(_Screens.exercise, id, true);
+    _Screens.graph.goFrom(_Screens.workout, _Screens.exercise, id);
     return const ExerciseNav._();
-  }
-
-  ActivityNav pop() {
-    _Screens.graph.pop();
-    return const ActivityNav._();
   }
 }
 
-final class const ExerciseNav._()
-    extends AnyPlacement
-    implements ExerciseExerciseSetPopPlacement, PopDestPlacement {
+final class const ExerciseNav._() extends AnyPlacement {
   this : super._();
   ExerciseNav surface() {
     _Screens.graph.popTo(_Screens.exercise);
@@ -13872,102 +6995,25 @@ final class const ExerciseNav._()
   }
 
   ExerciseSetNav goExerciseSet(String id) {
-    _Screens.graph.popTo(_Screens.exercise);
-    _Screens.graph.go(_Screens.exerciseSet, id, true);
+    _Screens.graph.goFrom(_Screens.exercise, _Screens.exerciseSet, id);
     return const ExerciseSetNav._();
   }
-
-  WorkoutNav pop() {
-    _Screens.graph.pop();
-    return const WorkoutNav._();
-  }
-
-  ActivityNav popToActivity() {
-    _Screens.graph.pop(_Screens.activity);
-    return const ActivityNav._();
-  }
-
-  N popTo<N extends AnyNav>(ExercisePop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const ExercisePop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const workout = ExercisePop<WorkoutNav>._(.workout, WorkoutNav._());
-  static const activity = ExercisePop<ActivityNav>._(
-    .activity,
-    ActivityNav._(),
-  );
-}
-
-final class const ExerciseSetNav._()
-    extends AnyPlacement
-    implements ExerciseExerciseSetPopPlacement, PopDestPlacement {
+final class const ExerciseSetNav._() extends AnyPlacement {
   this : super._();
   ExerciseSetNav surface() {
     _Screens.graph.popTo(_Screens.exerciseSet);
     return const ExerciseSetNav._();
   }
 
-  int get depth => _Screens.graph.countOf(_Screens.exerciseSet);
   ExerciseSetNav goExerciseSet(String id) {
-    _Screens.graph.popTo(_Screens.exerciseSet);
-    _Screens.graph.go(_Screens.exerciseSet, id, true);
+    _Screens.graph.goFrom(_Screens.exerciseSet, _Screens.exerciseSet, id);
     return const ExerciseSetNav._();
-  }
-
-  ExerciseExerciseSetPopPlacement pop() {
-    _Screens.graph.pop();
-    return _resolveExerciseExerciseSetPopPlacement();
-  }
-
-  WorkoutNav popToWorkout() {
-    _Screens.graph.pop(_Screens.workout);
-    return const WorkoutNav._();
-  }
-
-  ActivityNav popToActivity() {
-    _Screens.graph.pop(_Screens.activity);
-    return const ActivityNav._();
-  }
-
-  ExerciseSetNav popToExerciseSet() {
-    _Screens.graph.pop(_Screens.exerciseSet);
-    return const ExerciseSetNav._();
-  }
-
-  N popTo<N extends AnyNav>(ExerciseSetPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
   }
 }
 
-final class const ExerciseSetPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const exercise = ExerciseSetPop<ExerciseNav>._(
-    .exercise,
-    ExerciseNav._(),
-  );
-  static const workout = ExerciseSetPop<WorkoutNav>._(.workout, WorkoutNav._());
-  static const activity = ExerciseSetPop<ActivityNav>._(
-    .activity,
-    ActivityNav._(),
-  );
-  static const exerciseSet = ExerciseSetPop<ExerciseSetNav>._(
-    .exerciseSet,
-    ExerciseSetNav._(),
-  );
-}
-
-final class const DeepDemoNav._()
-    extends AnyPlacement
-    implements DeepDemoLevelFPopPlacement, PopDestPlacement {
+final class const DeepDemoNav._() extends AnyPlacement {
   this : super._();
   DeepDemoNav surface() {
     _Screens.graph.popTo(_Screens.deepDemo);
@@ -13975,496 +7021,115 @@ final class const DeepDemoNav._()
   }
 
   LevelANav goLevelA(String id) {
-    _Screens.graph.popTo(_Screens.deepDemo);
-    _Screens.graph.go(_Screens.levelA, id, true);
+    _Screens.graph.goFrom(_Screens.deepDemo, _Screens.levelA, id);
     return const LevelANav._();
   }
 }
 
-final class const LevelANav._()
-    extends AnyPlacement
-    implements LevelALevelFPopPlacement, PopDestPlacement {
+final class const LevelANav._() extends AnyPlacement {
   this : super._();
   LevelANav surface() {
     _Screens.graph.popTo(_Screens.levelA);
     return const LevelANav._();
   }
 
-  int get depth => _Screens.graph.countOf(_Screens.levelA);
   LevelBNav goLevelB(String id) {
-    _Screens.graph.popTo(_Screens.levelA);
-    _Screens.graph.go(_Screens.levelB, id, true);
+    _Screens.graph.goFrom(_Screens.levelA, _Screens.levelB, id);
     return const LevelBNav._();
-  }
-
-  DeepDemoLevelFPopPlacement pop() {
-    _Screens.graph.pop();
-    return _resolveDeepDemoLevelFPopPlacement();
-  }
-
-  LevelFNav popToLevelF() {
-    _Screens.graph.pop(_Screens.levelF);
-    return const LevelFNav._();
-  }
-
-  LevelENav popToLevelE() {
-    _Screens.graph.pop(_Screens.levelE);
-    return const LevelENav._();
-  }
-
-  LevelDNav popToLevelD() {
-    _Screens.graph.pop(_Screens.levelD);
-    return const LevelDNav._();
-  }
-
-  LevelCNav popToLevelC() {
-    _Screens.graph.pop(_Screens.levelC);
-    return const LevelCNav._();
-  }
-
-  LevelBNav popToLevelB() {
-    _Screens.graph.pop(_Screens.levelB);
-    return const LevelBNav._();
-  }
-
-  LevelANav popToLevelA() {
-    _Screens.graph.pop(_Screens.levelA);
-    return const LevelANav._();
-  }
-
-  N popTo<N extends AnyNav>(LevelAPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
   }
 }
 
-final class const LevelAPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const deepDemo = LevelAPop<DeepDemoNav>._(.deepDemo, DeepDemoNav._());
-  static const levelF = LevelAPop<LevelFNav>._(.levelF, LevelFNav._());
-  static const levelE = LevelAPop<LevelENav>._(.levelE, LevelENav._());
-  static const levelD = LevelAPop<LevelDNav>._(.levelD, LevelDNav._());
-  static const levelC = LevelAPop<LevelCNav>._(.levelC, LevelCNav._());
-  static const levelB = LevelAPop<LevelBNav>._(.levelB, LevelBNav._());
-  static const levelA = LevelAPop<LevelANav>._(.levelA, LevelANav._());
-}
-
-final class const LevelBNav._()
-    extends AnyPlacement
-    implements LevelBLevelFPopPlacement, PopDestPlacement {
+final class const LevelBNav._() extends AnyPlacement {
   this : super._();
   LevelBNav surface() {
     _Screens.graph.popTo(_Screens.levelB);
     return const LevelBNav._();
   }
 
-  int get depth => _Screens.graph.countOf(_Screens.levelB);
   LevelCNav goLevelC(String id) {
-    _Screens.graph.popTo(_Screens.levelB);
-    _Screens.graph.go(_Screens.levelC, id, true);
+    _Screens.graph.goFrom(_Screens.levelB, _Screens.levelC, id);
     return const LevelCNav._();
-  }
-
-  LevelALevelFPopPlacement pop() {
-    _Screens.graph.pop();
-    return _resolveLevelALevelFPopPlacement();
-  }
-
-  DeepDemoNav popToDeepDemo() {
-    _Screens.graph.pop(_Screens.deepDemo);
-    return const DeepDemoNav._();
-  }
-
-  LevelFNav popToLevelF() {
-    _Screens.graph.pop(_Screens.levelF);
-    return const LevelFNav._();
-  }
-
-  LevelENav popToLevelE() {
-    _Screens.graph.pop(_Screens.levelE);
-    return const LevelENav._();
-  }
-
-  LevelDNav popToLevelD() {
-    _Screens.graph.pop(_Screens.levelD);
-    return const LevelDNav._();
-  }
-
-  LevelCNav popToLevelC() {
-    _Screens.graph.pop(_Screens.levelC);
-    return const LevelCNav._();
-  }
-
-  LevelBNav popToLevelB() {
-    _Screens.graph.pop(_Screens.levelB);
-    return const LevelBNav._();
-  }
-
-  N popTo<N extends AnyNav>(LevelBPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
   }
 }
 
-final class const LevelBPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const levelA = LevelBPop<LevelANav>._(.levelA, LevelANav._());
-  static const deepDemo = LevelBPop<DeepDemoNav>._(.deepDemo, DeepDemoNav._());
-  static const levelF = LevelBPop<LevelFNav>._(.levelF, LevelFNav._());
-  static const levelE = LevelBPop<LevelENav>._(.levelE, LevelENav._());
-  static const levelD = LevelBPop<LevelDNav>._(.levelD, LevelDNav._());
-  static const levelC = LevelBPop<LevelCNav>._(.levelC, LevelCNav._());
-  static const levelB = LevelBPop<LevelBNav>._(.levelB, LevelBNav._());
-}
-
-final class const LevelCNav._()
-    extends AnyPlacement
-    implements LevelCLevelFPopPlacement, PopDestPlacement {
+final class const LevelCNav._() extends AnyPlacement {
   this : super._();
   LevelCNav surface() {
     _Screens.graph.popTo(_Screens.levelC);
     return const LevelCNav._();
   }
 
-  int get depth => _Screens.graph.countOf(_Screens.levelC);
   LevelDNav goLevelD(String id) {
-    _Screens.graph.popTo(_Screens.levelC);
-    _Screens.graph.go(_Screens.levelD, id, true);
+    _Screens.graph.goFrom(_Screens.levelC, _Screens.levelD, id);
     return const LevelDNav._();
-  }
-
-  LevelBLevelFPopPlacement pop() {
-    _Screens.graph.pop();
-    return _resolveLevelBLevelFPopPlacement();
-  }
-
-  LevelANav popToLevelA() {
-    _Screens.graph.pop(_Screens.levelA);
-    return const LevelANav._();
-  }
-
-  DeepDemoNav popToDeepDemo() {
-    _Screens.graph.pop(_Screens.deepDemo);
-    return const DeepDemoNav._();
-  }
-
-  LevelFNav popToLevelF() {
-    _Screens.graph.pop(_Screens.levelF);
-    return const LevelFNav._();
-  }
-
-  LevelENav popToLevelE() {
-    _Screens.graph.pop(_Screens.levelE);
-    return const LevelENav._();
-  }
-
-  LevelDNav popToLevelD() {
-    _Screens.graph.pop(_Screens.levelD);
-    return const LevelDNav._();
-  }
-
-  LevelCNav popToLevelC() {
-    _Screens.graph.pop(_Screens.levelC);
-    return const LevelCNav._();
-  }
-
-  N popTo<N extends AnyNav>(LevelCPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
   }
 }
 
-final class const LevelCPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const levelB = LevelCPop<LevelBNav>._(.levelB, LevelBNav._());
-  static const levelA = LevelCPop<LevelANav>._(.levelA, LevelANav._());
-  static const deepDemo = LevelCPop<DeepDemoNav>._(.deepDemo, DeepDemoNav._());
-  static const levelF = LevelCPop<LevelFNav>._(.levelF, LevelFNav._());
-  static const levelE = LevelCPop<LevelENav>._(.levelE, LevelENav._());
-  static const levelD = LevelCPop<LevelDNav>._(.levelD, LevelDNav._());
-  static const levelC = LevelCPop<LevelCNav>._(.levelC, LevelCNav._());
-}
-
-final class const LevelDNav._()
-    extends AnyPlacement
-    implements LevelDLevelFPopPlacement, PopDestPlacement {
+final class const LevelDNav._() extends AnyPlacement {
   this : super._();
   LevelDNav surface() {
     _Screens.graph.popTo(_Screens.levelD);
     return const LevelDNav._();
   }
 
-  int get depth => _Screens.graph.countOf(_Screens.levelD);
   LevelENav goLevelE(String id) {
-    _Screens.graph.popTo(_Screens.levelD);
-    _Screens.graph.go(_Screens.levelE, id, true);
+    _Screens.graph.goFrom(_Screens.levelD, _Screens.levelE, id);
     return const LevelENav._();
-  }
-
-  LevelCLevelFPopPlacement pop() {
-    _Screens.graph.pop();
-    return _resolveLevelCLevelFPopPlacement();
-  }
-
-  LevelBNav popToLevelB() {
-    _Screens.graph.pop(_Screens.levelB);
-    return const LevelBNav._();
-  }
-
-  LevelANav popToLevelA() {
-    _Screens.graph.pop(_Screens.levelA);
-    return const LevelANav._();
-  }
-
-  DeepDemoNav popToDeepDemo() {
-    _Screens.graph.pop(_Screens.deepDemo);
-    return const DeepDemoNav._();
-  }
-
-  LevelFNav popToLevelF() {
-    _Screens.graph.pop(_Screens.levelF);
-    return const LevelFNav._();
-  }
-
-  LevelENav popToLevelE() {
-    _Screens.graph.pop(_Screens.levelE);
-    return const LevelENav._();
-  }
-
-  LevelDNav popToLevelD() {
-    _Screens.graph.pop(_Screens.levelD);
-    return const LevelDNav._();
-  }
-
-  N popTo<N extends AnyNav>(LevelDPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
   }
 }
 
-final class const LevelDPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const levelC = LevelDPop<LevelCNav>._(.levelC, LevelCNav._());
-  static const levelB = LevelDPop<LevelBNav>._(.levelB, LevelBNav._());
-  static const levelA = LevelDPop<LevelANav>._(.levelA, LevelANav._());
-  static const deepDemo = LevelDPop<DeepDemoNav>._(.deepDemo, DeepDemoNav._());
-  static const levelF = LevelDPop<LevelFNav>._(.levelF, LevelFNav._());
-  static const levelE = LevelDPop<LevelENav>._(.levelE, LevelENav._());
-  static const levelD = LevelDPop<LevelDNav>._(.levelD, LevelDNav._());
-}
-
-final class const LevelENav._()
-    extends AnyPlacement
-    implements LevelELevelFPopPlacement, PopDestPlacement {
+final class const LevelENav._() extends AnyPlacement {
   this : super._();
   LevelENav surface() {
     _Screens.graph.popTo(_Screens.levelE);
     return const LevelENav._();
   }
 
-  int get depth => _Screens.graph.countOf(_Screens.levelE);
   LevelFNav goLevelF(String id) {
-    _Screens.graph.popTo(_Screens.levelE);
-    _Screens.graph.go(_Screens.levelF, id, true);
+    _Screens.graph.goFrom(_Screens.levelE, _Screens.levelF, id);
     return const LevelFNav._();
-  }
-
-  LevelDLevelFPopPlacement pop() {
-    _Screens.graph.pop();
-    return _resolveLevelDLevelFPopPlacement();
-  }
-
-  LevelCNav popToLevelC() {
-    _Screens.graph.pop(_Screens.levelC);
-    return const LevelCNav._();
-  }
-
-  LevelBNav popToLevelB() {
-    _Screens.graph.pop(_Screens.levelB);
-    return const LevelBNav._();
-  }
-
-  LevelANav popToLevelA() {
-    _Screens.graph.pop(_Screens.levelA);
-    return const LevelANav._();
-  }
-
-  DeepDemoNav popToDeepDemo() {
-    _Screens.graph.pop(_Screens.deepDemo);
-    return const DeepDemoNav._();
-  }
-
-  LevelFNav popToLevelF() {
-    _Screens.graph.pop(_Screens.levelF);
-    return const LevelFNav._();
-  }
-
-  LevelENav popToLevelE() {
-    _Screens.graph.pop(_Screens.levelE);
-    return const LevelENav._();
-  }
-
-  N popTo<N extends AnyNav>(LevelEPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
   }
 }
 
-final class const LevelEPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const levelD = LevelEPop<LevelDNav>._(.levelD, LevelDNav._());
-  static const levelC = LevelEPop<LevelCNav>._(.levelC, LevelCNav._());
-  static const levelB = LevelEPop<LevelBNav>._(.levelB, LevelBNav._());
-  static const levelA = LevelEPop<LevelANav>._(.levelA, LevelANav._());
-  static const deepDemo = LevelEPop<DeepDemoNav>._(.deepDemo, DeepDemoNav._());
-  static const levelF = LevelEPop<LevelFNav>._(.levelF, LevelFNav._());
-  static const levelE = LevelEPop<LevelENav>._(.levelE, LevelENav._());
-}
-
-final class const LevelFNav._()
-    extends AnyPlacement
-    implements
-        DeepDemoLevelFPopPlacement,
-        LevelALevelFPopPlacement,
-        LevelBLevelFPopPlacement,
-        LevelCLevelFPopPlacement,
-        LevelDLevelFPopPlacement,
-        LevelELevelFPopPlacement,
-        PopDestPlacement {
+final class const LevelFNav._() extends AnyPlacement {
   this : super._();
   LevelFNav surface() {
     _Screens.graph.popTo(_Screens.levelF);
     return const LevelFNav._();
   }
 
-  int get depth => _Screens.graph.countOf(_Screens.levelF);
   LevelANav goLevelA(String id) {
-    _Screens.graph.popTo(_Screens.levelF);
-    _Screens.graph.go(_Screens.levelA, id, true);
+    _Screens.graph.goFrom(_Screens.levelF, _Screens.levelA, id);
     return const LevelANav._();
   }
 
   LevelBNav goLevelB(String id) {
-    _Screens.graph.popTo(_Screens.levelF);
-    _Screens.graph.go(_Screens.levelB, id, true);
+    _Screens.graph.goFrom(_Screens.levelF, _Screens.levelB, id);
     return const LevelBNav._();
   }
 
   LevelCNav goLevelC(String id) {
-    _Screens.graph.popTo(_Screens.levelF);
-    _Screens.graph.go(_Screens.levelC, id, true);
+    _Screens.graph.goFrom(_Screens.levelF, _Screens.levelC, id);
     return const LevelCNav._();
   }
 
   LevelDNav goLevelD(String id) {
-    _Screens.graph.popTo(_Screens.levelF);
-    _Screens.graph.go(_Screens.levelD, id, true);
+    _Screens.graph.goFrom(_Screens.levelF, _Screens.levelD, id);
     return const LevelDNav._();
   }
 
   LevelENav goLevelE(String id) {
-    _Screens.graph.popTo(_Screens.levelF);
-    _Screens.graph.go(_Screens.levelE, id, true);
+    _Screens.graph.goFrom(_Screens.levelF, _Screens.levelE, id);
     return const LevelENav._();
   }
 
   LevelFNav goLevelF(String id) {
-    _Screens.graph.popTo(_Screens.levelF);
-    _Screens.graph.go(_Screens.levelF, id, true);
+    _Screens.graph.goFrom(_Screens.levelF, _Screens.levelF, id);
     return const LevelFNav._();
   }
-
-  N go<N extends AnyNav>(LevelFHop<N> hop) {
-    _Screens.graph.go(hop.spec, hop.id, true);
-    return hop.nav;
-  }
-
-  LevelELevelFPopPlacement pop() {
-    _Screens.graph.pop();
-    return _resolveLevelELevelFPopPlacement();
-  }
-
-  LevelDNav popToLevelD() {
-    _Screens.graph.pop(_Screens.levelD);
-    return const LevelDNav._();
-  }
-
-  LevelCNav popToLevelC() {
-    _Screens.graph.pop(_Screens.levelC);
-    return const LevelCNav._();
-  }
-
-  LevelBNav popToLevelB() {
-    _Screens.graph.pop(_Screens.levelB);
-    return const LevelBNav._();
-  }
-
-  LevelANav popToLevelA() {
-    _Screens.graph.pop(_Screens.levelA);
-    return const LevelANav._();
-  }
-
-  DeepDemoNav popToDeepDemo() {
-    _Screens.graph.pop(_Screens.deepDemo);
-    return const DeepDemoNav._();
-  }
-
-  LevelFNav popToLevelF() {
-    _Screens.graph.pop(_Screens.levelF);
-    return const LevelFNav._();
-  }
-
-  N popTo<N extends AnyNav>(LevelFPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const LevelFPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const levelE = LevelFPop<LevelENav>._(.levelE, LevelENav._());
-  static const levelD = LevelFPop<LevelDNav>._(.levelD, LevelDNav._());
-  static const levelC = LevelFPop<LevelCNav>._(.levelC, LevelCNav._());
-  static const levelB = LevelFPop<LevelBNav>._(.levelB, LevelBNav._());
-  static const levelA = LevelFPop<LevelANav>._(.levelA, LevelANav._());
-  static const deepDemo = LevelFPop<DeepDemoNav>._(.deepDemo, DeepDemoNav._());
-  static const levelF = LevelFPop<LevelFNav>._(.levelF, LevelFNav._());
-}
-
-final class const LevelFHop<N extends AnyNav>._(
-  final _Screens spec,
-  final Object? id,
-  final N nav,
-) {
-  static LevelFHop<LevelANav> levelA(String id) =>
-      LevelFHop._(.levelA, id, const LevelANav._());
-  static LevelFHop<LevelBNav> levelB(String id) =>
-      LevelFHop._(.levelB, id, const LevelBNav._());
-  static LevelFHop<LevelCNav> levelC(String id) =>
-      LevelFHop._(.levelC, id, const LevelCNav._());
-  static LevelFHop<LevelDNav> levelD(String id) =>
-      LevelFHop._(.levelD, id, const LevelDNav._());
-  static LevelFHop<LevelENav> levelE(String id) =>
-      LevelFHop._(.levelE, id, const LevelENav._());
-  static LevelFHop<LevelFNav> levelF(String id) =>
-      LevelFHop._(.levelF, id, const LevelFNav._());
-}
-
-final class const IntegrationsNav._()
-    extends AnyPlacement
-    implements PopDestPlacement {
+final class const IntegrationsNav._() extends AnyPlacement {
   this : super._();
   IntegrationsNav surface() {
     _Screens.graph.popTo(_Screens.integrations);
@@ -14472,14 +7137,8 @@ final class const IntegrationsNav._()
   }
 
   ApiKeysNav goApiKeys() {
-    _Screens.graph.popTo(_Screens.integrations);
-    _Screens.graph.go(_Screens.apiKeys, null, true);
+    _Screens.graph.goFrom(_Screens.integrations, _Screens.apiKeys, null);
     return const ApiKeysNav._();
-  }
-
-  SettingsNav pop() {
-    _Screens.graph.pop();
-    return const SettingsNav._();
   }
 }
 
@@ -14489,37 +7148,9 @@ final class const ApiKeysNav._() extends AnyPlacement {
     _Screens.graph.popTo(_Screens.apiKeys);
     return const ApiKeysNav._();
   }
-
-  IntegrationsNav pop() {
-    _Screens.graph.pop();
-    return const IntegrationsNav._();
-  }
-
-  SettingsNav popToSettings() {
-    _Screens.graph.pop(_Screens.settings);
-    return const SettingsNav._();
-  }
-
-  N popTo<N extends AnyNav>(ApiKeysPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const ApiKeysPop<N extends AnyNav>._(
-  final _Screens spec,
-  final N? nav,
-) {
-  static const integrations = ApiKeysPop<IntegrationsNav>._(
-    .integrations,
-    IntegrationsNav._(),
-  );
-  static const settings = ApiKeysPop<SettingsNav>._(.settings, SettingsNav._());
-}
-
-final class const StudioNav._()
-    extends AnyPlacement
-    implements PopDestPlacement {
+final class const StudioNav._() extends AnyPlacement {
   this : super._();
   StudioNav surface() {
     _Screens.graph.popTo(CreatorStudio.studio);
@@ -14527,72 +7158,26 @@ final class const StudioNav._()
   }
 
   AnalyticsNav goAnalytics() {
-    _Screens.graph.popTo(CreatorStudio.studio);
-    _Screens.graph.go(CreatorStudio.analytics, null, true);
+    _Screens.graph.goFrom(CreatorStudio.studio, CreatorStudio.analytics, null);
     return const AnalyticsNav._();
   }
 
   ScheduledNav goScheduled() {
-    _Screens.graph.popTo(CreatorStudio.studio);
-    _Screens.graph.go(CreatorStudio.scheduled, null, true);
+    _Screens.graph.goFrom(CreatorStudio.studio, CreatorStudio.scheduled, null);
     return const ScheduledNav._();
   }
 
   MonetizationNav goMonetization() {
-    _Screens.graph.popTo(CreatorStudio.studio);
-    _Screens.graph.go(CreatorStudio.monetization, null, true);
+    _Screens.graph.goFrom(
+      CreatorStudio.studio,
+      CreatorStudio.monetization,
+      null,
+    );
     return const MonetizationNav._();
   }
-
-  ScheduledPostNav goScheduledPost(String id) {
-    _Screens.graph.go(CreatorStudio.scheduled, null, true);
-    _Screens.graph.go(CreatorStudio.scheduledPost, id, true);
-    return const ScheduledPostNav._();
-  }
-
-  EditScheduledNav goEditScheduled(String id) {
-    _Screens.graph.go(CreatorStudio.scheduled, null, true);
-    _Screens.graph.go(CreatorStudio.scheduledPost, id, true);
-    _Screens.graph.go(CreatorStudio.editScheduled, id, true);
-    return const EditScheduledNav._();
-  }
-
-  N go<N extends AnyNav>(StudioHop<N> hop) {
-    _Screens.graph.go(hop.spec, hop.id, true);
-    return hop.nav;
-  }
-
-  HomeNav pop() {
-    _Screens.graph.pop();
-    return const HomeNav._();
-  }
 }
 
-final class const StudioHop<N extends AnyNav>._(
-  final CreatorStudio spec,
-  final Object? id,
-  final N nav,
-) {
-  static const analytics = StudioHop<AnalyticsNav>._(
-    .analytics,
-    null,
-    AnalyticsNav._(),
-  );
-  static const scheduled = StudioHop<ScheduledNav>._(
-    .scheduled,
-    null,
-    ScheduledNav._(),
-  );
-  static const monetization = StudioHop<MonetizationNav>._(
-    .monetization,
-    null,
-    MonetizationNav._(),
-  );
-}
-
-final class const AnalyticsNav._()
-    extends AnyPlacement
-    implements PopDestPlacement {
+final class const AnalyticsNav._() extends AnyPlacement {
   this : super._();
   AnalyticsNav surface() {
     _Screens.graph.popTo(CreatorStudio.analytics);
@@ -14600,36 +7185,13 @@ final class const AnalyticsNav._()
   }
 
   AudienceNav goAudience() {
-    _Screens.graph.popTo(CreatorStudio.analytics);
-    _Screens.graph.go(CreatorStudio.audience, null, true);
+    _Screens.graph.goFrom(
+      CreatorStudio.analytics,
+      CreatorStudio.audience,
+      null,
+    );
     return const AudienceNav._();
   }
-
-  StudioNav pop() {
-    _Screens.graph.pop();
-    return const StudioNav._();
-  }
-
-  HomeNav popToHome() {
-    _Screens.graph.pop(_Screens.home);
-    return const HomeNav._();
-  }
-
-  N popTo<N extends AnyNav>(AnalyticsPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const AnalyticsPop<N extends AnyNav>._(
-  final Enum spec,
-  final N? nav,
-) {
-  static const studio = AnalyticsPop<StudioNav>._(
-    CreatorStudio.studio,
-    StudioNav._(),
-  );
-  static const home = AnalyticsPop<HomeNav>._(_Screens.home, HomeNav._());
 }
 
 final class const AudienceNav._() extends AnyPlacement {
@@ -14638,46 +7200,9 @@ final class const AudienceNav._() extends AnyPlacement {
     _Screens.graph.popTo(CreatorStudio.audience);
     return const AudienceNav._();
   }
-
-  AnalyticsNav pop() {
-    _Screens.graph.pop();
-    return const AnalyticsNav._();
-  }
-
-  StudioNav popToStudio() {
-    _Screens.graph.pop(CreatorStudio.studio);
-    return const StudioNav._();
-  }
-
-  HomeNav popToHome() {
-    _Screens.graph.pop(_Screens.home);
-    return const HomeNav._();
-  }
-
-  N popTo<N extends AnyNav>(AudiencePop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const AudiencePop<N extends AnyNav>._(
-  final Enum spec,
-  final N? nav,
-) {
-  static const analytics = AudiencePop<AnalyticsNav>._(
-    CreatorStudio.analytics,
-    AnalyticsNav._(),
-  );
-  static const studio = AudiencePop<StudioNav>._(
-    CreatorStudio.studio,
-    StudioNav._(),
-  );
-  static const home = AudiencePop<HomeNav>._(_Screens.home, HomeNav._());
-}
-
-final class const ScheduledNav._()
-    extends AnyPlacement
-    implements PopDestPlacement {
+final class const ScheduledNav._() extends AnyPlacement {
   this : super._();
   ScheduledNav surface() {
     _Screens.graph.popTo(CreatorStudio.scheduled);
@@ -14685,47 +7210,16 @@ final class const ScheduledNav._()
   }
 
   ScheduledPostNav goScheduledPost(String id) {
-    _Screens.graph.popTo(CreatorStudio.scheduled);
-    _Screens.graph.go(CreatorStudio.scheduledPost, id, true);
+    _Screens.graph.goFrom(
+      CreatorStudio.scheduled,
+      CreatorStudio.scheduledPost,
+      id,
+    );
     return const ScheduledPostNav._();
   }
-
-  EditScheduledNav goEditScheduled(String id) {
-    _Screens.graph.go(CreatorStudio.scheduledPost, id, true);
-    _Screens.graph.go(CreatorStudio.editScheduled, id, true);
-    return const EditScheduledNav._();
-  }
-
-  StudioNav pop() {
-    _Screens.graph.pop();
-    return const StudioNav._();
-  }
-
-  HomeNav popToHome() {
-    _Screens.graph.pop(_Screens.home);
-    return const HomeNav._();
-  }
-
-  N popTo<N extends AnyNav>(ScheduledPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const ScheduledPop<N extends AnyNav>._(
-  final Enum spec,
-  final N? nav,
-) {
-  static const studio = ScheduledPop<StudioNav>._(
-    CreatorStudio.studio,
-    StudioNav._(),
-  );
-  static const home = ScheduledPop<HomeNav>._(_Screens.home, HomeNav._());
-}
-
-final class const ScheduledPostNav._()
-    extends AnyPlacement
-    implements PopDestPlacement {
+final class const ScheduledPostNav._() extends AnyPlacement {
   this : super._();
   ScheduledPostNav surface() {
     _Screens.graph.popTo(CreatorStudio.scheduledPost);
@@ -14733,49 +7227,13 @@ final class const ScheduledPostNav._()
   }
 
   EditScheduledNav goEditScheduled() {
-    _Screens.graph.popTo(CreatorStudio.scheduledPost);
-    _Screens.graph.go(
+    _Screens.graph.goFrom(
+      CreatorStudio.scheduledPost,
       CreatorStudio.editScheduled,
       _idOf(CreatorStudio.scheduledPost),
-      true,
     );
     return const EditScheduledNav._();
   }
-
-  ScheduledNav pop() {
-    _Screens.graph.pop();
-    return const ScheduledNav._();
-  }
-
-  StudioNav popToStudio() {
-    _Screens.graph.pop(CreatorStudio.studio);
-    return const StudioNav._();
-  }
-
-  HomeNav popToHome() {
-    _Screens.graph.pop(_Screens.home);
-    return const HomeNav._();
-  }
-
-  N popTo<N extends AnyNav>(ScheduledPostPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const ScheduledPostPop<N extends AnyNav>._(
-  final Enum spec,
-  final N? nav,
-) {
-  static const scheduled = ScheduledPostPop<ScheduledNav>._(
-    CreatorStudio.scheduled,
-    ScheduledNav._(),
-  );
-  static const studio = ScheduledPostPop<StudioNav>._(
-    CreatorStudio.studio,
-    StudioNav._(),
-  );
-  static const home = ScheduledPostPop<HomeNav>._(_Screens.home, HomeNav._());
 }
 
 final class const EditScheduledNav._() extends AnyPlacement {
@@ -14784,55 +7242,9 @@ final class const EditScheduledNav._() extends AnyPlacement {
     _Screens.graph.popTo(CreatorStudio.editScheduled);
     return const EditScheduledNav._();
   }
-
-  ScheduledPostNav pop() {
-    _Screens.graph.pop();
-    return const ScheduledPostNav._();
-  }
-
-  ScheduledNav popToScheduled() {
-    _Screens.graph.pop(CreatorStudio.scheduled);
-    return const ScheduledNav._();
-  }
-
-  StudioNav popToStudio() {
-    _Screens.graph.pop(CreatorStudio.studio);
-    return const StudioNav._();
-  }
-
-  HomeNav popToHome() {
-    _Screens.graph.pop(_Screens.home);
-    return const HomeNav._();
-  }
-
-  N popTo<N extends AnyNav>(EditScheduledPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const EditScheduledPop<N extends AnyNav>._(
-  final Enum spec,
-  final N? nav,
-) {
-  static const scheduledPost = EditScheduledPop<ScheduledPostNav>._(
-    CreatorStudio.scheduledPost,
-    ScheduledPostNav._(),
-  );
-  static const scheduled = EditScheduledPop<ScheduledNav>._(
-    CreatorStudio.scheduled,
-    ScheduledNav._(),
-  );
-  static const studio = EditScheduledPop<StudioNav>._(
-    CreatorStudio.studio,
-    StudioNav._(),
-  );
-  static const home = EditScheduledPop<HomeNav>._(_Screens.home, HomeNav._());
-}
-
-final class const MonetizationNav._()
-    extends AnyPlacement
-    implements PopDestPlacement {
+final class const MonetizationNav._() extends AnyPlacement {
   this : super._();
   MonetizationNav surface() {
     _Screens.graph.popTo(CreatorStudio.monetization);
@@ -14840,36 +7252,13 @@ final class const MonetizationNav._()
   }
 
   PayoutsNav goPayouts() {
-    _Screens.graph.popTo(CreatorStudio.monetization);
-    _Screens.graph.go(CreatorStudio.payouts, null, true);
+    _Screens.graph.goFrom(
+      CreatorStudio.monetization,
+      CreatorStudio.payouts,
+      null,
+    );
     return const PayoutsNav._();
   }
-
-  StudioNav pop() {
-    _Screens.graph.pop();
-    return const StudioNav._();
-  }
-
-  HomeNav popToHome() {
-    _Screens.graph.pop(_Screens.home);
-    return const HomeNav._();
-  }
-
-  N popTo<N extends AnyNav>(MonetizationPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const MonetizationPop<N extends AnyNav>._(
-  final Enum spec,
-  final N? nav,
-) {
-  static const studio = MonetizationPop<StudioNav>._(
-    CreatorStudio.studio,
-    StudioNav._(),
-  );
-  static const home = MonetizationPop<HomeNav>._(_Screens.home, HomeNav._());
 }
 
 final class const PayoutsNav._() extends AnyPlacement {
@@ -14878,46 +7267,9 @@ final class const PayoutsNav._() extends AnyPlacement {
     _Screens.graph.popTo(CreatorStudio.payouts);
     return const PayoutsNav._();
   }
-
-  MonetizationNav pop() {
-    _Screens.graph.pop();
-    return const MonetizationNav._();
-  }
-
-  StudioNav popToStudio() {
-    _Screens.graph.pop(CreatorStudio.studio);
-    return const StudioNav._();
-  }
-
-  HomeNav popToHome() {
-    _Screens.graph.pop(_Screens.home);
-    return const HomeNav._();
-  }
-
-  N popTo<N extends AnyNav>(PayoutsPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const PayoutsPop<N extends AnyNav>._(
-  final Enum spec,
-  final N? nav,
-) {
-  static const monetization = PayoutsPop<MonetizationNav>._(
-    CreatorStudio.monetization,
-    MonetizationNav._(),
-  );
-  static const studio = PayoutsPop<StudioNav>._(
-    CreatorStudio.studio,
-    StudioNav._(),
-  );
-  static const home = PayoutsPop<HomeNav>._(_Screens.home, HomeNav._());
-}
-
-final class const EventsNav._()
-    extends AnyPlacement
-    implements PopDestPlacement {
+final class const EventsNav._() extends AnyPlacement {
   this : super._();
   EventsNav surface() {
     _Screens.graph.popTo(Events.events);
@@ -14925,63 +7277,17 @@ final class const EventsNav._()
   }
 
   EventNav goEvent(String id) {
-    _Screens.graph.popTo(Events.events);
-    _Screens.graph.go(Events.event, id, true);
+    _Screens.graph.goFrom(Events.events, Events.event, id);
     return const EventNav._();
   }
 
   CreateEventNav goCreateEvent() {
-    _Screens.graph.popTo(Events.events);
-    _Screens.graph.go(Events.createEvent, null, true);
+    _Screens.graph.goFrom(Events.events, Events.createEvent, null);
     return const CreateEventNav._();
   }
-
-  AttendeesNav goAttendees(String id) {
-    _Screens.graph.go(Events.event, id, true);
-    _Screens.graph.go(Events.attendees, id, true);
-    return const AttendeesNav._();
-  }
-
-  EditEventNav goEditEvent(String id) {
-    _Screens.graph.go(Events.event, id, true);
-    _Screens.graph.go(Events.editEvent, id, true);
-    return const EditEventNav._();
-  }
-
-  TicketsNav goTickets(String id) {
-    _Screens.graph.go(Events.event, id, true);
-    _Screens.graph.go(Events.tickets, id, true);
-    return const TicketsNav._();
-  }
-
-  N go<N extends AnyNav>(EventsHop<N> hop) {
-    _Screens.graph.go(hop.spec, hop.id, true);
-    return hop.nav;
-  }
-
-  DiscoverNav pop() {
-    _Screens.graph.pop();
-    return const DiscoverNav._();
-  }
 }
 
-final class const EventsHop<N extends AnyNav>._(
-  final Events spec,
-  final Object? id,
-  final N nav,
-) {
-  static EventsHop<EventNav> event(String id) =>
-      EventsHop._(.event, id, const EventNav._());
-  static const createEvent = EventsHop<CreateEventNav>._(
-    .createEvent,
-    null,
-    CreateEventNav._(),
-  );
-}
-
-final class const EventNav._()
-    extends AnyPlacement
-    implements PopDestPlacement {
+final class const EventNav._() extends AnyPlacement {
   this : super._();
   EventNav surface() {
     _Screens.graph.popTo(Events.event);
@@ -14989,45 +7295,19 @@ final class const EventNav._()
   }
 
   AttendeesNav goAttendees() {
-    _Screens.graph.popTo(Events.event);
-    _Screens.graph.go(Events.attendees, _idOf(Events.event), true);
+    _Screens.graph.goFrom(Events.event, Events.attendees, _idOf(Events.event));
     return const AttendeesNav._();
   }
 
   EditEventNav goEditEvent() {
-    _Screens.graph.popTo(Events.event);
-    _Screens.graph.go(Events.editEvent, _idOf(Events.event), true);
+    _Screens.graph.goFrom(Events.event, Events.editEvent, _idOf(Events.event));
     return const EditEventNav._();
   }
 
   TicketsNav goTickets() {
-    _Screens.graph.popTo(Events.event);
-    _Screens.graph.go(Events.tickets, _idOf(Events.event), true);
+    _Screens.graph.goFrom(Events.event, Events.tickets, _idOf(Events.event));
     return const TicketsNav._();
   }
-
-  EventsNav pop() {
-    _Screens.graph.pop();
-    return const EventsNav._();
-  }
-
-  DiscoverNav popToDiscover() {
-    _Screens.graph.pop(_Screens.discover);
-    return const DiscoverNav._();
-  }
-
-  N popTo<N extends AnyNav>(EventPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const EventPop<N extends AnyNav>._(final Enum spec, final N? nav) {
-  static const events = EventPop<EventsNav>._(Events.events, EventsNav._());
-  static const discover = EventPop<DiscoverNav>._(
-    _Screens.discover,
-    DiscoverNav._(),
-  );
 }
 
 final class const AttendeesNav._() extends AnyPlacement {
@@ -15036,38 +7316,6 @@ final class const AttendeesNav._() extends AnyPlacement {
     _Screens.graph.popTo(Events.attendees);
     return const AttendeesNav._();
   }
-
-  EventNav pop() {
-    _Screens.graph.pop();
-    return const EventNav._();
-  }
-
-  EventsNav popToEvents() {
-    _Screens.graph.pop(Events.events);
-    return const EventsNav._();
-  }
-
-  DiscoverNav popToDiscover() {
-    _Screens.graph.pop(_Screens.discover);
-    return const DiscoverNav._();
-  }
-
-  N popTo<N extends AnyNav>(AttendeesPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const AttendeesPop<N extends AnyNav>._(
-  final Enum spec,
-  final N? nav,
-) {
-  static const event = AttendeesPop<EventNav>._(Events.event, EventNav._());
-  static const events = AttendeesPop<EventsNav>._(Events.events, EventsNav._());
-  static const discover = AttendeesPop<DiscoverNav>._(
-    _Screens.discover,
-    DiscoverNav._(),
-  );
 }
 
 final class const EditEventNav._() extends AnyPlacement {
@@ -15076,38 +7324,6 @@ final class const EditEventNav._() extends AnyPlacement {
     _Screens.graph.popTo(Events.editEvent);
     return const EditEventNav._();
   }
-
-  EventNav pop() {
-    _Screens.graph.pop();
-    return const EventNav._();
-  }
-
-  EventsNav popToEvents() {
-    _Screens.graph.pop(Events.events);
-    return const EventsNav._();
-  }
-
-  DiscoverNav popToDiscover() {
-    _Screens.graph.pop(_Screens.discover);
-    return const DiscoverNav._();
-  }
-
-  N popTo<N extends AnyNav>(EditEventPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const EditEventPop<N extends AnyNav>._(
-  final Enum spec,
-  final N? nav,
-) {
-  static const event = EditEventPop<EventNav>._(Events.event, EventNav._());
-  static const events = EditEventPop<EventsNav>._(Events.events, EventsNav._());
-  static const discover = EditEventPop<DiscoverNav>._(
-    _Screens.discover,
-    DiscoverNav._(),
-  );
 }
 
 final class const CreateEventNav._() extends AnyPlacement {
@@ -15116,35 +7332,6 @@ final class const CreateEventNav._() extends AnyPlacement {
     _Screens.graph.popTo(Events.createEvent);
     return const CreateEventNav._();
   }
-
-  EventsNav pop() {
-    _Screens.graph.pop();
-    return const EventsNav._();
-  }
-
-  DiscoverNav popToDiscover() {
-    _Screens.graph.pop(_Screens.discover);
-    return const DiscoverNav._();
-  }
-
-  N popTo<N extends AnyNav>(CreateEventPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const CreateEventPop<N extends AnyNav>._(
-  final Enum spec,
-  final N? nav,
-) {
-  static const events = CreateEventPop<EventsNav>._(
-    Events.events,
-    EventsNav._(),
-  );
-  static const discover = CreateEventPop<DiscoverNav>._(
-    _Screens.discover,
-    DiscoverNav._(),
-  );
 }
 
 final class const TicketsNav._() extends AnyPlacement {
@@ -15153,43 +7340,9 @@ final class const TicketsNav._() extends AnyPlacement {
     _Screens.graph.popTo(Events.tickets);
     return const TicketsNav._();
   }
-
-  EventNav pop() {
-    _Screens.graph.pop();
-    return const EventNav._();
-  }
-
-  EventsNav popToEvents() {
-    _Screens.graph.pop(Events.events);
-    return const EventsNav._();
-  }
-
-  DiscoverNav popToDiscover() {
-    _Screens.graph.pop(_Screens.discover);
-    return const DiscoverNav._();
-  }
-
-  N popTo<N extends AnyNav>(TicketsPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const TicketsPop<N extends AnyNav>._(
-  final Enum spec,
-  final N? nav,
-) {
-  static const event = TicketsPop<EventNav>._(Events.event, EventNav._());
-  static const events = TicketsPop<EventsNav>._(Events.events, EventsNav._());
-  static const discover = TicketsPop<DiscoverNav>._(
-    _Screens.discover,
-    DiscoverNav._(),
-  );
-}
-
-final class const SupportNav._()
-    extends AnyPlacement
-    implements PopDestPlacement {
+final class const SupportNav._() extends AnyPlacement {
   this : super._();
   SupportNav surface() {
     _Screens.graph.popTo(Support.support);
@@ -15197,71 +7350,22 @@ final class const SupportNav._()
   }
 
   SupportTicketsNav goSupportTickets() {
-    _Screens.graph.popTo(Support.support);
-    _Screens.graph.go(Support.supportTickets, null, true);
+    _Screens.graph.goFrom(Support.support, Support.supportTickets, null);
     return const SupportTicketsNav._();
   }
 
   NewTicketNav goNewTicket() {
-    _Screens.graph.popTo(Support.support);
-    _Screens.graph.go(Support.newTicket, null, true);
+    _Screens.graph.goFrom(Support.support, Support.newTicket, null);
     return const NewTicketNav._();
   }
 
   KnowledgeBaseNav goKnowledgeBase() {
-    _Screens.graph.popTo(Support.support);
-    _Screens.graph.go(Support.knowledgeBase, null, true);
+    _Screens.graph.goFrom(Support.support, Support.knowledgeBase, null);
     return const KnowledgeBaseNav._();
   }
-
-  SupportTicketNav goSupportTicket(String id) {
-    _Screens.graph.go(Support.supportTickets, null, true);
-    _Screens.graph.go(Support.supportTicket, id, true);
-    return const SupportTicketNav._();
-  }
-
-  ArticleNav goArticle(String id) {
-    _Screens.graph.go(Support.knowledgeBase, null, true);
-    _Screens.graph.go(Support.article, id, true);
-    return const ArticleNav._();
-  }
-
-  N go<N extends AnyNav>(SupportHop<N> hop) {
-    _Screens.graph.go(hop.spec, hop.id, true);
-    return hop.nav;
-  }
-
-  SettingsNav pop() {
-    _Screens.graph.pop();
-    return const SettingsNav._();
-  }
 }
 
-final class const SupportHop<N extends AnyNav>._(
-  final Support spec,
-  final Object? id,
-  final N nav,
-) {
-  static const supportTickets = SupportHop<SupportTicketsNav>._(
-    .supportTickets,
-    null,
-    SupportTicketsNav._(),
-  );
-  static const newTicket = SupportHop<NewTicketNav>._(
-    .newTicket,
-    null,
-    NewTicketNav._(),
-  );
-  static const knowledgeBase = SupportHop<KnowledgeBaseNav>._(
-    .knowledgeBase,
-    null,
-    KnowledgeBaseNav._(),
-  );
-}
-
-final class const SupportTicketsNav._()
-    extends AnyPlacement
-    implements PopDestPlacement {
+final class const SupportTicketsNav._() extends AnyPlacement {
   this : super._();
   SupportTicketsNav surface() {
     _Screens.graph.popTo(Support.supportTickets);
@@ -15269,39 +7373,9 @@ final class const SupportTicketsNav._()
   }
 
   SupportTicketNav goSupportTicket(String id) {
-    _Screens.graph.popTo(Support.supportTickets);
-    _Screens.graph.go(Support.supportTicket, id, true);
+    _Screens.graph.goFrom(Support.supportTickets, Support.supportTicket, id);
     return const SupportTicketNav._();
   }
-
-  SupportNav pop() {
-    _Screens.graph.pop();
-    return const SupportNav._();
-  }
-
-  SettingsNav popToSettings() {
-    _Screens.graph.pop(_Screens.settings);
-    return const SettingsNav._();
-  }
-
-  N popTo<N extends AnyNav>(SupportTicketsPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const SupportTicketsPop<N extends AnyNav>._(
-  final Enum spec,
-  final N? nav,
-) {
-  static const support = SupportTicketsPop<SupportNav>._(
-    Support.support,
-    SupportNav._(),
-  );
-  static const settings = SupportTicketsPop<SettingsNav>._(
-    _Screens.settings,
-    SettingsNav._(),
-  );
 }
 
 final class const SupportTicketNav._() extends AnyPlacement {
@@ -15310,44 +7384,6 @@ final class const SupportTicketNav._() extends AnyPlacement {
     _Screens.graph.popTo(Support.supportTicket);
     return const SupportTicketNav._();
   }
-
-  SupportTicketsNav pop() {
-    _Screens.graph.pop();
-    return const SupportTicketsNav._();
-  }
-
-  SupportNav popToSupport() {
-    _Screens.graph.pop(Support.support);
-    return const SupportNav._();
-  }
-
-  SettingsNav popToSettings() {
-    _Screens.graph.pop(_Screens.settings);
-    return const SettingsNav._();
-  }
-
-  N popTo<N extends AnyNav>(SupportTicketPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const SupportTicketPop<N extends AnyNav>._(
-  final Enum spec,
-  final N? nav,
-) {
-  static const supportTickets = SupportTicketPop<SupportTicketsNav>._(
-    Support.supportTickets,
-    SupportTicketsNav._(),
-  );
-  static const support = SupportTicketPop<SupportNav>._(
-    Support.support,
-    SupportNav._(),
-  );
-  static const settings = SupportTicketPop<SettingsNav>._(
-    _Screens.settings,
-    SettingsNav._(),
-  );
 }
 
 final class const NewTicketNav._() extends AnyPlacement {
@@ -15356,40 +7392,9 @@ final class const NewTicketNav._() extends AnyPlacement {
     _Screens.graph.popTo(Support.newTicket);
     return const NewTicketNav._();
   }
-
-  SupportNav pop() {
-    _Screens.graph.pop();
-    return const SupportNav._();
-  }
-
-  SettingsNav popToSettings() {
-    _Screens.graph.pop(_Screens.settings);
-    return const SettingsNav._();
-  }
-
-  N popTo<N extends AnyNav>(NewTicketPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const NewTicketPop<N extends AnyNav>._(
-  final Enum spec,
-  final N? nav,
-) {
-  static const support = NewTicketPop<SupportNav>._(
-    Support.support,
-    SupportNav._(),
-  );
-  static const settings = NewTicketPop<SettingsNav>._(
-    _Screens.settings,
-    SettingsNav._(),
-  );
-}
-
-final class const KnowledgeBaseNav._()
-    extends AnyPlacement
-    implements PopDestPlacement {
+final class const KnowledgeBaseNav._() extends AnyPlacement {
   this : super._();
   KnowledgeBaseNav surface() {
     _Screens.graph.popTo(Support.knowledgeBase);
@@ -15397,39 +7402,9 @@ final class const KnowledgeBaseNav._()
   }
 
   ArticleNav goArticle(String id) {
-    _Screens.graph.popTo(Support.knowledgeBase);
-    _Screens.graph.go(Support.article, id, true);
+    _Screens.graph.goFrom(Support.knowledgeBase, Support.article, id);
     return const ArticleNav._();
   }
-
-  SupportNav pop() {
-    _Screens.graph.pop();
-    return const SupportNav._();
-  }
-
-  SettingsNav popToSettings() {
-    _Screens.graph.pop(_Screens.settings);
-    return const SettingsNav._();
-  }
-
-  N popTo<N extends AnyNav>(KnowledgeBasePop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const KnowledgeBasePop<N extends AnyNav>._(
-  final Enum spec,
-  final N? nav,
-) {
-  static const support = KnowledgeBasePop<SupportNav>._(
-    Support.support,
-    SupportNav._(),
-  );
-  static const settings = KnowledgeBasePop<SettingsNav>._(
-    _Screens.settings,
-    SettingsNav._(),
-  );
 }
 
 final class const ArticleNav._() extends AnyPlacement {
@@ -15438,49 +7413,9 @@ final class const ArticleNav._() extends AnyPlacement {
     _Screens.graph.popTo(Support.article);
     return const ArticleNav._();
   }
-
-  KnowledgeBaseNav pop() {
-    _Screens.graph.pop();
-    return const KnowledgeBaseNav._();
-  }
-
-  SupportNav popToSupport() {
-    _Screens.graph.pop(Support.support);
-    return const SupportNav._();
-  }
-
-  SettingsNav popToSettings() {
-    _Screens.graph.pop(_Screens.settings);
-    return const SettingsNav._();
-  }
-
-  N popTo<N extends AnyNav>(ArticlePop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const ArticlePop<N extends AnyNav>._(
-  final Enum spec,
-  final N? nav,
-) {
-  static const knowledgeBase = ArticlePop<KnowledgeBaseNav>._(
-    Support.knowledgeBase,
-    KnowledgeBaseNav._(),
-  );
-  static const support = ArticlePop<SupportNav>._(
-    Support.support,
-    SupportNav._(),
-  );
-  static const settings = ArticlePop<SettingsNav>._(
-    _Screens.settings,
-    SettingsNav._(),
-  );
-}
-
-final class const AdminNav._()
-    extends AnyPlacement
-    implements PopDestPlacement {
+final class const AdminNav._() extends AnyPlacement {
   this : super._();
   AdminNav surface() {
     _Screens.graph.popTo(Admin.admin);
@@ -15488,82 +7423,27 @@ final class const AdminNav._()
   }
 
   AdminUsersNav goAdminUsers() {
-    _Screens.graph.popTo(Admin.admin);
-    _Screens.graph.go(Admin.adminUsers, null, true);
+    _Screens.graph.goFrom(Admin.admin, Admin.adminUsers, null);
     return const AdminUsersNav._();
   }
 
   AdminAuditLogNav goAdminAuditLog() {
-    _Screens.graph.popTo(Admin.admin);
-    _Screens.graph.go(Admin.adminAuditLog, null, true);
+    _Screens.graph.goFrom(Admin.admin, Admin.adminAuditLog, null);
     return const AdminAuditLogNav._();
   }
 
   AdminFeatureFlagsNav goAdminFeatureFlags() {
-    _Screens.graph.popTo(Admin.admin);
-    _Screens.graph.go(Admin.adminFeatureFlags, null, true);
+    _Screens.graph.goFrom(Admin.admin, Admin.adminFeatureFlags, null);
     return const AdminFeatureFlagsNav._();
   }
 
   WebhooksNav goWebhooks() {
-    _Screens.graph.popTo(Admin.admin);
-    _Screens.graph.go(Admin.webhooks, null, true);
+    _Screens.graph.goFrom(Admin.admin, Admin.webhooks, null);
     return const WebhooksNav._();
   }
-
-  AdminUserNav goAdminUser(String id) {
-    _Screens.graph.go(Admin.adminUsers, null, true);
-    _Screens.graph.go(Admin.adminUser, id, true);
-    return const AdminUserNav._();
-  }
-
-  WebhookNav goWebhook(String id) {
-    _Screens.graph.go(Admin.webhooks, null, true);
-    _Screens.graph.go(Admin.webhook, id, true);
-    return const WebhookNav._();
-  }
-
-  N go<N extends AnyNav>(AdminHop<N> hop) {
-    _Screens.graph.go(hop.spec, hop.id, true);
-    return hop.nav;
-  }
-
-  SettingsNav pop() {
-    _Screens.graph.pop();
-    return const SettingsNav._();
-  }
 }
 
-final class const AdminHop<N extends AnyNav>._(
-  final Admin spec,
-  final Object? id,
-  final N nav,
-) {
-  static const adminUsers = AdminHop<AdminUsersNav>._(
-    .adminUsers,
-    null,
-    AdminUsersNav._(),
-  );
-  static const adminAuditLog = AdminHop<AdminAuditLogNav>._(
-    .adminAuditLog,
-    null,
-    AdminAuditLogNav._(),
-  );
-  static const adminFeatureFlags = AdminHop<AdminFeatureFlagsNav>._(
-    .adminFeatureFlags,
-    null,
-    AdminFeatureFlagsNav._(),
-  );
-  static const webhooks = AdminHop<WebhooksNav>._(
-    .webhooks,
-    null,
-    WebhooksNav._(),
-  );
-}
-
-final class const AdminUsersNav._()
-    extends AnyPlacement
-    implements PopDestPlacement {
+final class const AdminUsersNav._() extends AnyPlacement {
   this : super._();
   AdminUsersNav surface() {
     _Screens.graph.popTo(Admin.adminUsers);
@@ -15571,41 +7451,12 @@ final class const AdminUsersNav._()
   }
 
   AdminUserNav goAdminUser(String id) {
-    _Screens.graph.popTo(Admin.adminUsers);
-    _Screens.graph.go(Admin.adminUser, id, true);
+    _Screens.graph.goFrom(Admin.adminUsers, Admin.adminUser, id);
     return const AdminUserNav._();
   }
-
-  AdminNav pop() {
-    _Screens.graph.pop();
-    return const AdminNav._();
-  }
-
-  SettingsNav popToSettings() {
-    _Screens.graph.pop(_Screens.settings);
-    return const SettingsNav._();
-  }
-
-  N popTo<N extends AnyNav>(AdminUsersPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const AdminUsersPop<N extends AnyNav>._(
-  final Enum spec,
-  final N? nav,
-) {
-  static const admin = AdminUsersPop<AdminNav>._(Admin.admin, AdminNav._());
-  static const settings = AdminUsersPop<SettingsNav>._(
-    _Screens.settings,
-    SettingsNav._(),
-  );
-}
-
-final class const AdminUserNav._()
-    extends AnyPlacement
-    implements PopDestPlacement {
+final class const AdminUserNav._() extends AnyPlacement {
   this : super._();
   AdminUserNav surface() {
     _Screens.graph.popTo(Admin.adminUser);
@@ -15613,45 +7464,9 @@ final class const AdminUserNav._()
   }
 
   AdminRoleNav goAdminRole(String id) {
-    _Screens.graph.popTo(Admin.adminUser);
-    _Screens.graph.go(Admin.adminRole, id, true);
+    _Screens.graph.goFrom(Admin.adminUser, Admin.adminRole, id);
     return const AdminRoleNav._();
   }
-
-  AdminUsersNav pop() {
-    _Screens.graph.pop();
-    return const AdminUsersNav._();
-  }
-
-  AdminNav popToAdmin() {
-    _Screens.graph.pop(Admin.admin);
-    return const AdminNav._();
-  }
-
-  SettingsNav popToSettings() {
-    _Screens.graph.pop(_Screens.settings);
-    return const SettingsNav._();
-  }
-
-  N popTo<N extends AnyNav>(AdminUserPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const AdminUserPop<N extends AnyNav>._(
-  final Enum spec,
-  final N? nav,
-) {
-  static const adminUsers = AdminUserPop<AdminUsersNav>._(
-    Admin.adminUsers,
-    AdminUsersNav._(),
-  );
-  static const admin = AdminUserPop<AdminNav>._(Admin.admin, AdminNav._());
-  static const settings = AdminUserPop<SettingsNav>._(
-    _Screens.settings,
-    SettingsNav._(),
-  );
 }
 
 final class const AdminAuditLogNav._() extends AnyPlacement {
@@ -15660,32 +7475,6 @@ final class const AdminAuditLogNav._() extends AnyPlacement {
     _Screens.graph.popTo(Admin.adminAuditLog);
     return const AdminAuditLogNav._();
   }
-
-  AdminNav pop() {
-    _Screens.graph.pop();
-    return const AdminNav._();
-  }
-
-  SettingsNav popToSettings() {
-    _Screens.graph.pop(_Screens.settings);
-    return const SettingsNav._();
-  }
-
-  N popTo<N extends AnyNav>(AdminAuditLogPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const AdminAuditLogPop<N extends AnyNav>._(
-  final Enum spec,
-  final N? nav,
-) {
-  static const admin = AdminAuditLogPop<AdminNav>._(Admin.admin, AdminNav._());
-  static const settings = AdminAuditLogPop<SettingsNav>._(
-    _Screens.settings,
-    SettingsNav._(),
-  );
 }
 
 final class const AdminRoleNav._() extends AnyPlacement {
@@ -15694,50 +7483,6 @@ final class const AdminRoleNav._() extends AnyPlacement {
     _Screens.graph.popTo(Admin.adminRole);
     return const AdminRoleNav._();
   }
-
-  AdminUserNav pop() {
-    _Screens.graph.pop();
-    return const AdminUserNav._();
-  }
-
-  AdminUsersNav popToAdminUsers() {
-    _Screens.graph.pop(Admin.adminUsers);
-    return const AdminUsersNav._();
-  }
-
-  AdminNav popToAdmin() {
-    _Screens.graph.pop(Admin.admin);
-    return const AdminNav._();
-  }
-
-  SettingsNav popToSettings() {
-    _Screens.graph.pop(_Screens.settings);
-    return const SettingsNav._();
-  }
-
-  N popTo<N extends AnyNav>(AdminRolePop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const AdminRolePop<N extends AnyNav>._(
-  final Enum spec,
-  final N? nav,
-) {
-  static const adminUser = AdminRolePop<AdminUserNav>._(
-    Admin.adminUser,
-    AdminUserNav._(),
-  );
-  static const adminUsers = AdminRolePop<AdminUsersNav>._(
-    Admin.adminUsers,
-    AdminUsersNav._(),
-  );
-  static const admin = AdminRolePop<AdminNav>._(Admin.admin, AdminNav._());
-  static const settings = AdminRolePop<SettingsNav>._(
-    _Screens.settings,
-    SettingsNav._(),
-  );
 }
 
 final class const AdminFeatureFlagsNav._() extends AnyPlacement {
@@ -15746,40 +7491,9 @@ final class const AdminFeatureFlagsNav._() extends AnyPlacement {
     _Screens.graph.popTo(Admin.adminFeatureFlags);
     return const AdminFeatureFlagsNav._();
   }
-
-  AdminNav pop() {
-    _Screens.graph.pop();
-    return const AdminNav._();
-  }
-
-  SettingsNav popToSettings() {
-    _Screens.graph.pop(_Screens.settings);
-    return const SettingsNav._();
-  }
-
-  N popTo<N extends AnyNav>(AdminFeatureFlagsPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
 }
 
-final class const AdminFeatureFlagsPop<N extends AnyNav>._(
-  final Enum spec,
-  final N? nav,
-) {
-  static const admin = AdminFeatureFlagsPop<AdminNav>._(
-    Admin.admin,
-    AdminNav._(),
-  );
-  static const settings = AdminFeatureFlagsPop<SettingsNav>._(
-    _Screens.settings,
-    SettingsNav._(),
-  );
-}
-
-final class const WebhooksNav._()
-    extends AnyPlacement
-    implements PopDestPlacement {
+final class const WebhooksNav._() extends AnyPlacement {
   this : super._();
   WebhooksNav surface() {
     _Screens.graph.popTo(Admin.webhooks);
@@ -15787,36 +7501,9 @@ final class const WebhooksNav._()
   }
 
   WebhookNav goWebhook(String id) {
-    _Screens.graph.popTo(Admin.webhooks);
-    _Screens.graph.go(Admin.webhook, id, true);
+    _Screens.graph.goFrom(Admin.webhooks, Admin.webhook, id);
     return const WebhookNav._();
   }
-
-  AdminNav pop() {
-    _Screens.graph.pop();
-    return const AdminNav._();
-  }
-
-  SettingsNav popToSettings() {
-    _Screens.graph.pop(_Screens.settings);
-    return const SettingsNav._();
-  }
-
-  N popTo<N extends AnyNav>(WebhooksPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const WebhooksPop<N extends AnyNav>._(
-  final Enum spec,
-  final N? nav,
-) {
-  static const admin = WebhooksPop<AdminNav>._(Admin.admin, AdminNav._());
-  static const settings = WebhooksPop<SettingsNav>._(
-    _Screens.settings,
-    SettingsNav._(),
-  );
 }
 
 final class const WebhookNav._() extends AnyPlacement {
@@ -15825,41 +7512,6 @@ final class const WebhookNav._() extends AnyPlacement {
     _Screens.graph.popTo(Admin.webhook);
     return const WebhookNav._();
   }
-
-  WebhooksNav pop() {
-    _Screens.graph.pop();
-    return const WebhooksNav._();
-  }
-
-  AdminNav popToAdmin() {
-    _Screens.graph.pop(Admin.admin);
-    return const AdminNav._();
-  }
-
-  SettingsNav popToSettings() {
-    _Screens.graph.pop(_Screens.settings);
-    return const SettingsNav._();
-  }
-
-  N popTo<N extends AnyNav>(WebhookPop<N> to) {
-    _Screens.graph.pop(to.spec);
-    return _atOf(to.spec) as N;
-  }
-}
-
-final class const WebhookPop<N extends AnyNav>._(
-  final Enum spec,
-  final N? nav,
-) {
-  static const webhooks = WebhookPop<WebhooksNav>._(
-    Admin.webhooks,
-    WebhooksNav._(),
-  );
-  static const admin = WebhookPop<AdminNav>._(Admin.admin, AdminNav._());
-  static const settings = WebhookPop<SettingsNav>._(
-    _Screens.settings,
-    SettingsNav._(),
-  );
 }
 
 extension type const ScreenId<I>._(Enum spec) {
@@ -15968,1154 +7620,14 @@ extension ScreenIdOf on BuildContext {
   Screen<Object?> get screen => Screen._forSpec(ScreenScope.of(this));
 }
 
-void verifyScreens() {
-  assert(() {
-    assert(
-      _Screens.splash.id == null,
-      'splash has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.signIn.id == null,
-      'signIn has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.signUp.id == null,
-      'signUp has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.onboarding.id == null,
-      'onboarding has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.forgotPassword.id == null,
-      'forgotPassword has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.resetPassword.id != null,
-      'resetPassword is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.verifyEmail.id == null,
-      'verifyEmail has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.twoFactor.id == null,
-      'twoFactor has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.home.id == null,
-      'home has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.feed.id == null,
-      'feed has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.composePost.id == null,
-      'composePost has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.story.id != null,
-      'story is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.post.id != null,
-      'post is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.comment.id != null,
-      'comment is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.postAuthor.id != null,
-      'postAuthor is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.postComments.id != null,
-      'postComments is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.postLikes.id != null,
-      'postLikes is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.editPost.id != null,
-      'editPost is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.repost.id != null,
-      'repost is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.discover.id == null,
-      'discover has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.trending.id == null,
-      'trending has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.topics.id == null,
-      'topics has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.topic.id != null,
-      'topic is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.subtopic.id != null,
-      'subtopic is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.hashtag.id != null,
-      'hashtag is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.liveNow.id == null,
-      'liveNow has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.liveRoom.id != null,
-      'liveRoom is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.nearby.id == null,
-      'nearby has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.marketplace.id == null,
-      'marketplace has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.categories.id == null,
-      'categories has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.category.id != null,
-      'category is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.listing.id != null,
-      'listing is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.listingVariant.id != null,
-      'listingVariant is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.editListing.id != null,
-      'editListing is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.sellerProfile.id != null,
-      'sellerProfile is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.cart.id == null,
-      'cart has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.checkout.id != null,
-      'checkout is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.orderConfirmation.id != null,
-      'orderConfirmation is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.myOrders.id == null,
-      'myOrders has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.order.id != null,
-      'order is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.wishlist.id == null,
-      'wishlist has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.messages.id == null,
-      'messages has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.chats.id == null,
-      'chats has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.chat.id != null,
-      'chat is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.thread.id != null,
-      'thread is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.message.id != null,
-      'message is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.messageReply.id != null,
-      'messageReply is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.voiceCall.id != null,
-      'voiceCall is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.newChat.id == null,
-      'newChat has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.groupChat.id != null,
-      'groupChat is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.groupInfo.id != null,
-      'groupInfo is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.wallet.id == null,
-      'wallet has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.balance.id == null,
-      'balance has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.accounts.id == null,
-      'accounts has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.account.id != null,
-      'account is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.transactions.id == null,
-      'transactions has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.transaction.id != null,
-      'transaction is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.transactionItem.id != null,
-      'transactionItem is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.sendMoney.id == null,
-      'sendMoney has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.receiveMoney.id == null,
-      'receiveMoney has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.paymentMethods.id == null,
-      'paymentMethods has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.addCard.id == null,
-      'addCard has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.card.id != null,
-      'card is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.statements.id == null,
-      'statements has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.statement.id != null,
-      'statement is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.profile.id == null,
-      'profile has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.userProfile.id != null,
-      'userProfile is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.followers.id != null,
-      'followers is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.following.id != null,
-      'following is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.connection.id != null,
-      'connection is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.mutualConnections.id == null,
-      'mutualConnections has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.editProfile.id == null,
-      'editProfile has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.achievements.id == null,
-      'achievements has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.badges.id == null,
-      'badges has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.badge.id != null,
-      'badge is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.savedPosts.id == null,
-      'savedPosts has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.drafts.id == null,
-      'drafts has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.myListings.id == null,
-      'myListings has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.notifications.id == null,
-      'notifications has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.notificationSettings.id == null,
-      'notificationSettings has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.search.id == null,
-      'search has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.searchResults.id == null,
-      'searchResults has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.settings.id == null,
-      'settings has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.accountSettings.id == null,
-      'accountSettings has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.security.id == null,
-      'security has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.twoFactorSettings.id == null,
-      'twoFactorSettings has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.privacy.id == null,
-      'privacy has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.appearance.id == null,
-      'appearance has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.language.id == null,
-      'language has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.connectedApps.id == null,
-      'connectedApps has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.about.id == null,
-      'about has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.help.id == null,
-      'help has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.helpCategory.id != null,
-      'helpCategory is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.faq.id == null,
-      'faq has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.faqArticle.id != null,
-      'faqArticle is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.feedback.id == null,
-      'feedback has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.blockedUsers.id == null,
-      'blockedUsers has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.devices.id == null,
-      'devices has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.device.id != null,
-      'device is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.sessions.id == null,
-      'sessions has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.session.id != null,
-      'session is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.dataExport.id == null,
-      'dataExport has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.deleteAccount.id == null,
-      'deleteAccount has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.workspace.id == null,
-      'workspace has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.project.id != null,
-      'project is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.board.id != null,
-      'board is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.taskList.id != null,
-      'taskList is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.task.id != null,
-      'task is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.subtask.id != null,
-      'subtask is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.checklistItem.id != null,
-      'checklistItem is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.editTask.id != null,
-      'editTask is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.taskComment.id != null,
-      'taskComment is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.assignee.id != null,
-      'assignee is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.label.id != null,
-      'label is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.milestone.id != null,
-      'milestone is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.sprint.id != null,
-      'sprint is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.forum.id == null,
-      'forum has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.forumCategory.id != null,
-      'forumCategory is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.forumThread.id != null,
-      'forumThread is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.forumReply.id != null,
-      'forumReply is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.reportThread.id != null,
-      'reportThread is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.learn.id == null,
-      'learn has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.course.id != null,
-      'course is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.courseModule.id != null,
-      'courseModule is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.lesson.id != null,
-      'lesson is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.quiz.id != null,
-      'quiz is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.question.id != null,
-      'question is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.answer.id != null,
-      'answer is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.courseReview.id != null,
-      'courseReview is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.instructor.id != null,
-      'instructor is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.certificate.id != null,
-      'certificate is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.shop.id == null,
-      'shop has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.shopDept.id != null,
-      'shopDept is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.shopCategory.id != null,
-      'shopCategory is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.shopSubcategory.id != null,
-      'shopSubcategory is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.product.id != null,
-      'product is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.productVariant.id != null,
-      'productVariant is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.productReview.id != null,
-      'productReview is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.brand.id != null,
-      'brand is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.compareProducts.id == null,
-      'compareProducts has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.activity.id == null,
-      'activity has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.workout.id != null,
-      'workout is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.exercise.id != null,
-      'exercise is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.exerciseSet.id != null,
-      'exerciseSet is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.deepDemo.id == null,
-      'deepDemo has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.levelA.id != null,
-      'levelA is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.levelB.id != null,
-      'levelB is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.levelC.id != null,
-      'levelC is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.levelD.id != null,
-      'levelD is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.levelE.id != null,
-      'levelE is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.levelF.id != null,
-      'levelF is missing its id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.integrations.id == null,
-      'integrations has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      _Screens.apiKeys.id == null,
-      'apiKeys has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      CreatorStudio.studio.id == null,
-      'studio has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      CreatorStudio.analytics.id == null,
-      'analytics has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      CreatorStudio.audience.id == null,
-      'audience has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      CreatorStudio.scheduled.id == null,
-      'scheduled has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      CreatorStudio.scheduledPost.id != null,
-      'scheduledPost is missing its id codec — rerun build_runner',
-    );
-    assert(
-      CreatorStudio.editScheduled.id != null,
-      'editScheduled is missing its id codec — rerun build_runner',
-    );
-    assert(
-      CreatorStudio.monetization.id == null,
-      'monetization has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      CreatorStudio.payouts.id == null,
-      'payouts has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      Events.events.id == null,
-      'events has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      Events.event.id != null,
-      'event is missing its id codec — rerun build_runner',
-    );
-    assert(
-      Events.attendees.id != null,
-      'attendees is missing its id codec — rerun build_runner',
-    );
-    assert(
-      Events.editEvent.id != null,
-      'editEvent is missing its id codec — rerun build_runner',
-    );
-    assert(
-      Events.createEvent.id == null,
-      'createEvent has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      Events.tickets.id != null,
-      'tickets is missing its id codec — rerun build_runner',
-    );
-    assert(
-      Support.support.id == null,
-      'support has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      Support.supportTickets.id == null,
-      'supportTickets has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      Support.supportTicket.id != null,
-      'supportTicket is missing its id codec — rerun build_runner',
-    );
-    assert(
-      Support.newTicket.id == null,
-      'newTicket has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      Support.knowledgeBase.id == null,
-      'knowledgeBase has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      Support.article.id != null,
-      'article is missing its id codec — rerun build_runner',
-    );
-    assert(
-      Admin.admin.id == null,
-      'admin has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      Admin.adminUsers.id == null,
-      'adminUsers has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      Admin.adminUser.id != null,
-      'adminUser is missing its id codec — rerun build_runner',
-    );
-    assert(
-      Admin.adminAuditLog.id == null,
-      'adminAuditLog has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      Admin.adminRole.id != null,
-      'adminRole is missing its id codec — rerun build_runner',
-    );
-    assert(
-      Admin.adminFeatureFlags.id == null,
-      'adminFeatureFlags has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      Admin.webhooks.id == null,
-      'webhooks has an unexpected id codec — rerun build_runner',
-    );
-    assert(
-      Admin.webhook.id != null,
-      'webhook is missing its id codec — rerun build_runner',
-    );
-    return true;
-  }());
-}
-
-bool _endsWith(List<Enum> chain, List<Enum> suffix) {
-  if (chain.length < suffix.length) return false;
-  final off = chain.length - suffix.length;
-  for (var i = 0; i < suffix.length; i++) {
-    if (chain[off + i] != suffix[i]) return false;
-  }
-  return true;
-}
-
-/// A URL the app understands: a [Place] or a [Link]. Build one with
-/// `Url.<route>…` and `.toUri([domain])`; `parseUrl` returns one.
+/// A URL the app understands: a [Place] or a [Link]; `parseUrl`
+/// returns one.
 sealed class const Url([final String? domain]) {
   Uri toUri([String? domain]);
-  static _WLSplash get splash => _WLSplash._([.splash], [null]);
-  static _WLSignIn get signIn => _WLSignIn._([.signIn], [null]);
-  static _WLSignUp get signUp => _WLSignUp._([.signUp], [null]);
-  static _WLOnboarding get onboarding => _WLOnboarding._([.onboarding], [null]);
-  static _WLForgotPassword get forgotPassword =>
-      _WLForgotPassword._([.forgotPassword], [null]);
-  static _WLForgotPasswordResetPassword resetPassword(String id) =>
-      _WLForgotPasswordResetPassword._(
-        [.forgotPassword, .resetPassword],
-        [null, id],
-      );
-  static _WLVerifyEmail get verifyEmail =>
-      _WLVerifyEmail._([.verifyEmail], [null]);
-  static _WLTwoFactor get twoFactor => _WLTwoFactor._([.twoFactor], [null]);
-  static _WLHome get home => _WLHome._([.home], [null]);
-  static _WLHomeFeed get feed => _WLHomeFeed._([.home, .feed], [null, null]);
-  static _WLHomeFeedComposePost get composePost => _WLHomeFeedComposePost._(
-    [.home, .feed, .composePost],
-    [null, null, null],
-  );
-  static _WLHomeFeedStory story(String id) =>
-      _WLHomeFeedStory._([.home, .feed, .story], [null, null, id]);
-  static _WLHomeFeedPost post(String id) =>
-      _WLHomeFeedPost._([.home, .feed, .post], [null, null, id]);
-  static _WLHomeFeedPostPostComments postComments(String id) =>
-      _WLHomeFeedPostPostComments._(
-        [.home, .feed, .post, .postComments],
-        [null, null, id, null],
-      );
-  static _WLHomeFeedPostPostLikes postLikes(String id) =>
-      _WLHomeFeedPostPostLikes._(
-        [.home, .feed, .post, .postLikes],
-        [null, null, id, null],
-      );
-  static _WLHomeFeedPostEditPost editPost(String id) =>
-      _WLHomeFeedPostEditPost._(
-        [.home, .feed, .post, .editPost],
-        [null, null, id, null],
-      );
-  static _WLHomeFeedPostRepost repost(String id) => _WLHomeFeedPostRepost._(
-    [.home, .feed, .post, .repost],
-    [null, null, id, null],
-  );
-  static _WLDiscover get discover => _WLDiscover._([.discover], [null]);
-  static _WLDiscoverTrending get trending =>
-      _WLDiscoverTrending._([.discover, .trending], [null, null]);
-  static _WLDiscoverTopics get topics =>
-      _WLDiscoverTopics._([.discover, .topics], [null, null]);
-  static _WLDiscoverTrendingTopic topic(String id) =>
-      _WLDiscoverTrendingTopic._(
-        [.discover, .trending, .topic],
-        [null, null, id],
-      );
-  static _WLDiscoverTrendingHashtag hashtag(String id) =>
-      _WLDiscoverTrendingHashtag._(
-        [.discover, .trending, .hashtag],
-        [null, null, id],
-      );
-  static _WLDiscoverLiveNow get liveNow =>
-      _WLDiscoverLiveNow._([.discover, .liveNow], [null, null]);
-  static _WLDiscoverLiveNowLiveRoom liveRoom(String id) =>
-      _WLDiscoverLiveNowLiveRoom._(
-        [.discover, .liveNow, .liveRoom],
-        [null, null, id],
-      );
-  static _WLDiscoverNearby get nearby =>
-      _WLDiscoverNearby._([.discover, .nearby], [null, null]);
-  static _WLMarketplace get marketplace =>
-      _WLMarketplace._([.marketplace], [null]);
-  static _WLMarketplaceCategories get categories =>
-      _WLMarketplaceCategories._([.marketplace, .categories], [null, null]);
-  static _WLMarketplaceCategoriesCategory category(String id) =>
-      _WLMarketplaceCategoriesCategory._(
-        [.marketplace, .categories, .category],
-        [null, null, id],
-      );
-  static _WLMarketplaceCart get cart =>
-      _WLMarketplaceCart._([.marketplace, .cart], [null, null]);
-  static _WLMarketplaceCartCheckout checkout(String id) =>
-      _WLMarketplaceCartCheckout._(
-        [.marketplace, .cart, .checkout],
-        [null, null, id],
-      );
-  static _WLMarketplaceMyOrders get myOrders =>
-      _WLMarketplaceMyOrders._([.marketplace, .myOrders], [null, null]);
-  static _WLMarketplaceMyOrdersOrder order(String id) =>
-      _WLMarketplaceMyOrdersOrder._(
-        [.marketplace, .myOrders, .order],
-        [null, null, id],
-      );
-  static _WLMarketplaceWishlist get wishlist =>
-      _WLMarketplaceWishlist._([.marketplace, .wishlist], [null, null]);
-  static _WLMessages get messages => _WLMessages._([.messages], [null]);
-  static _WLMessagesChats get chats =>
-      _WLMessagesChats._([.messages, .chats], [null, null]);
-  static _WLMessagesChatsChat chat(String id) =>
-      _WLMessagesChatsChat._([.messages, .chats, .chat], [null, null, id]);
-  static _WLMessagesChatsChatVoiceCall voiceCall(String id) =>
-      _WLMessagesChatsChatVoiceCall._(
-        [.messages, .chats, .chat, .voiceCall],
-        [null, null, id, null],
-      );
-  static _WLMessagesNewChat get newChat =>
-      _WLMessagesNewChat._([.messages, .newChat], [null, null]);
-  static _WLMessagesGroupChat groupChat(String id) =>
-      _WLMessagesGroupChat._([.messages, .groupChat], [null, id]);
-  static _WLMessagesGroupChatGroupInfo groupInfo(String id) =>
-      _WLMessagesGroupChatGroupInfo._(
-        [.messages, .groupChat, .groupInfo],
-        [null, id, null],
-      );
-  static _WLWallet get wallet => _WLWallet._([.wallet], [null]);
-  static _WLWalletBalance get balance =>
-      _WLWalletBalance._([.wallet, .balance], [null, null]);
-  static _WLWalletAccounts get accounts =>
-      _WLWalletAccounts._([.wallet, .accounts], [null, null]);
-  static _WLWalletAccountsAccount account(String id) =>
-      _WLWalletAccountsAccount._(
-        [.wallet, .accounts, .account],
-        [null, null, id],
-      );
-  static _WLWalletSendMoney get sendMoney =>
-      _WLWalletSendMoney._([.wallet, .sendMoney], [null, null]);
-  static _WLWalletReceiveMoney get receiveMoney =>
-      _WLWalletReceiveMoney._([.wallet, .receiveMoney], [null, null]);
-  static _WLWalletPaymentMethods get paymentMethods =>
-      _WLWalletPaymentMethods._([.wallet, .paymentMethods], [null, null]);
-  static _WLWalletPaymentMethodsAddCard get addCard =>
-      _WLWalletPaymentMethodsAddCard._(
-        [.wallet, .paymentMethods, .addCard],
-        [null, null, null],
-      );
-  static _WLWalletPaymentMethodsCard card(String id) =>
-      _WLWalletPaymentMethodsCard._(
-        [.wallet, .paymentMethods, .card],
-        [null, null, id],
-      );
-  static _WLProfile get profile => _WLProfile._([.profile], [null]);
-  static _WLProfileFollowers followers(String id) =>
-      _WLProfileFollowers._([.profile, .followers], [null, id]);
-  static _WLProfileFollowing following(String id) =>
-      _WLProfileFollowing._([.profile, .following], [null, id]);
-  static _WLProfileEditProfile get editProfile =>
-      _WLProfileEditProfile._([.profile, .editProfile], [null, null]);
-  static _WLProfileAchievements get achievements =>
-      _WLProfileAchievements._([.profile, .achievements], [null, null]);
-  static _WLProfileBadges get badges =>
-      _WLProfileBadges._([.profile, .badges], [null, null]);
-  static _WLProfileBadgesBadge badge(String id) =>
-      _WLProfileBadgesBadge._([.profile, .badges, .badge], [null, null, id]);
-  static _WLProfileSavedPosts get savedPosts =>
-      _WLProfileSavedPosts._([.profile, .savedPosts], [null, null]);
-  static _WLProfileDrafts get drafts =>
-      _WLProfileDrafts._([.profile, .drafts], [null, null]);
-  static _WLProfileMyListings get myListings =>
-      _WLProfileMyListings._([.profile, .myListings], [null, null]);
-  static _WLNotifications get notifications =>
-      _WLNotifications._([.notifications], [null]);
-  static _WLNotificationsNotificationSettings get notificationSettings =>
-      _WLNotificationsNotificationSettings._(
-        [.notifications, .notificationSettings],
-        [null, null],
-      );
-  static _WLSearch get search => _WLSearch._([.search], [null]);
-  static _WLSearchSearchResults get searchResults =>
-      _WLSearchSearchResults._([.search, .searchResults], [null, null]);
-  static _WLSettings get settings => _WLSettings._([.settings], [null]);
-  static _WLSettingsAccountSettings get accountSettings =>
-      _WLSettingsAccountSettings._([.settings, .accountSettings], [null, null]);
-  static _WLSettingsSecurity get security =>
-      _WLSettingsSecurity._([.settings, .security], [null, null]);
-  static _WLSettingsSecurityTwoFactorSettings get twoFactorSettings =>
-      _WLSettingsSecurityTwoFactorSettings._(
-        [.settings, .security, .twoFactorSettings],
-        [null, null, null],
-      );
-  static _WLSettingsPrivacy get privacy =>
-      _WLSettingsPrivacy._([.settings, .privacy], [null, null]);
-  static _WLSettingsAppearance get appearance =>
-      _WLSettingsAppearance._([.settings, .appearance], [null, null]);
-  static _WLSettingsLanguage get language =>
-      _WLSettingsLanguage._([.settings, .language], [null, null]);
-  static _WLSettingsConnectedApps get connectedApps =>
-      _WLSettingsConnectedApps._([.settings, .connectedApps], [null, null]);
-  static _WLSettingsAbout get about =>
-      _WLSettingsAbout._([.settings, .about], [null, null]);
-  static _WLSettingsAboutHelp get help =>
-      _WLSettingsAboutHelp._([.settings, .about, .help], [null, null, null]);
-  static _WLSettingsAboutHelpHelpCategory helpCategory(String id) =>
-      _WLSettingsAboutHelpHelpCategory._(
-        [.settings, .about, .help, .helpCategory],
-        [null, null, null, id],
-      );
-  static _WLSettingsAboutFeedback get feedback => _WLSettingsAboutFeedback._(
-    [.settings, .about, .feedback],
-    [null, null, null],
-  );
-  static _WLSettingsBlockedUsers get blockedUsers =>
-      _WLSettingsBlockedUsers._([.settings, .blockedUsers], [null, null]);
-  static _WLSettingsDevices get devices =>
-      _WLSettingsDevices._([.settings, .devices], [null, null]);
-  static _WLSettingsDevicesDevice device(String id) =>
-      _WLSettingsDevicesDevice._(
-        [.settings, .devices, .device],
-        [null, null, id],
-      );
-  static _WLSettingsDataExport get dataExport =>
-      _WLSettingsDataExport._([.settings, .dataExport], [null, null]);
-  static _WLSettingsDeleteAccount get deleteAccount =>
-      _WLSettingsDeleteAccount._([.settings, .deleteAccount], [null, null]);
-  static _WLWorkspace get workspace => _WLWorkspace._([.workspace], [null]);
-  static _WLWorkspaceProject project(String id) =>
-      _WLWorkspaceProject._([.workspace, .project], [null, id]);
-  static _WLForum get forum => _WLForum._([.forum], [null]);
-  static _WLForumForumCategory forumCategory(String id) =>
-      _WLForumForumCategory._([.forum, .forumCategory], [null, id]);
-  static _WLLearn get learn => _WLLearn._([.learn], [null]);
-  static _WLLearnCourse course(String id) =>
-      _WLLearnCourse._([.learn, .course], [null, id]);
-  static _WLLearnCourseCertificate certificate(String id) =>
-      _WLLearnCourseCertificate._(
-        [.learn, .course, .certificate],
-        [null, id, null],
-      );
-  static _WLShop get shop => _WLShop._([.shop], [null]);
-  static _WLShopShopDept shopDept(String id) =>
-      _WLShopShopDept._([.shop, .shopDept], [null, id]);
-  static _WLShopCompareProducts get compareProducts =>
-      _WLShopCompareProducts._([.shop, .compareProducts], [null, null]);
-  static _WLActivity get activity => _WLActivity._([.activity], [null]);
-  static _WLActivityWorkout workout(String id) =>
-      _WLActivityWorkout._([.activity, .workout], [null, id]);
-  static _WLDeepDemo get deepDemo => _WLDeepDemo._([.deepDemo], [null]);
-  static _WLDeepDemoLevelA levelA(String id) =>
-      _WLDeepDemoLevelA._([.deepDemo, .levelA], [null, id]);
-  static _WLSettingsIntegrations get integrations =>
-      _WLSettingsIntegrations._([.settings, .integrations], [null, null]);
-  static _WLSettingsIntegrationsApiKeys get apiKeys =>
-      _WLSettingsIntegrationsApiKeys._(
-        [.settings, .integrations, .apiKeys],
-        [null, null, null],
-      );
-  static _WLHomeStudio get studio =>
-      _WLHomeStudio._([_Screens.home, CreatorStudio.studio], [null, null]);
-  static _WLHomeStudioAnalytics get analytics => _WLHomeStudioAnalytics._(
-    [_Screens.home, CreatorStudio.studio, CreatorStudio.analytics],
-    [null, null, null],
-  );
-  static _WLHomeStudioAnalyticsAudience get audience =>
-      _WLHomeStudioAnalyticsAudience._(
-        [
-          _Screens.home,
-          CreatorStudio.studio,
-          CreatorStudio.analytics,
-          CreatorStudio.audience,
-        ],
-        [null, null, null, null],
-      );
-  static _WLHomeStudioScheduled get scheduled => _WLHomeStudioScheduled._(
-    [_Screens.home, CreatorStudio.studio, CreatorStudio.scheduled],
-    [null, null, null],
-  );
-  static _WLHomeStudioScheduledScheduledPost scheduledPost(String id) =>
-      _WLHomeStudioScheduledScheduledPost._(
-        [
-          _Screens.home,
-          CreatorStudio.studio,
-          CreatorStudio.scheduled,
-          CreatorStudio.scheduledPost,
-        ],
-        [null, null, null, id],
-      );
-  static _WLHomeStudioScheduledScheduledPostEditScheduled editScheduled(
-    String id,
-  ) => _WLHomeStudioScheduledScheduledPostEditScheduled._(
-    [
-      _Screens.home,
-      CreatorStudio.studio,
-      CreatorStudio.scheduled,
-      CreatorStudio.scheduledPost,
-      CreatorStudio.editScheduled,
-    ],
-    [null, null, null, id, null],
-  );
-  static _WLHomeStudioMonetization get monetization =>
-      _WLHomeStudioMonetization._(
-        [_Screens.home, CreatorStudio.studio, CreatorStudio.monetization],
-        [null, null, null],
-      );
-  static _WLHomeStudioMonetizationPayouts get payouts =>
-      _WLHomeStudioMonetizationPayouts._(
-        [
-          _Screens.home,
-          CreatorStudio.studio,
-          CreatorStudio.monetization,
-          CreatorStudio.payouts,
-        ],
-        [null, null, null, null],
-      );
-  static _WLDiscoverEvents get events =>
-      _WLDiscoverEvents._([_Screens.discover, Events.events], [null, null]);
-  static _WLDiscoverEventsEvent event(String id) => _WLDiscoverEventsEvent._(
-    [_Screens.discover, Events.events, Events.event],
-    [null, null, id],
-  );
-  static _WLDiscoverEventsEventAttendees attendees(String id) =>
-      _WLDiscoverEventsEventAttendees._(
-        [_Screens.discover, Events.events, Events.event, Events.attendees],
-        [null, null, id, null],
-      );
-  static _WLDiscoverEventsEventEditEvent editEvent(String id) =>
-      _WLDiscoverEventsEventEditEvent._(
-        [_Screens.discover, Events.events, Events.event, Events.editEvent],
-        [null, null, id, null],
-      );
-  static _WLDiscoverEventsCreateEvent get createEvent =>
-      _WLDiscoverEventsCreateEvent._(
-        [_Screens.discover, Events.events, Events.createEvent],
-        [null, null, null],
-      );
-  static _WLDiscoverEventsEventTickets tickets(String id) =>
-      _WLDiscoverEventsEventTickets._(
-        [_Screens.discover, Events.events, Events.event, Events.tickets],
-        [null, null, id, null],
-      );
-  static _WLSettingsSupport get support =>
-      _WLSettingsSupport._([_Screens.settings, Support.support], [null, null]);
-  static _WLSettingsSupportSupportTickets get supportTickets =>
-      _WLSettingsSupportSupportTickets._(
-        [_Screens.settings, Support.support, Support.supportTickets],
-        [null, null, null],
-      );
-  static _WLSettingsSupportSupportTicketsSupportTicket supportTicket(
-    String id,
-  ) => _WLSettingsSupportSupportTicketsSupportTicket._(
-    [
-      _Screens.settings,
-      Support.support,
-      Support.supportTickets,
-      Support.supportTicket,
-    ],
-    [null, null, null, id],
-  );
-  static _WLSettingsSupportNewTicket get newTicket =>
-      _WLSettingsSupportNewTicket._(
-        [_Screens.settings, Support.support, Support.newTicket],
-        [null, null, null],
-      );
-  static _WLSettingsSupportKnowledgeBase get knowledgeBase =>
-      _WLSettingsSupportKnowledgeBase._(
-        [_Screens.settings, Support.support, Support.knowledgeBase],
-        [null, null, null],
-      );
-  static _WLSettingsSupportKnowledgeBaseArticle article(String id) =>
-      _WLSettingsSupportKnowledgeBaseArticle._(
-        [
-          _Screens.settings,
-          Support.support,
-          Support.knowledgeBase,
-          Support.article,
-        ],
-        [null, null, null, id],
-      );
-  static _WLSettingsAdmin get admin =>
-      _WLSettingsAdmin._([_Screens.settings, Admin.admin], [null, null]);
-  static _WLSettingsAdminAdminUsers get adminUsers =>
-      _WLSettingsAdminAdminUsers._(
-        [_Screens.settings, Admin.admin, Admin.adminUsers],
-        [null, null, null],
-      );
-  static _WLSettingsAdminAdminUsersAdminUser adminUser(String id) =>
-      _WLSettingsAdminAdminUsersAdminUser._(
-        [_Screens.settings, Admin.admin, Admin.adminUsers, Admin.adminUser],
-        [null, null, null, id],
-      );
-  static _WLSettingsAdminAdminAuditLog get adminAuditLog =>
-      _WLSettingsAdminAdminAuditLog._(
-        [_Screens.settings, Admin.admin, Admin.adminAuditLog],
-        [null, null, null],
-      );
-  static _WLSettingsAdminAdminFeatureFlags get adminFeatureFlags =>
-      _WLSettingsAdminAdminFeatureFlags._(
-        [_Screens.settings, Admin.admin, Admin.adminFeatureFlags],
-        [null, null, null],
-      );
-  static _WLSettingsAdminWebhooks get webhooks => _WLSettingsAdminWebhooks._(
-    [_Screens.settings, Admin.admin, Admin.webhooks],
-    [null, null, null],
-  );
-  static _WLSettingsAdminWebhooksWebhook webhook(String id) =>
-      _WLSettingsAdminWebhooksWebhook._(
-        [_Screens.settings, Admin.admin, Admin.webhooks, Admin.webhook],
-        [null, null, null, id],
-      );
-  static _LXUserProfile get userProfile =>
-      _LXUserProfile(const <Object?>[], const <int>[]);
-  static _LXListing get listing => _LXListing(const <Object?>[], const <int>[]);
-  static _LXProduct get product => _LXProduct(const <Object?>[], const <int>[]);
-  static _LXTask get task => _LXTask(const <Object?>[], const <int>[]);
 }
 
-/// A POSITION in the tree — a screen with a widget to present and a nav
-/// destination. Go-able: every `Place` is a [Hop], so `Screen.go(place)`
-/// replays its root-down chain and lands the placement. Built root-down
-/// (`Place.home.item(id)`); a parsed nav-mirror URL is one.
+/// A POSITION in the tree — a parsed nav-mirror URL. Go-able: every
+/// `Place` is a [Hop], so `Screen.go(place)` replays its chain.
 sealed class const Place([super.domain]) extends Url implements Hop<AnyNav> {
   @override
   List<(Enum, Object?)> get chain;
@@ -17127,400 +7639,6 @@ sealed class const Place([super.domain]) extends Url implements Hop<AnyNav> {
   AnyNav get nav => _atOf(_Screens.graph.current);
   @override
   Screen<Object?> get screen => Screen._forSpec(spec);
-  static _WLSplash get splash => _WLSplash._([.splash], [null]);
-  static _WLSignIn get signIn => _WLSignIn._([.signIn], [null]);
-  static _WLSignUp get signUp => _WLSignUp._([.signUp], [null]);
-  static _WLOnboarding get onboarding => _WLOnboarding._([.onboarding], [null]);
-  static _WLForgotPassword get forgotPassword =>
-      _WLForgotPassword._([.forgotPassword], [null]);
-  static _WLForgotPasswordResetPassword resetPassword(String id) =>
-      _WLForgotPasswordResetPassword._(
-        [.forgotPassword, .resetPassword],
-        [null, id],
-      );
-  static _WLVerifyEmail get verifyEmail =>
-      _WLVerifyEmail._([.verifyEmail], [null]);
-  static _WLTwoFactor get twoFactor => _WLTwoFactor._([.twoFactor], [null]);
-  static _WLHome get home => _WLHome._([.home], [null]);
-  static _WLHomeFeed get feed => _WLHomeFeed._([.home, .feed], [null, null]);
-  static _WLHomeFeedComposePost get composePost => _WLHomeFeedComposePost._(
-    [.home, .feed, .composePost],
-    [null, null, null],
-  );
-  static _WLHomeFeedStory story(String id) =>
-      _WLHomeFeedStory._([.home, .feed, .story], [null, null, id]);
-  static _WLHomeFeedPost post(String id) =>
-      _WLHomeFeedPost._([.home, .feed, .post], [null, null, id]);
-  static _WLHomeFeedPostPostComments postComments(String id) =>
-      _WLHomeFeedPostPostComments._(
-        [.home, .feed, .post, .postComments],
-        [null, null, id, null],
-      );
-  static _WLHomeFeedPostPostLikes postLikes(String id) =>
-      _WLHomeFeedPostPostLikes._(
-        [.home, .feed, .post, .postLikes],
-        [null, null, id, null],
-      );
-  static _WLHomeFeedPostEditPost editPost(String id) =>
-      _WLHomeFeedPostEditPost._(
-        [.home, .feed, .post, .editPost],
-        [null, null, id, null],
-      );
-  static _WLHomeFeedPostRepost repost(String id) => _WLHomeFeedPostRepost._(
-    [.home, .feed, .post, .repost],
-    [null, null, id, null],
-  );
-  static _WLDiscover get discover => _WLDiscover._([.discover], [null]);
-  static _WLDiscoverTrending get trending =>
-      _WLDiscoverTrending._([.discover, .trending], [null, null]);
-  static _WLDiscoverTopics get topics =>
-      _WLDiscoverTopics._([.discover, .topics], [null, null]);
-  static _WLDiscoverTrendingTopic topic(String id) =>
-      _WLDiscoverTrendingTopic._(
-        [.discover, .trending, .topic],
-        [null, null, id],
-      );
-  static _WLDiscoverTrendingHashtag hashtag(String id) =>
-      _WLDiscoverTrendingHashtag._(
-        [.discover, .trending, .hashtag],
-        [null, null, id],
-      );
-  static _WLDiscoverLiveNow get liveNow =>
-      _WLDiscoverLiveNow._([.discover, .liveNow], [null, null]);
-  static _WLDiscoverLiveNowLiveRoom liveRoom(String id) =>
-      _WLDiscoverLiveNowLiveRoom._(
-        [.discover, .liveNow, .liveRoom],
-        [null, null, id],
-      );
-  static _WLDiscoverNearby get nearby =>
-      _WLDiscoverNearby._([.discover, .nearby], [null, null]);
-  static _WLMarketplace get marketplace =>
-      _WLMarketplace._([.marketplace], [null]);
-  static _WLMarketplaceCategories get categories =>
-      _WLMarketplaceCategories._([.marketplace, .categories], [null, null]);
-  static _WLMarketplaceCategoriesCategory category(String id) =>
-      _WLMarketplaceCategoriesCategory._(
-        [.marketplace, .categories, .category],
-        [null, null, id],
-      );
-  static _WLMarketplaceCart get cart =>
-      _WLMarketplaceCart._([.marketplace, .cart], [null, null]);
-  static _WLMarketplaceCartCheckout checkout(String id) =>
-      _WLMarketplaceCartCheckout._(
-        [.marketplace, .cart, .checkout],
-        [null, null, id],
-      );
-  static _WLMarketplaceMyOrders get myOrders =>
-      _WLMarketplaceMyOrders._([.marketplace, .myOrders], [null, null]);
-  static _WLMarketplaceMyOrdersOrder order(String id) =>
-      _WLMarketplaceMyOrdersOrder._(
-        [.marketplace, .myOrders, .order],
-        [null, null, id],
-      );
-  static _WLMarketplaceWishlist get wishlist =>
-      _WLMarketplaceWishlist._([.marketplace, .wishlist], [null, null]);
-  static _WLMessages get messages => _WLMessages._([.messages], [null]);
-  static _WLMessagesChats get chats =>
-      _WLMessagesChats._([.messages, .chats], [null, null]);
-  static _WLMessagesChatsChat chat(String id) =>
-      _WLMessagesChatsChat._([.messages, .chats, .chat], [null, null, id]);
-  static _WLMessagesChatsChatVoiceCall voiceCall(String id) =>
-      _WLMessagesChatsChatVoiceCall._(
-        [.messages, .chats, .chat, .voiceCall],
-        [null, null, id, null],
-      );
-  static _WLMessagesNewChat get newChat =>
-      _WLMessagesNewChat._([.messages, .newChat], [null, null]);
-  static _WLMessagesGroupChat groupChat(String id) =>
-      _WLMessagesGroupChat._([.messages, .groupChat], [null, id]);
-  static _WLMessagesGroupChatGroupInfo groupInfo(String id) =>
-      _WLMessagesGroupChatGroupInfo._(
-        [.messages, .groupChat, .groupInfo],
-        [null, id, null],
-      );
-  static _WLWallet get wallet => _WLWallet._([.wallet], [null]);
-  static _WLWalletBalance get balance =>
-      _WLWalletBalance._([.wallet, .balance], [null, null]);
-  static _WLWalletAccounts get accounts =>
-      _WLWalletAccounts._([.wallet, .accounts], [null, null]);
-  static _WLWalletAccountsAccount account(String id) =>
-      _WLWalletAccountsAccount._(
-        [.wallet, .accounts, .account],
-        [null, null, id],
-      );
-  static _WLWalletSendMoney get sendMoney =>
-      _WLWalletSendMoney._([.wallet, .sendMoney], [null, null]);
-  static _WLWalletReceiveMoney get receiveMoney =>
-      _WLWalletReceiveMoney._([.wallet, .receiveMoney], [null, null]);
-  static _WLWalletPaymentMethods get paymentMethods =>
-      _WLWalletPaymentMethods._([.wallet, .paymentMethods], [null, null]);
-  static _WLWalletPaymentMethodsAddCard get addCard =>
-      _WLWalletPaymentMethodsAddCard._(
-        [.wallet, .paymentMethods, .addCard],
-        [null, null, null],
-      );
-  static _WLWalletPaymentMethodsCard card(String id) =>
-      _WLWalletPaymentMethodsCard._(
-        [.wallet, .paymentMethods, .card],
-        [null, null, id],
-      );
-  static _WLProfile get profile => _WLProfile._([.profile], [null]);
-  static _WLProfileFollowers followers(String id) =>
-      _WLProfileFollowers._([.profile, .followers], [null, id]);
-  static _WLProfileFollowing following(String id) =>
-      _WLProfileFollowing._([.profile, .following], [null, id]);
-  static _WLProfileEditProfile get editProfile =>
-      _WLProfileEditProfile._([.profile, .editProfile], [null, null]);
-  static _WLProfileAchievements get achievements =>
-      _WLProfileAchievements._([.profile, .achievements], [null, null]);
-  static _WLProfileBadges get badges =>
-      _WLProfileBadges._([.profile, .badges], [null, null]);
-  static _WLProfileBadgesBadge badge(String id) =>
-      _WLProfileBadgesBadge._([.profile, .badges, .badge], [null, null, id]);
-  static _WLProfileSavedPosts get savedPosts =>
-      _WLProfileSavedPosts._([.profile, .savedPosts], [null, null]);
-  static _WLProfileDrafts get drafts =>
-      _WLProfileDrafts._([.profile, .drafts], [null, null]);
-  static _WLProfileMyListings get myListings =>
-      _WLProfileMyListings._([.profile, .myListings], [null, null]);
-  static _WLNotifications get notifications =>
-      _WLNotifications._([.notifications], [null]);
-  static _WLNotificationsNotificationSettings get notificationSettings =>
-      _WLNotificationsNotificationSettings._(
-        [.notifications, .notificationSettings],
-        [null, null],
-      );
-  static _WLSearch get search => _WLSearch._([.search], [null]);
-  static _WLSearchSearchResults get searchResults =>
-      _WLSearchSearchResults._([.search, .searchResults], [null, null]);
-  static _WLSettings get settings => _WLSettings._([.settings], [null]);
-  static _WLSettingsAccountSettings get accountSettings =>
-      _WLSettingsAccountSettings._([.settings, .accountSettings], [null, null]);
-  static _WLSettingsSecurity get security =>
-      _WLSettingsSecurity._([.settings, .security], [null, null]);
-  static _WLSettingsSecurityTwoFactorSettings get twoFactorSettings =>
-      _WLSettingsSecurityTwoFactorSettings._(
-        [.settings, .security, .twoFactorSettings],
-        [null, null, null],
-      );
-  static _WLSettingsPrivacy get privacy =>
-      _WLSettingsPrivacy._([.settings, .privacy], [null, null]);
-  static _WLSettingsAppearance get appearance =>
-      _WLSettingsAppearance._([.settings, .appearance], [null, null]);
-  static _WLSettingsLanguage get language =>
-      _WLSettingsLanguage._([.settings, .language], [null, null]);
-  static _WLSettingsConnectedApps get connectedApps =>
-      _WLSettingsConnectedApps._([.settings, .connectedApps], [null, null]);
-  static _WLSettingsAbout get about =>
-      _WLSettingsAbout._([.settings, .about], [null, null]);
-  static _WLSettingsAboutHelp get help =>
-      _WLSettingsAboutHelp._([.settings, .about, .help], [null, null, null]);
-  static _WLSettingsAboutHelpHelpCategory helpCategory(String id) =>
-      _WLSettingsAboutHelpHelpCategory._(
-        [.settings, .about, .help, .helpCategory],
-        [null, null, null, id],
-      );
-  static _WLSettingsAboutFeedback get feedback => _WLSettingsAboutFeedback._(
-    [.settings, .about, .feedback],
-    [null, null, null],
-  );
-  static _WLSettingsBlockedUsers get blockedUsers =>
-      _WLSettingsBlockedUsers._([.settings, .blockedUsers], [null, null]);
-  static _WLSettingsDevices get devices =>
-      _WLSettingsDevices._([.settings, .devices], [null, null]);
-  static _WLSettingsDevicesDevice device(String id) =>
-      _WLSettingsDevicesDevice._(
-        [.settings, .devices, .device],
-        [null, null, id],
-      );
-  static _WLSettingsDataExport get dataExport =>
-      _WLSettingsDataExport._([.settings, .dataExport], [null, null]);
-  static _WLSettingsDeleteAccount get deleteAccount =>
-      _WLSettingsDeleteAccount._([.settings, .deleteAccount], [null, null]);
-  static _WLWorkspace get workspace => _WLWorkspace._([.workspace], [null]);
-  static _WLWorkspaceProject project(String id) =>
-      _WLWorkspaceProject._([.workspace, .project], [null, id]);
-  static _WLForum get forum => _WLForum._([.forum], [null]);
-  static _WLForumForumCategory forumCategory(String id) =>
-      _WLForumForumCategory._([.forum, .forumCategory], [null, id]);
-  static _WLLearn get learn => _WLLearn._([.learn], [null]);
-  static _WLLearnCourse course(String id) =>
-      _WLLearnCourse._([.learn, .course], [null, id]);
-  static _WLLearnCourseCertificate certificate(String id) =>
-      _WLLearnCourseCertificate._(
-        [.learn, .course, .certificate],
-        [null, id, null],
-      );
-  static _WLShop get shop => _WLShop._([.shop], [null]);
-  static _WLShopShopDept shopDept(String id) =>
-      _WLShopShopDept._([.shop, .shopDept], [null, id]);
-  static _WLShopCompareProducts get compareProducts =>
-      _WLShopCompareProducts._([.shop, .compareProducts], [null, null]);
-  static _WLActivity get activity => _WLActivity._([.activity], [null]);
-  static _WLActivityWorkout workout(String id) =>
-      _WLActivityWorkout._([.activity, .workout], [null, id]);
-  static _WLDeepDemo get deepDemo => _WLDeepDemo._([.deepDemo], [null]);
-  static _WLDeepDemoLevelA levelA(String id) =>
-      _WLDeepDemoLevelA._([.deepDemo, .levelA], [null, id]);
-  static _WLSettingsIntegrations get integrations =>
-      _WLSettingsIntegrations._([.settings, .integrations], [null, null]);
-  static _WLSettingsIntegrationsApiKeys get apiKeys =>
-      _WLSettingsIntegrationsApiKeys._(
-        [.settings, .integrations, .apiKeys],
-        [null, null, null],
-      );
-  static _WLHomeStudio get studio =>
-      _WLHomeStudio._([_Screens.home, CreatorStudio.studio], [null, null]);
-  static _WLHomeStudioAnalytics get analytics => _WLHomeStudioAnalytics._(
-    [_Screens.home, CreatorStudio.studio, CreatorStudio.analytics],
-    [null, null, null],
-  );
-  static _WLHomeStudioAnalyticsAudience get audience =>
-      _WLHomeStudioAnalyticsAudience._(
-        [
-          _Screens.home,
-          CreatorStudio.studio,
-          CreatorStudio.analytics,
-          CreatorStudio.audience,
-        ],
-        [null, null, null, null],
-      );
-  static _WLHomeStudioScheduled get scheduled => _WLHomeStudioScheduled._(
-    [_Screens.home, CreatorStudio.studio, CreatorStudio.scheduled],
-    [null, null, null],
-  );
-  static _WLHomeStudioScheduledScheduledPost scheduledPost(String id) =>
-      _WLHomeStudioScheduledScheduledPost._(
-        [
-          _Screens.home,
-          CreatorStudio.studio,
-          CreatorStudio.scheduled,
-          CreatorStudio.scheduledPost,
-        ],
-        [null, null, null, id],
-      );
-  static _WLHomeStudioScheduledScheduledPostEditScheduled editScheduled(
-    String id,
-  ) => _WLHomeStudioScheduledScheduledPostEditScheduled._(
-    [
-      _Screens.home,
-      CreatorStudio.studio,
-      CreatorStudio.scheduled,
-      CreatorStudio.scheduledPost,
-      CreatorStudio.editScheduled,
-    ],
-    [null, null, null, id, null],
-  );
-  static _WLHomeStudioMonetization get monetization =>
-      _WLHomeStudioMonetization._(
-        [_Screens.home, CreatorStudio.studio, CreatorStudio.monetization],
-        [null, null, null],
-      );
-  static _WLHomeStudioMonetizationPayouts get payouts =>
-      _WLHomeStudioMonetizationPayouts._(
-        [
-          _Screens.home,
-          CreatorStudio.studio,
-          CreatorStudio.monetization,
-          CreatorStudio.payouts,
-        ],
-        [null, null, null, null],
-      );
-  static _WLDiscoverEvents get events =>
-      _WLDiscoverEvents._([_Screens.discover, Events.events], [null, null]);
-  static _WLDiscoverEventsEvent event(String id) => _WLDiscoverEventsEvent._(
-    [_Screens.discover, Events.events, Events.event],
-    [null, null, id],
-  );
-  static _WLDiscoverEventsEventAttendees attendees(String id) =>
-      _WLDiscoverEventsEventAttendees._(
-        [_Screens.discover, Events.events, Events.event, Events.attendees],
-        [null, null, id, null],
-      );
-  static _WLDiscoverEventsEventEditEvent editEvent(String id) =>
-      _WLDiscoverEventsEventEditEvent._(
-        [_Screens.discover, Events.events, Events.event, Events.editEvent],
-        [null, null, id, null],
-      );
-  static _WLDiscoverEventsCreateEvent get createEvent =>
-      _WLDiscoverEventsCreateEvent._(
-        [_Screens.discover, Events.events, Events.createEvent],
-        [null, null, null],
-      );
-  static _WLDiscoverEventsEventTickets tickets(String id) =>
-      _WLDiscoverEventsEventTickets._(
-        [_Screens.discover, Events.events, Events.event, Events.tickets],
-        [null, null, id, null],
-      );
-  static _WLSettingsSupport get support =>
-      _WLSettingsSupport._([_Screens.settings, Support.support], [null, null]);
-  static _WLSettingsSupportSupportTickets get supportTickets =>
-      _WLSettingsSupportSupportTickets._(
-        [_Screens.settings, Support.support, Support.supportTickets],
-        [null, null, null],
-      );
-  static _WLSettingsSupportSupportTicketsSupportTicket supportTicket(
-    String id,
-  ) => _WLSettingsSupportSupportTicketsSupportTicket._(
-    [
-      _Screens.settings,
-      Support.support,
-      Support.supportTickets,
-      Support.supportTicket,
-    ],
-    [null, null, null, id],
-  );
-  static _WLSettingsSupportNewTicket get newTicket =>
-      _WLSettingsSupportNewTicket._(
-        [_Screens.settings, Support.support, Support.newTicket],
-        [null, null, null],
-      );
-  static _WLSettingsSupportKnowledgeBase get knowledgeBase =>
-      _WLSettingsSupportKnowledgeBase._(
-        [_Screens.settings, Support.support, Support.knowledgeBase],
-        [null, null, null],
-      );
-  static _WLSettingsSupportKnowledgeBaseArticle article(String id) =>
-      _WLSettingsSupportKnowledgeBaseArticle._(
-        [
-          _Screens.settings,
-          Support.support,
-          Support.knowledgeBase,
-          Support.article,
-        ],
-        [null, null, null, id],
-      );
-  static _WLSettingsAdmin get admin =>
-      _WLSettingsAdmin._([_Screens.settings, Admin.admin], [null, null]);
-  static _WLSettingsAdminAdminUsers get adminUsers =>
-      _WLSettingsAdminAdminUsers._(
-        [_Screens.settings, Admin.admin, Admin.adminUsers],
-        [null, null, null],
-      );
-  static _WLSettingsAdminAdminUsersAdminUser adminUser(String id) =>
-      _WLSettingsAdminAdminUsersAdminUser._(
-        [_Screens.settings, Admin.admin, Admin.adminUsers, Admin.adminUser],
-        [null, null, null, id],
-      );
-  static _WLSettingsAdminAdminAuditLog get adminAuditLog =>
-      _WLSettingsAdminAdminAuditLog._(
-        [_Screens.settings, Admin.admin, Admin.adminAuditLog],
-        [null, null, null],
-      );
-  static _WLSettingsAdminAdminFeatureFlags get adminFeatureFlags =>
-      _WLSettingsAdminAdminFeatureFlags._(
-        [_Screens.settings, Admin.admin, Admin.adminFeatureFlags],
-        [null, null, null],
-      );
-  static _WLSettingsAdminWebhooks get webhooks => _WLSettingsAdminWebhooks._(
-    [_Screens.settings, Admin.admin, Admin.webhooks],
-    [null, null, null],
-  );
-  static _WLSettingsAdminWebhooksWebhook webhook(String id) =>
-      _WLSettingsAdminWebhooksWebhook._(
-        [_Screens.settings, Admin.admin, Admin.webhooks, Admin.webhook],
-        [null, null, null, id],
-      );
 }
 
 /// A resolve-only branch (declared via `.link`/`slots`): URL-shaped DATA
@@ -17539,7 +7657,7 @@ sealed class const Link([super.domain]) extends Url {
 final class const RootUrl([super.domain]) extends Url {
   @override
   Uri toUri([String? domain]) =>
-      Uri.parse((domain ?? 'https://mega.example') + '/');
+      Uri.parse('${domain ?? 'https://mega.example'}/');
 }
 
 /// A nav-mirror `Place` parsed from a URL (e.g. `/home/item/42`); carries
@@ -17713,7 +7831,8 @@ final class const TaskMineLink([super.domain])
 /// (go-able), [RootUrl] for bare `/`, or null if it resolves to nothing.
 /// The result carries the inbound origin in [Url.domain].
 Url? parseUrl(String url) {
-  final uri = Uri.parse(url);
+  final uri = tryParseUri(url);
+  if (uri == null) return null;
   final origin = uri.hasAuthority ? '${uri.scheme}://${uri.authority}' : null;
   final m = _Screens.graph.parseLink(url);
   if (m != null) {
@@ -17840,4924 +7959,6 @@ class _LXTaskSlot(final List<Object?> _p, final List<int> _b) {
   );
 }
 
-final class const _WLSplash._(final List<_Screens> _s, final List<Object?> _i)
-    implements Hop<SplashNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  SplashNav get nav => const SplashNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLSignIn._(final List<_Screens> _s, final List<Object?> _i)
-    implements Hop<SignInNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  SignInNav get nav => const SignInNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLSignUp._(final List<_Screens> _s, final List<Object?> _i)
-    implements Hop<SignUpNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  SignUpNav get nav => const SignUpNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLOnboarding._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<OnboardingNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  OnboardingNav get nav => const OnboardingNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLForgotPassword._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<ForgotPasswordNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  ForgotPasswordNav get nav => const ForgotPasswordNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLForgotPasswordResetPassword resetPassword(String id) =>
-      _WLForgotPasswordResetPassword._([..._s, .resetPassword], [..._i, id]);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLForgotPasswordResetPassword._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<ResetPasswordNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  ResetPasswordNav get nav => const ResetPasswordNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLVerifyEmail._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<VerifyEmailNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  VerifyEmailNav get nav => const VerifyEmailNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLTwoFactor._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<TwoFactorNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  TwoFactorNav get nav => const TwoFactorNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLHome._(final List<_Screens> _s, final List<Object?> _i)
-    implements Hop<HomeNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  HomeNav get nav => const HomeNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLHomeFeed get feed => _WLHomeFeed._([..._s, .feed], [..._i, null]);
-  _WLHomeStudio get studio =>
-      _WLHomeStudio._([..._s, CreatorStudio.studio], [..._i, null]);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLHomeFeed._(final List<_Screens> _s, final List<Object?> _i)
-    implements Hop<FeedNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  FeedNav get nav => const FeedNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLHomeFeedPost post(String id) =>
-      _WLHomeFeedPost._([..._s, .post], [..._i, id]);
-  _WLHomeFeedPostPostComments postComments(String id) =>
-      _WLHomeFeedPostPostComments._(
-        [..._s, .post, .postComments],
-        [..._i, id, null],
-      );
-  _WLHomeFeedPostPostLikes postLikes(String id) =>
-      _WLHomeFeedPostPostLikes._([..._s, .post, .postLikes], [..._i, id, null]);
-  _WLHomeFeedPostEditPost editPost(String id) =>
-      _WLHomeFeedPostEditPost._([..._s, .post, .editPost], [..._i, id, null]);
-  _WLHomeFeedPostRepost repost(String id) =>
-      _WLHomeFeedPostRepost._([..._s, .post, .repost], [..._i, id, null]);
-  _WLHomeFeedStory story(String id) =>
-      _WLHomeFeedStory._([..._s, .story], [..._i, id]);
-  _WLHomeFeedComposePost get composePost =>
-      _WLHomeFeedComposePost._([..._s, .composePost], [..._i, null]);
-  _WLHomeFeedUserProfile userProfile(String id) =>
-      _WLHomeFeedUserProfile._([..._s, .userProfile], [..._i, id]);
-  _WLHomeFeedQ query(Set<FeedQueryArg> q) =>
-      _WLHomeFeedQ(_s, _i, {for (final t in q) t.key: t.value}, const {});
-  _WLHomeFeedF fragment(Set<FeedFragmentArg> f) =>
-      _WLHomeFeedF(_s, _i, const {}, {for (final t in f) t.key: t.value});
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-class _WLHomeFeedQ(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-  final Map<String, Object?> _q,
-  final Map<String, Object?> _f,
-) {
-  _WLHomeFeedF fragment(Set<FeedFragmentArg> f) =>
-      _WLHomeFeedF(_s, _i, _q, {for (final t in f) t.key: t.value});
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(
-      domain ?? 'https://mega.example',
-      _s,
-      _i,
-      _q,
-      _f,
-    ),
-  );
-}
-
-class _WLHomeFeedF(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-  final Map<String, Object?> _q,
-  final Map<String, Object?> _f,
-) {
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(
-      domain ?? 'https://mega.example',
-      _s,
-      _i,
-      _q,
-      _f,
-    ),
-  );
-}
-
-final class const _WLHomeFeedPost._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<PostNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  PostNav get nav => const PostNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLHomeFeedPostComment comment(String id) =>
-      _WLHomeFeedPostComment._([..._s, .comment], [..._i, id]);
-  _WLHomeFeedPostPostAuthor postAuthor(String id) =>
-      _WLHomeFeedPostPostAuthor._([..._s, .postAuthor], [..._i, id]);
-  _WLHomeFeedPostPostComments get postComments =>
-      _WLHomeFeedPostPostComments._([..._s, .postComments], [..._i, null]);
-  _WLHomeFeedPostPostLikes get postLikes =>
-      _WLHomeFeedPostPostLikes._([..._s, .postLikes], [..._i, null]);
-  _WLHomeFeedPostEditPost get editPost =>
-      _WLHomeFeedPostEditPost._([..._s, .editPost], [..._i, null]);
-  _WLHomeFeedPostRepost get repost =>
-      _WLHomeFeedPostRepost._([..._s, .repost], [..._i, null]);
-  _WLHomeFeedPostQ query(Set<PostQueryArg> q) =>
-      _WLHomeFeedPostQ(_s, _i, {for (final t in q) t.key: t.value}, const {});
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-class _WLHomeFeedPostQ(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-  final Map<String, Object?> _q,
-  final Map<String, Object?> _f,
-) {
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(
-      domain ?? 'https://mega.example',
-      _s,
-      _i,
-      _q,
-      _f,
-    ),
-  );
-}
-
-final class const _WLHomeFeedPostComment._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<CommentNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  CommentNav get nav => const CommentNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLHomeFeedPostPostAuthor._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<PostAuthorNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  PostAuthorNav get nav => const PostAuthorNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLHomeFeedPostPostComments._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<PostCommentsNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  PostCommentsNav get nav => const PostCommentsNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLHomeFeedPostPostLikes._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<PostLikesNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  PostLikesNav get nav => const PostLikesNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLHomeFeedPostEditPost._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<EditPostNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  EditPostNav get nav => const EditPostNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLHomeFeedPostRepost._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<RepostNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  RepostNav get nav => const RepostNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLHomeFeedStory._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<StoryNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  StoryNav get nav => const StoryNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLHomeFeedComposePost._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<ComposePostNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  ComposePostNav get nav => const ComposePostNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLHomeFeedUserProfile._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<HomeFeedUserProfileNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  HomeFeedUserProfileNav get nav => const HomeFeedUserProfileNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLHomeStudio._(final List<Enum> _s, final List<Object?> _i)
-    implements Hop<StudioNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  StudioNav get nav => const StudioNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLHomeStudioAnalytics get analytics =>
-      _WLHomeStudioAnalytics._([..._s, CreatorStudio.analytics], [..._i, null]);
-  _WLHomeStudioScheduled get scheduled =>
-      _WLHomeStudioScheduled._([..._s, CreatorStudio.scheduled], [..._i, null]);
-  _WLHomeStudioMonetization get monetization => _WLHomeStudioMonetization._(
-    [..._s, CreatorStudio.monetization],
-    [..._i, null],
-  );
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLHomeStudioAnalytics._(
-  final List<Enum> _s,
-  final List<Object?> _i,
-) implements Hop<AnalyticsNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  AnalyticsNav get nav => const AnalyticsNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLHomeStudioAnalyticsAudience get audience =>
-      _WLHomeStudioAnalyticsAudience._(
-        [..._s, CreatorStudio.audience],
-        [..._i, null],
-      );
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLHomeStudioAnalyticsAudience._(
-  final List<Enum> _s,
-  final List<Object?> _i,
-) implements Hop<AudienceNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  AudienceNav get nav => const AudienceNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLHomeStudioScheduled._(
-  final List<Enum> _s,
-  final List<Object?> _i,
-) implements Hop<ScheduledNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  ScheduledNav get nav => const ScheduledNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLHomeStudioScheduledScheduledPost scheduledPost(String id) =>
-      _WLHomeStudioScheduledScheduledPost._(
-        [..._s, CreatorStudio.scheduledPost],
-        [..._i, id],
-      );
-  _WLHomeStudioScheduledScheduledPostEditScheduled editScheduled(String id) =>
-      _WLHomeStudioScheduledScheduledPostEditScheduled._(
-        [..._s, CreatorStudio.scheduledPost, CreatorStudio.editScheduled],
-        [..._i, id, null],
-      );
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLHomeStudioScheduledScheduledPost._(
-  final List<Enum> _s,
-  final List<Object?> _i,
-) implements Hop<ScheduledPostNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  ScheduledPostNav get nav => const ScheduledPostNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLHomeStudioScheduledScheduledPostEditScheduled get editScheduled =>
-      _WLHomeStudioScheduledScheduledPostEditScheduled._(
-        [..._s, CreatorStudio.editScheduled],
-        [..._i, null],
-      );
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLHomeStudioScheduledScheduledPostEditScheduled._(
-  final List<Enum> _s,
-  final List<Object?> _i,
-) implements Hop<EditScheduledNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  EditScheduledNav get nav => const EditScheduledNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLHomeStudioMonetization._(
-  final List<Enum> _s,
-  final List<Object?> _i,
-) implements Hop<MonetizationNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  MonetizationNav get nav => const MonetizationNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLHomeStudioMonetizationPayouts get payouts =>
-      _WLHomeStudioMonetizationPayouts._(
-        [..._s, CreatorStudio.payouts],
-        [..._i, null],
-      );
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLHomeStudioMonetizationPayouts._(
-  final List<Enum> _s,
-  final List<Object?> _i,
-) implements Hop<PayoutsNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  PayoutsNav get nav => const PayoutsNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLDiscover._(final List<_Screens> _s, final List<Object?> _i)
-    implements Hop<DiscoverNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  DiscoverNav get nav => const DiscoverNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLDiscoverTrending get trending =>
-      _WLDiscoverTrending._([..._s, .trending], [..._i, null]);
-  _WLDiscoverTopics get topics =>
-      _WLDiscoverTopics._([..._s, .topics], [..._i, null]);
-  _WLDiscoverLiveNow get liveNow =>
-      _WLDiscoverLiveNow._([..._s, .liveNow], [..._i, null]);
-  _WLDiscoverNearby get nearby =>
-      _WLDiscoverNearby._([..._s, .nearby], [..._i, null]);
-  _WLDiscoverEvents get events =>
-      _WLDiscoverEvents._([..._s, Events.events], [..._i, null]);
-  _WLDiscoverQ query(Set<DiscoverQueryArg> q) =>
-      _WLDiscoverQ(_s, _i, {for (final t in q) t.key: t.value}, const {});
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-class _WLDiscoverQ(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-  final Map<String, Object?> _q,
-  final Map<String, Object?> _f,
-) {
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(
-      domain ?? 'https://mega.example',
-      _s,
-      _i,
-      _q,
-      _f,
-    ),
-  );
-}
-
-final class const _WLDiscoverTrending._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<TrendingNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  TrendingNav get nav => const TrendingNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLDiscoverTrendingHashtag hashtag(String id) =>
-      _WLDiscoverTrendingHashtag._([..._s, .hashtag], [..._i, id]);
-  _WLDiscoverTrendingTopic topic(String id) =>
-      _WLDiscoverTrendingTopic._([..._s, .topic], [..._i, id]);
-  _WLDiscoverTrendingUserProfile userProfile(String id) =>
-      _WLDiscoverTrendingUserProfile._([..._s, .userProfile], [..._i, id]);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLDiscoverTrendingHashtag._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<HashtagNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  HashtagNav get nav => const HashtagNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLDiscoverTrendingTopic._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<TopicNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  TopicNav get nav => const TopicNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLDiscoverTrendingTopicSubtopic subtopic(String id) =>
-      _WLDiscoverTrendingTopicSubtopic._([..._s, .subtopic], [..._i, id]);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLDiscoverTrendingTopicSubtopic._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<SubtopicNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  SubtopicNav get nav => const SubtopicNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLDiscoverTrendingUserProfile._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<DiscoverTrendingUserProfileNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  DiscoverTrendingUserProfileNav get nav =>
-      const DiscoverTrendingUserProfileNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLDiscoverTopics._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<TopicsNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  TopicsNav get nav => const TopicsNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLDiscoverLiveNow._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<LiveNowNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  LiveNowNav get nav => const LiveNowNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLDiscoverLiveNowLiveRoom liveRoom(String id) =>
-      _WLDiscoverLiveNowLiveRoom._([..._s, .liveRoom], [..._i, id]);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLDiscoverLiveNowLiveRoom._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<LiveRoomNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  LiveRoomNav get nav => const LiveRoomNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLDiscoverNearby._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<NearbyNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  NearbyNav get nav => const NearbyNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLDiscoverEvents._(
-  final List<Enum> _s,
-  final List<Object?> _i,
-) implements Hop<EventsNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  EventsNav get nav => const EventsNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLDiscoverEventsEvent event(String id) =>
-      _WLDiscoverEventsEvent._([..._s, Events.event], [..._i, id]);
-  _WLDiscoverEventsEventAttendees attendees(String id) =>
-      _WLDiscoverEventsEventAttendees._(
-        [..._s, Events.event, Events.attendees],
-        [..._i, id, null],
-      );
-  _WLDiscoverEventsEventEditEvent editEvent(String id) =>
-      _WLDiscoverEventsEventEditEvent._(
-        [..._s, Events.event, Events.editEvent],
-        [..._i, id, null],
-      );
-  _WLDiscoverEventsEventTickets tickets(String id) =>
-      _WLDiscoverEventsEventTickets._(
-        [..._s, Events.event, Events.tickets],
-        [..._i, id, null],
-      );
-  _WLDiscoverEventsCreateEvent get createEvent =>
-      _WLDiscoverEventsCreateEvent._(
-        [..._s, Events.createEvent],
-        [..._i, null],
-      );
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLDiscoverEventsEvent._(
-  final List<Enum> _s,
-  final List<Object?> _i,
-) implements Hop<EventNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  EventNav get nav => const EventNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLDiscoverEventsEventAttendees get attendees =>
-      _WLDiscoverEventsEventAttendees._(
-        [..._s, Events.attendees],
-        [..._i, null],
-      );
-  _WLDiscoverEventsEventEditEvent get editEvent =>
-      _WLDiscoverEventsEventEditEvent._(
-        [..._s, Events.editEvent],
-        [..._i, null],
-      );
-  _WLDiscoverEventsEventTickets get tickets =>
-      _WLDiscoverEventsEventTickets._([..._s, Events.tickets], [..._i, null]);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLDiscoverEventsEventAttendees._(
-  final List<Enum> _s,
-  final List<Object?> _i,
-) implements Hop<AttendeesNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  AttendeesNav get nav => const AttendeesNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLDiscoverEventsEventEditEvent._(
-  final List<Enum> _s,
-  final List<Object?> _i,
-) implements Hop<EditEventNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  EditEventNav get nav => const EditEventNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLDiscoverEventsEventTickets._(
-  final List<Enum> _s,
-  final List<Object?> _i,
-) implements Hop<TicketsNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  TicketsNav get nav => const TicketsNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLDiscoverEventsCreateEvent._(
-  final List<Enum> _s,
-  final List<Object?> _i,
-) implements Hop<CreateEventNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  CreateEventNav get nav => const CreateEventNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLMarketplace._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<MarketplaceNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  MarketplaceNav get nav => const MarketplaceNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLMarketplaceCategories get categories =>
-      _WLMarketplaceCategories._([..._s, .categories], [..._i, null]);
-  _WLMarketplaceCart get cart =>
-      _WLMarketplaceCart._([..._s, .cart], [..._i, null]);
-  _WLMarketplaceMyOrders get myOrders =>
-      _WLMarketplaceMyOrders._([..._s, .myOrders], [..._i, null]);
-  _WLMarketplaceWishlist get wishlist =>
-      _WLMarketplaceWishlist._([..._s, .wishlist], [..._i, null]);
-  _WLMarketplaceQ query(Set<MarketplaceQueryArg> q) =>
-      _WLMarketplaceQ(_s, _i, {for (final t in q) t.key: t.value}, const {});
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-class _WLMarketplaceQ(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-  final Map<String, Object?> _q,
-  final Map<String, Object?> _f,
-) {
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(
-      domain ?? 'https://mega.example',
-      _s,
-      _i,
-      _q,
-      _f,
-    ),
-  );
-}
-
-final class const _WLMarketplaceCategories._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<CategoriesNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  CategoriesNav get nav => const CategoriesNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLMarketplaceCategoriesCategory category(String id) =>
-      _WLMarketplaceCategoriesCategory._([..._s, .category], [..._i, id]);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLMarketplaceCategoriesCategory._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<CategoryNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  CategoryNav get nav => const CategoryNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLMarketplaceCategoriesCategoryListing listing(String id) =>
-      _WLMarketplaceCategoriesCategoryListing._([..._s, .listing], [..._i, id]);
-  _WLMarketplaceCategoriesCategoryListingEditListing editListing(String id) =>
-      _WLMarketplaceCategoriesCategoryListingEditListing._(
-        [..._s, .listing, .editListing],
-        [..._i, id, null],
-      );
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLMarketplaceCategoriesCategoryListing._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<ListingNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  ListingNav get nav => const ListingNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLMarketplaceCategoriesCategoryListingEditListing get editListing =>
-      _WLMarketplaceCategoriesCategoryListingEditListing._(
-        [..._s, .editListing],
-        [..._i, null],
-      );
-  _WLMarketplaceCategoriesCategoryListingSellerProfile sellerProfile(
-    String id,
-  ) => _WLMarketplaceCategoriesCategoryListingSellerProfile._(
-    [..._s, .sellerProfile],
-    [..._i, id],
-  );
-  _WLMarketplaceCategoriesCategoryListingListingVariant listingVariant(
-    String id,
-  ) => _WLMarketplaceCategoriesCategoryListingListingVariant._(
-    [..._s, .listingVariant],
-    [..._i, id],
-  );
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLMarketplaceCategoriesCategoryListingEditListing._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<EditListingNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  EditListingNav get nav => const EditListingNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLMarketplaceCategoriesCategoryListingSellerProfile._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<SellerProfileNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  SellerProfileNav get nav => const SellerProfileNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLMarketplaceCategoriesCategoryListingListingVariant._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<ListingVariantNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  ListingVariantNav get nav => const ListingVariantNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLMarketplaceCart._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<CartNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  CartNav get nav => const CartNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLMarketplaceCartCheckout checkout(String id) =>
-      _WLMarketplaceCartCheckout._([..._s, .checkout], [..._i, id]);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLMarketplaceCartCheckout._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<CheckoutNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  CheckoutNav get nav => const CheckoutNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLMarketplaceCartCheckoutOrderConfirmation orderConfirmation(String id) =>
-      _WLMarketplaceCartCheckoutOrderConfirmation._(
-        [..._s, .orderConfirmation],
-        [..._i, id],
-      );
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLMarketplaceCartCheckoutOrderConfirmation._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<OrderConfirmationNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  OrderConfirmationNav get nav => const OrderConfirmationNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLMarketplaceMyOrders._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<MyOrdersNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  MyOrdersNav get nav => const MyOrdersNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLMarketplaceMyOrdersOrder order(String id) =>
-      _WLMarketplaceMyOrdersOrder._([..._s, .order], [..._i, id]);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLMarketplaceMyOrdersOrder._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<OrderNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  OrderNav get nav => const OrderNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLMarketplaceWishlist._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<WishlistNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  WishlistNav get nav => const WishlistNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLMessages._(final List<_Screens> _s, final List<Object?> _i)
-    implements Hop<MessagesNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  MessagesNav get nav => const MessagesNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLMessagesChats get chats =>
-      _WLMessagesChats._([..._s, .chats], [..._i, null]);
-  _WLMessagesNewChat get newChat =>
-      _WLMessagesNewChat._([..._s, .newChat], [..._i, null]);
-  _WLMessagesGroupChat groupChat(String id) =>
-      _WLMessagesGroupChat._([..._s, .groupChat], [..._i, id]);
-  _WLMessagesGroupChatGroupInfo groupInfo(String id) =>
-      _WLMessagesGroupChatGroupInfo._(
-        [..._s, .groupChat, .groupInfo],
-        [..._i, id, null],
-      );
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLMessagesChats._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<ChatsNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  ChatsNav get nav => const ChatsNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLMessagesChatsChat chat(String id) =>
-      _WLMessagesChatsChat._([..._s, .chat], [..._i, id]);
-  _WLMessagesChatsChatVoiceCall voiceCall(String id) =>
-      _WLMessagesChatsChatVoiceCall._(
-        [..._s, .chat, .voiceCall],
-        [..._i, id, null],
-      );
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLMessagesChatsChat._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<ChatNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  ChatNav get nav => const ChatNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLMessagesChatsChatThread thread(String id) =>
-      _WLMessagesChatsChatThread._([..._s, .thread], [..._i, id]);
-  _WLMessagesChatsChatVoiceCall get voiceCall =>
-      _WLMessagesChatsChatVoiceCall._([..._s, .voiceCall], [..._i, null]);
-  _WLMessagesChatsChatUserProfile userProfile(String id) =>
-      _WLMessagesChatsChatUserProfile._([..._s, .userProfile], [..._i, id]);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLMessagesChatsChatThread._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<ThreadNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  ThreadNav get nav => const ThreadNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLMessagesChatsChatThreadMessage message(String id) =>
-      _WLMessagesChatsChatThreadMessage._([..._s, .message], [..._i, id]);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLMessagesChatsChatThreadMessage._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<MessageNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  MessageNav get nav => const MessageNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLMessagesChatsChatThreadMessageMessageReply messageReply(String id) =>
-      _WLMessagesChatsChatThreadMessageMessageReply._(
-        [..._s, .messageReply],
-        [..._i, id],
-      );
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLMessagesChatsChatThreadMessageMessageReply._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<MessageReplyNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  MessageReplyNav get nav => const MessageReplyNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLMessagesChatsChatVoiceCall._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<VoiceCallNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  VoiceCallNav get nav => const VoiceCallNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLMessagesChatsChatUserProfile._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<MessagesChatsChatUserProfileNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  MessagesChatsChatUserProfileNav get nav =>
-      const MessagesChatsChatUserProfileNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLMessagesNewChat._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<NewChatNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  NewChatNav get nav => const NewChatNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLMessagesGroupChat._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<GroupChatNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  GroupChatNav get nav => const GroupChatNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLMessagesGroupChatGroupInfo get groupInfo =>
-      _WLMessagesGroupChatGroupInfo._([..._s, .groupInfo], [..._i, null]);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLMessagesGroupChatGroupInfo._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<GroupInfoNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  GroupInfoNav get nav => const GroupInfoNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLWallet._(final List<_Screens> _s, final List<Object?> _i)
-    implements Hop<WalletNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  WalletNav get nav => const WalletNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLWalletBalance get balance =>
-      _WLWalletBalance._([..._s, .balance], [..._i, null]);
-  _WLWalletAccounts get accounts =>
-      _WLWalletAccounts._([..._s, .accounts], [..._i, null]);
-  _WLWalletSendMoney get sendMoney =>
-      _WLWalletSendMoney._([..._s, .sendMoney], [..._i, null]);
-  _WLWalletReceiveMoney get receiveMoney =>
-      _WLWalletReceiveMoney._([..._s, .receiveMoney], [..._i, null]);
-  _WLWalletPaymentMethods get paymentMethods =>
-      _WLWalletPaymentMethods._([..._s, .paymentMethods], [..._i, null]);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLWalletBalance._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<BalanceNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  BalanceNav get nav => const BalanceNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLWalletAccounts._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<AccountsNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  AccountsNav get nav => const AccountsNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLWalletAccountsAccount account(String id) =>
-      _WLWalletAccountsAccount._([..._s, .account], [..._i, id]);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLWalletAccountsAccount._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<AccountNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  AccountNav get nav => const AccountNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLWalletAccountsAccountTransactions get transactions =>
-      _WLWalletAccountsAccountTransactions._(
-        [..._s, .transactions],
-        [..._i, null],
-      );
-  _WLWalletAccountsAccountStatements get statements =>
-      _WLWalletAccountsAccountStatements._([..._s, .statements], [..._i, null]);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLWalletAccountsAccountTransactions._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<TransactionsNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  TransactionsNav get nav => const TransactionsNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLWalletAccountsAccountTransactionsTransaction transaction(String id) =>
-      _WLWalletAccountsAccountTransactionsTransaction._(
-        [..._s, .transaction],
-        [..._i, id],
-      );
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLWalletAccountsAccountTransactionsTransaction._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<TransactionNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  TransactionNav get nav => const TransactionNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLWalletAccountsAccountTransactionsTransactionTransactionItem
-  transactionItem(String id) =>
-      _WLWalletAccountsAccountTransactionsTransactionTransactionItem._(
-        [..._s, .transactionItem],
-        [..._i, id],
-      );
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLWalletAccountsAccountTransactionsTransactionTransactionItem._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<TransactionItemNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  TransactionItemNav get nav => const TransactionItemNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLWalletAccountsAccountStatements._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<StatementsNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  StatementsNav get nav => const StatementsNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLWalletAccountsAccountStatementsStatement statement(String id) =>
-      _WLWalletAccountsAccountStatementsStatement._(
-        [..._s, .statement],
-        [..._i, id],
-      );
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLWalletAccountsAccountStatementsStatement._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<StatementNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  StatementNav get nav => const StatementNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLWalletSendMoney._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<SendMoneyNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  SendMoneyNav get nav => const SendMoneyNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLWalletReceiveMoney._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<ReceiveMoneyNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  ReceiveMoneyNav get nav => const ReceiveMoneyNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLWalletPaymentMethods._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<PaymentMethodsNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  PaymentMethodsNav get nav => const PaymentMethodsNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLWalletPaymentMethodsAddCard get addCard =>
-      _WLWalletPaymentMethodsAddCard._([..._s, .addCard], [..._i, null]);
-  _WLWalletPaymentMethodsCard card(String id) =>
-      _WLWalletPaymentMethodsCard._([..._s, .card], [..._i, id]);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLWalletPaymentMethodsAddCard._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<AddCardNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  AddCardNav get nav => const AddCardNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLWalletPaymentMethodsCard._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<CardNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  CardNav get nav => const CardNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLProfile._(final List<_Screens> _s, final List<Object?> _i)
-    implements Hop<ProfileNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  ProfileNav get nav => const ProfileNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLProfileUserProfile userProfile(String id) =>
-      _WLProfileUserProfile._([..._s, .userProfile], [..._i, id]);
-  _WLProfileFollowers followers(String id) =>
-      _WLProfileFollowers._([..._s, .followers], [..._i, id]);
-  _WLProfileFollowing following(String id) =>
-      _WLProfileFollowing._([..._s, .following], [..._i, id]);
-  _WLProfileEditProfile get editProfile =>
-      _WLProfileEditProfile._([..._s, .editProfile], [..._i, null]);
-  _WLProfileAchievements get achievements =>
-      _WLProfileAchievements._([..._s, .achievements], [..._i, null]);
-  _WLProfileBadges get badges =>
-      _WLProfileBadges._([..._s, .badges], [..._i, null]);
-  _WLProfileSavedPosts get savedPosts =>
-      _WLProfileSavedPosts._([..._s, .savedPosts], [..._i, null]);
-  _WLProfileDrafts get drafts =>
-      _WLProfileDrafts._([..._s, .drafts], [..._i, null]);
-  _WLProfileMyListings get myListings =>
-      _WLProfileMyListings._([..._s, .myListings], [..._i, null]);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLProfileUserProfile._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<ProfileUserProfileNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  ProfileUserProfileNav get nav => const ProfileUserProfileNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLProfileFollowers._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<FollowersNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  FollowersNav get nav => const FollowersNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLProfileFollowersConnection connection(String id) =>
-      _WLProfileFollowersConnection._([..._s, .connection], [..._i, id]);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLProfileFollowersConnection._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<ConnectionNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  ConnectionNav get nav => const ConnectionNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLProfileFollowersConnectionMutualConnections get mutualConnections =>
-      _WLProfileFollowersConnectionMutualConnections._(
-        [..._s, .mutualConnections],
-        [..._i, null],
-      );
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLProfileFollowersConnectionMutualConnections._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<MutualConnectionsNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  MutualConnectionsNav get nav => const MutualConnectionsNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLProfileFollowing._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<FollowingNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  FollowingNav get nav => const FollowingNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLProfileEditProfile._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<EditProfileNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  EditProfileNav get nav => const EditProfileNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLProfileAchievements._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<AchievementsNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  AchievementsNav get nav => const AchievementsNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLProfileBadges._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<BadgesNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  BadgesNav get nav => const BadgesNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLProfileBadgesBadge badge(String id) =>
-      _WLProfileBadgesBadge._([..._s, .badge], [..._i, id]);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLProfileBadgesBadge._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<BadgeNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  BadgeNav get nav => const BadgeNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLProfileSavedPosts._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<SavedPostsNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  SavedPostsNav get nav => const SavedPostsNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLProfileDrafts._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<DraftsNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  DraftsNav get nav => const DraftsNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLProfileMyListings._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<MyListingsNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  MyListingsNav get nav => const MyListingsNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLNotifications._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<NotificationsNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  NotificationsNav get nav => const NotificationsNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLNotificationsNotificationSettings get notificationSettings =>
-      _WLNotificationsNotificationSettings._(
-        [..._s, .notificationSettings],
-        [..._i, null],
-      );
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLNotificationsNotificationSettings._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<NotificationSettingsNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  NotificationSettingsNav get nav => const NotificationSettingsNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLSearch._(final List<_Screens> _s, final List<Object?> _i)
-    implements Hop<SearchNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  SearchNav get nav => const SearchNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLSearchSearchResults get searchResults =>
-      _WLSearchSearchResults._([..._s, .searchResults], [..._i, null]);
-  _WLSearchQ query(Set<SearchQueryArg> q) =>
-      _WLSearchQ(_s, _i, {for (final t in q) t.key: t.value}, const {});
-  _WLSearchF fragment(Set<SearchFragmentArg> f) =>
-      _WLSearchF(_s, _i, const {}, {for (final t in f) t.key: t.value});
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-class _WLSearchQ(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-  final Map<String, Object?> _q,
-  final Map<String, Object?> _f,
-) {
-  _WLSearchF fragment(Set<SearchFragmentArg> f) =>
-      _WLSearchF(_s, _i, _q, {for (final t in f) t.key: t.value});
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(
-      domain ?? 'https://mega.example',
-      _s,
-      _i,
-      _q,
-      _f,
-    ),
-  );
-}
-
-class _WLSearchF(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-  final Map<String, Object?> _q,
-  final Map<String, Object?> _f,
-) {
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(
-      domain ?? 'https://mega.example',
-      _s,
-      _i,
-      _q,
-      _f,
-    ),
-  );
-}
-
-final class const _WLSearchSearchResults._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<SearchResultsNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  SearchResultsNav get nav => const SearchResultsNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLSettings._(final List<_Screens> _s, final List<Object?> _i)
-    implements Hop<SettingsNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  SettingsNav get nav => const SettingsNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLSettingsAccountSettings get accountSettings =>
-      _WLSettingsAccountSettings._([..._s, .accountSettings], [..._i, null]);
-  _WLSettingsSecurity get security =>
-      _WLSettingsSecurity._([..._s, .security], [..._i, null]);
-  _WLSettingsPrivacy get privacy =>
-      _WLSettingsPrivacy._([..._s, .privacy], [..._i, null]);
-  _WLSettingsAppearance get appearance =>
-      _WLSettingsAppearance._([..._s, .appearance], [..._i, null]);
-  _WLSettingsLanguage get language =>
-      _WLSettingsLanguage._([..._s, .language], [..._i, null]);
-  _WLSettingsConnectedApps get connectedApps =>
-      _WLSettingsConnectedApps._([..._s, .connectedApps], [..._i, null]);
-  _WLSettingsAbout get about =>
-      _WLSettingsAbout._([..._s, .about], [..._i, null]);
-  _WLSettingsBlockedUsers get blockedUsers =>
-      _WLSettingsBlockedUsers._([..._s, .blockedUsers], [..._i, null]);
-  _WLSettingsDevices get devices =>
-      _WLSettingsDevices._([..._s, .devices], [..._i, null]);
-  _WLSettingsDataExport get dataExport =>
-      _WLSettingsDataExport._([..._s, .dataExport], [..._i, null]);
-  _WLSettingsDeleteAccount get deleteAccount =>
-      _WLSettingsDeleteAccount._([..._s, .deleteAccount], [..._i, null]);
-  _WLSettingsIntegrations get integrations =>
-      _WLSettingsIntegrations._([..._s, .integrations], [..._i, null]);
-  _WLSettingsSupport get support =>
-      _WLSettingsSupport._([..._s, Support.support], [..._i, null]);
-  _WLSettingsAdmin get admin =>
-      _WLSettingsAdmin._([..._s, Admin.admin], [..._i, null]);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLSettingsAccountSettings._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<AccountSettingsNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  AccountSettingsNav get nav => const AccountSettingsNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLSettingsSecurity._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<SecurityNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  SecurityNav get nav => const SecurityNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLSettingsSecurityTwoFactorSettings get twoFactorSettings =>
-      _WLSettingsSecurityTwoFactorSettings._(
-        [..._s, .twoFactorSettings],
-        [..._i, null],
-      );
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLSettingsSecurityTwoFactorSettings._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<TwoFactorSettingsNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  TwoFactorSettingsNav get nav => const TwoFactorSettingsNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLSettingsPrivacy._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<PrivacyNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  PrivacyNav get nav => const PrivacyNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLSettingsAppearance._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<AppearanceNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  AppearanceNav get nav => const AppearanceNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLSettingsLanguage._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<LanguageNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  LanguageNav get nav => const LanguageNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLSettingsConnectedApps._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<ConnectedAppsNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  ConnectedAppsNav get nav => const ConnectedAppsNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLSettingsAbout._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<AboutNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  AboutNav get nav => const AboutNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLSettingsAboutHelp get help =>
-      _WLSettingsAboutHelp._([..._s, .help], [..._i, null]);
-  _WLSettingsAboutFeedback get feedback =>
-      _WLSettingsAboutFeedback._([..._s, .feedback], [..._i, null]);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLSettingsAboutHelp._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<HelpNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  HelpNav get nav => const HelpNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLSettingsAboutHelpHelpCategory helpCategory(String id) =>
-      _WLSettingsAboutHelpHelpCategory._([..._s, .helpCategory], [..._i, id]);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLSettingsAboutHelpHelpCategory._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<HelpCategoryNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  HelpCategoryNav get nav => const HelpCategoryNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLSettingsAboutHelpHelpCategoryFaq get faq =>
-      _WLSettingsAboutHelpHelpCategoryFaq._([..._s, .faq], [..._i, null]);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLSettingsAboutHelpHelpCategoryFaq._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<FaqNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  FaqNav get nav => const FaqNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLSettingsAboutHelpHelpCategoryFaqFaqArticle faqArticle(String id) =>
-      _WLSettingsAboutHelpHelpCategoryFaqFaqArticle._(
-        [..._s, .faqArticle],
-        [..._i, id],
-      );
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLSettingsAboutHelpHelpCategoryFaqFaqArticle._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<FaqArticleNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  FaqArticleNav get nav => const FaqArticleNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLSettingsAboutFeedback._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<FeedbackNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  FeedbackNav get nav => const FeedbackNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLSettingsBlockedUsers._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<BlockedUsersNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  BlockedUsersNav get nav => const BlockedUsersNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLSettingsDevices._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<DevicesNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  DevicesNav get nav => const DevicesNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLSettingsDevicesDevice device(String id) =>
-      _WLSettingsDevicesDevice._([..._s, .device], [..._i, id]);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLSettingsDevicesDevice._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<DeviceNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  DeviceNav get nav => const DeviceNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLSettingsDevicesDeviceSessions get sessions =>
-      _WLSettingsDevicesDeviceSessions._([..._s, .sessions], [..._i, null]);
-  _WLSettingsDevicesDeviceSession session(String id) =>
-      _WLSettingsDevicesDeviceSession._([..._s, .session], [..._i, id]);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLSettingsDevicesDeviceSessions._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<SessionsNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  SessionsNav get nav => const SessionsNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLSettingsDevicesDeviceSession._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<SessionNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  SessionNav get nav => const SessionNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLSettingsDataExport._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<DataExportNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  DataExportNav get nav => const DataExportNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLSettingsDeleteAccount._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<DeleteAccountNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  DeleteAccountNav get nav => const DeleteAccountNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLSettingsIntegrations._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<IntegrationsNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  IntegrationsNav get nav => const IntegrationsNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLSettingsIntegrationsApiKeys get apiKeys =>
-      _WLSettingsIntegrationsApiKeys._([..._s, .apiKeys], [..._i, null]);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLSettingsIntegrationsApiKeys._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<ApiKeysNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  ApiKeysNav get nav => const ApiKeysNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLSettingsSupport._(
-  final List<Enum> _s,
-  final List<Object?> _i,
-) implements Hop<SupportNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  SupportNav get nav => const SupportNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLSettingsSupportSupportTickets get supportTickets =>
-      _WLSettingsSupportSupportTickets._(
-        [..._s, Support.supportTickets],
-        [..._i, null],
-      );
-  _WLSettingsSupportNewTicket get newTicket =>
-      _WLSettingsSupportNewTicket._([..._s, Support.newTicket], [..._i, null]);
-  _WLSettingsSupportKnowledgeBase get knowledgeBase =>
-      _WLSettingsSupportKnowledgeBase._(
-        [..._s, Support.knowledgeBase],
-        [..._i, null],
-      );
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLSettingsSupportSupportTickets._(
-  final List<Enum> _s,
-  final List<Object?> _i,
-) implements Hop<SupportTicketsNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  SupportTicketsNav get nav => const SupportTicketsNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLSettingsSupportSupportTicketsSupportTicket supportTicket(String id) =>
-      _WLSettingsSupportSupportTicketsSupportTicket._(
-        [..._s, Support.supportTicket],
-        [..._i, id],
-      );
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLSettingsSupportSupportTicketsSupportTicket._(
-  final List<Enum> _s,
-  final List<Object?> _i,
-) implements Hop<SupportTicketNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  SupportTicketNav get nav => const SupportTicketNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLSettingsSupportNewTicket._(
-  final List<Enum> _s,
-  final List<Object?> _i,
-) implements Hop<NewTicketNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  NewTicketNav get nav => const NewTicketNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLSettingsSupportKnowledgeBase._(
-  final List<Enum> _s,
-  final List<Object?> _i,
-) implements Hop<KnowledgeBaseNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  KnowledgeBaseNav get nav => const KnowledgeBaseNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLSettingsSupportKnowledgeBaseArticle article(String id) =>
-      _WLSettingsSupportKnowledgeBaseArticle._(
-        [..._s, Support.article],
-        [..._i, id],
-      );
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLSettingsSupportKnowledgeBaseArticle._(
-  final List<Enum> _s,
-  final List<Object?> _i,
-) implements Hop<ArticleNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  ArticleNav get nav => const ArticleNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLSettingsAdmin._(
-  final List<Enum> _s,
-  final List<Object?> _i,
-) implements Hop<AdminNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  AdminNav get nav => const AdminNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLSettingsAdminAdminUsers get adminUsers =>
-      _WLSettingsAdminAdminUsers._([..._s, Admin.adminUsers], [..._i, null]);
-  _WLSettingsAdminAdminAuditLog get adminAuditLog =>
-      _WLSettingsAdminAdminAuditLog._(
-        [..._s, Admin.adminAuditLog],
-        [..._i, null],
-      );
-  _WLSettingsAdminAdminFeatureFlags get adminFeatureFlags =>
-      _WLSettingsAdminAdminFeatureFlags._(
-        [..._s, Admin.adminFeatureFlags],
-        [..._i, null],
-      );
-  _WLSettingsAdminWebhooks get webhooks =>
-      _WLSettingsAdminWebhooks._([..._s, Admin.webhooks], [..._i, null]);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLSettingsAdminAdminUsers._(
-  final List<Enum> _s,
-  final List<Object?> _i,
-) implements Hop<AdminUsersNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  AdminUsersNav get nav => const AdminUsersNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLSettingsAdminAdminUsersAdminUser adminUser(String id) =>
-      _WLSettingsAdminAdminUsersAdminUser._(
-        [..._s, Admin.adminUser],
-        [..._i, id],
-      );
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLSettingsAdminAdminUsersAdminUser._(
-  final List<Enum> _s,
-  final List<Object?> _i,
-) implements Hop<AdminUserNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  AdminUserNav get nav => const AdminUserNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLSettingsAdminAdminUsersAdminUserAdminRole adminRole(String id) =>
-      _WLSettingsAdminAdminUsersAdminUserAdminRole._(
-        [..._s, Admin.adminRole],
-        [..._i, id],
-      );
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLSettingsAdminAdminUsersAdminUserAdminRole._(
-  final List<Enum> _s,
-  final List<Object?> _i,
-) implements Hop<AdminRoleNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  AdminRoleNav get nav => const AdminRoleNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLSettingsAdminAdminAuditLog._(
-  final List<Enum> _s,
-  final List<Object?> _i,
-) implements Hop<AdminAuditLogNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  AdminAuditLogNav get nav => const AdminAuditLogNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLSettingsAdminAdminFeatureFlags._(
-  final List<Enum> _s,
-  final List<Object?> _i,
-) implements Hop<AdminFeatureFlagsNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  AdminFeatureFlagsNav get nav => const AdminFeatureFlagsNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLSettingsAdminWebhooks._(
-  final List<Enum> _s,
-  final List<Object?> _i,
-) implements Hop<WebhooksNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  WebhooksNav get nav => const WebhooksNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLSettingsAdminWebhooksWebhook webhook(String id) =>
-      _WLSettingsAdminWebhooksWebhook._([..._s, Admin.webhook], [..._i, id]);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLSettingsAdminWebhooksWebhook._(
-  final List<Enum> _s,
-  final List<Object?> _i,
-) implements Hop<WebhookNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  WebhookNav get nav => const WebhookNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLWorkspace._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<WorkspaceNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  WorkspaceNav get nav => const WorkspaceNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLWorkspaceProject project(String id) =>
-      _WLWorkspaceProject._([..._s, .project], [..._i, id]);
-  _WLWorkspaceQ query(Set<WorkspaceQueryArg> q) =>
-      _WLWorkspaceQ(_s, _i, {for (final t in q) t.key: t.value}, const {});
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-class _WLWorkspaceQ(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-  final Map<String, Object?> _q,
-  final Map<String, Object?> _f,
-) {
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(
-      domain ?? 'https://mega.example',
-      _s,
-      _i,
-      _q,
-      _f,
-    ),
-  );
-}
-
-final class const _WLWorkspaceProject._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<ProjectNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  ProjectNav get nav => const ProjectNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLWorkspaceProjectBoard board(String id) =>
-      _WLWorkspaceProjectBoard._([..._s, .board], [..._i, id]);
-  _WLWorkspaceProjectUserProfile userProfile(String id) =>
-      _WLWorkspaceProjectUserProfile._([..._s, .userProfile], [..._i, id]);
-  _WLWorkspaceProjectQ query(Set<ProjectQueryArg> q) => _WLWorkspaceProjectQ(
-    _s,
-    _i,
-    {for (final t in q) t.key: t.value},
-    const {},
-  );
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-class _WLWorkspaceProjectQ(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-  final Map<String, Object?> _q,
-  final Map<String, Object?> _f,
-) {
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(
-      domain ?? 'https://mega.example',
-      _s,
-      _i,
-      _q,
-      _f,
-    ),
-  );
-}
-
-final class const _WLWorkspaceProjectBoard._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<BoardNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  BoardNav get nav => const BoardNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLWorkspaceProjectBoardTaskList taskList(String id) =>
-      _WLWorkspaceProjectBoardTaskList._([..._s, .taskList], [..._i, id]);
-  _WLWorkspaceProjectBoardQ query(Set<BoardQueryArg> q) =>
-      _WLWorkspaceProjectBoardQ(_s, _i, {
-        for (final t in q) t.key: t.value,
-      }, const {});
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-class _WLWorkspaceProjectBoardQ(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-  final Map<String, Object?> _q,
-  final Map<String, Object?> _f,
-) {
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(
-      domain ?? 'https://mega.example',
-      _s,
-      _i,
-      _q,
-      _f,
-    ),
-  );
-}
-
-final class const _WLWorkspaceProjectBoardTaskList._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<TaskListNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  TaskListNav get nav => const TaskListNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLWorkspaceProjectBoardTaskListTask task(String id) =>
-      _WLWorkspaceProjectBoardTaskListTask._([..._s, .task], [..._i, id]);
-  _WLWorkspaceProjectBoardTaskListTaskEditTask editTask(String id) =>
-      _WLWorkspaceProjectBoardTaskListTaskEditTask._(
-        [..._s, .task, .editTask],
-        [..._i, id, null],
-      );
-  _WLWorkspaceProjectBoardTaskListTaskTaskComment taskComment(String id) =>
-      _WLWorkspaceProjectBoardTaskListTaskTaskComment._(
-        [..._s, .task, .taskComment],
-        [..._i, id, null],
-      );
-  _WLWorkspaceProjectBoardTaskListMilestone milestone(String id) =>
-      _WLWorkspaceProjectBoardTaskListMilestone._(
-        [..._s, .milestone],
-        [..._i, id],
-      );
-  _WLWorkspaceProjectBoardTaskListSprint sprint(String id) =>
-      _WLWorkspaceProjectBoardTaskListSprint._([..._s, .sprint], [..._i, id]);
-  _WLWorkspaceProjectBoardTaskListQ query(Set<TaskListQueryArg> q) =>
-      _WLWorkspaceProjectBoardTaskListQ(_s, _i, {
-        for (final t in q) t.key: t.value,
-      }, const {});
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-class _WLWorkspaceProjectBoardTaskListQ(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-  final Map<String, Object?> _q,
-  final Map<String, Object?> _f,
-) {
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(
-      domain ?? 'https://mega.example',
-      _s,
-      _i,
-      _q,
-      _f,
-    ),
-  );
-}
-
-final class const _WLWorkspaceProjectBoardTaskListTask._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<TaskNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  TaskNav get nav => const TaskNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLWorkspaceProjectBoardTaskListTaskSubtask subtask(String id) =>
-      _WLWorkspaceProjectBoardTaskListTaskSubtask._(
-        [..._s, .subtask],
-        [..._i, id],
-      );
-  _WLWorkspaceProjectBoardTaskListTaskEditTask get editTask =>
-      _WLWorkspaceProjectBoardTaskListTaskEditTask._(
-        [..._s, .editTask],
-        [..._i, null],
-      );
-  _WLWorkspaceProjectBoardTaskListTaskTaskComment get taskComment =>
-      _WLWorkspaceProjectBoardTaskListTaskTaskComment._(
-        [..._s, .taskComment],
-        [..._i, null],
-      );
-  _WLWorkspaceProjectBoardTaskListTaskAssignee assignee(String id) =>
-      _WLWorkspaceProjectBoardTaskListTaskAssignee._(
-        [..._s, .assignee],
-        [..._i, id],
-      );
-  _WLWorkspaceProjectBoardTaskListTaskLabel label(String id) =>
-      _WLWorkspaceProjectBoardTaskListTaskLabel._([..._s, .label], [..._i, id]);
-  _WLWorkspaceProjectBoardTaskListTaskQ query(Set<TaskQueryArg> q) =>
-      _WLWorkspaceProjectBoardTaskListTaskQ(_s, _i, {
-        for (final t in q) t.key: t.value,
-      }, const {});
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-class _WLWorkspaceProjectBoardTaskListTaskQ(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-  final Map<String, Object?> _q,
-  final Map<String, Object?> _f,
-) {
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(
-      domain ?? 'https://mega.example',
-      _s,
-      _i,
-      _q,
-      _f,
-    ),
-  );
-}
-
-final class const _WLWorkspaceProjectBoardTaskListTaskSubtask._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<SubtaskNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  SubtaskNav get nav => const SubtaskNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLWorkspaceProjectBoardTaskListTaskSubtaskChecklistItem checklistItem(
-    String id,
-  ) => _WLWorkspaceProjectBoardTaskListTaskSubtaskChecklistItem._(
-    [..._s, .checklistItem],
-    [..._i, id],
-  );
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLWorkspaceProjectBoardTaskListTaskSubtaskChecklistItem._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<ChecklistItemNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  ChecklistItemNav get nav => const ChecklistItemNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLWorkspaceProjectBoardTaskListTaskEditTask._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<EditTaskNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  EditTaskNav get nav => const EditTaskNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLWorkspaceProjectBoardTaskListTaskTaskComment._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<TaskCommentNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  TaskCommentNav get nav => const TaskCommentNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLWorkspaceProjectBoardTaskListTaskAssignee._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<AssigneeNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  AssigneeNav get nav => const AssigneeNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLWorkspaceProjectBoardTaskListTaskLabel._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<LabelNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  LabelNav get nav => const LabelNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLWorkspaceProjectBoardTaskListMilestone._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<MilestoneNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  MilestoneNav get nav => const MilestoneNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLWorkspaceProjectBoardTaskListSprint._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<SprintNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  SprintNav get nav => const SprintNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLWorkspaceProjectUserProfile._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<WorkspaceProjectUserProfileNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  WorkspaceProjectUserProfileNav get nav =>
-      const WorkspaceProjectUserProfileNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLForum._(final List<_Screens> _s, final List<Object?> _i)
-    implements Hop<ForumNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  ForumNav get nav => const ForumNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLForumForumCategory forumCategory(String id) =>
-      _WLForumForumCategory._([..._s, .forumCategory], [..._i, id]);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLForumForumCategory._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<ForumCategoryNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  ForumCategoryNav get nav => const ForumCategoryNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLForumForumCategoryForumThread forumThread(String id) =>
-      _WLForumForumCategoryForumThread._([..._s, .forumThread], [..._i, id]);
-  _WLForumForumCategoryForumThreadReportThread reportThread(String id) =>
-      _WLForumForumCategoryForumThreadReportThread._(
-        [..._s, .forumThread, .reportThread],
-        [..._i, id, null],
-      );
-  _WLForumForumCategoryQ query(Set<ForumCategoryQueryArg> q) =>
-      _WLForumForumCategoryQ(_s, _i, {
-        for (final t in q) t.key: t.value,
-      }, const {});
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-class _WLForumForumCategoryQ(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-  final Map<String, Object?> _q,
-  final Map<String, Object?> _f,
-) {
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(
-      domain ?? 'https://mega.example',
-      _s,
-      _i,
-      _q,
-      _f,
-    ),
-  );
-}
-
-final class const _WLForumForumCategoryForumThread._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<ForumThreadNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  ForumThreadNav get nav => const ForumThreadNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLForumForumCategoryForumThreadForumReply forumReply(String id) =>
-      _WLForumForumCategoryForumThreadForumReply._(
-        [..._s, .forumReply],
-        [..._i, id],
-      );
-  _WLForumForumCategoryForumThreadReportThread get reportThread =>
-      _WLForumForumCategoryForumThreadReportThread._(
-        [..._s, .reportThread],
-        [..._i, null],
-      );
-  _WLForumForumCategoryForumThreadQ query(Set<ForumThreadQueryArg> q) =>
-      _WLForumForumCategoryForumThreadQ(_s, _i, {
-        for (final t in q) t.key: t.value,
-      }, const {});
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-class _WLForumForumCategoryForumThreadQ(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-  final Map<String, Object?> _q,
-  final Map<String, Object?> _f,
-) {
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(
-      domain ?? 'https://mega.example',
-      _s,
-      _i,
-      _q,
-      _f,
-    ),
-  );
-}
-
-final class const _WLForumForumCategoryForumThreadForumReply._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<ForumReplyNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  ForumReplyNav get nav => const ForumReplyNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLForumForumCategoryForumThreadForumReplyUserProfile userProfile(
-    String id,
-  ) => _WLForumForumCategoryForumThreadForumReplyUserProfile._(
-    [..._s, .userProfile],
-    [..._i, id],
-  );
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLForumForumCategoryForumThreadForumReplyUserProfile._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<ForumForumCategoryForumThreadForumReplyUserProfileNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  ForumForumCategoryForumThreadForumReplyUserProfileNav get nav =>
-      const ForumForumCategoryForumThreadForumReplyUserProfileNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLForumForumCategoryForumThreadReportThread._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<ReportThreadNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  ReportThreadNav get nav => const ReportThreadNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLLearn._(final List<_Screens> _s, final List<Object?> _i)
-    implements Hop<LearnNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  LearnNav get nav => const LearnNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLLearnCourse course(String id) =>
-      _WLLearnCourse._([..._s, .course], [..._i, id]);
-  _WLLearnCourseCertificate certificate(String id) =>
-      _WLLearnCourseCertificate._(
-        [..._s, .course, .certificate],
-        [..._i, id, null],
-      );
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLLearnCourse._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<CourseNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  CourseNav get nav => const CourseNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLLearnCourseCourseModule courseModule(String id) =>
-      _WLLearnCourseCourseModule._([..._s, .courseModule], [..._i, id]);
-  _WLLearnCourseCertificate get certificate =>
-      _WLLearnCourseCertificate._([..._s, .certificate], [..._i, null]);
-  _WLLearnCourseQ query(Set<CourseQueryArg> q) =>
-      _WLLearnCourseQ(_s, _i, {for (final t in q) t.key: t.value}, const {});
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-class _WLLearnCourseQ(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-  final Map<String, Object?> _q,
-  final Map<String, Object?> _f,
-) {
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(
-      domain ?? 'https://mega.example',
-      _s,
-      _i,
-      _q,
-      _f,
-    ),
-  );
-}
-
-final class const _WLLearnCourseCourseModule._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<CourseModuleNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  CourseModuleNav get nav => const CourseModuleNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLLearnCourseCourseModuleLesson lesson(String id) =>
-      _WLLearnCourseCourseModuleLesson._([..._s, .lesson], [..._i, id]);
-  _WLLearnCourseCourseModuleInstructor instructor(String id) =>
-      _WLLearnCourseCourseModuleInstructor._([..._s, .instructor], [..._i, id]);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLLearnCourseCourseModuleLesson._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<LessonNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  LessonNav get nav => const LessonNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLLearnCourseCourseModuleLessonQuiz quiz(String id) =>
-      _WLLearnCourseCourseModuleLessonQuiz._([..._s, .quiz], [..._i, id]);
-  _WLLearnCourseCourseModuleLessonCourseReview courseReview(String id) =>
-      _WLLearnCourseCourseModuleLessonCourseReview._(
-        [..._s, .courseReview],
-        [..._i, id],
-      );
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLLearnCourseCourseModuleLessonQuiz._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<QuizNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  QuizNav get nav => const QuizNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLLearnCourseCourseModuleLessonQuizQuestion question(String id) =>
-      _WLLearnCourseCourseModuleLessonQuizQuestion._(
-        [..._s, .question],
-        [..._i, id],
-      );
-  _WLLearnCourseCourseModuleLessonQuizQuestionAnswer answer(String id) =>
-      _WLLearnCourseCourseModuleLessonQuizQuestionAnswer._(
-        [..._s, .question, .answer],
-        [..._i, id, null],
-      );
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLLearnCourseCourseModuleLessonQuizQuestion._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<QuestionNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  QuestionNav get nav => const QuestionNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLLearnCourseCourseModuleLessonQuizQuestionAnswer get answer =>
-      _WLLearnCourseCourseModuleLessonQuizQuestionAnswer._(
-        [..._s, .answer],
-        [..._i, null],
-      );
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLLearnCourseCourseModuleLessonQuizQuestionAnswer._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<AnswerNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  AnswerNav get nav => const AnswerNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLLearnCourseCourseModuleLessonCourseReview._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<CourseReviewNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  CourseReviewNav get nav => const CourseReviewNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLLearnCourseCourseModuleInstructor._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<InstructorNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  InstructorNav get nav => const InstructorNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLLearnCourseCertificate._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<CertificateNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  CertificateNav get nav => const CertificateNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLShop._(final List<_Screens> _s, final List<Object?> _i)
-    implements Hop<ShopNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  ShopNav get nav => const ShopNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLShopShopDept shopDept(String id) =>
-      _WLShopShopDept._([..._s, .shopDept], [..._i, id]);
-  _WLShopCompareProducts get compareProducts =>
-      _WLShopCompareProducts._([..._s, .compareProducts], [..._i, null]);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLShopShopDept._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<ShopDeptNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  ShopDeptNav get nav => const ShopDeptNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLShopShopDeptShopCategory shopCategory(String id) =>
-      _WLShopShopDeptShopCategory._([..._s, .shopCategory], [..._i, id]);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLShopShopDeptShopCategory._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<ShopCategoryNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  ShopCategoryNav get nav => const ShopCategoryNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLShopShopDeptShopCategoryShopSubcategory shopSubcategory(String id) =>
-      _WLShopShopDeptShopCategoryShopSubcategory._(
-        [..._s, .shopSubcategory],
-        [..._i, id],
-      );
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLShopShopDeptShopCategoryShopSubcategory._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<ShopSubcategoryNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  ShopSubcategoryNav get nav => const ShopSubcategoryNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLShopShopDeptShopCategoryShopSubcategoryProduct product(String id) =>
-      _WLShopShopDeptShopCategoryShopSubcategoryProduct._(
-        [..._s, .product],
-        [..._i, id],
-      );
-  _WLShopShopDeptShopCategoryShopSubcategoryQ query(
-    Set<ShopSubcategoryQueryArg> q,
-  ) => _WLShopShopDeptShopCategoryShopSubcategoryQ(_s, _i, {
-    for (final t in q) t.key: t.value,
-  }, const {});
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-class _WLShopShopDeptShopCategoryShopSubcategoryQ(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-  final Map<String, Object?> _q,
-  final Map<String, Object?> _f,
-) {
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(
-      domain ?? 'https://mega.example',
-      _s,
-      _i,
-      _q,
-      _f,
-    ),
-  );
-}
-
-final class const _WLShopShopDeptShopCategoryShopSubcategoryProduct._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<ProductNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  ProductNav get nav => const ProductNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLShopShopDeptShopCategoryShopSubcategoryProductProductVariant
-  productVariant(String id) =>
-      _WLShopShopDeptShopCategoryShopSubcategoryProductProductVariant._(
-        [..._s, .productVariant],
-        [..._i, id],
-      );
-  _WLShopShopDeptShopCategoryShopSubcategoryProductProductReview productReview(
-    String id,
-  ) => _WLShopShopDeptShopCategoryShopSubcategoryProductProductReview._(
-    [..._s, .productReview],
-    [..._i, id],
-  );
-  _WLShopShopDeptShopCategoryShopSubcategoryProductBrand brand(String id) =>
-      _WLShopShopDeptShopCategoryShopSubcategoryProductBrand._(
-        [..._s, .brand],
-        [..._i, id],
-      );
-  _WLShopShopDeptShopCategoryShopSubcategoryProductQ query(
-    Set<ProductQueryArg> q,
-  ) => _WLShopShopDeptShopCategoryShopSubcategoryProductQ(_s, _i, {
-    for (final t in q) t.key: t.value,
-  }, const {});
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-class _WLShopShopDeptShopCategoryShopSubcategoryProductQ(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-  final Map<String, Object?> _q,
-  final Map<String, Object?> _f,
-) {
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(
-      domain ?? 'https://mega.example',
-      _s,
-      _i,
-      _q,
-      _f,
-    ),
-  );
-}
-
-final class const _WLShopShopDeptShopCategoryShopSubcategoryProductProductVariant._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<ProductVariantNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  ProductVariantNav get nav => const ProductVariantNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLShopShopDeptShopCategoryShopSubcategoryProductProductReview._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<ProductReviewNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  ProductReviewNav get nav => const ProductReviewNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLShopShopDeptShopCategoryShopSubcategoryProductBrand._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<BrandNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  BrandNav get nav => const BrandNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLShopCompareProducts._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<CompareProductsNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  CompareProductsNav get nav => const CompareProductsNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLActivity._(final List<_Screens> _s, final List<Object?> _i)
-    implements Hop<ActivityNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  ActivityNav get nav => const ActivityNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLActivityWorkout workout(String id) =>
-      _WLActivityWorkout._([..._s, .workout], [..._i, id]);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLActivityWorkout._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<WorkoutNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  WorkoutNav get nav => const WorkoutNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLActivityWorkoutExercise exercise(String id) =>
-      _WLActivityWorkoutExercise._([..._s, .exercise], [..._i, id]);
-  _WLActivityWorkoutQ query(Set<WorkoutQueryArg> q) => _WLActivityWorkoutQ(
-    _s,
-    _i,
-    {for (final t in q) t.key: t.value},
-    const {},
-  );
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-class _WLActivityWorkoutQ(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-  final Map<String, Object?> _q,
-  final Map<String, Object?> _f,
-) {
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(
-      domain ?? 'https://mega.example',
-      _s,
-      _i,
-      _q,
-      _f,
-    ),
-  );
-}
-
-final class const _WLActivityWorkoutExercise._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<ExerciseNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  ExerciseNav get nav => const ExerciseNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLActivityWorkoutExerciseExerciseSet exerciseSet(String id) =>
-      _WLActivityWorkoutExerciseExerciseSet._(
-        [..._s, .exerciseSet],
-        [..._i, id],
-      );
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLActivityWorkoutExerciseExerciseSet._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<ExerciseSetNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  ExerciseSetNav get nav => const ExerciseSetNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLDeepDemo._(final List<_Screens> _s, final List<Object?> _i)
-    implements Hop<DeepDemoNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  DeepDemoNav get nav => const DeepDemoNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLDeepDemoLevelA levelA(String id) =>
-      _WLDeepDemoLevelA._([..._s, .levelA], [..._i, id]);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLDeepDemoLevelA._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<LevelANav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  LevelANav get nav => const LevelANav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLDeepDemoLevelALevelB levelB(String id) =>
-      _WLDeepDemoLevelALevelB._([..._s, .levelB], [..._i, id]);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLDeepDemoLevelALevelB._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<LevelBNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  LevelBNav get nav => const LevelBNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLDeepDemoLevelALevelBLevelC levelC(String id) =>
-      _WLDeepDemoLevelALevelBLevelC._([..._s, .levelC], [..._i, id]);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLDeepDemoLevelALevelBLevelC._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<LevelCNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  LevelCNav get nav => const LevelCNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLDeepDemoLevelALevelBLevelCLevelD levelD(String id) =>
-      _WLDeepDemoLevelALevelBLevelCLevelD._([..._s, .levelD], [..._i, id]);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLDeepDemoLevelALevelBLevelCLevelD._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<LevelDNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  LevelDNav get nav => const LevelDNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLDeepDemoLevelALevelBLevelCLevelDLevelE levelE(String id) =>
-      _WLDeepDemoLevelALevelBLevelCLevelDLevelE._(
-        [..._s, .levelE],
-        [..._i, id],
-      );
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLDeepDemoLevelALevelBLevelCLevelDLevelE._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<LevelENav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  LevelENav get nav => const LevelENav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  _WLDeepDemoLevelALevelBLevelCLevelDLevelELevelF levelF(String id) =>
-      _WLDeepDemoLevelALevelBLevelCLevelDLevelELevelF._(
-        [..._s, .levelF],
-        [..._i, id],
-      );
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-final class const _WLDeepDemoLevelALevelBLevelCLevelDLevelELevelF._(
-  final List<_Screens> _s,
-  final List<Object?> _i,
-) implements Hop<LevelFNav> {
-  @override
-  List<(Enum, Object?)> get chain => [
-    for (var k = 0; k < _s.length; k++) (_s[k], _i[k]),
-  ];
-  @override
-  Enum get spec => _s.last;
-  @override
-  Object? get id => _i.last;
-  @override
-  LevelFNav get nav => const LevelFNav._();
-  @override
-  Screen<Object?> get screen => Screen._forSpec(spec);
-  Uri toUri([String? domain]) => Uri.parse(
-    _Screens.graph.encodeNavUrl(domain ?? 'https://mega.example', _s, _i),
-  );
-}
-
-/// Read-only placement view — the reactive reads return these.
-sealed class AnyView {}
-
-/// GLOBAL query condition terms — `.key` present / `.key(v)` equals / `.flag` true; `.not.…` negates (`.not.key` = absent).
-final class const QueryCond<T>._(
-  @override final String key,
-  final Object? expected, {
-  final bool negate = false,
-  final bool presence = false,
-}) implements ViewCond {
-  /// `.key(v)` — narrow a present term to an equals term, keeping any negation.
-  QueryCond<T> call(T v) => QueryCond<T>._(key, v, negate: negate);
-  @override
-  bool test(Object? v) {
-    final m = presence ? v != null : v == expected;
-    return negate ? !m : m;
-  }
-
-  static QueryCond<String> get filter =>
-      const QueryCond._('filter', null, presence: true);
-  static QueryCond<String> get sort =>
-      const QueryCond._('sort', null, presence: true);
-  static const QueryCond posts = QueryCond._('posts', true);
-  static const QueryCond people = QueryCond._('people', true);
-  static const QueryCond tags = QueryCond._('tags', true);
-  static QueryCond<int> get min =>
-      const QueryCond._('min', null, presence: true);
-  static QueryCond<int> get max =>
-      const QueryCond._('max', null, presence: true);
-  static QueryCond<String> get q =>
-      const QueryCond._('q', null, presence: true);
-  static const QueryCond all = QueryCond._('all', true);
-  static QueryCond<DateTime> get from =>
-      const QueryCond._('from', null, presence: true);
-  static QueryCond<DateTime> get to =>
-      const QueryCond._('to', null, presence: true);
-  static const QueryCond active = QueryCond._('active', true);
-  static const QueryCond archived = QueryCond._('archived', true);
-  static const QueryCond draft = QueryCond._('draft', true);
-  static QueryCond<String> get dir =>
-      const QueryCond._('dir', null, presence: true);
-  static QueryCond<int> get minPrice =>
-      const QueryCond._('minPrice', null, presence: true);
-  static QueryCond<int> get maxPrice =>
-      const QueryCond._('maxPrice', null, presence: true);
-  static QueryCond<String> get brand =>
-      const QueryCond._('brand', null, presence: true);
-  static QueryCond<String> get condition =>
-      const QueryCond._('condition', null, presence: true);
-  static const QueryNot not = QueryNot._();
-}
-
-final class const QueryNot._() {
-  QueryCond<String> get filter =>
-      const QueryCond._('filter', null, presence: true, negate: true);
-  QueryCond<String> get sort =>
-      const QueryCond._('sort', null, presence: true, negate: true);
-  QueryCond get posts => const QueryCond._('posts', true, negate: true);
-  QueryCond get people => const QueryCond._('people', true, negate: true);
-  QueryCond get tags => const QueryCond._('tags', true, negate: true);
-  QueryCond<int> get min =>
-      const QueryCond._('min', null, presence: true, negate: true);
-  QueryCond<int> get max =>
-      const QueryCond._('max', null, presence: true, negate: true);
-  QueryCond<String> get q =>
-      const QueryCond._('q', null, presence: true, negate: true);
-  QueryCond get all => const QueryCond._('all', true, negate: true);
-  QueryCond<DateTime> get from =>
-      const QueryCond._('from', null, presence: true, negate: true);
-  QueryCond<DateTime> get to =>
-      const QueryCond._('to', null, presence: true, negate: true);
-  QueryCond get active => const QueryCond._('active', true, negate: true);
-  QueryCond get archived => const QueryCond._('archived', true, negate: true);
-  QueryCond get draft => const QueryCond._('draft', true, negate: true);
-  QueryCond<String> get dir =>
-      const QueryCond._('dir', null, presence: true, negate: true);
-  QueryCond<int> get minPrice =>
-      const QueryCond._('minPrice', null, presence: true, negate: true);
-  QueryCond<int> get maxPrice =>
-      const QueryCond._('maxPrice', null, presence: true, negate: true);
-  QueryCond<String> get brand =>
-      const QueryCond._('brand', null, presence: true, negate: true);
-  QueryCond<String> get condition =>
-      const QueryCond._('condition', null, presence: true, negate: true);
-}
-
-/// GLOBAL fragment condition terms — `.key` present / `.key(v)` equals / `.flag` true; `.not.…` negates (`.not.key` = absent).
-final class const FragmentCond<T>._(
-  @override final String key,
-  final Object? expected, {
-  final bool negate = false,
-  final bool presence = false,
-}) implements ViewCond {
-  /// `.key(v)` — narrow a present term to an equals term, keeping any negation.
-  FragmentCond<T> call(T v) => FragmentCond<T>._(key, v, negate: negate);
-  @override
-  bool test(Object? v) {
-    final m = presence ? v != null : v == expected;
-    return negate ? !m : m;
-  }
-
-  static FragmentCond<String> get tab =>
-      const FragmentCond._('tab', null, presence: true);
-  static FragmentCond<String> get pane =>
-      const FragmentCond._('pane', null, presence: true);
-  static const FragmentCond top = FragmentCond._('top', true);
-  static FragmentCond<String> get view =>
-      const FragmentCond._('view', null, presence: true);
-  static const FragmentNot not = FragmentNot._();
-}
-
-final class const FragmentNot._() {
-  FragmentCond<String> get tab =>
-      const FragmentCond._('tab', null, presence: true, negate: true);
-  FragmentCond<String> get pane =>
-      const FragmentCond._('pane', null, presence: true, negate: true);
-  FragmentCond get top => const FragmentCond._('top', true, negate: true);
-  FragmentCond<String> get view =>
-      const FragmentCond._('view', null, presence: true, negate: true);
-}
-
 /// Screen-local query view-state for `feed` (read-only).
 class const FeedQuery._() {
   String? get filter =>
@@ -22816,88 +8017,6 @@ final class const FeedFragmentMut._() extends FeedFragment {
       _Screens.graph.viewSet(_Screens.feed, 'top', v ? true : null);
 }
 
-/// `Feed` query condition terms — `.key` present / `.key(v)` equals / `.flag` true; `.not.…` negates (`.not.key` = absent).
-final class const FeedQueryCond<T>._(
-  @override final String key,
-  final Object? expected, {
-  final bool negate = false,
-  final bool presence = false,
-}) implements ViewCond {
-  /// `.key(v)` — narrow a present term to an equals term, keeping any negation.
-  FeedQueryCond<T> call(T v) => FeedQueryCond<T>._(key, v, negate: negate);
-  @override
-  bool test(Object? v) {
-    final m = presence ? v != null : v == expected;
-    return negate ? !m : m;
-  }
-
-  static FeedQueryCond<String> get filter =>
-      const FeedQueryCond._('filter', null, presence: true);
-  static FeedQueryCond<String> get sort =>
-      const FeedQueryCond._('sort', null, presence: true);
-  static const FeedQueryNot not = FeedQueryNot._();
-}
-
-final class const FeedQueryNot._() {
-  FeedQueryCond<String> get filter =>
-      const FeedQueryCond._('filter', null, presence: true, negate: true);
-  FeedQueryCond<String> get sort =>
-      const FeedQueryCond._('sort', null, presence: true, negate: true);
-}
-
-/// `Feed` fragment condition terms — `.key` present / `.key(v)` equals / `.flag` true; `.not.…` negates (`.not.key` = absent).
-final class const FeedFragmentCond<T>._(
-  @override final String key,
-  final Object? expected, {
-  final bool negate = false,
-  final bool presence = false,
-}) implements ViewCond {
-  /// `.key(v)` — narrow a present term to an equals term, keeping any negation.
-  FeedFragmentCond<T> call(T v) =>
-      FeedFragmentCond<T>._(key, v, negate: negate);
-  @override
-  bool test(Object? v) {
-    final m = presence ? v != null : v == expected;
-    return negate ? !m : m;
-  }
-
-  static FeedFragmentCond<String> get tab =>
-      const FeedFragmentCond._('tab', null, presence: true);
-  static FeedFragmentCond<String> get pane =>
-      const FeedFragmentCond._('pane', null, presence: true);
-  static const FeedFragmentCond top = FeedFragmentCond._('top', true);
-  static const FeedFragmentNot not = FeedFragmentNot._();
-}
-
-final class const FeedFragmentNot._() {
-  FeedFragmentCond<String> get tab =>
-      const FeedFragmentCond._('tab', null, presence: true, negate: true);
-  FeedFragmentCond<String> get pane =>
-      const FeedFragmentCond._('pane', null, presence: true, negate: true);
-  FeedFragmentCond get top =>
-      const FeedFragmentCond._('top', true, negate: true);
-}
-
-/// `Feed` query build terms — `.key(v)` sets a value, `.flag` sets a flag. No `.not` (build, not match).
-final class const FeedQueryArg._(final String key, final Object? value) {
-  static FeedQueryArg filter(String v) => FeedQueryArg._('filter', v);
-  static FeedQueryArg sort(String v) => FeedQueryArg._('sort', v);
-}
-
-/// `Feed` fragment build terms — `.key(v)` sets a value, `.flag` sets a flag. No `.not` (build, not match).
-final class const FeedFragmentArg._(final String key, final Object? value) {
-  static FeedFragmentArg tab(String v) => FeedFragmentArg._('tab', v);
-  static FeedFragmentArg pane(String v) => FeedFragmentArg._('pane', v);
-  static const FeedFragmentArg top = FeedFragmentArg._('top', true);
-}
-
-/// Read-only view-state of `feed` — the reactive reads return
-/// this; the navigable `FeedNav` adds the setters.
-abstract interface class FeedView implements AnyView {
-  FeedQuery get query;
-  FeedFragment get fragment;
-}
-
 /// Screen-local query view-state for `post` (read-only).
 class const PostQuery._() {
   String? get sort => _Screens.graph.viewGet(_Screens.post, 'sort') as String?;
@@ -22907,42 +8026,6 @@ class const PostQuery._() {
 final class const PostQueryMut._() extends PostQuery {
   this : super._();
   set sort(String? v) => _Screens.graph.viewSet(_Screens.post, 'sort', v);
-}
-
-/// `Post` query condition terms — `.key` present / `.key(v)` equals / `.flag` true; `.not.…` negates (`.not.key` = absent).
-final class const PostQueryCond<T>._(
-  @override final String key,
-  final Object? expected, {
-  final bool negate = false,
-  final bool presence = false,
-}) implements ViewCond {
-  /// `.key(v)` — narrow a present term to an equals term, keeping any negation.
-  PostQueryCond<T> call(T v) => PostQueryCond<T>._(key, v, negate: negate);
-  @override
-  bool test(Object? v) {
-    final m = presence ? v != null : v == expected;
-    return negate ? !m : m;
-  }
-
-  static PostQueryCond<String> get sort =>
-      const PostQueryCond._('sort', null, presence: true);
-  static const PostQueryNot not = PostQueryNot._();
-}
-
-final class const PostQueryNot._() {
-  PostQueryCond<String> get sort =>
-      const PostQueryCond._('sort', null, presence: true, negate: true);
-}
-
-/// `Post` query build terms — `.key(v)` sets a value, `.flag` sets a flag. No `.not` (build, not match).
-final class const PostQueryArg._(final String key, final Object? value) {
-  static PostQueryArg sort(String v) => PostQueryArg._('sort', v);
-}
-
-/// Read-only view-state of `post` — the reactive reads return
-/// this; the navigable `PostNav` adds the setters.
-abstract interface class PostView implements AnyView {
-  PostQuery get query;
 }
 
 /// Exactly-one `oneOf` choice for `discover` query view-state.
@@ -22986,50 +8069,6 @@ final class const DiscoverQueryMut._() extends DiscoverQuery {
   }
 }
 
-/// `Discover` query condition terms — `.key` present / `.key(v)` equals / `.flag` true; `.not.…` negates (`.not.key` = absent).
-final class const DiscoverQueryCond<T>._(
-  @override final String key,
-  final Object? expected, {
-  final bool negate = false,
-  final bool presence = false,
-}) implements ViewCond {
-  /// `.key(v)` — narrow a present term to an equals term, keeping any negation.
-  DiscoverQueryCond<T> call(T v) =>
-      DiscoverQueryCond<T>._(key, v, negate: negate);
-  @override
-  bool test(Object? v) {
-    final m = presence ? v != null : v == expected;
-    return negate ? !m : m;
-  }
-
-  static const DiscoverQueryCond posts = DiscoverQueryCond._('posts', true);
-  static const DiscoverQueryCond people = DiscoverQueryCond._('people', true);
-  static const DiscoverQueryCond tags = DiscoverQueryCond._('tags', true);
-  static const DiscoverQueryNot not = DiscoverQueryNot._();
-}
-
-final class const DiscoverQueryNot._() {
-  DiscoverQueryCond get posts =>
-      const DiscoverQueryCond._('posts', true, negate: true);
-  DiscoverQueryCond get people =>
-      const DiscoverQueryCond._('people', true, negate: true);
-  DiscoverQueryCond get tags =>
-      const DiscoverQueryCond._('tags', true, negate: true);
-}
-
-/// `Discover` query build terms — `.key(v)` sets a value, `.flag` sets a flag. No `.not` (build, not match).
-final class const DiscoverQueryArg._(final String key, final Object? value) {
-  static const DiscoverQueryArg posts = DiscoverQueryArg._('posts', true);
-  static const DiscoverQueryArg people = DiscoverQueryArg._('people', true);
-  static const DiscoverQueryArg tags = DiscoverQueryArg._('tags', true);
-}
-
-/// Read-only view-state of `discover` — the reactive reads return
-/// this; the navigable `DiscoverNav` adds the setters.
-abstract interface class DiscoverView implements AnyView {
-  DiscoverQuery get query;
-}
-
 /// Screen-local query view-state for `marketplace` (read-only).
 class const MarketplaceQuery._() {
   String? get sort =>
@@ -23050,53 +8089,6 @@ final class const MarketplaceQueryMut._() extends MarketplaceQuery {
     _Screens.graph.viewSet(_Screens.marketplace, 'min', v?.min);
     _Screens.graph.viewSet(_Screens.marketplace, 'max', v?.max);
   }
-}
-
-/// `Marketplace` query condition terms — `.key` present / `.key(v)` equals / `.flag` true; `.not.…` negates (`.not.key` = absent).
-final class const MarketplaceQueryCond<T>._(
-  @override final String key,
-  final Object? expected, {
-  final bool negate = false,
-  final bool presence = false,
-}) implements ViewCond {
-  /// `.key(v)` — narrow a present term to an equals term, keeping any negation.
-  MarketplaceQueryCond<T> call(T v) =>
-      MarketplaceQueryCond<T>._(key, v, negate: negate);
-  @override
-  bool test(Object? v) {
-    final m = presence ? v != null : v == expected;
-    return negate ? !m : m;
-  }
-
-  static MarketplaceQueryCond<String> get sort =>
-      const MarketplaceQueryCond._('sort', null, presence: true);
-  static MarketplaceQueryCond<int> get min =>
-      const MarketplaceQueryCond._('min', null, presence: true);
-  static MarketplaceQueryCond<int> get max =>
-      const MarketplaceQueryCond._('max', null, presence: true);
-  static const MarketplaceQueryNot not = MarketplaceQueryNot._();
-}
-
-final class const MarketplaceQueryNot._() {
-  MarketplaceQueryCond<String> get sort =>
-      const MarketplaceQueryCond._('sort', null, presence: true, negate: true);
-  MarketplaceQueryCond<int> get min =>
-      const MarketplaceQueryCond._('min', null, presence: true, negate: true);
-  MarketplaceQueryCond<int> get max =>
-      const MarketplaceQueryCond._('max', null, presence: true, negate: true);
-}
-
-/// `Marketplace` query build terms — `.key(v)` sets a value, `.flag` sets a flag. No `.not` (build, not match).
-final class const MarketplaceQueryArg._(final String key, final Object? value) {
-  static MarketplaceQueryArg sort(String v) => MarketplaceQueryArg._('sort', v);
-  static MarketplaceQueryArg min(int v) => MarketplaceQueryArg._('min', v);
-  static MarketplaceQueryArg max(int v) => MarketplaceQueryArg._('max', v);
-}
-
-/// Read-only view-state of `marketplace` — the reactive reads return
-/// this; the navigable `MarketplaceNav` adds the setters.
-abstract interface class MarketplaceView implements AnyView {
-  MarketplaceQuery get query;
 }
 
 /// Exactly-one `oneOf` choice for `search` query view-state.
@@ -23173,99 +8165,6 @@ final class const SearchFragmentMut._() extends SearchFragment {
   set view(String? v) => _Screens.graph.viewSet(_Screens.search, 'view', v);
 }
 
-/// `Search` query condition terms — `.key` present / `.key(v)` equals / `.flag` true; `.not.…` negates (`.not.key` = absent).
-final class const SearchQueryCond<T>._(
-  @override final String key,
-  final Object? expected, {
-  final bool negate = false,
-  final bool presence = false,
-}) implements ViewCond {
-  /// `.key(v)` — narrow a present term to an equals term, keeping any negation.
-  SearchQueryCond<T> call(T v) => SearchQueryCond<T>._(key, v, negate: negate);
-  @override
-  bool test(Object? v) {
-    final m = presence ? v != null : v == expected;
-    return negate ? !m : m;
-  }
-
-  static SearchQueryCond<String> get q =>
-      const SearchQueryCond._('q', null, presence: true);
-  static const SearchQueryCond all = SearchQueryCond._('all', true);
-  static const SearchQueryCond people = SearchQueryCond._('people', true);
-  static const SearchQueryCond posts = SearchQueryCond._('posts', true);
-  static const SearchQueryCond tags = SearchQueryCond._('tags', true);
-  static SearchQueryCond<DateTime> get from =>
-      const SearchQueryCond._('from', null, presence: true);
-  static SearchQueryCond<DateTime> get to =>
-      const SearchQueryCond._('to', null, presence: true);
-  static const SearchQueryNot not = SearchQueryNot._();
-}
-
-final class const SearchQueryNot._() {
-  SearchQueryCond<String> get q =>
-      const SearchQueryCond._('q', null, presence: true, negate: true);
-  SearchQueryCond get all => const SearchQueryCond._('all', true, negate: true);
-  SearchQueryCond get people =>
-      const SearchQueryCond._('people', true, negate: true);
-  SearchQueryCond get posts =>
-      const SearchQueryCond._('posts', true, negate: true);
-  SearchQueryCond get tags =>
-      const SearchQueryCond._('tags', true, negate: true);
-  SearchQueryCond<DateTime> get from =>
-      const SearchQueryCond._('from', null, presence: true, negate: true);
-  SearchQueryCond<DateTime> get to =>
-      const SearchQueryCond._('to', null, presence: true, negate: true);
-}
-
-/// `Search` fragment condition terms — `.key` present / `.key(v)` equals / `.flag` true; `.not.…` negates (`.not.key` = absent).
-final class const SearchFragmentCond<T>._(
-  @override final String key,
-  final Object? expected, {
-  final bool negate = false,
-  final bool presence = false,
-}) implements ViewCond {
-  /// `.key(v)` — narrow a present term to an equals term, keeping any negation.
-  SearchFragmentCond<T> call(T v) =>
-      SearchFragmentCond<T>._(key, v, negate: negate);
-  @override
-  bool test(Object? v) {
-    final m = presence ? v != null : v == expected;
-    return negate ? !m : m;
-  }
-
-  static SearchFragmentCond<String> get view =>
-      const SearchFragmentCond._('view', null, presence: true);
-  static const SearchFragmentNot not = SearchFragmentNot._();
-}
-
-final class const SearchFragmentNot._() {
-  SearchFragmentCond<String> get view =>
-      const SearchFragmentCond._('view', null, presence: true, negate: true);
-}
-
-/// `Search` query build terms — `.key(v)` sets a value, `.flag` sets a flag. No `.not` (build, not match).
-final class const SearchQueryArg._(final String key, final Object? value) {
-  static SearchQueryArg q(String v) => SearchQueryArg._('q', v);
-  static const SearchQueryArg all = SearchQueryArg._('all', true);
-  static const SearchQueryArg people = SearchQueryArg._('people', true);
-  static const SearchQueryArg posts = SearchQueryArg._('posts', true);
-  static const SearchQueryArg tags = SearchQueryArg._('tags', true);
-  static SearchQueryArg from(DateTime v) => SearchQueryArg._('from', v);
-  static SearchQueryArg to(DateTime v) => SearchQueryArg._('to', v);
-}
-
-/// `Search` fragment build terms — `.key(v)` sets a value, `.flag` sets a flag. No `.not` (build, not match).
-final class const SearchFragmentArg._(final String key, final Object? value) {
-  static SearchFragmentArg view(String v) => SearchFragmentArg._('view', v);
-}
-
-/// Read-only view-state of `search` — the reactive reads return
-/// this; the navigable `SearchNav` adds the setters.
-abstract interface class SearchView implements AnyView {
-  SearchQuery get query;
-  SearchFragment get fragment;
-}
-
 /// Exactly-one `oneOf` choice for `workspace` query view-state.
 sealed class const WorkspaceQueryChoice();
 final class const WorkspaceQueryActive() extends WorkspaceQueryChoice;
@@ -23305,56 +8204,6 @@ final class const WorkspaceQueryMut._() extends WorkspaceQuery {
       v is WorkspaceQueryDraft ? true : null,
     );
   }
-}
-
-/// `Workspace` query condition terms — `.key` present / `.key(v)` equals / `.flag` true; `.not.…` negates (`.not.key` = absent).
-final class const WorkspaceQueryCond<T>._(
-  @override final String key,
-  final Object? expected, {
-  final bool negate = false,
-  final bool presence = false,
-}) implements ViewCond {
-  /// `.key(v)` — narrow a present term to an equals term, keeping any negation.
-  WorkspaceQueryCond<T> call(T v) =>
-      WorkspaceQueryCond<T>._(key, v, negate: negate);
-  @override
-  bool test(Object? v) {
-    final m = presence ? v != null : v == expected;
-    return negate ? !m : m;
-  }
-
-  static const WorkspaceQueryCond active = WorkspaceQueryCond._('active', true);
-  static const WorkspaceQueryCond archived = WorkspaceQueryCond._(
-    'archived',
-    true,
-  );
-  static const WorkspaceQueryCond draft = WorkspaceQueryCond._('draft', true);
-  static const WorkspaceQueryNot not = WorkspaceQueryNot._();
-}
-
-final class const WorkspaceQueryNot._() {
-  WorkspaceQueryCond get active =>
-      const WorkspaceQueryCond._('active', true, negate: true);
-  WorkspaceQueryCond get archived =>
-      const WorkspaceQueryCond._('archived', true, negate: true);
-  WorkspaceQueryCond get draft =>
-      const WorkspaceQueryCond._('draft', true, negate: true);
-}
-
-/// `Workspace` query build terms — `.key(v)` sets a value, `.flag` sets a flag. No `.not` (build, not match).
-final class const WorkspaceQueryArg._(final String key, final Object? value) {
-  static const WorkspaceQueryArg active = WorkspaceQueryArg._('active', true);
-  static const WorkspaceQueryArg archived = WorkspaceQueryArg._(
-    'archived',
-    true,
-  );
-  static const WorkspaceQueryArg draft = WorkspaceQueryArg._('draft', true);
-}
-
-/// Read-only view-state of `workspace` — the reactive reads return
-/// this; the navigable `WorkspaceNav` adds the setters.
-abstract interface class WorkspaceView implements AnyView {
-  WorkspaceQuery get query;
 }
 
 /// Exactly-one `oneOf` choice for `project` query view-state.
@@ -23399,55 +8248,6 @@ final class const ProjectQueryMut._() extends ProjectQuery {
       v is ProjectQueryDraft ? true : null,
     );
   }
-}
-
-/// `Project` query condition terms — `.key` present / `.key(v)` equals / `.flag` true; `.not.…` negates (`.not.key` = absent).
-final class const ProjectQueryCond<T>._(
-  @override final String key,
-  final Object? expected, {
-  final bool negate = false,
-  final bool presence = false,
-}) implements ViewCond {
-  /// `.key(v)` — narrow a present term to an equals term, keeping any negation.
-  ProjectQueryCond<T> call(T v) =>
-      ProjectQueryCond<T>._(key, v, negate: negate);
-  @override
-  bool test(Object? v) {
-    final m = presence ? v != null : v == expected;
-    return negate ? !m : m;
-  }
-
-  static ProjectQueryCond<String> get sort =>
-      const ProjectQueryCond._('sort', null, presence: true);
-  static const ProjectQueryCond active = ProjectQueryCond._('active', true);
-  static const ProjectQueryCond archived = ProjectQueryCond._('archived', true);
-  static const ProjectQueryCond draft = ProjectQueryCond._('draft', true);
-  static const ProjectQueryNot not = ProjectQueryNot._();
-}
-
-final class const ProjectQueryNot._() {
-  ProjectQueryCond<String> get sort =>
-      const ProjectQueryCond._('sort', null, presence: true, negate: true);
-  ProjectQueryCond get active =>
-      const ProjectQueryCond._('active', true, negate: true);
-  ProjectQueryCond get archived =>
-      const ProjectQueryCond._('archived', true, negate: true);
-  ProjectQueryCond get draft =>
-      const ProjectQueryCond._('draft', true, negate: true);
-}
-
-/// `Project` query build terms — `.key(v)` sets a value, `.flag` sets a flag. No `.not` (build, not match).
-final class const ProjectQueryArg._(final String key, final Object? value) {
-  static ProjectQueryArg sort(String v) => ProjectQueryArg._('sort', v);
-  static const ProjectQueryArg active = ProjectQueryArg._('active', true);
-  static const ProjectQueryArg archived = ProjectQueryArg._('archived', true);
-  static const ProjectQueryArg draft = ProjectQueryArg._('draft', true);
-}
-
-/// Read-only view-state of `project` — the reactive reads return
-/// this; the navigable `ProjectNav` adds the setters.
-abstract interface class ProjectView implements AnyView {
-  ProjectQuery get query;
 }
 
 /// Exactly-one `oneOf` choice for `board` query view-state.
@@ -23502,59 +8302,6 @@ final class const BoardQueryMut._() extends BoardQuery {
   }
 }
 
-/// `Board` query condition terms — `.key` present / `.key(v)` equals / `.flag` true; `.not.…` negates (`.not.key` = absent).
-final class const BoardQueryCond<T>._(
-  @override final String key,
-  final Object? expected, {
-  final bool negate = false,
-  final bool presence = false,
-}) implements ViewCond {
-  /// `.key(v)` — narrow a present term to an equals term, keeping any negation.
-  BoardQueryCond<T> call(T v) => BoardQueryCond<T>._(key, v, negate: negate);
-  @override
-  bool test(Object? v) {
-    final m = presence ? v != null : v == expected;
-    return negate ? !m : m;
-  }
-
-  static const BoardQueryCond active = BoardQueryCond._('active', true);
-  static const BoardQueryCond archived = BoardQueryCond._('archived', true);
-  static const BoardQueryCond draft = BoardQueryCond._('draft', true);
-  static BoardQueryCond<DateTime> get from =>
-      const BoardQueryCond._('from', null, presence: true);
-  static BoardQueryCond<DateTime> get to =>
-      const BoardQueryCond._('to', null, presence: true);
-  static const BoardQueryNot not = BoardQueryNot._();
-}
-
-final class const BoardQueryNot._() {
-  BoardQueryCond get active =>
-      const BoardQueryCond._('active', true, negate: true);
-  BoardQueryCond get archived =>
-      const BoardQueryCond._('archived', true, negate: true);
-  BoardQueryCond get draft =>
-      const BoardQueryCond._('draft', true, negate: true);
-  BoardQueryCond<DateTime> get from =>
-      const BoardQueryCond._('from', null, presence: true, negate: true);
-  BoardQueryCond<DateTime> get to =>
-      const BoardQueryCond._('to', null, presence: true, negate: true);
-}
-
-/// `Board` query build terms — `.key(v)` sets a value, `.flag` sets a flag. No `.not` (build, not match).
-final class const BoardQueryArg._(final String key, final Object? value) {
-  static const BoardQueryArg active = BoardQueryArg._('active', true);
-  static const BoardQueryArg archived = BoardQueryArg._('archived', true);
-  static const BoardQueryArg draft = BoardQueryArg._('draft', true);
-  static BoardQueryArg from(DateTime v) => BoardQueryArg._('from', v);
-  static BoardQueryArg to(DateTime v) => BoardQueryArg._('to', v);
-}
-
-/// Read-only view-state of `board` — the reactive reads return
-/// this; the navigable `BoardNav` adds the setters.
-abstract interface class BoardView implements AnyView {
-  BoardQuery get query;
-}
-
 /// Exactly-one `oneOf` choice for `taskList` query view-state.
 sealed class const TaskListQueryChoice();
 final class const TaskListQueryActive() extends TaskListQueryChoice;
@@ -23597,58 +8344,6 @@ final class const TaskListQueryMut._() extends TaskListQuery {
       v is TaskListQueryDraft ? true : null,
     );
   }
-}
-
-/// `TaskList` query condition terms — `.key` present / `.key(v)` equals / `.flag` true; `.not.…` negates (`.not.key` = absent).
-final class const TaskListQueryCond<T>._(
-  @override final String key,
-  final Object? expected, {
-  final bool negate = false,
-  final bool presence = false,
-}) implements ViewCond {
-  /// `.key(v)` — narrow a present term to an equals term, keeping any negation.
-  TaskListQueryCond<T> call(T v) =>
-      TaskListQueryCond<T>._(key, v, negate: negate);
-  @override
-  bool test(Object? v) {
-    final m = presence ? v != null : v == expected;
-    return negate ? !m : m;
-  }
-
-  static TaskListQueryCond<String> get sort =>
-      const TaskListQueryCond._('sort', null, presence: true);
-  static const TaskListQueryCond active = TaskListQueryCond._('active', true);
-  static const TaskListQueryCond archived = TaskListQueryCond._(
-    'archived',
-    true,
-  );
-  static const TaskListQueryCond draft = TaskListQueryCond._('draft', true);
-  static const TaskListQueryNot not = TaskListQueryNot._();
-}
-
-final class const TaskListQueryNot._() {
-  TaskListQueryCond<String> get sort =>
-      const TaskListQueryCond._('sort', null, presence: true, negate: true);
-  TaskListQueryCond get active =>
-      const TaskListQueryCond._('active', true, negate: true);
-  TaskListQueryCond get archived =>
-      const TaskListQueryCond._('archived', true, negate: true);
-  TaskListQueryCond get draft =>
-      const TaskListQueryCond._('draft', true, negate: true);
-}
-
-/// `TaskList` query build terms — `.key(v)` sets a value, `.flag` sets a flag. No `.not` (build, not match).
-final class const TaskListQueryArg._(final String key, final Object? value) {
-  static TaskListQueryArg sort(String v) => TaskListQueryArg._('sort', v);
-  static const TaskListQueryArg active = TaskListQueryArg._('active', true);
-  static const TaskListQueryArg archived = TaskListQueryArg._('archived', true);
-  static const TaskListQueryArg draft = TaskListQueryArg._('draft', true);
-}
-
-/// Read-only view-state of `taskList` — the reactive reads return
-/// this; the navigable `TaskListNav` adds the setters.
-abstract interface class TaskListView implements AnyView {
-  TaskListQuery get query;
 }
 
 /// Exactly-one `oneOf` choice for `task` query view-state.
@@ -23707,68 +8402,6 @@ final class const TaskQueryMut._() extends TaskQuery {
   }
 }
 
-/// `Task` query condition terms — `.key` present / `.key(v)` equals / `.flag` true; `.not.…` negates (`.not.key` = absent).
-final class const TaskQueryCond<T>._(
-  @override final String key,
-  final Object? expected, {
-  final bool negate = false,
-  final bool presence = false,
-}) implements ViewCond {
-  /// `.key(v)` — narrow a present term to an equals term, keeping any negation.
-  TaskQueryCond<T> call(T v) => TaskQueryCond<T>._(key, v, negate: negate);
-  @override
-  bool test(Object? v) {
-    final m = presence ? v != null : v == expected;
-    return negate ? !m : m;
-  }
-
-  static TaskQueryCond<String> get sort =>
-      const TaskQueryCond._('sort', null, presence: true);
-  static TaskQueryCond<String> get dir =>
-      const TaskQueryCond._('dir', null, presence: true);
-  static const TaskQueryCond active = TaskQueryCond._('active', true);
-  static const TaskQueryCond archived = TaskQueryCond._('archived', true);
-  static const TaskQueryCond draft = TaskQueryCond._('draft', true);
-  static TaskQueryCond<DateTime> get from =>
-      const TaskQueryCond._('from', null, presence: true);
-  static TaskQueryCond<DateTime> get to =>
-      const TaskQueryCond._('to', null, presence: true);
-  static const TaskQueryNot not = TaskQueryNot._();
-}
-
-final class const TaskQueryNot._() {
-  TaskQueryCond<String> get sort =>
-      const TaskQueryCond._('sort', null, presence: true, negate: true);
-  TaskQueryCond<String> get dir =>
-      const TaskQueryCond._('dir', null, presence: true, negate: true);
-  TaskQueryCond get active =>
-      const TaskQueryCond._('active', true, negate: true);
-  TaskQueryCond get archived =>
-      const TaskQueryCond._('archived', true, negate: true);
-  TaskQueryCond get draft => const TaskQueryCond._('draft', true, negate: true);
-  TaskQueryCond<DateTime> get from =>
-      const TaskQueryCond._('from', null, presence: true, negate: true);
-  TaskQueryCond<DateTime> get to =>
-      const TaskQueryCond._('to', null, presence: true, negate: true);
-}
-
-/// `Task` query build terms — `.key(v)` sets a value, `.flag` sets a flag. No `.not` (build, not match).
-final class const TaskQueryArg._(final String key, final Object? value) {
-  static TaskQueryArg sort(String v) => TaskQueryArg._('sort', v);
-  static TaskQueryArg dir(String v) => TaskQueryArg._('dir', v);
-  static const TaskQueryArg active = TaskQueryArg._('active', true);
-  static const TaskQueryArg archived = TaskQueryArg._('archived', true);
-  static const TaskQueryArg draft = TaskQueryArg._('draft', true);
-  static TaskQueryArg from(DateTime v) => TaskQueryArg._('from', v);
-  static TaskQueryArg to(DateTime v) => TaskQueryArg._('to', v);
-}
-
-/// Read-only view-state of `task` — the reactive reads return
-/// this; the navigable `TaskNav` adds the setters.
-abstract interface class TaskView implements AnyView {
-  TaskQuery get query;
-}
-
 /// Exactly-one `oneOf` choice for `forumCategory` query view-state.
 sealed class const ForumCategoryQueryChoice();
 final class const ForumCategoryQueryActive() extends ForumCategoryQueryChoice;
@@ -23808,71 +8441,6 @@ final class const ForumCategoryQueryMut._() extends ForumCategoryQuery {
       v is ForumCategoryQueryDraft ? true : null,
     );
   }
-}
-
-/// `ForumCategory` query condition terms — `.key` present / `.key(v)` equals / `.flag` true; `.not.…` negates (`.not.key` = absent).
-final class const ForumCategoryQueryCond<T>._(
-  @override final String key,
-  final Object? expected, {
-  final bool negate = false,
-  final bool presence = false,
-}) implements ViewCond {
-  /// `.key(v)` — narrow a present term to an equals term, keeping any negation.
-  ForumCategoryQueryCond<T> call(T v) =>
-      ForumCategoryQueryCond<T>._(key, v, negate: negate);
-  @override
-  bool test(Object? v) {
-    final m = presence ? v != null : v == expected;
-    return negate ? !m : m;
-  }
-
-  static const ForumCategoryQueryCond active = ForumCategoryQueryCond._(
-    'active',
-    true,
-  );
-  static const ForumCategoryQueryCond archived = ForumCategoryQueryCond._(
-    'archived',
-    true,
-  );
-  static const ForumCategoryQueryCond draft = ForumCategoryQueryCond._(
-    'draft',
-    true,
-  );
-  static const ForumCategoryQueryNot not = ForumCategoryQueryNot._();
-}
-
-final class const ForumCategoryQueryNot._() {
-  ForumCategoryQueryCond get active =>
-      const ForumCategoryQueryCond._('active', true, negate: true);
-  ForumCategoryQueryCond get archived =>
-      const ForumCategoryQueryCond._('archived', true, negate: true);
-  ForumCategoryQueryCond get draft =>
-      const ForumCategoryQueryCond._('draft', true, negate: true);
-}
-
-/// `ForumCategory` query build terms — `.key(v)` sets a value, `.flag` sets a flag. No `.not` (build, not match).
-final class const ForumCategoryQueryArg._(
-  final String key,
-  final Object? value,
-) {
-  static const ForumCategoryQueryArg active = ForumCategoryQueryArg._(
-    'active',
-    true,
-  );
-  static const ForumCategoryQueryArg archived = ForumCategoryQueryArg._(
-    'archived',
-    true,
-  );
-  static const ForumCategoryQueryArg draft = ForumCategoryQueryArg._(
-    'draft',
-    true,
-  );
-}
-
-/// Read-only view-state of `forumCategory` — the reactive reads return
-/// this; the navigable `ForumCategoryNav` adds the setters.
-abstract interface class ForumCategoryView implements AnyView {
-  ForumCategoryQuery get query;
 }
 
 /// Exactly-one `oneOf` choice for `forumThread` query view-state.
@@ -23932,81 +8500,6 @@ final class const ForumThreadQueryMut._() extends ForumThreadQuery {
   }
 }
 
-/// `ForumThread` query condition terms — `.key` present / `.key(v)` equals / `.flag` true; `.not.…` negates (`.not.key` = absent).
-final class const ForumThreadQueryCond<T>._(
-  @override final String key,
-  final Object? expected, {
-  final bool negate = false,
-  final bool presence = false,
-}) implements ViewCond {
-  /// `.key(v)` — narrow a present term to an equals term, keeping any negation.
-  ForumThreadQueryCond<T> call(T v) =>
-      ForumThreadQueryCond<T>._(key, v, negate: negate);
-  @override
-  bool test(Object? v) {
-    final m = presence ? v != null : v == expected;
-    return negate ? !m : m;
-  }
-
-  static ForumThreadQueryCond<String> get sort =>
-      const ForumThreadQueryCond._('sort', null, presence: true);
-  static const ForumThreadQueryCond active = ForumThreadQueryCond._(
-    'active',
-    true,
-  );
-  static const ForumThreadQueryCond archived = ForumThreadQueryCond._(
-    'archived',
-    true,
-  );
-  static const ForumThreadQueryCond draft = ForumThreadQueryCond._(
-    'draft',
-    true,
-  );
-  static ForumThreadQueryCond<DateTime> get from =>
-      const ForumThreadQueryCond._('from', null, presence: true);
-  static ForumThreadQueryCond<DateTime> get to =>
-      const ForumThreadQueryCond._('to', null, presence: true);
-  static const ForumThreadQueryNot not = ForumThreadQueryNot._();
-}
-
-final class const ForumThreadQueryNot._() {
-  ForumThreadQueryCond<String> get sort =>
-      const ForumThreadQueryCond._('sort', null, presence: true, negate: true);
-  ForumThreadQueryCond get active =>
-      const ForumThreadQueryCond._('active', true, negate: true);
-  ForumThreadQueryCond get archived =>
-      const ForumThreadQueryCond._('archived', true, negate: true);
-  ForumThreadQueryCond get draft =>
-      const ForumThreadQueryCond._('draft', true, negate: true);
-  ForumThreadQueryCond<DateTime> get from =>
-      const ForumThreadQueryCond._('from', null, presence: true, negate: true);
-  ForumThreadQueryCond<DateTime> get to =>
-      const ForumThreadQueryCond._('to', null, presence: true, negate: true);
-}
-
-/// `ForumThread` query build terms — `.key(v)` sets a value, `.flag` sets a flag. No `.not` (build, not match).
-final class const ForumThreadQueryArg._(final String key, final Object? value) {
-  static ForumThreadQueryArg sort(String v) => ForumThreadQueryArg._('sort', v);
-  static const ForumThreadQueryArg active = ForumThreadQueryArg._(
-    'active',
-    true,
-  );
-  static const ForumThreadQueryArg archived = ForumThreadQueryArg._(
-    'archived',
-    true,
-  );
-  static const ForumThreadQueryArg draft = ForumThreadQueryArg._('draft', true);
-  static ForumThreadQueryArg from(DateTime v) =>
-      ForumThreadQueryArg._('from', v);
-  static ForumThreadQueryArg to(DateTime v) => ForumThreadQueryArg._('to', v);
-}
-
-/// Read-only view-state of `forumThread` — the reactive reads return
-/// this; the navigable `ForumThreadNav` adds the setters.
-abstract interface class ForumThreadView implements AnyView {
-  ForumThreadQuery get query;
-}
-
 /// Exactly-one `oneOf` choice for `course` query view-state.
 sealed class const CourseQueryChoice();
 final class const CourseQueryActive() extends CourseQueryChoice;
@@ -24062,64 +8555,6 @@ final class const CourseQueryMut._() extends CourseQuery {
   }
 }
 
-/// `Course` query condition terms — `.key` present / `.key(v)` equals / `.flag` true; `.not.…` negates (`.not.key` = absent).
-final class const CourseQueryCond<T>._(
-  @override final String key,
-  final Object? expected, {
-  final bool negate = false,
-  final bool presence = false,
-}) implements ViewCond {
-  /// `.key(v)` — narrow a present term to an equals term, keeping any negation.
-  CourseQueryCond<T> call(T v) => CourseQueryCond<T>._(key, v, negate: negate);
-  @override
-  bool test(Object? v) {
-    final m = presence ? v != null : v == expected;
-    return negate ? !m : m;
-  }
-
-  static CourseQueryCond<String> get sort =>
-      const CourseQueryCond._('sort', null, presence: true);
-  static const CourseQueryCond active = CourseQueryCond._('active', true);
-  static const CourseQueryCond archived = CourseQueryCond._('archived', true);
-  static const CourseQueryCond draft = CourseQueryCond._('draft', true);
-  static CourseQueryCond<DateTime> get from =>
-      const CourseQueryCond._('from', null, presence: true);
-  static CourseQueryCond<DateTime> get to =>
-      const CourseQueryCond._('to', null, presence: true);
-  static const CourseQueryNot not = CourseQueryNot._();
-}
-
-final class const CourseQueryNot._() {
-  CourseQueryCond<String> get sort =>
-      const CourseQueryCond._('sort', null, presence: true, negate: true);
-  CourseQueryCond get active =>
-      const CourseQueryCond._('active', true, negate: true);
-  CourseQueryCond get archived =>
-      const CourseQueryCond._('archived', true, negate: true);
-  CourseQueryCond get draft =>
-      const CourseQueryCond._('draft', true, negate: true);
-  CourseQueryCond<DateTime> get from =>
-      const CourseQueryCond._('from', null, presence: true, negate: true);
-  CourseQueryCond<DateTime> get to =>
-      const CourseQueryCond._('to', null, presence: true, negate: true);
-}
-
-/// `Course` query build terms — `.key(v)` sets a value, `.flag` sets a flag. No `.not` (build, not match).
-final class const CourseQueryArg._(final String key, final Object? value) {
-  static CourseQueryArg sort(String v) => CourseQueryArg._('sort', v);
-  static const CourseQueryArg active = CourseQueryArg._('active', true);
-  static const CourseQueryArg archived = CourseQueryArg._('archived', true);
-  static const CourseQueryArg draft = CourseQueryArg._('draft', true);
-  static CourseQueryArg from(DateTime v) => CourseQueryArg._('from', v);
-  static CourseQueryArg to(DateTime v) => CourseQueryArg._('to', v);
-}
-
-/// Read-only view-state of `course` — the reactive reads return
-/// this; the navigable `CourseNav` adds the setters.
-abstract interface class CourseView implements AnyView {
-  CourseQuery get query;
-}
-
 /// Exactly-one `oneOf` choice for `shopSubcategory` query view-state.
 sealed class const ShopSubcategoryQueryChoice();
 final class const ShopSubcategoryQueryActive()
@@ -24168,83 +8603,6 @@ final class const ShopSubcategoryQueryMut._() extends ShopSubcategoryQuery {
     _Screens.graph.viewSet(_Screens.shopSubcategory, 'minPrice', v?.minPrice);
     _Screens.graph.viewSet(_Screens.shopSubcategory, 'maxPrice', v?.maxPrice);
   }
-}
-
-/// `ShopSubcategory` query condition terms — `.key` present / `.key(v)` equals / `.flag` true; `.not.…` negates (`.not.key` = absent).
-final class const ShopSubcategoryQueryCond<T>._(
-  @override final String key,
-  final Object? expected, {
-  final bool negate = false,
-  final bool presence = false,
-}) implements ViewCond {
-  /// `.key(v)` — narrow a present term to an equals term, keeping any negation.
-  ShopSubcategoryQueryCond<T> call(T v) =>
-      ShopSubcategoryQueryCond<T>._(key, v, negate: negate);
-  @override
-  bool test(Object? v) {
-    final m = presence ? v != null : v == expected;
-    return negate ? !m : m;
-  }
-
-  static const ShopSubcategoryQueryCond active = ShopSubcategoryQueryCond._(
-    'active',
-    true,
-  );
-  static const ShopSubcategoryQueryCond archived = ShopSubcategoryQueryCond._(
-    'archived',
-    true,
-  );
-  static ShopSubcategoryQueryCond<int> get minPrice =>
-      const ShopSubcategoryQueryCond._('minPrice', null, presence: true);
-  static ShopSubcategoryQueryCond<int> get maxPrice =>
-      const ShopSubcategoryQueryCond._('maxPrice', null, presence: true);
-  static const ShopSubcategoryQueryNot not = ShopSubcategoryQueryNot._();
-}
-
-final class const ShopSubcategoryQueryNot._() {
-  ShopSubcategoryQueryCond get active =>
-      const ShopSubcategoryQueryCond._('active', true, negate: true);
-  ShopSubcategoryQueryCond get archived =>
-      const ShopSubcategoryQueryCond._('archived', true, negate: true);
-  ShopSubcategoryQueryCond<int> get minPrice =>
-      const ShopSubcategoryQueryCond._(
-        'minPrice',
-        null,
-        presence: true,
-        negate: true,
-      );
-  ShopSubcategoryQueryCond<int> get maxPrice =>
-      const ShopSubcategoryQueryCond._(
-        'maxPrice',
-        null,
-        presence: true,
-        negate: true,
-      );
-}
-
-/// `ShopSubcategory` query build terms — `.key(v)` sets a value, `.flag` sets a flag. No `.not` (build, not match).
-final class const ShopSubcategoryQueryArg._(
-  final String key,
-  final Object? value,
-) {
-  static const ShopSubcategoryQueryArg active = ShopSubcategoryQueryArg._(
-    'active',
-    true,
-  );
-  static const ShopSubcategoryQueryArg archived = ShopSubcategoryQueryArg._(
-    'archived',
-    true,
-  );
-  static ShopSubcategoryQueryArg minPrice(int v) =>
-      ShopSubcategoryQueryArg._('minPrice', v);
-  static ShopSubcategoryQueryArg maxPrice(int v) =>
-      ShopSubcategoryQueryArg._('maxPrice', v);
-}
-
-/// Read-only view-state of `shopSubcategory` — the reactive reads return
-/// this; the navigable `ShopSubcategoryNav` adds the setters.
-abstract interface class ShopSubcategoryView implements AnyView {
-  ShopSubcategoryQuery get query;
 }
 
 /// Exactly-one `oneOf` choice for `product` query view-state.
@@ -24304,67 +8662,6 @@ final class const ProductQueryMut._() extends ProductQuery {
       _Screens.graph.viewSet(_Screens.product, 'condition', v);
 }
 
-/// `Product` query condition terms — `.key` present / `.key(v)` equals / `.flag` true; `.not.…` negates (`.not.key` = absent).
-final class const ProductQueryCond<T>._(
-  @override final String key,
-  final Object? expected, {
-  final bool negate = false,
-  final bool presence = false,
-}) implements ViewCond {
-  /// `.key(v)` — narrow a present term to an equals term, keeping any negation.
-  ProductQueryCond<T> call(T v) =>
-      ProductQueryCond<T>._(key, v, negate: negate);
-  @override
-  bool test(Object? v) {
-    final m = presence ? v != null : v == expected;
-    return negate ? !m : m;
-  }
-
-  static const ProductQueryCond active = ProductQueryCond._('active', true);
-  static const ProductQueryCond archived = ProductQueryCond._('archived', true);
-  static ProductQueryCond<int> get minPrice =>
-      const ProductQueryCond._('minPrice', null, presence: true);
-  static ProductQueryCond<int> get maxPrice =>
-      const ProductQueryCond._('maxPrice', null, presence: true);
-  static ProductQueryCond<String> get brand =>
-      const ProductQueryCond._('brand', null, presence: true);
-  static ProductQueryCond<String> get condition =>
-      const ProductQueryCond._('condition', null, presence: true);
-  static const ProductQueryNot not = ProductQueryNot._();
-}
-
-final class const ProductQueryNot._() {
-  ProductQueryCond get active =>
-      const ProductQueryCond._('active', true, negate: true);
-  ProductQueryCond get archived =>
-      const ProductQueryCond._('archived', true, negate: true);
-  ProductQueryCond<int> get minPrice =>
-      const ProductQueryCond._('minPrice', null, presence: true, negate: true);
-  ProductQueryCond<int> get maxPrice =>
-      const ProductQueryCond._('maxPrice', null, presence: true, negate: true);
-  ProductQueryCond<String> get brand =>
-      const ProductQueryCond._('brand', null, presence: true, negate: true);
-  ProductQueryCond<String> get condition =>
-      const ProductQueryCond._('condition', null, presence: true, negate: true);
-}
-
-/// `Product` query build terms — `.key(v)` sets a value, `.flag` sets a flag. No `.not` (build, not match).
-final class const ProductQueryArg._(final String key, final Object? value) {
-  static const ProductQueryArg active = ProductQueryArg._('active', true);
-  static const ProductQueryArg archived = ProductQueryArg._('archived', true);
-  static ProductQueryArg minPrice(int v) => ProductQueryArg._('minPrice', v);
-  static ProductQueryArg maxPrice(int v) => ProductQueryArg._('maxPrice', v);
-  static ProductQueryArg brand(String v) => ProductQueryArg._('brand', v);
-  static ProductQueryArg condition(String v) =>
-      ProductQueryArg._('condition', v);
-}
-
-/// Read-only view-state of `product` — the reactive reads return
-/// this; the navigable `ProductNav` adds the setters.
-abstract interface class ProductView implements AnyView {
-  ProductQuery get query;
-}
-
 /// Screen-local query view-state for `workout` (read-only).
 class const WorkoutQuery._() {
   String? get sort =>
@@ -24385,92 +8682,3 @@ final class const WorkoutQueryMut._() extends WorkoutQuery {
     _Screens.graph.viewSet(_Screens.workout, 'to', v?.to);
   }
 }
-
-/// `Workout` query condition terms — `.key` present / `.key(v)` equals / `.flag` true; `.not.…` negates (`.not.key` = absent).
-final class const WorkoutQueryCond<T>._(
-  @override final String key,
-  final Object? expected, {
-  final bool negate = false,
-  final bool presence = false,
-}) implements ViewCond {
-  /// `.key(v)` — narrow a present term to an equals term, keeping any negation.
-  WorkoutQueryCond<T> call(T v) =>
-      WorkoutQueryCond<T>._(key, v, negate: negate);
-  @override
-  bool test(Object? v) {
-    final m = presence ? v != null : v == expected;
-    return negate ? !m : m;
-  }
-
-  static WorkoutQueryCond<String> get sort =>
-      const WorkoutQueryCond._('sort', null, presence: true);
-  static WorkoutQueryCond<DateTime> get from =>
-      const WorkoutQueryCond._('from', null, presence: true);
-  static WorkoutQueryCond<DateTime> get to =>
-      const WorkoutQueryCond._('to', null, presence: true);
-  static const WorkoutQueryNot not = WorkoutQueryNot._();
-}
-
-final class const WorkoutQueryNot._() {
-  WorkoutQueryCond<String> get sort =>
-      const WorkoutQueryCond._('sort', null, presence: true, negate: true);
-  WorkoutQueryCond<DateTime> get from =>
-      const WorkoutQueryCond._('from', null, presence: true, negate: true);
-  WorkoutQueryCond<DateTime> get to =>
-      const WorkoutQueryCond._('to', null, presence: true, negate: true);
-}
-
-/// `Workout` query build terms — `.key(v)` sets a value, `.flag` sets a flag. No `.not` (build, not match).
-final class const WorkoutQueryArg._(final String key, final Object? value) {
-  static WorkoutQueryArg sort(String v) => WorkoutQueryArg._('sort', v);
-  static WorkoutQueryArg from(DateTime v) => WorkoutQueryArg._('from', v);
-  static WorkoutQueryArg to(DateTime v) => WorkoutQueryArg._('to', v);
-}
-
-/// Read-only view-state of `workout` — the reactive reads return
-/// this; the navigable `WorkoutNav` adds the setters.
-abstract interface class WorkoutView implements AnyView {
-  WorkoutQuery get query;
-}
-
-AnyView? _viewOf(Enum? screen) => switch (screen) {
-  _Screens.feed => const FeedNav._(),
-  _Screens.post => const PostNav._(),
-  _Screens.discover => const DiscoverNav._(),
-  _Screens.marketplace => const MarketplaceNav._(),
-  _Screens.search => const SearchNav._(),
-  _Screens.workspace => const WorkspaceNav._(),
-  _Screens.project => const ProjectNav._(),
-  _Screens.board => const BoardNav._(),
-  _Screens.taskList => const TaskListNav._(),
-  _Screens.task => const TaskNav._(),
-  _Screens.forumCategory => const ForumCategoryNav._(),
-  _Screens.forumThread => const ForumThreadNav._(),
-  _Screens.course => const CourseNav._(),
-  _Screens.shopSubcategory => const ShopSubcategoryNav._(),
-  _Screens.product => const ProductNav._(),
-  _Screens.workout => const WorkoutNav._(),
-  _ => null,
-};
-
-/// Reactive read-only stack reads scoped to this BuildContext.
-extension ScreenStackContext on BuildContext {
-  /// FOREGROUND: the typed read-only view if [sel] is the current front
-  /// (suffix + ids + conditions), else null. Reactive on top + keys.
-  V? on<N extends AnyNav, V>(On<N, V> sel) {
-    if (sel.specs.isNotEmpty) Placement.isCurrent(this, sel.specs.last);
-    ViewMatch.conds(this, _termOf(sel), sel.conds);
-    return Screen.on(sel) != null ? _viewOf(_termOf(sel)) as V? : null;
-  }
-
-  /// ANYWHERE on the stack (front OR buried): the typed read-only view if
-  /// [sel] is on the live stack, else null. Reactive on chain + keys.
-  V? at<N extends AnyNav, V>(On<N, V> sel) {
-    if (sel.specs.isNotEmpty) Placement.isOn(this, sel.specs.last);
-    ViewMatch.conds(this, _termOf(sel), sel.conds);
-    return Screen.at(sel) != null ? _viewOf(_termOf(sel)) as V? : null;
-  }
-}
-
-Enum _termOf(On sel) =>
-    sel.specs.isEmpty ? _Screens.graph.current : sel.specs.last;

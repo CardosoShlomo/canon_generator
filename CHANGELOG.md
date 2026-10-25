@@ -1,3 +1,9 @@
+## 0.42.0
+
+- Navs of a multi-placement screen are named `<Screen>Nav<k>`; pop/popTo/Pop/Hop/depth/reach, pop unions, Replace/root/current, the Place builder chain and the view-state vocabularies are gone.
+- `Screen.ownerOf(context, selector)`: the owning screen's nav, total; `Screen.pop()` returns void.
+- A link slot holding an `@IDs` node carries its typed id; `parseUrl` uses `tryParseUri`.
+
 ## 0.41.2
 
 - Navigation stacks leave out the boot placement.
