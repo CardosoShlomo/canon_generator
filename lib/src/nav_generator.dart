@@ -1128,9 +1128,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln('    return true;');
     b.writeln('  }();');
     b.writeln('  /// THE app host — a `RouterDelegate`. Wire it once:');
-    b.writeln(
-      '  /// `MaterialApp.router(routerDelegate: Screen.manager)`.',
-    );
+    b.writeln('  /// `MaterialApp.router(routerDelegate: Screen.manager)`.');
     b.writeln('  static NavDelegate get manager {');
     b.writeln('    assert(_fresh);');
     if (hasData) b.writeln('    ledger.bind();');
@@ -1209,9 +1207,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln(
       '  /// The nav of the screen OWNING [context] (this widget\'s screen),',
     );
-    b.writeln(
-      '  /// typed by [which]. Total: its verbs go from that screen.',
-    );
+    b.writeln('  /// typed by [which]. Total: its verbs go from that screen.');
     b.writeln(
       '  /// Throws a [StateError] when [context] stands at another placement.',
     );
@@ -1257,6 +1253,27 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
         '              WidgetsBinding.instance.platformDispatcher.defaultRouteName);',
       );
     }
+    b.writeln(
+      '  /// The whole navigation as plain data, for a host that keeps it while',
+    );
+    b.writeln('  /// the system ends the process.');
+    b.writeln(
+      '  static Map<String, Object?> snapshot() => $spec.graph.toState();',
+    );
+    b.writeln(
+      '  /// Takes back a [snapshot]; false when it is from another build\'s',
+    );
+    b.writeln('  /// grammar or nothing in it still stands.');
+    b.writeln('  static bool restore(Map<String, Object?> snapshot) =>');
+    b.writeln('      $spec.graph.restore(snapshot);');
+    b.writeln('  /// The shown screen as its typed entry; null while booting.');
+    b.writeln('  static ScreenEntry? get shown {');
+    b.writeln('    final stack = $spec.graph.stack;');
+    b.writeln(
+      '    if (stack.isEmpty || stack.last.screen == BootScreen.root) return null;',
+    );
+    b.writeln('    return _entryOf(stack.last.screen, stack.last.id);');
+    b.writeln('  }');
     if (hasPop) {
       b.writeln(
         '  /// Pops the active top when it sits on a parent; a no-op at a root.',
@@ -1292,9 +1309,13 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln('/// One committed navigation as typed [ScreenEntry] stacks.');
     b.writeln('final class ScreenNavigation._(final Navigation _n) {');
     b.writeln('  List<ScreenEntry> get from =>');
-    b.writeln('      [for (final e in _n.from) if (e.\$1 != BootScreen.root) _entryOf(e.\$1, e.\$2)];');
+    b.writeln(
+      '      [for (final e in _n.from) if (e.\$1 != BootScreen.root) _entryOf(e.\$1, e.\$2)];',
+    );
     b.writeln('  List<ScreenEntry> get to =>');
-    b.writeln('      [for (final e in _n.to) if (e.\$1 != BootScreen.root) _entryOf(e.\$1, e.\$2)];');
+    b.writeln(
+      '      [for (final e in _n.to) if (e.\$1 != BootScreen.root) _entryOf(e.\$1, e.\$2)];',
+    );
     b.writeln(
       '  ScreenEntry get source => _entryOf(_n.source.\$1, _n.source.\$2);',
     );
@@ -1398,9 +1419,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
         return '${_cap(sc)}${pn.substring(unionName(sc).length)}';
       }
       if (ms.length == placements[sc]!.length) return _cap(sc);
-      final key = [
-        for (final m in ms) placements[sc]!.indexOf(m),
-      ].join(',');
+      final key = [for (final m in ms) placements[sc]!.indexOf(m)].join(',');
       return subsetNames.putIfAbsent(
         '$sc:$key',
         () =>
@@ -1522,9 +1541,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
             .map((s) => svIn(parentT, s))
             .join(', ');
         b.writeln('  OnParentOf<$cap> get ${e.key} =>');
-        b.writeln(
-          '      OnParentOf._(const {$lits}, const $cap._(), $cap._);',
-        );
+        b.writeln('      OnParentOf._(const {$lits}, const $cap._(), $cap._);');
       }
       b.writeln('}');
       for (final e in parentsOf.entries) {
@@ -1562,7 +1579,9 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln('  return _placementOf(s, c.sublist(0, c.lastIndexOf(s) + 1));');
     b.writeln('}');
     // A screen's placement given its path [p], trunk first.
-    b.writeln('AnyPlacement _placementOf(Enum s, List<Enum> p) => switch (s) {');
+    b.writeln(
+      'AnyPlacement _placementOf(Enum s, List<Enum> p) => switch (s) {',
+    );
     for (final r in rows) {
       b.writeln(
         isSingle(r.name)

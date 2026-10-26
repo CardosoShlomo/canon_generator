@@ -1,3 +1,7 @@
+## 0.42.1
+
+- `Screen.snapshot()`, `Screen.restore(snapshot)` and `Screen.shown` are back: a host keeps the stack itself when the restoration bucket does not hold.
+
 ## 0.42.0
 
 - Navs of a multi-placement screen are named `<Screen>Nav<k>`; pop/popTo/Pop/Hop/depth/reach, pop unions, Replace/root/current, the Place builder chain and the view-state vocabularies are gone.
