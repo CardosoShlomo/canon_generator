@@ -1,3 +1,7 @@
+## 0.42.2
+
+- A widget-form `slot(...)({...})` with branches of its own is read inside a placed screen.
+
 ## 0.42.1
 
 - `Screen.snapshot()`, `Screen.restore(snapshot)` and `Screen.shown` are back: a host keeps the stack itself when the restoration bucket does not hold.

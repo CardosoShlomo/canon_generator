@@ -440,6 +440,20 @@ Future<TreeModel> readTree(EnumElement root, BuildStep buildStep) async {
           ..isLink = true
           ..isWidgetForm = true
           ..linkChildren = [expr];
+      // `slot(...)({...})` — the widget form with branches of its own.
+      case FunctionExpressionInvocation(
+          function: MethodInvocation(
+            target: null,
+            methodName: SimpleIdentifier(name: 'slot'),
+          ),
+        )
+          when ancestors.isNotEmpty:
+        final enclosing = ancestors.last;
+        return PlacementNode(
+            enclosing.screen, enclosing.spec, enclosing.path, enclosing.parent)
+          ..isLink = true
+          ..isWidgetForm = true
+          ..linkChildren = [expr];
       // `screen.link({...})` / `.links({...})` — a link-grammar branch, NOT a
       // nav placement (no widget seeded → its branches resolve widgetless).
       case MethodInvocation(
