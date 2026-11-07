@@ -1,3 +1,7 @@
+## 0.42.3
+
+- `Screen.on(.parentOf.x)` answers only where the top's own placement reaches x; a screen placed in several spots is a parent in some and not others.
+
 ## 0.42.2
 
 - A widget-form `slot(...)({...})` with branches of its own is read inside a placed screen.

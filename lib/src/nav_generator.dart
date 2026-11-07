@@ -1154,10 +1154,12 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
     b.writeln('  /// its nav — else null.');
     b.writeln('  static N? on<N extends AnyNav>(On<N> which) {');
     if (hasParentOf) {
-      // parentOf selector matches by current-top membership, not a suffix path.
+      // parentOf selector matches by current-top membership, not a suffix
+      // path, where the top's own placement reaches the target: a screen
+      // placed in several spots is a parent in some and not in others.
       b.writeln('    if (which is OnParentOf<N>) {');
       b.writeln(
-        '      return which.parents.contains($spec.graph.current) ? which.nav : null;',
+        '      return which.parents.contains($spec.graph.current) && $spec.graph.reaches(which.target) ? which.nav : null;',
       );
       b.writeln('    }');
     }
@@ -1529,7 +1531,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
       // [at] mints the owner-anchored handle `Screen.ownerOf` returns.
       b.writeln(
         'final class const OnParentOf<N extends AnyNav>._('
-        'final Set<$parentT> parents, N nav, final N Function(Enum) at) '
+        'final Set<$parentT> parents, N nav, final N Function(Enum) at, final Enum target) '
         'extends On<N> {',
       );
       b.writeln('  this : super._(const [], const [], nav);');
@@ -1541,7 +1543,7 @@ class NavGenerator extends GeneratorForAnnotation<Screens> {
             .map((s) => svIn(parentT, s))
             .join(', ');
         b.writeln('  OnParentOf<$cap> get ${e.key} =>');
-        b.writeln('      OnParentOf._(const {$lits}, const $cap._(), $cap._);');
+        b.writeln('      OnParentOf._(const {$lits}, const $cap._(), $cap._, $spec.${e.key});');
       }
       b.writeln('}');
       for (final e in parentsOf.entries) {
